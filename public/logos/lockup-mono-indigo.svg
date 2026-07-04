@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 305 141" width="305" height="141">
+  
+  <text x="10" y="110.5" font-family="Quicksand, sans-serif" font-weight="700" font-size="100" letter-spacing="-2" fill="#5B4BC4">alquıa</text>
+  <g transform="translate(202.1, 10) scale(1.400)" fill="none">
+    <path d="M4 13 L15 3.5 L26 13" stroke="#5B4BC4" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path>
+    <circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"></circle>
+  </g>
+</svg>
