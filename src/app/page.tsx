@@ -56,7 +56,7 @@ export default function Home() {
           style={{ animation: "var(--animate-fade-up)", animationDelay: "0.3s", animationFillMode: "both", opacity: 0 }}
         >
           <p className="text-base font-medium tracking-widest uppercase text-zinc-400">
-            En construcción
+            Estamos llegando...
           </p>
 
           {/* Puntos animados */}
