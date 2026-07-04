@@ -33,7 +33,7 @@ export default function Home() {
           style={{ animation: "var(--animate-fade-up)", animationDelay: "0.3s", animationFillMode: "both", opacity: 0 }}
         >
           <p className="text-base font-medium tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.4)" }}>
-            Estamos llegando...
+            Una mejor manera de gestionar tus alquileres esta llegando...
           </p>
 
           {/* Puntos animados */}
