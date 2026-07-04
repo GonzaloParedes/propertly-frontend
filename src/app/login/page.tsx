@@ -253,7 +253,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 <Link
-                  href="/recuperar-contrasena"
+                  href="/olvidar-contrasena"
                   className="mt-1 self-start text-[15px] underline"
                   style={{ color: "var(--primary)" }}
                 >
