@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alquia — Maquetas de alta fidelidad · Gestión de alquileres</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SISTEMA DE TOKENS — 3 paletas intercambiables
+   Base de espaciado: 4 px · Texto base: 17 px
+   ============================================================ */
+:root{
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
+  --radius:10px; --radius-sm:8px;
+  --shadow:0 1px 2px rgba(16,24,32,.06),0 2px 8px rgba(16,24,32,.05);
+  --shadow-lg:0 8px 28px rgba(16,24,32,.14);
+  --font-ui:'Nunito Sans',system-ui,sans-serif;
+  --font-display:'Quicksand',system-ui,sans-serif;
+}
+/* Paleta 1 — Fresca (teal + coral) */
+body[data-palette="p1"]{
+  --primary:#0F766E; --primary-dark:#0B5A54; --primary-soft:#D7F0EC;
+  --secondary:#E8763B;
+  --bg:#F1FAF8; --surface:#FFFFFF;
+  --text:#12302C; --text-2:#4A625D;
+  --success:#1E874B; --success-bg:#E3F5EA;
+  --warn:#B26A00;  --warn-bg:#FBF0DA;
+  --danger:#D0453B; --danger-bg:#FCEAE7;
+  --border:#D2E6E1; --border-strong:#B1CCC6;
+}
+/* Paleta 2 — Cálida (coral + teal) */
+body[data-palette="p2"]{
+  --primary:#C0562B; --primary-dark:#9E4420; --primary-soft:#FBE7DA;
+  --secondary:#2A9D8F;
+  --bg:#FFF7F0; --surface:#FFFFFF;
+  --text:#33261F; --text-2:#6B564A;
+  --success:#1E874B; --success-bg:#E7F4EC;
+  --warn:#B26A00;  --warn-bg:#FBEEDA;
+  --danger:#C43A2E; --danger-bg:#FAE7E3;
+  --border:#EFDCCC; --border-strong:#DAC0AC;
+}
+/* Paleta 3 — Vibrante (índigo + rosa) */
+body[data-palette="p3"]{
+  --primary:#5B4BC4; --primary-dark:#463AA0; --primary-soft:#E7E3F8;
+  --secondary:#DB4C8E;
+  --bg:#F6F5FC; --surface:#FFFFFF;
+  --text:#1E1B2E; --text-2:#514D63;
+  --success:#1E874B; --success-bg:#E6F4EC;
+  --warn:#B26A00;  --warn-bg:#F8EFDB;
+  --danger:#CE3F53; --danger-bg:#FBE9EC;
+  --border:#DEDAF0; --border-strong:#C4BEE4;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:17px}
+body{font-family:var(--font-ui);background:var(--bg);color:var(--text);line-height:1.55}
+h1,h2,h3{font-family:var(--font-display);line-height:1.22;font-weight:700;letter-spacing:-.01em}
+h1{font-size:1.65rem} h2{font-size:1.3rem} h3{font-size:1.1rem}
+a{color:var(--primary)}
+:focus-visible{outline:3px solid var(--secondary);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- Barra del visor de maquetas (no forma parte de la app) ---------- */
+.viewer{position:sticky;top:0;z-index:50;background:var(--text);color:#fff;padding:var(--sp-3) var(--sp-4);display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center}
+.viewer .vtitle{font-family:var(--font-display);font-weight:700;margin-right:var(--sp-3)}
+.vtabs{display:flex;flex-wrap:wrap;gap:6px}
+.vtab{font:inherit;font-size:.85rem;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;cursor:pointer}
+.vtab[aria-selected="true"]{background:#fff;color:var(--text);border-color:#fff;font-weight:700}
+.vpal{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:.85rem}
+.vpal button{font:inherit;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;cursor:pointer}
+.vpal button[aria-pressed="true"]{background:#fff;color:var(--text);font-weight:700}
+
+.screen{display:none}
+.screen.active{display:block}
+
+/* ---------- Botones ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:700;font-size:1rem;min-height:48px;padding:0 var(--sp-5);border-radius:var(--radius-sm);border:2px solid transparent;cursor:pointer;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:var(--surface);color:var(--primary);border-color:var(--primary)}
+.btn-secondary:hover{background:var(--primary-soft)}
+.btn-ghost{background:transparent;color:var(--primary);border-color:transparent;min-height:44px}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{min-height:40px;padding:0 var(--sp-4);font-size:.95rem}
+
+/* ---------- Badges de estado: color + ícono + texto ---------- */
+.badge{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:.9rem;padding:5px 12px;border-radius:999px;border:1.5px solid currentColor;white-space:nowrap}
+.badge svg{width:15px;height:15px;flex:none}
+.b-ok{color:var(--success);background:var(--success-bg)}
+.b-pend{color:var(--text-2);background:var(--bg)}
+.b-warn{color:var(--warn);background:var(--warn-bg)}
+.b-late{color:var(--danger);background:var(--danger-bg)}
+.b-info{color:var(--primary);background:var(--primary-soft)}
+
+/* ---------- Cards, tablas, formularios ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--sp-5)}
+.card h3{margin-bottom:var(--sp-3)}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+th{text-align:left;font-size:.85rem;letter-spacing:.02em;color:var(--text-2);padding:14px 16px;border-bottom:2px solid var(--border-strong)}
+td{padding:16px;border-bottom:1px solid var(--border);vertical-align:middle;font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--primary-soft)}
+.amount{font-family:var(--font-display);font-weight:600;font-variant-numeric:tabular-nums}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--sp-4)}
+.field label{font-weight:700}
+.field .hint{color:var(--text-2);font-size:.9rem}
+.field input,.field select,.field textarea{font:inherit;min-height:50px;padding:10px 14px;border:1.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);width:100%}
+.field textarea{min-height:90px}
+.field input:focus,.field select:focus{border-color:var(--primary);outline:3px solid var(--primary-soft)}
+.field.error input{border-color:var(--danger)}
+.err-msg{display:flex;align-items:center;gap:6px;color:var(--danger);font-weight:700;font-size:.92rem}
+
+/* ---------- Estructura de la app ---------- */
+.app{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 58px)}
+.sidebar{background:var(--primary-dark);color:#fff;padding:var(--sp-5) var(--sp-3);display:flex;flex-direction:column;gap:4px}
+.logo{font-family:var(--font-display);font-weight:700;font-size:1.35rem;color:#fff;padding:0 var(--sp-3) var(--sp-5);display:flex;align-items:center;gap:10px}
+.logo .mark{width:34px;height:34px;border-radius:9px;background:#fff;color:var(--primary-dark);display:grid;place-items:center;font-size:1.05rem}
+.nav-item{display:flex;align-items:center;gap:12px;color:#fff;text-decoration:none;font-size:1.02rem;padding:13px var(--sp-3);border-radius:var(--radius-sm);border:none;background:none;font-family:inherit;cursor:pointer;text-align:left;width:100%}
+.nav-item svg{width:21px;height:21px;flex:none;opacity:.9}
+.nav-item:hover{background:rgba(255,255,255,.12)}
+.nav-item.active{background:#fff;color:var(--primary-dark);font-weight:700}
+.sidebar .spacer{flex:1}
+.nav-count{margin-left:auto;background:var(--danger);color:#fff;font-size:.8rem;font-weight:700;border-radius:999px;min-width:24px;height:24px;display:grid;place-items:center;padding:0 7px}
+.help-box{background:rgba(255,255,255,.1);border-radius:var(--radius-sm);padding:var(--sp-3);font-size:.9rem;line-height:1.45}
+.help-box a{color:#fff;font-weight:700}
+
+.topbar{display:flex;align-items:center;gap:var(--sp-4);padding:var(--sp-3) var(--sp-6);background:var(--surface);border-bottom:1px solid var(--border)}
+.search{flex:1;max-width:520px;position:relative}
+.search input{width:100%;min-height:48px;padding:10px 14px 10px 44px;border:1.5px solid var(--border-strong);border-radius:999px;font:inherit;background:var(--bg)}
+.search svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);width:19px;height:19px;color:var(--text-2)}
+.topbar .user{margin-left:auto;display:flex;align-items:center;gap:12px}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:700}
+.bell{position:relative;background:none;border:1.5px solid var(--border-strong);border-radius:50%;width:46px;height:46px;display:grid;place-items:center;cursor:pointer;color:var(--text)}
+.bell .dot{position:absolute;top:6px;right:7px;width:11px;height:11px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)}
+
+main{padding:var(--sp-6);max-width:1180px}
+.page-head{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:center;margin-bottom:var(--sp-5)}
+.page-head p{color:var(--text-2)}
+.page-head .actions{margin-left:auto;display:flex;gap:var(--sp-3)}
+.grid{display:grid;gap:var(--sp-4);align-items:stretch}
+.g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.sidebar{flex-direction:row;overflow-x:auto}.g4,.g3,.g2{grid-template-columns:1fr}main{padding:var(--sp-4)}}
+
+.kpi{display:flex;flex-direction:column;gap:6px}
+.kpi .label{color:var(--text-2);font-size:.95rem;font-weight:700}
+.kpi .value{font-family:var(--font-display);font-size:2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:.92rem;color:var(--text-2)}
+
+.alert{display:flex;gap:12px;align-items:flex-start;border-radius:var(--radius);padding:var(--sp-4);border:1.5px solid;margin-bottom:var(--sp-3)}
+.alert svg{width:22px;height:22px;flex:none;margin-top:2px}
+.alert strong{display:block}
+.alert .btn{margin-left:auto;flex:none}
+.a-warn{background:var(--warn-bg);border-color:var(--warn);color:var(--text)}
+.a-warn svg{color:var(--warn)}
+.a-late{background:var(--danger-bg);border-color:var(--danger)}
+.a-late svg{color:var(--danger)}
+
+.empty{display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);padding:var(--sp-7) var(--sp-5);text-align:center;color:var(--text-2)}
+.empty svg{width:52px;height:52px;color:var(--border-strong)}
+.empty strong{color:var(--text);font-size:1.1rem}
+
+.filters{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-bottom:var(--sp-4)}
+.filters select,.filters input{font:inherit;min-height:46px;padding:8px 12px;border:1.5px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface)}
+
+.steps{display:flex;gap:var(--sp-2);margin-bottom:var(--sp-5);flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--text-2)}
+.step .n{width:32px;height:32px;border-radius:50%;border:2px solid var(--border-strong);display:grid;place-items:center;font-size:.9rem}
+.step.done .n,.step.now .n{background:var(--primary);border-color:var(--primary);color:#fff}
+.step.now{color:var(--text)}
+.step::after{content:"";width:34px;height:2px;background:var(--border-strong);margin:0 6px}
+.step:last-child::after{display:none}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(16,24,32,.5);display:none;place-items:center;z-index:60;padding:var(--sp-4)}
+.overlay.open{display:grid}
+.modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);max-width:460px;width:100%;padding:var(--sp-6);text-align:center}
+.modal .icon-ok{width:64px;height:64px;border-radius:50%;background:var(--success-bg);color:var(--success);display:grid;place-items:center;margin:0 auto var(--sp-4)}
+.modal .icon-ok svg{width:32px;height:32px}
+.modal h2{margin-bottom:var(--sp-2)}
+.modal p{color:var(--text-2);margin-bottom:var(--sp-5)}
+.modal .row{display:flex;gap:var(--sp-3);justify-content:center;flex-wrap:wrap}
+
+/* Tooltip simple */
+.tip{position:relative;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--text-2);color:var(--text-2);font-size:.75rem;font-weight:700;cursor:help;vertical-align:middle;margin-left:6px}
+.tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;bottom:130%;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;font-size:.82rem;font-weight:400;padding:8px 12px;border-radius:8px;white-space:nowrap;z-index:10}
+
+/* Sección "Sistema de diseño" */
+.ds main{max-width:1180px;margin:0 auto}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp-3)}
+.sw{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--surface)}
+.sw .c{height:64px}
+.sw .i{padding:10px 12px;font-size:.85rem}
+.sw .i strong{display:block}
+.sw code{color:var(--text-2)}
+.type-row{display:flex;gap:var(--sp-4);align-items:baseline;border-bottom:1px solid var(--border);padding:var(--sp-3) 0;flex-wrap:wrap}
+.type-row .meta{color:var(--text-2);font-size:.85rem;min-width:230px}
+.sp-demo{display:flex;align-items:flex-end;gap:var(--sp-3);flex-wrap:wrap}
+.sp-demo .box{background:var(--primary-soft);border:1.5px dashed var(--primary);border-radius:6px;display:grid;place-items:end center;color:var(--primary);font-size:.75rem;font-weight:700;padding-bottom:2px}
+.section{margin-bottom:var(--sp-7)}
+.section>p.lead{color:var(--text-2);max-width:760px;margin:var(--sp-2) 0 var(--sp-4)}
+
+/* Login */
+.login-wrap{min-height:calc(100vh - 58px);display:grid;grid-template-columns:1fr 1fr}
+.login-side{background:var(--primary-dark);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:var(--sp-8)}
+.login-side h1{color:#fff;font-size:2rem;margin:var(--sp-4) 0 var(--sp-3)}
+.login-side p{opacity:.9;max-width:420px;font-size:1.05rem}
+.login-side ul{list-style:none;margin-top:var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-3)}
+.login-side li{display:flex;gap:10px;align-items:center}
+.login-side li svg{width:20px;height:20px;color:#9BD1B4}
+.login-form{display:flex;align-items:center;justify-content:center;padding:var(--sp-6)}
+.login-card{width:100%;max-width:430px}
+@media(max-width:900px){.login-wrap{grid-template-columns:1fr}.login-side{display:none}}
+</style>
+</head>
+<body data-palette="p1">
+
+<!-- Sprite de íconos -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4"/><path d="M12 17.5v.1"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M17 14.5c2.4 0 4.2 1.4 4.8 4"/></symbol>
+  <symbol id="i-pay" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19"/><path d="M6 14.5h4"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M9 16v-5M14 16V8M19 16v-8"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 00-.15-1.4l2.1-1.6-2-3.4-2.4 1a7 7 0 00-2.4-1.4L13.7 2h-3.4l-.45 2.6a7 7 0 00-2.4 1.4l-2.4-1-2 3.4 2.1 1.6A7 7 0 005 12c0 .5.05.9.15 1.4l-2.1 1.6 2 3.4 2.4-1a7 7 0 002.4 1.4l.45 2.6h3.4l.45-2.6a7 7 0 002.4-1.4l2.4 1 2-3.4-2.1-1.6c.1-.5.15-.9.15-1.4z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9z"/><path d="M10 20a2.2 2.2 0 004 0"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h8l4 4V21.5H6z"/><path d="M14 2.5v4h4"/><path d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5A1.5 1.5 0 014.5 5h5l2 2.5H19.5A1.5 1.5 0 0121 9v9.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18.5z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10v-6z"/><path d="M8.5 12l2.5 2.5 4.5-4.5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7L13.5 4a3.3 3.3 0 014.7 4.7L10 17a1.7 1.7 0 01-2.4-2.4l7.3-7.3"/></symbol>
+</svg>
+
+<!-- ================= VISOR DE MAQUETAS ================= -->
+<header class="viewer" aria-label="Navegación de las maquetas">
+  <span class="vtitle">Alquia · Maquetas</span>
+  <nav class="vtabs" role="tablist" aria-label="Pantallas">
+    <button class="vtab" role="tab" aria-selected="true" data-screen="sistema">Sistema de diseño</button>
+    <button class="vtab" role="tab" aria-selected="false" data-screen="login">1 · Login</button>
+    <button class="vtab" role="tab" aria-selected="false" data-screen="dashboard">2 · Dashboard</button>
+    <button class="vtab" role="tab" aria-selected="false" data-screen="alertas">3 · Alertas</button>
+    <button class="vtab" role="tab" aria-selected="false" data-screen="propiedades">4 · Propiedades</button>
+    <button class="vtab" role="tab" aria-selected="false" data-screen="detalle">5 · Detalle</button>
+    <button class="vtab" role="tab" aria-selected="false" data-screen="pago">6 · Registrar pago</button>
+    <button class="vtab" role="tab" aria-selected="false" data-screen="config">7 · Configuración</button>
+  </nav>
+  <div class="vpal" role="group" aria-label="Paleta de color">
+    <span>Paleta:</span>
+    <button data-pal="p1" aria-pressed="true">1 · Fresca</button>
+    <button data-pal="p2" aria-pressed="false">2 · Cálida</button>
+    <button data-pal="p3" aria-pressed="false">3 · Vibrante</button>
+  </div>
+</header>
+
+<!-- ================= SISTEMA DE DISEÑO ================= -->
+<section id="scr-sistema" class="screen active ds">
+<main>
+  <div class="section">
+    <h1>Alquia — Sistema de diseño</h1>
+    <p class="lead">Dirección visual para una app de gestión de alquileres pensada para propietarios e inmobiliarias pequeñas, con usuarios de más de 45 años. La estética es luminosa y cercana: color vivo con buen contraste, fondos tibios en lugar del gris frío, mucho aire, texto grande y redondeado, y estados que se leen sin depender del color. Usá el selector <strong>“Paleta”</strong> (arriba a la derecha) para ver toda la interfaz aplicada con cada una de las 3 paletas.</p>
+  </div>
+
+  <div class="section">
+    <h2>Paleta 1 — Fresca</h2>
+    <p class="lead">Teal vivo sobre un fondo apenas menta. Es la paleta recomendada por defecto: alegre y confiable a la vez, con el mejor contraste general. Uso: el primario para botones principales, sidebar y enlaces; el coral secundario solo en detalles decorativos; el verde solo para “Pagado”; el ámbar para “Por vencer”; el rojo reservado a “Vencido” y alertas críticas.</p>
+    <div class="swatches">
+      <div class="sw"><div class="c" style="background:#0F766E"></div><div class="i"><strong>Primario</strong><code>#0F766E</code></div></div>
+      <div class="sw"><div class="c" style="background:#E8763B"></div><div class="i"><strong>Secundario</strong><code>#E8763B</code></div></div>
+      <div class="sw"><div class="c" style="background:#F1FAF8;border-bottom:1px solid #D2E6E1"></div><div class="i"><strong>Fondo</strong><code>#F1FAF8</code></div></div>
+      <div class="sw"><div class="c" style="background:#FFFFFF;border-bottom:1px solid #D2E6E1"></div><div class="i"><strong>Superficie / cards</strong><code>#FFFFFF</code></div></div>
+      <div class="sw"><div class="c" style="background:#12302C"></div><div class="i"><strong>Texto principal</strong><code>#12302C</code></div></div>
+      <div class="sw"><div class="c" style="background:#4A625D"></div><div class="i"><strong>Texto secundario</strong><code>#4A625D</code></div></div>
+      <div class="sw"><div class="c" style="background:#1E874B"></div><div class="i"><strong>Éxito</strong><code>#1E874B</code></div></div>
+      <div class="sw"><div class="c" style="background:#B26A00"></div><div class="i"><strong>Advertencia</strong><code>#B26A00</code></div></div>
+      <div class="sw"><div class="c" style="background:#D0453B"></div><div class="i"><strong>Error</strong><code>#D0453B</code></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Paleta 2 — Cálida</h2>
+    <p class="lead">Coral terracota sobre un crema luminoso, con un teal fresco de acento. Transmite cercanía y energía; ideal si el producto apunta a propietarios individuales más que a inmobiliarias. Uso: el teal secundario aparece solo en detalles (íconos decorativos, gráficos), nunca en estados.</p>
+    <div class="swatches">
+      <div class="sw"><div class="c" style="background:#C0562B"></div><div class="i"><strong>Primario</strong><code>#C0562B</code></div></div>
+      <div class="sw"><div class="c" style="background:#2A9D8F"></div><div class="i"><strong>Secundario</strong><code>#2A9D8F</code></div></div>
+      <div class="sw"><div class="c" style="background:#FFF7F0;border-bottom:1px solid #EFDCCC"></div><div class="i"><strong>Fondo</strong><code>#FFF7F0</code></div></div>
+      <div class="sw"><div class="c" style="background:#FFFFFF;border-bottom:1px solid #EFDCCC"></div><div class="i"><strong>Superficie / cards</strong><code>#FFFFFF</code></div></div>
+      <div class="sw"><div class="c" style="background:#33261F"></div><div class="i"><strong>Texto principal</strong><code>#33261F</code></div></div>
+      <div class="sw"><div class="c" style="background:#6B564A"></div><div class="i"><strong>Texto secundario</strong><code>#6B564A</code></div></div>
+      <div class="sw"><div class="c" style="background:#1E874B"></div><div class="i"><strong>Éxito</strong><code>#1E874B</code></div></div>
+      <div class="sw"><div class="c" style="background:#B26A00"></div><div class="i"><strong>Advertencia</strong><code>#B26A00</code></div></div>
+      <div class="sw"><div class="c" style="background:#C43A2E"></div><div class="i"><strong>Error</strong><code>#C43A2E</code></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Paleta 3 — Vibrante</h2>
+    <p class="lead">Índigo alegre, fondos lila muy claros y un rosa de acento. Es la variante más “fintech” y moderna: recomendada si se quiere cobrar un plan premium o apuntar a inmobiliarias. Uso: el índigo domina la navegación; el rosa secundario se usa para links, gráficos y elementos interactivos de segundo nivel.</p>
+    <div class="swatches">
+      <div class="sw"><div class="c" style="background:#5B4BC4"></div><div class="i"><strong>Primario</strong><code>#5B4BC4</code></div></div>
+      <div class="sw"><div class="c" style="background:#DB4C8E"></div><div class="i"><strong>Secundario</strong><code>#DB4C8E</code></div></div>
+      <div class="sw"><div class="c" style="background:#F6F5FC;border-bottom:1px solid #DEDAF0"></div><div class="i"><strong>Fondo</strong><code>#F6F5FC</code></div></div>
+      <div class="sw"><div class="c" style="background:#FFFFFF;border-bottom:1px solid #DEDAF0"></div><div class="i"><strong>Superficie / cards</strong><code>#FFFFFF</code></div></div>
+      <div class="sw"><div class="c" style="background:#1E1B2E"></div><div class="i"><strong>Texto principal</strong><code>#1E1B2E</code></div></div>
+      <div class="sw"><div class="c" style="background:#514D63"></div><div class="i"><strong>Texto secundario</strong><code>#514D63</code></div></div>
+      <div class="sw"><div class="c" style="background:#1E874B"></div><div class="i"><strong>Éxito</strong><code>#1E874B</code></div></div>
+      <div class="sw"><div class="c" style="background:#B26A00"></div><div class="i"><strong>Advertencia</strong><code>#B26A00</code></div></div>
+      <div class="sw"><div class="c" style="background:#CE3F53"></div><div class="i"><strong>Error</strong><code>#CE3F53</code></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Tipografía</h2>
+    <p class="lead"><strong>Nunito Sans</strong> para todo el texto de interfaz: abierta, amable y muy legible en tamaños chicos, ideal para el público 45+. <strong>Quicksand</strong> (redondeada y suave) para títulos y cifras importantes: aporta calidez y un aire moderno sin perder claridad. Todos los números usan cifras tabulares para alinear montos en tablas.</p>
+    <div class="card">
+      <div class="type-row"><span class="meta">Título de página · Quicksand 700 · 28 px</span><h1 style="font-size:28px">Resumen de junio 2026</h1></div>
+      <div class="type-row"><span class="meta">Título de sección · Quicksand 700 · 22 px</span><h2 style="font-size:22px">Próximos vencimientos</h2></div>
+      <div class="type-row"><span class="meta">Cifra destacada · Quicksand 700 · 34 px</span><span class="amount" style="font-size:34px;font-weight:700">$ 4.850.000</span></div>
+      <div class="type-row"><span class="meta">Texto base · Nunito Sans 400 · 17 px</span><span>El alquiler de Av. Rivadavia 2340 vence el 10 de julio.</span></div>
+      <div class="type-row"><span class="meta">Texto secundario · Nunito Sans 400 · 15 px</span><span style="font-size:15px;color:var(--text-2)">Último pago registrado el 5 de junio de 2026.</span></div>
+      <div class="type-row"><span class="meta">Etiquetas y botones · Nunito Sans 700 · 16–17 px</span><strong>Registrar pago</strong></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Espaciado</h2>
+    <p class="lead">Escala base de 4 px. Los saltos grandes (24 / 32 / 48) se usan generosamente entre bloques para que cada pantalla respire y el ojo encuentre una sola cosa por vez.</p>
+    <div class="card"><div class="sp-demo">
+      <div class="box" style="width:44px;height:16px">16</div>
+      <div class="box" style="width:52px;height:24px">24</div>
+      <div class="box" style="width:60px;height:32px">32</div>
+      <div class="box" style="width:76px;height:48px">48</div>
+      <div class="box" style="width:92px;height:64px">64</div>
+    </div></div>
+  </div>
+
+  <div class="section">
+    <h2>Estados: color + ícono + texto, siempre juntos</h2>
+    <p class="lead">Ningún estado depende solo del color. Cada badge combina un ícono distinto, una palabra clara y un fondo suave con borde. Así funcionan también para personas con daltonismo o en impresiones en blanco y negro.</p>
+    <div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span>
+      <span class="badge b-pend"><svg><use href="#i-clock"/></svg>Pendiente</span>
+      <span class="badge b-warn"><svg><use href="#i-warn"/></svg>Por vencer</span>
+      <span class="badge b-late"><svg><use href="#i-x"/></svg>Vencido</span>
+      <span class="badge b-info"><svg><use href="#i-doc"/></svg>Contrato por finalizar</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Botones y formularios</h2>
+    <div class="card" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+      <button class="btn btn-primary"><svg width="18" height="18"><use href="#i-plus"/></svg>Registrar pago</button>
+      <button class="btn btn-secondary">Ver detalle</button>
+      <button class="btn btn-ghost">Cancelar</button>
+      <button class="btn btn-danger">Eliminar propiedad</button>
+    </div>
+    <div class="card" style="max-width:460px">
+      <div class="field">
+        <label for="demo-monto">Monto del pago <span class="tip" tabindex="0" data-tip="Ingresá el monto sin puntos ni comas">?</span></label>
+        <input id="demo-monto" type="text" value="485.000">
+        <span class="hint">Moneda: pesos argentinos (ARS)</span>
+      </div>
+      <div class="field error">
+        <label for="demo-fecha">Fecha del pago</label>
+        <input id="demo-fecha" type="text" placeholder="dd/mm/aaaa" aria-describedby="err-fecha">
+        <span class="err-msg" id="err-fecha"><svg width="16" height="16"><use href="#i-warn"/></svg>Ingresá la fecha en formato día/mes/año, por ejemplo 05/07/2026.</span>
+      </div>
+    </div>
+  </div>
+</main>
+</section>
+
+<!-- ================= 1 · LOGIN ================= -->
+<section id="scr-login" class="screen">
+  <div class="login-wrap">
+    <div class="login-side">
+      <div class="logo" style="padding:0"><span class="mark">A</span>Alquia</div>
+      <h1>Sus alquileres, en orden y a la vista.</h1>
+      <p>Controle pagos, contratos y vencimientos de todas sus propiedades desde un solo lugar, sin planillas ni papeles sueltos.</p>
+      <ul>
+        <li><svg><use href="#i-check"/></svg>Sepa al instante qué alquileres están pagos</li>
+        <li><svg><use href="#i-check"/></svg>Reciba avisos antes de cada vencimiento</li>
+        <li><svg><use href="#i-check"/></svg>Guarde contratos y comprobantes en un lugar seguro</li>
+      </ul>
+    </div>
+    <div class="login-form">
+      <div class="login-card">
+        <h2 style="margin-bottom:8px">Ingresar a su cuenta</h2>
+        <p style="color:var(--text-2);margin-bottom:24px">Escriba su correo y su contraseña.</p>
+        <div class="field">
+          <label for="lg-mail">Correo electrónico</label>
+          <input id="lg-mail" type="email" value="ricardo.gomez@gmail.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="lg-pass">Contraseña</label>
+          <input id="lg-pass" type="password" value="••••••••••" autocomplete="current-password">
+          <a href="#" style="font-size:.95rem;margin-top:4px">¿Olvidó su contraseña?</a>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin:8px 0 16px">Ingresar</button>
+        <p style="text-align:center;color:var(--text-2)">¿Primera vez acá? <a href="#"><strong>Crear una cuenta</strong></a></p>
+        <p style="display:flex;gap:8px;align-items:center;justify-content:center;color:var(--text-2);font-size:.9rem;margin-top:24px"><svg width="18" height="18" style="color:var(--success)"><use href="#i-shield"/></svg>Sus datos están protegidos y cifrados.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= APP (pantallas 2 a 7) ================= -->
+<section id="scr-app" class="screen">
+<div class="app">
+  <nav class="sidebar" aria-label="Menú principal">
+    <div class="logo"><span class="mark">A</span>Alquia</div>
+    <button class="nav-item active" data-go="dashboard"><svg><use href="#i-home"/></svg>Inicio</button>
+    <button class="nav-item" data-go="alertas"><svg><use href="#i-bell"/></svg>Alertas <span class="nav-count">3</span></button>
+    <button class="nav-item" data-go="propiedades"><svg><use href="#i-building"/></svg>Propiedades</button>
+    <button class="nav-item" data-go="pago"><svg><use href="#i-pay"/></svg>Pagos</button>
+    <button class="nav-item" data-go="config"><svg><use href="#i-gear"/></svg>Configuración</button>
+    <div class="spacer"></div>
+    <div class="help-box">¿Necesita ayuda?<br><a href="#">Ver guía paso a paso</a></div>
+  </nav>
+
+  <div>
+    <div class="topbar">
+      <div class="search">
+        <svg><use href="#i-search"/></svg>
+        <input type="search" placeholder="Buscar propiedad, inquilino o contrato…" aria-label="Búsqueda global">
+      </div>
+      <div class="user">
+        <button class="bell" aria-label="Notificaciones: 3 sin leer"><svg width="21" height="21"><use href="#i-bell"/></svg><span class="dot"></span></button>
+        <span class="avatar" aria-hidden="true">RG</span>
+        <span><strong>Ricardo Gómez</strong><br><span style="font-size:.85rem;color:var(--text-2)">Propietario</span></span>
+      </div>
+    </div>
+
+    <!-- ===== 2 · DASHBOARD ===== -->
+    <main id="pg-dashboard" class="page">
+      <div class="page-head">
+        <div><h1>Buen día, Ricardo</h1><p>Así están sus alquileres hoy, miércoles 1 de julio de 2026.</p></div>
+        <div class="actions">
+          <button class="btn btn-secondary"><svg width="18" height="18"><use href="#i-plus"/></svg>Agregar propiedad</button>
+          <button class="btn btn-primary" data-go="pago"><svg width="18" height="18"><use href="#i-pay"/></svg>Registrar pago</button>
+        </div>
+      </div>
+
+      <div class="grid g4" style="margin-bottom:24px">
+        <div class="card kpi"><span class="label">Propiedades</span><span class="value">8</span><span class="sub">7 alquiladas · 1 vacía</span></div>
+        <div class="card kpi"><span class="label">Cobrado este mes</span><span class="value" style="color:var(--success)">$ 2.910.000</span><span class="sub">6 de 7 alquileres</span></div>
+        <div class="card kpi"><span class="label">Pendiente de cobro</span><span class="value" style="color:var(--warn)">$ 520.000</span><span class="sub">1 alquiler</span></div>
+        <div class="card kpi"><span class="label">Vencimientos próximos</span><span class="value">3</span><span class="sub">en los próximos 10 días</span></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <h2>Requieren su atención</h2>
+        <span class="badge b-late"><svg><use href="#i-warn"/></svg>3 alertas activas</span>
+        <button class="btn btn-secondary btn-sm" data-go="alertas" style="margin-left:auto">Ver todas las alertas</button>
+      </div>
+      <div class="alert a-late">
+        <svg><use href="#i-x"/></svg>
+        <div><strong>Alquiler vencido — Lavalle 950, 3.º B</strong>El pago de junio ($ 520.000) venció hace 21 días. Inquilino: Marta Suárez.</div>
+        <button class="btn btn-sm btn-primary" data-go="pago">Registrar pago</button>
+      </div>
+      <div class="alert a-warn">
+        <svg><use href="#i-warn"/></svg>
+        <div><strong>Contrato por finalizar — Av. Rivadavia 2340, 5.º A</strong>El contrato con Jorge Paletta termina el 31 de agosto de 2026 (en 61 días).</div>
+        <button class="btn btn-sm btn-secondary" data-go="alertas">Ver alerta</button>
+      </div>
+
+      <h2 style="margin:32px 0 12px">Últimos movimientos</h2>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table>
+          <thead><tr><th>Fecha</th><th>Propiedad</th><th>Inquilino</th><th>Monto</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>28/06/2026</td><td>Belgrano 445, PB</td><td>Ana Ferreyra</td><td class="amount">$ 430.000</td><td><span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span></td></tr>
+            <tr><td>27/06/2026</td><td>Güemes 1120, 2.º C</td><td>Luis Medina</td><td class="amount">$ 465.000</td><td><span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span></td></tr>
+            <tr><td>10/06/2026</td><td>Lavalle 950, 3.º B</td><td>Marta Suárez</td><td class="amount">$ 520.000</td><td><span class="badge b-late"><svg><use href="#i-x"/></svg>Vencido</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- ===== 3 · PROPIEDADES ===== -->
+    <main id="pg-propiedades" class="page" hidden>
+      <div class="page-head">
+        <div><h1>Propiedades</h1><p>8 propiedades · 7 alquiladas · 1 vacía</p></div>
+        <div class="actions"><button class="btn btn-primary"><svg width="18" height="18"><use href="#i-plus"/></svg>Agregar propiedad</button></div>
+      </div>
+      <div class="filters">
+        <select aria-label="Filtrar por estado"><option>Estado: Todos</option><option>Pagado</option><option>Pendiente</option><option>Vencido</option><option>Vacía</option></select>
+        <select aria-label="Filtrar por inquilino"><option>Inquilino: Todos</option></select>
+        <select aria-label="Ordenar"><option>Ordenar: Próximo vencimiento</option><option>Nombre</option><option>Monto</option></select>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table>
+          <thead><tr><th>Propiedad</th><th>Inquilino actual</th><th>Alquiler mensual</th><th>Próximo vencimiento</th><th>Estado del mes</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><strong>Av. Rivadavia 2340, 5.º A</strong><br><span style="color:var(--text-2);font-size:.9rem">Depto. 3 ambientes · CABA</span></td><td>Jorge Paletta</td><td class="amount">$ 495.000</td><td>10/07/2026</td><td><span class="badge b-warn"><svg><use href="#i-warn"/></svg>Por vencer</span></td><td><button class="btn btn-sm btn-secondary" data-go="detalle">Ver detalle</button></td></tr>
+            <tr><td><strong>Lavalle 950, 3.º B</strong><br><span style="color:var(--text-2);font-size:.9rem">Depto. 2 ambientes · CABA</span></td><td>Marta Suárez</td><td class="amount">$ 520.000</td><td>10/06/2026</td><td><span class="badge b-late"><svg><use href="#i-x"/></svg>Vencido</span></td><td><button class="btn btn-sm btn-secondary" data-go="detalle">Ver detalle</button></td></tr>
+            <tr><td><strong>Belgrano 445, PB</strong><br><span style="color:var(--text-2);font-size:.9rem">Casa · Morón</span></td><td>Ana Ferreyra</td><td class="amount">$ 430.000</td><td>05/08/2026</td><td><span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span></td><td><button class="btn btn-sm btn-secondary" data-go="detalle">Ver detalle</button></td></tr>
+            <tr><td><strong>Güemes 1120, 2.º C</strong><br><span style="color:var(--text-2);font-size:.9rem">Depto. 3 ambientes · CABA</span></td><td>Luis Medina</td><td class="amount">$ 465.000</td><td>05/08/2026</td><td><span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span></td><td><button class="btn btn-sm btn-secondary" data-go="detalle">Ver detalle</button></td></tr>
+            <tr><td><strong>Mitre 78, local</strong><br><span style="color:var(--text-2);font-size:.9rem">Local comercial · San Isidro</span></td><td><em style="color:var(--text-2)">Sin inquilino</em></td><td class="amount">—</td><td>—</td><td><span class="badge b-pend"><svg><use href="#i-clock"/></svg>Vacía</span></td><td><button class="btn btn-sm btn-secondary" data-go="detalle">Ver detalle</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- ===== 4 · DETALLE DE PROPIEDAD ===== -->
+    <main id="pg-detalle" class="page" hidden>
+      <div class="page-head">
+        <div>
+          <p><a href="#" data-go="propiedades">Propiedades</a> / Av. Rivadavia 2340</p>
+          <h1>Av. Rivadavia 2340, 5.º A</h1>
+          <p>Departamento de 3 ambientes · CABA · <span class="badge b-warn" style="vertical-align:middle"><svg><use href="#i-warn"/></svg>Por vencer</span></p>
+        </div>
+        <div class="actions">
+          <button class="btn btn-secondary">Editar propiedad</button>
+          <button class="btn btn-primary" data-go="pago"><svg width="18" height="18"><use href="#i-pay"/></svg>Registrar pago</button>
+        </div>
+      </div>
+
+      <div class="grid g3" style="margin-bottom:24px">
+        <div class="card">
+          <h3>Inquilino actual</h3>
+          <p style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span class="avatar" style="width:38px;height:38px;font-size:.9rem">JP</span><strong>Jorge Paletta</strong></p>
+          <p style="color:var(--text-2)">Tel.: 11 5555-2340<br><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e68c89948183c896878a83929287a6818b878f8ac885898b">[email&#160;protected]</a><br>DNI 22.456.789</p>
+        </div>
+        <div class="card">
+          <h3>Contrato vigente</h3>
+          <p><strong>01/09/2024 → 31/08/2026</strong></p>
+          <p style="color:var(--text-2)">Ajuste: cada 6 meses (ICL)<br>Próximo ajuste: 01/09/2026</p>
+          <span class="badge b-info" style="margin-top:10px"><svg><use href="#i-doc"/></svg>Finaliza en 61 días</span>
+        </div>
+        <div class="card">
+          <h3>Alquiler mensual</h3>
+          <p class="amount" style="font-size:1.9rem">$ 495.000</p>
+          <p style="color:var(--text-2)">+ Expensas: $ 88.000<br>Vence el día 10 de cada mes</p>
+        </div>
+      </div>
+
+      <div class="grid g2">
+        <div class="card" style="padding:0;overflow:hidden">
+          <h3 style="padding:20px 20px 0">Historial de pagos</h3>
+          <table style="margin-top:12px">
+            <thead><tr><th>Mes</th><th>Monto</th><th>Fecha de pago</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Julio 2026</td><td class="amount">$ 495.000</td><td>—</td><td><span class="badge b-warn"><svg><use href="#i-warn"/></svg>Por vencer</span></td></tr>
+              <tr><td>Junio 2026</td><td class="amount">$ 495.000</td><td>08/06/2026</td><td><span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span></td></tr>
+              <tr><td>Mayo 2026</td><td class="amount">$ 495.000</td><td>09/05/2026</td><td><span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span></td></tr>
+              <tr><td>Abril 2026</td><td class="amount">$ 462.000</td><td>10/04/2026</td><td><span class="badge b-ok"><svg><use href="#i-check"/></svg>Pagado</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Documentos</h3>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:12px"><svg width="22" height="22" style="color:var(--primary)"><use href="#i-doc"/></svg><div style="flex:1"><strong>Contrato 2024–2026.pdf</strong><br><span style="font-size:.88rem;color:var(--text-2)">Subido el 01/09/2024</span></div><button class="btn btn-sm btn-ghost"><svg width="18" height="18"><use href="#i-download"/></svg>Descargar</button></div>
+            <div style="display:flex;gap:10px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:12px"><svg width="22" height="22" style="color:var(--primary)"><use href="#i-doc"/></svg><div style="flex:1"><strong>Recibo junio 2026.pdf</strong><br><span style="font-size:.88rem;color:var(--text-2)">Subido el 08/06/2026</span></div><button class="btn btn-sm btn-ghost"><svg width="18" height="18"><use href="#i-download"/></svg>Descargar</button></div>
+          </div>
+          <button class="btn btn-secondary" style="margin-top:16px"><svg width="18" height="18"><use href="#i-clip"/></svg>Subir documento</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== 3 · ALERTAS ===== -->
+    <main id="pg-alertas" class="page" hidden>
+      <div class="page-head">
+        <div><h1>Alertas</h1><p>Todo lo que requiere su atención, ordenado por urgencia.</p></div>
+        <div class="actions">
+          <select aria-label="Filtrar alertas" style="font:inherit;min-height:48px;padding:8px 12px;border:1.5px solid var(--border-strong);border-radius:8px;background:var(--surface)">
+            <option>Ver: Todas las alertas</option><option>Pagos vencidos</option><option>Vencimientos próximos</option><option>Contratos</option>
+          </select>
+        </div>
+      </div>
+
+      <h2 style="margin-bottom:12px;display:flex;align-items:center;gap:10px"><svg width="22" height="22" style="color:var(--danger)"><use href="#i-x"/></svg>Pagos vencidos <span style="color:var(--text-2);font-weight:400;font-size:1rem">(1)</span></h2>
+      <div class="alert a-late">
+        <svg><use href="#i-x"/></svg>
+        <div><strong>Lavalle 950, 3.º B — Marta Suárez</strong>El pago de junio ($ 520.000) venció el 10/06/2026, hace 21 días.</div>
+        <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" data-go="pago">Registrar pago</button>
+          <button class="btn btn-sm btn-ghost">Enviar recordatorio</button>
+        </div>
+      </div>
+
+      <h2 style="margin:32px 0 12px;display:flex;align-items:center;gap:10px"><svg width="22" height="22" style="color:var(--warn)"><use href="#i-warn"/></svg>Vencimientos próximos <span style="color:var(--text-2);font-weight:400;font-size:1rem">(3)</span></h2>
+      <div class="alert a-warn">
+        <svg><use href="#i-clock"/></svg>
+        <div><strong>Güemes 1120, 2.º C — Luis Medina</strong>El alquiler de julio ($ 465.000) vence el sábado 5 de julio (en 4 días).</div>
+        <button class="btn btn-sm btn-secondary" data-go="detalle">Ver propiedad</button>
+      </div>
+      <div class="alert a-warn">
+        <svg><use href="#i-clock"/></svg>
+        <div><strong>Belgrano 445, PB — Ana Ferreyra</strong>El alquiler de julio ($ 430.000) vence el sábado 5 de julio (en 4 días).</div>
+        <button class="btn btn-sm btn-secondary" data-go="detalle">Ver propiedad</button>
+      </div>
+      <div class="alert a-warn">
+        <svg><use href="#i-clock"/></svg>
+        <div><strong>Av. Rivadavia 2340, 5.º A — Jorge Paletta</strong>El alquiler de julio ($ 495.000) vence el viernes 10 de julio (en 9 días).</div>
+        <button class="btn btn-sm btn-secondary" data-go="detalle">Ver propiedad</button>
+      </div>
+
+      <h2 style="margin:32px 0 12px;display:flex;align-items:center;gap:10px"><svg width="22" height="22" style="color:var(--primary)"><use href="#i-doc"/></svg>Contratos por finalizar <span style="color:var(--text-2);font-weight:400;font-size:1rem">(1)</span></h2>
+      <div class="alert a-warn" style="border-color:var(--primary);background:var(--primary-soft)">
+        <svg style="color:var(--primary)"><use href="#i-doc"/></svg>
+        <div><strong>Av. Rivadavia 2340, 5.º A — Jorge Paletta</strong>El contrato termina el 31/08/2026 (en 61 días). Conviene definir la renovación con tiempo.</div>
+        <button class="btn btn-sm btn-secondary" data-go="detalle">Ver contrato</button>
+      </div>
+
+      <div class="card" style="margin-top:32px">
+        <div class="empty" style="padding:24px">
+          <svg><use href="#i-check"/></svg>
+          <strong>Cuando no haya nada pendiente, esta pantalla se lo va a decir</strong>
+          <p>“Todo en orden: no hay pagos vencidos ni vencimientos en los próximos días.”</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== 6 · REGISTRAR PAGO ===== -->
+    <main id="pg-pago" class="page" hidden>
+      <div class="page-head"><div><h1>Registrar un pago</h1><p>Complete los datos del pago recibido. Solo le llevará un minuto.</p></div></div>
+      <div class="card" style="max-width:640px">
+        <div class="steps" aria-label="Paso 2 de 3">
+          <span class="step done"><span class="n"><svg width="14" height="14"><use href="#i-check"/></svg></span>Propiedad</span>
+          <span class="step now"><span class="n">2</span>Datos del pago</span>
+          <span class="step"><span class="n">3</span>Confirmación</span>
+        </div>
+        <div class="field">
+          <label>Propiedad e inquilino</label>
+          <div style="display:flex;gap:10px;align-items:center;background:var(--primary-soft);border-radius:8px;padding:12px 14px">
+            <svg width="20" height="20" style="color:var(--primary)"><use href="#i-building"/></svg>
+            <span><strong>Lavalle 950, 3.º B</strong> — Marta Suárez · mes de junio 2026</span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto">Cambiar</button>
+          </div>
+        </div>
+        <div class="grid g2">
+          <div class="field">
+            <label for="p-monto">Monto recibido</label>
+            <input id="p-monto" type="text" value="520.000" inputmode="numeric">
+            <span class="hint">Monto del mes: $ 520.000</span>
+          </div>
+          <div class="field">
+            <label for="p-fecha">Fecha del pago</label>
+            <input id="p-fecha" type="text" value="01/07/2026">
+            <span class="hint">Formato: día/mes/año</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="p-metodo">¿Cómo le pagaron?</label>
+          <select id="p-metodo"><option>Transferencia bancaria</option><option>Efectivo</option><option>Cheque</option><option>Otro</option></select>
+        </div>
+        <div class="field">
+          <label for="p-comp">Comprobante <span style="font-weight:400;color:var(--text-2)">(opcional)</span></label>
+          <button class="btn btn-secondary" id="p-comp" style="justify-content:flex-start"><svg width="18" height="18"><use href="#i-clip"/></svg>Adjuntar foto o PDF del comprobante</button>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-guardar-pago">Guardar pago</button>
+          <button class="btn btn-ghost">Volver atrás</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== 9 · CONFIGURACIÓN ===== -->
+    <main id="pg-config" class="page" hidden>
+      <div class="page-head"><div><h1>Configuración</h1><p>Sus datos y preferencias</p></div></div>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Datos del propietario</h3>
+          <div class="field"><label for="c-nombre">Nombre y apellido</label><input id="c-nombre" type="text" value="Ricardo Gómez"></div>
+          <div class="field"><label for="c-mail">Correo electrónico</label><input id="c-mail" type="email" value="ricardo.gomez@gmail.com"></div>
+          <div class="field"><label for="c-tel">Teléfono</label><input id="c-tel" type="tel" value="11 5555-8877"></div>
+          <button class="btn btn-primary">Guardar cambios</button>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <h3>Avisos y recordatorios</h3>
+            <div class="field"><label for="c-aviso">Avisarme antes de cada vencimiento</label>
+              <select id="c-aviso"><option>5 días antes</option><option>3 días antes</option><option>El mismo día</option></select></div>
+            <div class="field"><label for="c-contrato">Avisarme antes de que termine un contrato</label>
+              <select id="c-contrato"><option>90 días antes</option><option>60 días antes</option><option>30 días antes</option></select></div>
+            <div class="field"><label for="c-canal">¿Cómo prefiere recibir los avisos?</label>
+              <select id="c-canal"><option>Correo electrónico y notificación</option><option>Solo correo electrónico</option><option>Solo notificación en la app</option></select></div>
+          </div>
+          <div class="card">
+            <h3>Moneda</h3>
+            <div class="field"><label for="c-moneda">Moneda de los montos</label>
+              <select id="c-moneda"><option>Peso argentino (ARS)</option><option>Dólar estadounidense (USD)</option></select>
+              <span class="hint">Los montos ya cargados no se convierten automáticamente.</span></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</section>
+
+<!-- Modal de confirmación -->
+<div class="overlay" id="modal-ok" role="dialog" aria-modal="true" aria-labelledby="mok-title">
+  <div class="modal">
+    <div class="icon-ok"><svg><use href="#i-check"/></svg></div>
+    <h2 id="mok-title">Pago guardado</h2>
+    <p>Registró el pago de <strong>$ 520.000</strong> de Marta Suárez (Lavalle 950, 3.º B), con fecha 01/07/2026. La propiedad ahora figura como <strong>Pagada</strong>.</p>
+    <div class="row">
+      <button class="btn btn-primary" onclick="closeModal();go('dashboard')">Volver al inicio</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Registrar otro pago</button>
+    </div>
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const tabs=[...document.querySelectorAll('.vtab')];
+const appScreens=['dashboard','alertas','propiedades','detalle','pago','config'];
+function go(name){
+  tabs.forEach(t=>t.setAttribute('aria-selected',String(t.dataset.screen===name)));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  if(name==='sistema'){document.getElementById('scr-sistema').classList.add('active');}
+  else if(name==='login'){document.getElementById('scr-login').classList.add('active');}
+  else{
+    document.getElementById('scr-app').classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.hidden=true);
+    document.getElementById('pg-'+name).hidden=false;
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',
+      n.dataset.go===name||(name==='detalle'&&n.dataset.go==='propiedades')||(name==='pago'&&n.dataset.go==='pago')));
+  }
+  window.scrollTo({top:0});
+}
+tabs.forEach(t=>t.addEventListener('click',()=>go(t.dataset.screen)));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b&&!b.classList.contains('vtab')){e.preventDefault();go(b.dataset.go);}});
+document.querySelectorAll('.vpal button[data-pal]').forEach(b=>b.addEventListener('click',()=>{
+  document.body.dataset.palette=b.dataset.pal;
+  document.querySelectorAll('.vpal button[data-pal]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+const modal=document.getElementById('modal-ok');
+document.getElementById('btn-guardar-pago').addEventListener('click',()=>modal.classList.add('open'));
+function closeModal(){modal.classList.remove('open');}
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+</script>
+</body>
+</html>

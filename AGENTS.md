@@ -13,3 +13,14 @@ material visual, consultar el manual de marca ubicado en:
 
 Usar preferentemente los recursos existentes en `public/logos/`. No recrear,
 recolorear, deformar ni alterar los logos salvo que el manual lo permita.
+
+## Monitoreo de errores (Sentry)
+
+Sentry está configurado para server y edge en:
+- `sentry.server.config.ts`
+- `sentry.edge.config.ts`
+
+Al modificar uno, revisar el otro — ambos deben mantenerse sincronizados.
+
+`tracesSampleRate: 0.1` es intencional — no subirlo sin revisar el plan de Sentry.
+El DSN hardcodeado es correcto: en Sentry el DSN del cliente es público por diseño.

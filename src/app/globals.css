@@ -3,6 +3,27 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Brand — paleta vibrante (manual v1.0 julio 2026) */
+  --primary: #5948C4;      /* Índigo */
+  --primary-dark: #4438A3; /* Índigo oscuro — hover, derivado */
+  --primary-soft: #E7E3F8; /* Lila claro — focus ring, chips */
+  --lila: #A679F0;         /* Lila — acentos secundarios */
+  --secondary: #DB4C8E;    /* Rosa */
+  --bg: #F6F5FC;           /* Superficie */
+  --surface: #FFFFFF;      /* Blanco */
+  --text: #1E382E;         /* Tinta */
+  --text-2: #514063;       /* Gris */
+  --success: #1E874B;
+  --success-bg: #E6F4EC;
+  --warn: #B26A00;
+  --warn-bg: #F8EFDB;
+  --danger: #CE3F53;
+  --danger-bg: #FBE9EC;
+  --border: #DEDAF0;
+  --border-strong: #C4BEE4;
+  --shadow: 0 1px 2px rgba(30,56,46,0.06), 0 2px 8px rgba(30,56,46,0.05);
+  --radius: 10px;
 }
 
 @theme inline {
@@ -26,7 +47,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-nunito-sans), system-ui, sans-serif;
 }
 
 @keyframes fade-up {

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #F6F5FC; }
+    .vtab[data-on="true"] { background: #FFFFFF; color: #1E1B2E; font-weight: 700; }
+    .nav[data-on="true"] { background: #FFFFFF; color: #463AA0; font-weight: 700; }
+    .navc[data-on="true"] { background: #E7E3F8; color: #463AA0; font-weight: 700; }
+  </style>
+</helmet>
+
+<div style="font-family: 'Nunito Sans', sans-serif; font-size: 17px; line-height: 1.55; color: #1E1B2E; min-height: 100vh; display: flex; flex-direction: column;">
+
+  <!-- ============ Barra del visor (no es parte de la app) ============ -->
+  <header style="position: sticky; top: 0; z-index: 50; background: #1E1B2E; color: #FFFFFF; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+    <span style="display: inline-flex; align-items: center; gap: 9px; font: 700 16px 'Quicksand', sans-serif; margin-right: 8px;">
+      <svg width="22" height="22" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#A79AF0"></circle></svg>
+      Alquia · Maquetas
+    </span>
+    <nav style="display: flex; flex-wrap: wrap; gap: 6px;" aria-label="Pantallas">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="7">
+        <button class="vtab" data-on="{{ t.on }}" onClick="{{ t.go }}" style="font: 600 14px 'Nunito Sans', sans-serif; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.35); background: transparent; color: #FFFFFF; cursor: pointer; white-space: nowrap;">{{ t.label }}</button>
+      </sc-for>
+    </nav>
+    <a href="Manual de Marca Alquia.dc.html" style="margin-left: auto; color: #DDD9F0; font: 600 14px 'Nunito Sans', sans-serif; text-decoration: none;" style-hover="color: #FFFFFF; text-decoration: underline;">Manual de marca ↗</a>
+  </header>
+
+  <!-- ============ 1 · LOGIN ============ -->
+  <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="Login" style="flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: calc(100vh - 54px);">
+      <div style="background: #463AA0; color: #FFFFFF; display: flex; flex-direction: column; justify-content: center; padding: 64px;">
+        <img src="logos/lockup-oscuro.svg" alt="Alquia" style="height: 46px; align-self: flex-start; margin-bottom: 28px;">
+        <h1 style="margin: 0 0 12px; font: 700 32px/1.25 'Quicksand', sans-serif; letter-spacing: -0.01em; color: #FFFFFF;">Sus alquileres, en orden y a la vista.</h1>
+        <p style="margin: 0; color: #DDD9F0; max-width: 420px; font-size: 17.5px;">Controle pagos, contratos y vencimientos de todas sus propiedades desde un solo lugar, sin planillas ni papeles sueltos.</p>
+        <ul style="list-style: none; margin: 32px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px;">
+          <li style="display: flex; gap: 10px; align-items: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A79AF0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Sepa al instante qué alquileres están pagos</li>
+          <li style="display: flex; gap: 10px; align-items: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A79AF0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Reciba avisos antes de cada vencimiento</li>
+          <li style="display: flex; gap: 10px; align-items: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A79AF0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Guarde contratos y comprobantes en un lugar seguro</li>
+        </ul>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: center; padding: 32px; background: #F6F5FC;">
+        <div style="width: 100%; max-width: 430px; background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 16px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 32px;">
+          <h2 style="margin: 0 0 8px; font: 700 22px 'Quicksand', sans-serif;">Ingresar a su cuenta</h2>
+          <p style="margin: 0 0 24px; color: #514D63;">Escriba su correo y su contraseña.</p>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+            <label for="lg-mail" style="font-weight: 700;">Correo electrónico</label>
+            <input id="lg-mail" type="email" value="ricardo.gomez@gmail.com" autocomplete="email" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+            <label for="lg-pass" style="font-weight: 700;">Contraseña</label>
+            <input id="lg-pass" type="password" value="0000000000" autocomplete="current-password" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+            <a href="#" style="font-size: 15px; margin-top: 4px; color: #5B4BC4;">¿Olvidó su contraseña?</a>
+          </div>
+          <button onClick="{{ entrar }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF; width: 100%; margin: 8px 0 16px;" style-hover="background: #463AA0;">Ingresar</button>
+          <p style="margin: 0; text-align: center; color: #514D63;">¿Primera vez acá? <a href="#" style="color: #5B4BC4;"><strong>Crear una cuenta</strong></a></p>
+          <p style="display: flex; gap: 8px; align-items: center; justify-content: center; color: #514D63; font-size: 15px; margin: 24px 0 0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E874B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10v-6z"></path><path d="M8.5 12l2.5 2.5 4.5-4.5"></path></svg>Sus datos están protegidos y cifrados.</p>
+        </div>
+      </div>
+    </section>
+  </sc-if>
+
+  <!-- ============ APP (pantallas 2 a 7) ============ -->
+  <sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
+    <div style="flex: 1; display: grid; grid-template-columns: 250px 1fr; align-items: stretch;">
+
+      <!-- Sidebar índigo (por defecto) -->
+      <sc-if value="{{ sideOscuro }}" hint-placeholder-val="{{ true }}">
+        <nav aria-label="Menú principal" style="background: #463AA0; color: #FFFFFF; padding: 24px 12px; display: flex; flex-direction: column; gap: 4px;">
+          <img src="logos/lockup-oscuro.svg" alt="Alquia" style="height: 34px; align-self: flex-start; margin: 0 12px 24px;">
+          <button class="nav" data-on="{{ navInicio }}" onClick="{{ goDashboard }}" style="display: flex; align-items: center; gap: 12px; color: #FFFFFF; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: rgba(255,255,255,0.12);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>Inicio</button>
+          <button class="nav" data-on="{{ navAlertas }}" onClick="{{ goAlertas }}" style="display: flex; align-items: center; gap: 12px; color: #FFFFFF; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: rgba(255,255,255,0.12);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9z"></path><path d="M10 20a2.2 2.2 0 004 0"></path></svg>Alertas<span style="margin-left: auto; background: #CE3F53; color: #FFFFFF; font-size: 13px; font-weight: 700; border-radius: 999px; min-width: 24px; height: 24px; display: grid; place-items: center; padding: 0 7px;">3</span></button>
+          <button class="nav" data-on="{{ navProps }}" onClick="{{ goPropiedades }}" style="display: flex; align-items: center; gap: 12px; color: #FFFFFF; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: rgba(255,255,255,0.12);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3"></path></svg>Propiedades</button>
+          <button class="nav" data-on="{{ navPagos }}" onClick="{{ goPago }}" style="display: flex; align-items: center; gap: 12px; color: #FFFFFF; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: rgba(255,255,255,0.12);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"></rect><path d="M2.5 10h19"></path><path d="M6 14.5h4"></path></svg>Pagos</button>
+          <button class="nav" data-on="{{ navConfig }}" onClick="{{ goConfig }}" style="display: flex; align-items: center; gap: 12px; color: #FFFFFF; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: rgba(255,255,255,0.12);"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19 12a7 7 0 00-.15-1.4l2.1-1.6-2-3.4-2.4 1a7 7 0 00-2.4-1.4L13.7 2h-3.4l-.45 2.6a7 7 0 00-2.4 1.4l-2.4-1-2 3.4 2.1 1.6A7 7 0 005 12c0 .5.05.9.15 1.4l-2.1 1.6 2 3.4 2.4-1a7 7 0 002.4 1.4l.45 2.6h3.4l.45-2.6a7 7 0 002.4-1.4l2.4 1 2-3.4-2.1-1.6c.1-.5.15-.9.15-1.4z"></path></svg>Configuración</button>
+          <div style="flex: 1;"></div>
+          <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; font-size: 15px; line-height: 1.45;">¿Necesita ayuda?<br><a href="#" style="color: #FFFFFF; font-weight: 700;">Ver guía paso a paso</a></div>
+        </nav>
+      </sc-if>
+
+      <!-- Sidebar clara (variante) -->
+      <sc-if value="{{ sideClaro }}" hint-placeholder-val="{{ false }}">
+        <nav aria-label="Menú principal" style="background: #FFFFFF; border-right: 1px solid #DEDAF0; color: #1E1B2E; padding: 24px 12px; display: flex; flex-direction: column; gap: 4px;">
+          <img src="logos/lockup.svg" alt="Alquia" style="height: 34px; align-self: flex-start; margin: 0 12px 24px;">
+          <button class="navc" data-on="{{ navInicio }}" onClick="{{ goDashboard }}" style="display: flex; align-items: center; gap: 12px; color: #1E1B2E; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: #F6F5FC;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>Inicio</button>
+          <button class="navc" data-on="{{ navAlertas }}" onClick="{{ goAlertas }}" style="display: flex; align-items: center; gap: 12px; color: #1E1B2E; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: #F6F5FC;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9z"></path><path d="M10 20a2.2 2.2 0 004 0"></path></svg>Alertas<span style="margin-left: auto; background: #CE3F53; color: #FFFFFF; font-size: 13px; font-weight: 700; border-radius: 999px; min-width: 24px; height: 24px; display: grid; place-items: center; padding: 0 7px;">3</span></button>
+          <button class="navc" data-on="{{ navProps }}" onClick="{{ goPropiedades }}" style="display: flex; align-items: center; gap: 12px; color: #1E1B2E; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: #F6F5FC;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3"></path></svg>Propiedades</button>
+          <button class="navc" data-on="{{ navPagos }}" onClick="{{ goPago }}" style="display: flex; align-items: center; gap: 12px; color: #1E1B2E; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: #F6F5FC;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"></rect><path d="M2.5 10h19"></path><path d="M6 14.5h4"></path></svg>Pagos</button>
+          <button class="navc" data-on="{{ navConfig }}" onClick="{{ goConfig }}" style="display: flex; align-items: center; gap: 12px; color: #1E1B2E; font: 600 17px 'Nunito Sans', sans-serif; padding: 13px 12px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; width: 100%;" style-hover="background: #F6F5FC;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19 12a7 7 0 00-.15-1.4l2.1-1.6-2-3.4-2.4 1a7 7 0 00-2.4-1.4L13.7 2h-3.4l-.45 2.6a7 7 0 00-2.4 1.4l-2.4-1-2 3.4 2.1 1.6A7 7 0 005 12c0 .5.05.9.15 1.4l-2.1 1.6 2 3.4 2.4-1a7 7 0 002.4 1.4l.45 2.6h3.4l.45-2.6a7 7 0 002.4-1.4l2.4 1 2-3.4-2.1-1.6c.1-.5.15-.9.15-1.4z"></path></svg>Configuración</button>
+          <div style="flex: 1;"></div>
+          <div style="background: #F6F5FC; border-radius: 10px; padding: 12px; font-size: 15px; line-height: 1.45; color: #514D63;">¿Necesita ayuda?<br><a href="#" style="color: #5B4BC4; font-weight: 700;">Ver guía paso a paso</a></div>
+        </nav>
+      </sc-if>
+
+      <div style="min-width: 0;">
+        <!-- Topbar -->
+        <div style="display: flex; align-items: center; gap: 16px; padding: 12px 32px; background: #FFFFFF; border-bottom: 1px solid #DEDAF0;">
+          <div style="flex: 1; max-width: 520px; position: relative;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#514D63" stroke-width="2.4" stroke-linecap="round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.5-4.5"></path></svg>
+            <input type="search" placeholder="Buscar propiedad, inquilino o contrato…" aria-label="Búsqueda global" style="width: 100%; min-height: 48px; padding: 10px 14px 10px 44px; border: 1.5px solid #C4BEE4; border-radius: 999px; font: 400 17px 'Nunito Sans', sans-serif; background: #F6F5FC; color: #1E1B2E;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+          </div>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+            <button aria-label="Notificaciones: 3 sin leer" style="position: relative; background: none; border: 1.5px solid #C4BEE4; border-radius: 50%; width: 46px; height: 46px; display: grid; place-items: center; cursor: pointer; color: #1E1B2E;" style-hover="background: #F6F5FC;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9z"></path><path d="M10 20a2.2 2.2 0 004 0"></path></svg><span style="position: absolute; top: 6px; right: 7px; width: 11px; height: 11px; border-radius: 50%; background: #CE3F53; border: 2px solid #FFFFFF;"></span></button>
+            <span aria-hidden="true" style="width: 42px; height: 42px; border-radius: 50%; background: #5B4BC4; color: #FFFFFF; display: grid; place-items: center; font-weight: 700;">RG</span>
+            <span style="line-height: 1.3;"><strong>Ricardo Gómez</strong><br><span style="font-size: 14px; color: #514D63;">Propietario</span></span>
+          </div>
+        </div>
+
+        <!-- ===== 2 · DASHBOARD ===== -->
+        <sc-if value="{{ pgDashboard }}" hint-placeholder-val="{{ true }}">
+          <main data-screen-label="Dashboard" style="padding: 32px; max-width: 1180px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 24px;">
+              <div>
+                <h1 style="margin: 0; font: 700 28px/1.25 'Quicksand', sans-serif; letter-spacing: -0.01em;">Buen día, Ricardo</h1>
+                <p style="margin: 0; color: #514D63;">Así están sus alquileres hoy, sábado 4 de julio de 2026.</p>
+              </div>
+              <div style="margin-left: auto; display: flex; gap: 12px;">
+                <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Agregar propiedad</button>
+                <button onClick="{{ goPago }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"></rect><path d="M2.5 10h19"></path><path d="M6 14.5h4"></path></svg>Registrar pago</button>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px; display: flex; flex-direction: column; gap: 6px;"><span style="color: #514D63; font-size: 16px; font-weight: 700;">Propiedades</span><span style="font: 700 34px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">8</span><span style="font-size: 15px; color: #514D63;">7 alquiladas · 1 vacía</span></div>
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px; display: flex; flex-direction: column; gap: 6px;"><span style="color: #514D63; font-size: 16px; font-weight: 700;">Cobrado este mes</span><span style="font: 700 34px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums; color: #1E874B;">$ 2.910.000</span><span style="font-size: 15px; color: #514D63;">6 de 7 alquileres</span></div>
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px; display: flex; flex-direction: column; gap: 6px;"><span style="color: #514D63; font-size: 16px; font-weight: 700;">Pendiente de cobro</span><span style="font: 700 34px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums; color: #B26A00;">$ 520.000</span><span style="font-size: 15px; color: #514D63;">1 alquiler</span></div>
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px; display: flex; flex-direction: column; gap: 6px;"><span style="color: #514D63; font-size: 16px; font-weight: 700;">Vencimientos próximos</span><span style="font: 700 34px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">3</span><span style="font-size: 15px; color: #514D63;">en los próximos 10 días</span></div>
+            </div>
+
+            <sc-if value="{{ dashAlertas }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                <h2 style="margin: 0; font: 700 22px 'Quicksand', sans-serif;">Requieren su atención</h2>
+                <span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #CE3F53; background: #FBE9EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.1"></path></svg>3 alertas activas</span>
+                <button onClick="{{ goAlertas }}" style="margin-left: auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver todas las alertas</button>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 16px; border: 1.5px solid #CE3F53; background: #FBE9EC; margin-bottom: 12px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CE3F53" stroke-width="3" stroke-linecap="round" style="flex: none; margin-top: 2px;"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+                <div><strong style="display: block;">Alquiler vencido — Lavalle 950, 3.º B</strong>El pago de junio ($ 520.000) venció hace 24 días. Inquilina: Marta Suárez.</div>
+                <button onClick="{{ goPago }}" style="margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;">Registrar pago</button>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 16px; border: 1.5px solid #B26A00; background: #F8EFDB; margin-bottom: 12px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><path d="M12 3L2 20h20L12 3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.1"></path></svg>
+                <div><strong style="display: block;">Contrato por finalizar — Av. Rivadavia 2340, 5.º A</strong>El contrato con Jorge Paletta termina el 31 de agosto de 2026 (en 58 días).</div>
+                <button onClick="{{ goAlertas }}" style="margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver alerta</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ dashVacio }}" hint-placeholder-val="{{ false }}">
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;">
+                <span style="width: 56px; height: 56px; border-radius: 50%; background: #E6F4EC; color: #1E874B; display: grid; place-items: center;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span>
+                <strong style="font: 700 19px 'Quicksand', sans-serif;">Todo en orden</strong>
+                <p style="margin: 0; color: #514D63;">No hay pagos vencidos ni vencimientos en los próximos días.</p>
+              </div>
+            </sc-if>
+
+            <h2 style="margin: 32px 0 12px; font: 700 22px 'Quicksand', sans-serif;">Últimos movimientos</h2>
+            <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 0; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead><tr>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Fecha</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Propiedad</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Inquilino</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Monto</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Estado</th>
+                </tr></thead>
+                <tbody>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">28/06/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Belgrano 445, PB</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Ana Ferreyra</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 430.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #1E874B; background: #E6F4EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Pagado</span></td></tr>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">27/06/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Güemes 1120, 2.º C</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Luis Medina</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 465.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #1E874B; background: #E6F4EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Pagado</span></td></tr>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">10/06/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Lavalle 950, 3.º B</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Marta Suárez</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 520.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #CE3F53; background: #FBE9EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>Vencido</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </main>
+        </sc-if>
+
+        <!-- ===== 3 · ALERTAS ===== -->
+        <sc-if value="{{ pgAlertas }}" hint-placeholder-val="{{ false }}">
+          <main data-screen-label="Alertas" style="padding: 32px; max-width: 1180px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 24px;">
+              <div>
+                <h1 style="margin: 0; font: 700 28px/1.25 'Quicksand', sans-serif; letter-spacing: -0.01em;">Alertas</h1>
+                <p style="margin: 0; color: #514D63;">Todo lo que requiere su atención, ordenado por urgencia.</p>
+              </div>
+              <div style="margin-left: auto;">
+                <select aria-label="Filtrar alertas" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 8px 12px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E;">
+                  <option>Ver: Todas las alertas</option><option>Pagos vencidos</option><option>Vencimientos próximos</option><option>Contratos</option>
+                </select>
+              </div>
+            </div>
+
+            <h2 style="margin: 0 0 12px; font: 700 22px 'Quicksand', sans-serif; display: flex; align-items: center; gap: 10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CE3F53" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>Pagos vencidos <span style="color: #514D63; font-weight: 400; font-size: 17px;">(1)</span></h2>
+            <div style="display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 16px; border: 1.5px solid #CE3F53; background: #FBE9EC; margin-bottom: 12px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CE3F53" stroke-width="3" stroke-linecap="round" style="flex: none; margin-top: 2px;"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+              <div><strong style="display: block;">Lavalle 950, 3.º B — Marta Suárez</strong>El pago de junio ($ 520.000) venció el 10/06/2026, hace 24 días.</div>
+              <div style="display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap;">
+                <button onClick="{{ goPago }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;">Registrar pago</button>
+                <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: transparent; color: #5B4BC4;" style-hover="background: #E7E3F8;">Enviar recordatorio</button>
+              </div>
+            </div>
+
+            <h2 style="margin: 32px 0 12px; font: 700 22px 'Quicksand', sans-serif; display: flex; align-items: center; gap: 10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.1"></path></svg>Vencimientos próximos <span style="color: #514D63; font-weight: 400; font-size: 17px;">(3)</span></h2>
+            <div style="display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 16px; border: 1.5px solid #B26A00; background: #F8EFDB; margin-bottom: 12px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2.5" stroke-linecap="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+              <div><strong style="display: block;">Güemes 1120, 2.º C — Luis Medina</strong>El alquiler de julio ($ 465.000) vence el domingo 5 de julio (mañana).</div>
+              <button onClick="{{ goDetalle }}" style="margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver propiedad</button>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 16px; border: 1.5px solid #B26A00; background: #F8EFDB; margin-bottom: 12px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2.5" stroke-linecap="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+              <div><strong style="display: block;">Belgrano 445, PB — Ana Ferreyra</strong>El alquiler de julio ($ 430.000) vence el domingo 5 de julio (mañana).</div>
+              <button onClick="{{ goDetalle }}" style="margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver propiedad</button>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 16px; border: 1.5px solid #B26A00; background: #F8EFDB; margin-bottom: 12px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B26A00" stroke-width="2.5" stroke-linecap="round" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+              <div><strong style="display: block;">Av. Rivadavia 2340, 5.º A — Jorge Paletta</strong>El alquiler de julio ($ 495.000) vence el viernes 10 de julio (en 6 días).</div>
+              <button onClick="{{ goDetalle }}" style="margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver propiedad</button>
+            </div>
+
+            <h2 style="margin: 32px 0 12px; font: 700 22px 'Quicksand', sans-serif; display: flex; align-items: center; gap: 10px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5B4BC4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h8l4 4V21.5H6z"></path><path d="M14 2.5v4h4"></path><path d="M9 12h6M9 16h6"></path></svg>Contratos por finalizar <span style="color: #514D63; font-weight: 400; font-size: 17px;">(1)</span></h2>
+            <div style="display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 16px; border: 1.5px solid #5B4BC4; background: #E7E3F8; margin-bottom: 12px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5B4BC4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px;"><path d="M6 2.5h8l4 4V21.5H6z"></path><path d="M14 2.5v4h4"></path><path d="M9 12h6M9 16h6"></path></svg>
+              <div><strong style="display: block;">Av. Rivadavia 2340, 5.º A — Jorge Paletta</strong>El contrato termina el 31/08/2026 (en 58 días). Conviene definir la renovación con tiempo.</div>
+              <button onClick="{{ goDetalle }}" style="margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver contrato</button>
+            </div>
+
+            <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px; margin-top: 32px;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px; text-align: center; color: #514D63;">
+                <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#C4BEE4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+                <strong style="color: #1E1B2E; font-size: 19px;">Cuando no haya nada pendiente, esta pantalla se lo va a decir</strong>
+                <p style="margin: 0;">“Todo en orden: no hay pagos vencidos ni vencimientos en los próximos días.”</p>
+              </div>
+            </div>
+          </main>
+        </sc-if>
+
+        <!-- ===== 4 · PROPIEDADES ===== -->
+        <sc-if value="{{ pgPropiedades }}" hint-placeholder-val="{{ false }}">
+          <main data-screen-label="Propiedades" style="padding: 32px; max-width: 1180px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 24px;">
+              <div>
+                <h1 style="margin: 0; font: 700 28px/1.25 'Quicksand', sans-serif; letter-spacing: -0.01em;">Propiedades</h1>
+                <p style="margin: 0; color: #514D63;">8 propiedades · 7 alquiladas · 1 vacía</p>
+              </div>
+              <div style="margin-left: auto;">
+                <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Agregar propiedad</button>
+              </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+              <select aria-label="Filtrar por estado" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 46px; padding: 8px 12px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E;"><option>Estado: Todos</option><option>Pagado</option><option>Pendiente</option><option>Vencido</option><option>Vacía</option></select>
+              <select aria-label="Filtrar por inquilino" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 46px; padding: 8px 12px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E;"><option>Inquilino: Todos</option></select>
+              <select aria-label="Ordenar" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 46px; padding: 8px 12px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E;"><option>Ordenar: Próximo vencimiento</option><option>Nombre</option><option>Monto</option></select>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 0; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead><tr>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Propiedad</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Inquilino actual</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Alquiler mensual</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Próximo vencimiento</th>
+                  <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Estado del mes</th>
+                  <th style="border-bottom: 2px solid #C4BEE4;"></th>
+                </tr></thead>
+                <tbody>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><strong>Av. Rivadavia 2340, 5.º A</strong><br><span style="color: #514D63; font-size: 15px;">Depto. 3 ambientes · CABA</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Jorge Paletta</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 495.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">10/07/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #B26A00; background: #F8EFDB;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.1"></path></svg>Por vencer</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><button onClick="{{ goDetalle }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver detalle</button></td></tr>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><strong>Lavalle 950, 3.º B</strong><br><span style="color: #514D63; font-size: 15px;">Depto. 2 ambientes · CABA</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Marta Suárez</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 520.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">10/06/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #CE3F53; background: #FBE9EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>Vencido</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><button onClick="{{ goDetalle }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver detalle</button></td></tr>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><strong>Belgrano 445, PB</strong><br><span style="color: #514D63; font-size: 15px;">Casa · Morón</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Ana Ferreyra</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 430.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">05/08/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #1E874B; background: #E6F4EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Pagado</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><button onClick="{{ goDetalle }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver detalle</button></td></tr>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><strong>Güemes 1120, 2.º C</strong><br><span style="color: #514D63; font-size: 15px;">Depto. 3 ambientes · CABA</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Luis Medina</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 465.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">05/08/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #1E874B; background: #E6F4EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Pagado</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><button onClick="{{ goDetalle }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver detalle</button></td></tr>
+                  <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><strong>Mitre 78, local</strong><br><span style="color: #514D63; font-size: 15px;">Local comercial · San Isidro</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><em style="color: #514D63;">Sin inquilino</em></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif;">—</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">—</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #514D63; background: #F6F5FC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>Vacía</span></td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><button onClick="{{ goDetalle }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Ver detalle</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </main>
+        </sc-if>
+
+        <!-- ===== 5 · DETALLE DE PROPIEDAD ===== -->
+        <sc-if value="{{ pgDetalle }}" hint-placeholder-val="{{ false }}">
+          <main data-screen-label="Detalle de propiedad" style="padding: 32px; max-width: 1180px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 24px;">
+              <div>
+                <p style="margin: 0 0 4px;"><button onClick="{{ goPropiedades }}" style="background: none; border: none; padding: 0; font: 400 17px 'Nunito Sans', sans-serif; color: #5B4BC4; cursor: pointer; text-decoration: underline;">Propiedades</button> <span style="color: #514D63;">/ Av. Rivadavia 2340</span></p>
+                <h1 style="margin: 0; font: 700 28px/1.25 'Quicksand', sans-serif; letter-spacing: -0.01em;">Av. Rivadavia 2340, 5.º A</h1>
+                <p style="margin: 6px 0 0; color: #514D63; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">Departamento de 3 ambientes · CABA <span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #B26A00; background: #F8EFDB;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.1"></path></svg>Por vencer</span></p>
+              </div>
+              <div style="margin-left: auto; display: flex; gap: 12px;">
+                <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Editar propiedad</button>
+                <button onClick="{{ goPago }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"></rect><path d="M2.5 10h19"></path><path d="M6 14.5h4"></path></svg>Registrar pago</button>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px;">
+                <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Inquilino actual</h3>
+                <p style="display: flex; gap: 10px; align-items: center; margin: 0 0 8px;"><span style="width: 38px; height: 38px; border-radius: 50%; background: #5B4BC4; color: #FFFFFF; display: grid; place-items: center; font-weight: 700; font-size: 15px;">JP</span><strong>Jorge Paletta</strong></p>
+                <p style="margin: 0; color: #514D63;">Tel.: 11 5555-2340<br>jorge.paletta@gmail.com<br>DNI 22.456.789</p>
+              </div>
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px;">
+                <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Contrato vigente</h3>
+                <p style="margin: 0;"><strong>01/09/2024 → 31/08/2026</strong></p>
+                <p style="margin: 0; color: #514D63;">Ajuste: cada 6 meses (ICL)<br>Próximo ajuste: 01/09/2026</p>
+                <span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #5B4BC4; background: #E7E3F8; margin-top: 10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h8l4 4V21.5H6z"></path><path d="M14 2.5v4h4"></path><path d="M9 12h6M9 16h6"></path></svg>Finaliza en 58 días</span>
+              </div>
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px;">
+                <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Alquiler mensual</h3>
+                <p style="margin: 0; font: 700 32px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 495.000</p>
+                <p style="margin: 0; color: #514D63;">+ Expensas: $ 88.000<br>Vence el día 10 de cada mes</p>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 0; overflow: hidden;">
+                <h3 style="margin: 0; padding: 20px 20px 0; font: 700 19px 'Quicksand', sans-serif;">Historial de pagos</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+                  <thead><tr>
+                    <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Mes</th>
+                    <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Monto</th>
+                    <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Fecha de pago</th>
+                    <th style="text-align: left; font-size: 14px; letter-spacing: 0.02em; color: #514D63; padding: 14px 16px; border-bottom: 2px solid #C4BEE4;">Estado</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Julio 2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 495.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">—</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #B26A00; background: #F8EFDB;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"></path><path d="M12 10v4"></path><path d="M12 17.5v.1"></path></svg>Por vencer</span></td></tr>
+                    <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Junio 2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 495.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">08/06/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #1E874B; background: #E6F4EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Pagado</span></td></tr>
+                    <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Mayo 2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 495.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">09/05/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #1E874B; background: #E6F4EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Pagado</span></td></tr>
+                    <tr style-hover="background: #F1EFFA;"><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;">Abril 2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font: 600 17px 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 462.000</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle; font-variant-numeric: tabular-nums;">10/04/2026</td><td style="padding: 16px; border-bottom: 1px solid #DEDAF0; vertical-align: middle;"><span style="display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; color: #1E874B; background: #E6F4EC;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Pagado</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px;">
+                <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Documentos</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <div style="display: flex; gap: 10px; align-items: center; border: 1px solid #DEDAF0; border-radius: 10px; padding: 12px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5B4BC4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h8l4 4V21.5H6z"></path><path d="M14 2.5v4h4"></path><path d="M9 12h6M9 16h6"></path></svg>
+                    <div style="flex: 1;"><strong>Contrato 2024–2026.pdf</strong><br><span style="font-size: 15px; color: #514D63;">Subido el 01/09/2024</span></div>
+                    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: transparent; color: #5B4BC4;" style-hover="background: #E7E3F8;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M4 20h16"></path></svg>Descargar</button>
+                  </div>
+                  <div style="display: flex; gap: 10px; align-items: center; border: 1px solid #DEDAF0; border-radius: 10px; padding: 12px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5B4BC4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h8l4 4V21.5H6z"></path><path d="M14 2.5v4h4"></path><path d="M9 12h6M9 16h6"></path></svg>
+                    <div style="flex: 1;"><strong>Recibo junio 2026.pdf</strong><br><span style="font-size: 15px; color: #514D63;">Subido el 08/06/2026</span></div>
+                    <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: transparent; color: #5B4BC4;" style-hover="background: #E7E3F8;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M4 20h16"></path></svg>Descargar</button>
+                  </div>
+                </div>
+                <button style="margin-top: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7L13.5 4a3.3 3.3 0 014.7 4.7L10 17a1.7 1.7 0 01-2.4-2.4l7.3-7.3"></path></svg>Subir documento</button>
+              </div>
+            </div>
+          </main>
+        </sc-if>
+
+        <!-- ===== 6 · REGISTRAR PAGO ===== -->
+        <sc-if value="{{ pgPago }}" hint-placeholder-val="{{ false }}">
+          <main data-screen-label="Registrar pago" style="padding: 32px; max-width: 1180px;">
+            <div style="margin-bottom: 24px;">
+              <h1 style="margin: 0; font: 700 28px/1.25 'Quicksand', sans-serif; letter-spacing: -0.01em;">Registrar un pago</h1>
+              <p style="margin: 0; color: #514D63;">Complete los datos del pago recibido. Solo le llevará un minuto.</p>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px; max-width: 640px;">
+              <div aria-label="Paso 2 de 3" style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
+                <span style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #514D63;"><span style="width: 32px; height: 32px; border-radius: 50%; background: #5B4BC4; border: 2px solid #5B4BC4; color: #FFFFFF; display: grid; place-items: center; font-size: 14px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span>Propiedad</span>
+                <span style="width: 34px; height: 2px; background: #C4BEE4; margin: 0 6px;"></span>
+                <span style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1E1B2E;"><span style="width: 32px; height: 32px; border-radius: 50%; background: #5B4BC4; border: 2px solid #5B4BC4; color: #FFFFFF; display: grid; place-items: center; font-size: 14px;">2</span>Datos del pago</span>
+                <span style="width: 34px; height: 2px; background: #C4BEE4; margin: 0 6px;"></span>
+                <span style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #514D63;"><span style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #C4BEE4; display: grid; place-items: center; font-size: 14px;">3</span>Confirmación</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                <label style="font-weight: 700;">Propiedad e inquilino</label>
+                <div style="display: flex; gap: 10px; align-items: center; background: #E7E3F8; border-radius: 10px; padding: 12px 14px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B4BC4" stroke-width="2" stroke-linecap="round" style="flex: none;"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3"></path></svg>
+                  <span><strong>Lavalle 950, 3.º B</strong> — Marta Suárez · mes de junio 2026</span>
+                  <button style="margin-left: auto; display: inline-flex; align-items: center; justify-content: center; font: 700 16px 'Nunito Sans', sans-serif; min-height: 40px; padding: 0 16px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: transparent; color: #5B4BC4;" style-hover="background: rgba(255,255,255,0.6);">Cambiar</button>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                  <label for="p-monto" style="font-weight: 700;">Monto recibido</label>
+                  <input id="p-monto" type="text" value="520.000" inputmode="numeric" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+                  <span style="color: #514D63; font-size: 15px;">Monto del mes: $ 520.000</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                  <label for="p-fecha" style="font-weight: 700;">Fecha del pago</label>
+                  <input id="p-fecha" type="text" value="04/07/2026" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+                  <span style="color: #514D63; font-size: 15px;">Formato: día/mes/año</span>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                <label for="p-metodo" style="font-weight: 700;">¿Cómo le pagaron?</label>
+                <select id="p-metodo" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;"><option>Transferencia bancaria</option><option>Efectivo</option><option>Cheque</option><option>Otro</option></select>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                <label style="font-weight: 700;">Comprobante <span style="font-weight: 400; color: #514D63;">(opcional)</span></label>
+                <button style="display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-8.2 8.2a5 5 0 01-7-7L13.5 4a3.3 3.3 0 014.7 4.7L10 17a1.7 1.7 0 01-2.4-2.4l7.3-7.3"></path></svg>Adjuntar foto o PDF del comprobante</button>
+              </div>
+              <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                <button onClick="{{ guardarPago }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;">Guardar pago</button>
+                <button onClick="{{ goDashboard }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 44px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: transparent; color: #5B4BC4;" style-hover="background: #E7E3F8;">Volver atrás</button>
+              </div>
+            </div>
+          </main>
+        </sc-if>
+
+        <!-- ===== 7 · CONFIGURACIÓN ===== -->
+        <sc-if value="{{ pgConfig }}" hint-placeholder-val="{{ false }}">
+          <main data-screen-label="Configuración" style="padding: 32px; max-width: 1180px;">
+            <div style="margin-bottom: 24px;">
+              <h1 style="margin: 0; font: 700 28px/1.25 'Quicksand', sans-serif; letter-spacing: -0.01em;">Configuración</h1>
+              <p style="margin: 0; color: #514D63;">Sus datos y preferencias</p>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start;">
+              <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px;">
+                <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Datos del propietario</h3>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                  <label for="c-nombre" style="font-weight: 700;">Nombre y apellido</label>
+                  <input id="c-nombre" type="text" value="Ricardo Gómez" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                  <label for="c-mail" style="font-weight: 700;">Correo electrónico</label>
+                  <input id="c-mail" type="email" value="ricardo.gomez@gmail.com" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                  <label for="c-tel" style="font-weight: 700;">Teléfono</label>
+                  <input id="c-tel" type="tel" value="11 5555-8877" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;" style-focus="border-color: #5B4BC4; outline: 3px solid #E7E3F8;">
+                </div>
+                <button style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;">Guardar cambios</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px;">
+                  <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Avisos y recordatorios</h3>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                    <label for="c-aviso" style="font-weight: 700;">Avisarme antes de cada vencimiento</label>
+                    <select id="c-aviso" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;"><option>5 días antes</option><option>3 días antes</option><option>El mismo día</option></select>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;">
+                    <label for="c-contrato" style="font-weight: 700;">Avisarme antes de que termine un contrato</label>
+                    <select id="c-contrato" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;"><option>90 días antes</option><option>60 días antes</option><option>30 días antes</option></select>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label for="c-canal" style="font-weight: 700;">¿Cómo prefiere recibir los avisos?</label>
+                    <select id="c-canal" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;"><option>Correo electrónico y notificación</option><option>Solo correo electrónico</option><option>Solo notificación en la app</option></select>
+                  </div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 12px; box-shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05); padding: 24px;">
+                  <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Moneda</h3>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label for="c-moneda" style="font-weight: 700;">Moneda de los montos</label>
+                    <select id="c-moneda" style="font: 400 17px 'Nunito Sans', sans-serif; min-height: 50px; padding: 10px 14px; border: 1.5px solid #C4BEE4; border-radius: 10px; background: #FFFFFF; color: #1E1B2E; width: 100%;"><option>Peso argentino (ARS)</option><option>Dólar estadounidense (USD)</option></select>
+                    <span style="color: #514D63; font-size: 15px;">Los montos ya cargados no se convierten automáticamente.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Modal: pago guardado ============ -->
+  <sc-if value="{{ modalAbierto }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ cerrarFondo }}" role="dialog" aria-modal="true" aria-labelledby="mok-title" style="position: fixed; inset: 0; background: rgba(30,27,46,0.5); display: grid; place-items: center; z-index: 60; padding: 16px;">
+      <div style="background: #FFFFFF; border-radius: 16px; box-shadow: 0 8px 28px rgba(30,27,46,0.14); max-width: 460px; width: 100%; padding: 32px; text-align: center;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: #E6F4EC; color: #1E874B; display: grid; place-items: center; margin: 0 auto 16px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
+        <h2 id="mok-title" style="margin: 0 0 8px; font: 700 22px 'Quicksand', sans-serif;">Pago guardado</h2>
+        <p style="margin: 0 0 24px; color: #514D63;">Registró el pago de <strong>$ 520.000</strong> de Marta Suárez (Lavalle 950, 3.º B), con fecha 04/07/2026. La propiedad ahora figura como <strong>Pagada</strong>.</p>
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button onClick="{{ volverInicio }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; background: #5B4BC4; color: #FFFFFF;" style-hover="background: #463AA0;">Volver al inicio</button>
+          <button onClick="{{ cerrarModal }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 17px 'Nunito Sans', sans-serif; min-height: 48px; padding: 0 24px; border-radius: 10px; border: 2px solid #5B4BC4; cursor: pointer; background: #FFFFFF; color: #5B4BC4;" style-hover="background: #E7E3F8;">Registrar otro pago</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;pantallaInicial&quot;: {
+    &quot;editor&quot;: &quot;enum&quot;,
+    &quot;options&quot;: [&quot;login&quot;, &quot;dashboard&quot;, &quot;alertas&quot;, &quot;propiedades&quot;, &quot;detalle&quot;, &quot;pago&quot;, &quot;config&quot;],
+    &quot;default&quot;: &quot;dashboard&quot;,
+    &quot;tsType&quot;: &quot;string&quot;,
+    &quot;section&quot;: &quot;Comportamiento&quot;
+  },
+  &quot;estadoVacio&quot;: {
+    &quot;editor&quot;: &quot;boolean&quot;,
+    &quot;default&quot;: false,
+    &quot;tsType&quot;: &quot;boolean&quot;,
+    &quot;section&quot;: &quot;Contenido&quot;
+  },
+  &quot;sidebarClaro&quot;: {
+    &quot;editor&quot;: &quot;boolean&quot;,
+    &quot;default&quot;: false,
+    &quot;tsType&quot;: &quot;boolean&quot;,
+    &quot;section&quot;: &quot;Apariencia&quot;
+  }
+}">
+class Component extends DCLogic {
+  state = { screen: null, modal: false };
+
+  ir(id) {
+    this.setState({ screen: id, modal: false });
+    window.scrollTo({ top: 0 });
+  }
+
+  renderVals() {
+    const screen = this.state.screen ?? this.props.pantallaInicial ?? 'dashboard';
+    const defs = [
+      ['login', '1 · Login'],
+      ['dashboard', '2 · Dashboard'],
+      ['alertas', '3 · Alertas'],
+      ['propiedades', '4 · Propiedades'],
+      ['detalle', '5 · Detalle'],
+      ['pago', '6 · Registrar pago'],
+      ['config', '7 · Configuración'],
+    ];
+    const g = (id) => () => this.ir(id);
+    const vacio = this.props.estadoVacio ?? false;
+    const claro = this.props.sidebarClara ?? this.props.sidebarClaro ?? false;
+
+    return {
+      tabs: defs.map(([id, label]) => ({ label, on: screen === id, go: g(id) })),
+      showLogin: screen === 'login',
+      showApp: screen !== 'login',
+      pgDashboard: screen === 'dashboard',
+      pgAlertas: screen === 'alertas',
+      pgPropiedades: screen === 'propiedades',
+      pgDetalle: screen === 'detalle',
+      pgPago: screen === 'pago',
+      pgConfig: screen === 'config',
+      navInicio: screen === 'dashboard',
+      navAlertas: screen === 'alertas',
+      navProps: screen === 'propiedades' || screen === 'detalle',
+      navPagos: screen === 'pago',
+      navConfig: screen === 'config',
+      sideOscuro: !claro,
+      sideClaro: claro,
+      dashAlertas: !vacio,
+      dashVacio: vacio,
+      modalAbierto: this.state.modal,
+      goLogin: g('login'),
+      goDashboard: g('dashboard'),
+      goAlertas: g('alertas'),
+      goPropiedades: g('propiedades'),
+      goDetalle: g('detalle'),
+      goPago: g('pago'),
+      goConfig: g('config'),
+      entrar: g('dashboard'),
+      guardarPago: () => this.setState({ modal: true }),
+      cerrarModal: () => this.setState({ modal: false }),
+      cerrarFondo: (e) => { if (e.target === e.currentTarget) this.setState({ modal: false }); },
+      volverInicio: () => { this.setState({ modal: false, screen: 'dashboard' }); window.scrollTo({ top: 0 }); },
+    };
+  }
+}
+</script>
+</body>
+</html>
