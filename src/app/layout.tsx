@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "alquia",
+  title: "Alquia | Gestión de alquileres",
   description: "Una mejor manera de gestionar tus alquileres.",
   icons: {
     icon: "/favicon.svg",
