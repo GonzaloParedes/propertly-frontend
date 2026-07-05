@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -16,15 +17,34 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockImageProps = {
+  src: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+  className?: string;
+  style?: ComponentPropsWithoutRef<"img">["style"];
+  [key: string]: unknown;
+};
+
 vi.mock("next/image", () => ({
-  default: ({ alt, ...props }: any) => <img alt={alt ?? ""} {...props} />,
+  default: ({ src, alt, width, height, className, style }: MockImageProps) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt ?? ""} width={width} height={height} className={className} style={style} />;
+  },
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockLinkProps = {
+  href: string;
+  children: ReactNode;
+  className?: string;
+  style?: ComponentPropsWithoutRef<"a">["style"];
+  [key: string]: unknown;
+};
+
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...props }: any) => (
-    <a href={href} {...props}>
+  default: ({ href, children, className, style }: MockLinkProps) => (
+    <a href={href} className={className} style={style}>
       {children}
     </a>
   ),
