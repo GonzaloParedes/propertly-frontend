@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/context/auth-context";
+import { ApiError, AuthExpiredError } from "@/lib/api";
 
 const BENEFITS = [
   "Sepa al instante qué alquileres están pagos",
@@ -48,6 +50,7 @@ function ShieldIcon() {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,12 +58,22 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setIsPending(true);
+    const form = new FormData(e.currentTarget);
+    const email = form.get("email") as string;
+    const password = form.get("password") as string;
     try {
-      // TODO: reemplazar con llamada real al backend
-      await new Promise((r) => setTimeout(r, 800));
+      await login(email, password);
       router.push("/dashboard");
-    } catch {
-      setError("Correo o contraseña incorrectos. Intente nuevamente.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError("Correo o contraseña incorrectos. Intente nuevamente.");
+      } else if (err instanceof AuthExpiredError) {
+        setError("Correo o contraseña incorrectos. Intente nuevamente.");
+      } else if (err instanceof ApiError && err.status >= 500) {
+        setError("Error del servidor. Intente más tarde.");
+      } else {
+        setError("Ocurrió un error inesperado. Intente nuevamente.");
+      }
       setIsPending(false);
     }
   }
@@ -160,7 +173,6 @@ export default function LoginPage() {
                   id="lg-mail"
                   name="email"
                   type="email"
-                  defaultValue="ricardo.gomez@gmail.com"
                   autoComplete="email"
                   required
                   disabled={isPending}
@@ -177,7 +189,6 @@ export default function LoginPage() {
                   id="lg-pass"
                   name="password"
                   type="password"
-                  defaultValue="0000000000"
                   autoComplete="current-password"
                   required
                   disabled={isPending}
