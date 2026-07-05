@@ -114,12 +114,16 @@ export default function RegistroPage() {
     setIsPending(true);
     const form = new FormData(e.currentTarget);
     try {
-      await apiPost("/auth/register", {
-        firstName: form.get("firstName"),
-        lastName: form.get("lastName"),
-        email: form.get("email"),
-        password: form.get("password"),
-      });
+      await apiPost(
+        "/auth/register",
+        {
+          firstName: form.get("firstName"),
+          lastName: form.get("lastName"),
+          email: form.get("email"),
+          password: form.get("password"),
+        },
+        { retry: false }
+      );
       setSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
@@ -175,7 +179,7 @@ export default function RegistroPage() {
             >
               Empiece gratis y tome el control de sus alquileres.
             </h1>
-            <p className="max-w-[420px] text-[17.5px] text-[#DDD9F0]">
+            <p className="max-w-[420px] text-[17.5px] text-[var(--primary-soft)]">
               Regístrese en minutos y gestione todas sus propiedades desde un
               solo lugar, sin planillas ni papeles sueltos.
             </p>
@@ -192,7 +196,7 @@ export default function RegistroPage() {
         </section>
 
         {/* Right form panel */}
-        <section className="flex items-center justify-center bg-[#F6F5FC] p-6 sm:p-8 lg:bg-white">
+        <section className="flex items-center justify-center bg-[var(--bg)] p-6 sm:p-8 lg:bg-white">
           <div
             className="w-full max-w-[430px] rounded-2xl border bg-white p-6 sm:p-8"
             style={{
@@ -267,7 +271,7 @@ export default function RegistroPage() {
                         placeholder="Ej: María"
                         required
                         disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                         style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
                       />
                     </div>
@@ -283,7 +287,7 @@ export default function RegistroPage() {
                         placeholder="Ej: González"
                         required
                         disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                         style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
                       />
                     </div>
@@ -304,7 +308,7 @@ export default function RegistroPage() {
                       placeholder="ejemplo@ejemplo.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                       style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
                     />
                   </div>
@@ -323,14 +327,14 @@ export default function RegistroPage() {
                         placeholder="Mínimo 8 caracteres"
                         required
                         disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                         style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
                       />
                       <button
                         type="button"
                         aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                         onClick={() => setShowPassword((v) => !v)}
-                        className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                        className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                         style={{ color: "var(--text-2)" }}
                       >
                         {showPassword ? <EyeOffIcon /> : <EyeIcon />}

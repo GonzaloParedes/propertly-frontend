@@ -16,8 +16,10 @@
   --text-2: #514063;       /* Gris */
   --success: #1E874B;
   --success-bg: #E6F4EC;
+  --success-on-dark: #6BE8A3; /* success sobre paneles oscuros/vidrio — --success no contrasta ahí */
   --warn: #B26A00;
   --warn-bg: #F8EFDB;
+  --warn-on-dark: #FFD166;    /* warn sobre paneles oscuros/vidrio — --warn no contrasta ahí */
   --danger: #CE3F53;
   --danger-bg: #FBE9EC;
   --border: #DEDAF0;

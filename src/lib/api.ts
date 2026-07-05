@@ -29,6 +29,9 @@ async function request<T>(
   });
 
   if (res.status === 401 && retry) {
+    // Un solo reintento: si el access token expiró, /auth/refresh emite uno nuevo
+    // y repetimos la request una vez con retry=false. Si esa segunda vuelta
+    // también da 401, es que la sesión ya no es recuperable (evita loop infinito).
     const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
@@ -58,9 +61,17 @@ export function apiGet<T>(path: string, options?: { retry?: boolean }): Promise<
   return request<T>(path, { method: "GET" }, options?.retry ?? true);
 }
 
-export function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, {
-    method: "POST",
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+export function apiPost<T>(
+  path: string,
+  body?: unknown,
+  options?: { retry?: boolean }
+): Promise<T> {
+  return request<T>(
+    path,
+    {
+      method: "POST",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    },
+    options?.retry ?? true
+  );
 }

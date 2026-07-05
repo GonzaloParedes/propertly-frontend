@@ -28,7 +28,7 @@ export default function HeroPreview() {
         </div>
         <span
           className="rounded-full px-3 py-1 text-[12px] font-bold"
-          style={{ background: "rgba(30,135,75,0.35)", color: "#6BE8A3", border: "1px solid rgba(107,232,163,0.3)" }}
+          style={{ background: "rgba(30,135,75,0.35)", color: "var(--success-on-dark)", border: "1px solid rgba(107,232,163,0.3)" }}
         >
           Al día
         </span>
@@ -58,7 +58,7 @@ export default function HeroPreview() {
             className="text-[24px] font-bold"
             style={{
               fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-              color: "#FFD166",
+              color: "var(--warn-on-dark)",
             }}
           >
             $320K
@@ -79,9 +79,9 @@ export default function HeroPreview() {
       </p>
       <ul className="flex flex-col gap-3">
         {[
-          { address: "Rivadavia 2340, 5.º A", days: "en 3 días", color: "#FFD166" },
-          { address: "Corrientes 1180, 2.º B", days: "en 12 días", color: "#6BE8A3" },
-          { address: "Soler 3450, Palermo", days: "en 18 días", color: "#6BE8A3" },
+          { address: "Rivadavia 2340, 5.º A", days: "en 3 días", color: "var(--warn-on-dark)" },
+          { address: "Corrientes 1180, 2.º B", days: "en 12 días", color: "var(--success-on-dark)" },
+          { address: "Soler 3450, Palermo", days: "en 18 días", color: "var(--success-on-dark)" },
         ].map((row) => (
           <li
             key={row.address}

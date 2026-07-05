@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
 
 export interface AuthUser {
@@ -22,23 +22,38 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Descarta resultados de una verificación de sesión que quedó pendiente
+  // si mientras tanto login()/logout() ya resolvieron un estado más nuevo.
+  const authRequestId = useRef(0);
 
   useEffect(() => {
+    const id = ++authRequestId.current;
+    // retry:false a propósito: para un visitante anónimo este 401 es esperado,
+    // no queremos gastar un /auth/refresh en cada carga de página sin sesión.
     apiGet<AuthUser>("/auth/me", { retry: false })
-      .then(setUser)
-      .catch(() => setUser(null))
+      .then((u) => {
+        if (authRequestId.current === id) setUser(u);
+      })
+      .catch(() => {
+        if (authRequestId.current === id) setUser(null);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
   async function login(email: string, password: string) {
-    await apiPost("/auth/login", { email, password });
+    const id = ++authRequestId.current;
+    await apiPost("/auth/login", { email, password }, { retry: false });
     const me = await apiGet<AuthUser>("/auth/me");
-    setUser(me);
+    if (authRequestId.current === id) setUser(me);
   }
 
   async function logout() {
-    await apiPost("/auth/logout");
-    setUser(null);
+    authRequestId.current++;
+    try {
+      await apiPost("/auth/logout", undefined, { retry: false });
+    } finally {
+      setUser(null);
+    }
   }
 
   return (
