@@ -106,6 +106,10 @@ export default function LoginPage() {
       if (err instanceof ApiError && err.status === 401) {
         setError("Correo o contraseña incorrectos. Intente nuevamente.");
       } else if (err instanceof AuthExpiredError) {
+        // AuthExpiredError acá significa que /auth/login salió bien pero el
+        // /auth/me posterior falló y el refresh tampoco pudo recuperar sesión.
+        // Se muestra el mismo mensaje que credenciales inválidas a propósito,
+        // para no filtrar detalles de la sesión a un intento de login fallido.
         setError("Correo o contraseña incorrectos. Intente nuevamente.");
       } else if (err instanceof ApiError && err.status >= 500) {
         setError("Error del servidor. Intente más tarde.");
@@ -160,7 +164,7 @@ export default function LoginPage() {
             >
               Sus alquileres, en orden y a la vista.
             </h1>
-            <p className="max-w-[420px] text-[17.5px] text-[#DDD9F0]">
+            <p className="max-w-[420px] text-[17.5px] text-[var(--primary-soft)]">
               Controle pagos, contratos y vencimientos de todas sus propiedades
               desde un solo lugar, sin planillas ni papeles sueltos.
             </p>
@@ -177,7 +181,7 @@ export default function LoginPage() {
         </section>
 
         {/* Right form panel */}
-        <section className="flex items-center justify-center bg-[#F6F5FC] p-6 sm:p-8 lg:bg-white">
+        <section className="flex items-center justify-center bg-[var(--bg)] p-6 sm:p-8 lg:bg-white">
           <div
             className="w-full max-w-[430px] rounded-2xl border bg-white p-6 sm:p-8"
             style={{
@@ -217,7 +221,7 @@ export default function LoginPage() {
                   required
                   disabled={isPending}
                   placeholder="ejemplo@ejemplo.com"
-                  className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                  className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                   style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
                 />
               </div>
@@ -235,14 +239,14 @@ export default function LoginPage() {
                     required
                     disabled={isPending}
                     placeholder="Su contraseña"
-                    className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                    className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                     style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
                   />
                   <button
                     type="button"
                     aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                     style={{ color: "var(--text-2)" }}
                   >
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}

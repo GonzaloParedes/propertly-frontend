@@ -33,25 +33,15 @@ export default function Nav() {
             }
       }
     >
-      <Link href="/" aria-label="Alquia — inicio" className="flex items-center gap-2.5">
+      <Link href="/" aria-label="Alquia — inicio" className="flex items-center">
         <Image
-          src={scrolled ? "/logos/isotipo.svg" : "/logos/isotipo-sobre-indigo.svg"}
-          alt=""
-          aria-hidden="true"
-          width={30}
-          height={30}
+          src={scrolled ? "/logos/lockup.svg" : "/logos/lockup-oscuro.svg"}
+          alt="Alquia"
+          width={100}
+          height={46}
           priority
           className="h-7 w-auto"
         />
-        <span
-          className="text-[22px] font-bold tracking-[-0.02em] transition-colors duration-300"
-          style={{
-            fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-            color: scrolled ? "var(--text)" : "white",
-          }}
-        >
-          alquia
-        </span>
       </Link>
 
       <nav className="flex items-center gap-3">

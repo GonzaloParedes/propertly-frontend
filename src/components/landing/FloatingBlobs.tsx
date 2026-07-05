@@ -21,7 +21,7 @@ export default function FloatingBlobs({ dark = false }: { dark?: boolean }) {
           top: "20px",
           right: "-5%",
           background: dark
-            ? "rgba(123, 93, 240, 0.30)"
+            ? "rgba(89, 72, 196, 0.30)"
             : "rgba(166, 121, 240, 0.15)",
         }}
       />
