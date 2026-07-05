@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { apiPost, ApiError } from "@/lib/api";
 
 const BENEFITS = [
   "Configure sus propiedades en minutos",
@@ -111,14 +112,21 @@ export default function RegistroPage() {
     e.preventDefault();
     setError(null);
     setIsPending(true);
+    const form = new FormData(e.currentTarget);
     try {
-      // TODO: reemplazar con llamada real al backend
-      await new Promise((r) => setTimeout(r, 800));
+      await apiPost("/auth/register", {
+        firstName: form.get("firstName"),
+        lastName: form.get("lastName"),
+        email: form.get("email"),
+        password: form.get("password"),
+      });
       setSubmitted(true);
-    } catch {
-      setError(
-        "No pudimos crear su cuenta. Verifique los datos ingresados e inténtelo de nuevo."
-      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
+        setError("Verifique los datos ingresados e inténtelo de nuevo.");
+      } else {
+        setError("No pudimos crear su cuenta. Inténtelo de nuevo más tarde.");
+      }
       setIsPending(false);
     }
   }
@@ -150,14 +158,16 @@ export default function RegistroPage() {
           style={{ background: "var(--primary)" }}
         >
           <div className="my-auto">
-            <Image
-              src="/logos/lockup-oscuro.svg"
-              alt="Alquia"
-              width={280}
-              height={108}
-              priority
-              className="mb-10 block h-[108px] w-auto"
-            />
+            <Link href="/">
+              <Image
+                src="/logos/lockup-oscuro.svg"
+                alt="Alquia — volver al inicio"
+                width={280}
+                height={108}
+                priority
+                className="mb-10 block h-[108px] w-auto"
+              />
+            </Link>
 
             <h1
               className="mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]"
@@ -291,7 +301,7 @@ export default function RegistroPage() {
                       autoComplete="email"
                       required
                       disabled={isPending}
-                      placeholder="Ej: maria.gonzalez@gmail.com"
+                      placeholder="ejemplo@ejemplo.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
