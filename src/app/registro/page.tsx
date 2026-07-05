@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { apiPost, ApiError } from "@/lib/api";
 
 const BENEFITS = [
   "Configure sus propiedades en minutos",
@@ -111,14 +112,21 @@ export default function RegistroPage() {
     e.preventDefault();
     setError(null);
     setIsPending(true);
+    const form = new FormData(e.currentTarget);
     try {
-      // TODO: reemplazar con llamada real al backend
-      await new Promise((r) => setTimeout(r, 800));
+      await apiPost("/auth/register", {
+        firstName: form.get("firstName"),
+        lastName: form.get("lastName"),
+        email: form.get("email"),
+        password: form.get("password"),
+      });
       setSubmitted(true);
-    } catch {
-      setError(
-        "No pudimos crear su cuenta. Verifique los datos ingresados e inténtelo de nuevo."
-      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
+        setError("Verifique los datos ingresados e inténtelo de nuevo.");
+      } else {
+        setError("No pudimos crear su cuenta. Inténtelo de nuevo más tarde.");
+      }
       setIsPending(false);
     }
   }
