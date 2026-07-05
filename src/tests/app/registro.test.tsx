@@ -45,7 +45,7 @@ describe("renderizado", () => {
 
   it("no muestra el estado de éxito al iniciar", () => {
     render(<RegistroPage />);
-    expect(screen.queryByText("Revisá tu correo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Revise su correo")).not.toBeInTheDocument();
   });
 });
 
@@ -99,7 +99,7 @@ describe("registro exitoso", () => {
     await fillAndSubmit({ email: "maria@ejemplo.com" });
 
     await waitFor(() =>
-      expect(screen.getByText("Revisá tu correo")).toBeInTheDocument()
+      expect(screen.getByText("Revise su correo")).toBeInTheDocument()
     );
     expect(screen.getByText("maria@ejemplo.com")).toBeInTheDocument();
   });
@@ -109,7 +109,7 @@ describe("registro exitoso", () => {
     render(<RegistroPage />);
     await fillAndSubmit();
 
-    await waitFor(() => screen.getByText("Revisá tu correo"));
+    await waitFor(() => screen.getByText("Revise su correo"));
     expect(screen.queryByRole("button", { name: "Crear cuenta" })).not.toBeInTheDocument();
   });
 

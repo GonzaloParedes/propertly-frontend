@@ -32,17 +32,17 @@ const FEATURES = [
   {
     icon: <PayIcon />,
     title: "Pagos al día",
-    body: "Sabé al instante qué alquileres están pagos y cuáles no, sin revisar planillas ni llamar a nadie.",
+    body: "Sepa al instante qué alquileres están pagos y cuáles no, sin revisar planillas ni llamar a nadie.",
   },
   {
     icon: <BellIcon />,
     title: "Avisos automáticos",
-    body: "Recibí notificaciones antes de cada vencimiento para nunca perder un cobro por falta de seguimiento.",
+    body: "Reciba avisos antes de cada vencimiento para nunca perder un cobro por falta de seguimiento.",
   },
   {
     icon: <FolderIcon />,
     title: "Contratos seguros",
-    body: "Guardá contratos y comprobantes en un solo lugar, cifrado y accesible desde cualquier dispositivo.",
+    body: "Guarde contratos y comprobantes en un solo lugar, cifrado y accesible desde cualquier dispositivo.",
   },
 ];
 
@@ -55,11 +55,8 @@ export default function Features() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-12 text-center">
           <h2
-            className="text-[32px] font-bold tracking-[-0.01em]"
-            style={{
-              fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-              color: "var(--text)",
-            }}
+            className="font-heading text-[32px] font-bold tracking-[-0.01em]"
+            style={{ color: "var(--text)" }}
           >
             Todo en un solo lugar
           </h2>

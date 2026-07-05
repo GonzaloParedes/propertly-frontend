@@ -11,8 +11,8 @@ export default function Footer() {
         <Image
           src="/logos/lockup.svg"
           alt="Alquia"
-          width={100}
-          height={36}
+          width={360}
+          height={160}
           className="h-8 w-auto"
         />
 

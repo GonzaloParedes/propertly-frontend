@@ -49,7 +49,7 @@ export default function FeatureCard({
       style={
         {
           border: "1px solid var(--border)",
-          boxShadow: "0 2px 12px rgba(89,72,196,0.06), 0 1px 3px rgba(30,56,46,0.06)",
+          boxShadow: "0 2px 12px rgba(91,75,196,0.06), 0 1px 3px rgba(30,27,46,0.06)",
           "--glow-x": "50%",
           "--glow-y": "50%",
           "--glow-opacity": "0",
@@ -63,7 +63,7 @@ export default function FeatureCard({
         className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300"
         style={{
           background:
-            "radial-gradient(240px circle at var(--glow-x) var(--glow-y), rgba(89,72,196,0.07), transparent 70%)",
+            "radial-gradient(240px circle at var(--glow-x) var(--glow-y), rgba(91,75,196,0.07), transparent 70%)",
           opacity: "var(--glow-opacity)" as unknown as number,
         }}
       />
@@ -83,11 +83,8 @@ export default function FeatureCard({
 
       <div>
         <h3
-          className="mb-2 text-[20px] font-bold"
-          style={{
-            fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-            color: "var(--text)",
-          }}
+          className="font-heading mb-2 text-[20px] font-bold"
+          style={{ color: "var(--text)" }}
         >
           {title}
         </h3>

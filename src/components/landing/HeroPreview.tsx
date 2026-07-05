@@ -22,7 +22,7 @@ export default function HeroPreview() {
           <p className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "rgba(200,190,240,0.7)" }}>
             Julio 2026
           </p>
-          <p className="text-[18px] font-bold text-white" style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}>
+          <p className="font-heading text-[18px] font-bold text-white">
             Resumen mensual
           </p>
         </div>
@@ -41,10 +41,7 @@ export default function HeroPreview() {
           style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)" }}
         >
           <p className="mb-1 text-[12px]" style={{ color: "rgba(200,190,240,0.65)" }}>Cobrado</p>
-          <p
-            className="text-[24px] font-bold text-white"
-            style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-          >
+          <p className="font-heading text-[24px] font-bold text-white">
             $2.4M
           </p>
           <p className="mt-0.5 text-[11px]" style={{ color: "rgba(107,232,163,0.9)" }}>↑ 8% vs mes anterior</p>
@@ -55,11 +52,8 @@ export default function HeroPreview() {
         >
           <p className="mb-1 text-[12px]" style={{ color: "rgba(200,190,240,0.65)" }}>Pendiente</p>
           <p
-            className="text-[24px] font-bold"
-            style={{
-              fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-              color: "var(--warn-on-dark)",
-            }}
+            className="font-heading text-[24px] font-bold"
+            style={{ color: "var(--warn-on-dark)" }}
           >
             $320K
           </p>

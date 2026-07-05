@@ -8,21 +8,18 @@ export default function FinalCta() {
       className="relative overflow-hidden px-6 py-28 sm:px-10"
       style={{
         background:
-          "linear-gradient(135deg, #1A1050 0%, #2C1B6E 40%, #5948C4 100%)",
+          "linear-gradient(135deg, #1A1050 0%, #2C1B6E 40%, #5B4BC4 100%)",
       }}
     >
       <FloatingBlobs dark />
 
       <Reveal className="relative z-10 mx-auto max-w-2xl text-center">
-        <h2
-          className="mb-5 text-[36px] font-bold leading-[1.18] tracking-[-0.015em] text-white sm:text-[44px]"
-          style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-        >
-          Empezá a gestionar tus alquileres hoy
+        <h2 className="font-heading mb-5 text-[36px] font-bold leading-[1.18] tracking-[-0.015em] text-white sm:text-[44px]">
+          Empiece a gestionar sus alquileres hoy
         </h2>
         <p
           className="mb-10 text-[18px] leading-[1.6]"
-          style={{ color: "rgba(220,215,245,0.85)" }}
+          style={{ color: "var(--on-dark-secondary)" }}
         >
           Sin tarjeta. Sin planillas. Todo en un solo lugar.
         </p>

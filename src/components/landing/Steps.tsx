@@ -3,18 +3,18 @@ import Reveal from "./Reveal";
 const STEPS = [
   {
     num: "01",
-    title: "Creá tu cuenta gratis",
-    body: "Solo necesitás tu correo. Sin tarjeta, sin burocracia. Listo en menos de 2 minutos.",
+    title: "Cree su cuenta gratis",
+    body: "Solo necesita su correo. Sin tarjeta, sin burocracia. Listo en menos de 2 minutos.",
   },
   {
     num: "02",
-    title: "Cargá tus propiedades",
-    body: "Añadí inquilinos, montos y fechas de vencimiento. Fácil de configurar desde cualquier dispositivo.",
+    title: "Cargue sus propiedades",
+    body: "Añada inquilinos, montos y fechas de vencimiento. Fácil de configurar desde cualquier dispositivo.",
   },
   {
     num: "03",
-    title: "Cobrá tranquilo",
-    body: "Alquia te avisa antes de cada vencimiento para que nunca pierdas un cobro por descuido.",
+    title: "Cobre tranquilo",
+    body: "Alquia le avisa antes de cada vencimiento para que nunca pierda un cobro por descuido.",
   },
 ];
 
@@ -27,16 +27,13 @@ export default function Steps() {
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-14 text-center">
           <h2
-            className="text-[34px] font-bold tracking-[-0.01em]"
-            style={{
-              fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-              color: "var(--text)",
-            }}
+            className="font-heading text-[34px] font-bold tracking-[-0.01em]"
+            style={{ color: "var(--text)" }}
           >
-            Empezá en 3 pasos
+            Empiece en 3 pasos
           </h2>
           <p className="mt-3 text-[17px]" style={{ color: "var(--text-2)" }}>
-            Sin instalaciones. Sin capacitaciones. Solo entrás y empezás.
+            Sin instalaciones. Sin capacitaciones. Solo ingrese y empiece.
           </p>
         </Reveal>
 
@@ -47,7 +44,7 @@ export default function Steps() {
                 className="relative flex h-full flex-col gap-5 overflow-hidden rounded-2xl bg-white p-7"
                 style={{
                   border: "1px solid var(--border)",
-                  boxShadow: "0 2px 12px rgba(89,72,196,0.06), 0 1px 3px rgba(30,56,46,0.06)",
+                  boxShadow: "0 2px 12px rgba(91,75,196,0.06), 0 1px 3px rgba(30,27,46,0.06)",
                 }}
               >
                 {/* Accent top line — mismo estilo que FeatureCard */}
@@ -57,9 +54,8 @@ export default function Steps() {
                 />
 
                 <span
-                  className="text-[52px] font-bold leading-none"
+                  className="font-heading text-[52px] font-bold leading-none"
                   style={{
-                    fontFamily: "var(--font-quicksand), system-ui, sans-serif",
                     color: "transparent",
                     WebkitTextStroke: "2.5px var(--primary)",
                   }}
@@ -69,11 +65,8 @@ export default function Steps() {
 
                 <div>
                   <h3
-                    className="mb-2 text-[20px] font-bold"
-                    style={{
-                      fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-                      color: "var(--text)",
-                    }}
+                    className="font-heading mb-2 text-[20px] font-bold"
+                    style={{ color: "var(--text)" }}
                   >
                     {s.title}
                   </h3>
