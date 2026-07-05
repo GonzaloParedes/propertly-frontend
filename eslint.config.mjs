@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated runtime used only by the editable brand manual.
+    "docs/brand/manual/source/support.js",
   ]),
 ]);
 
