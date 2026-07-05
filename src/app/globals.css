@@ -4,16 +4,17 @@
   --background: #ffffff;
   --foreground: #171717;
 
-  /* Brand — paleta vibrante (manual v1.0 julio 2026) */
-  --primary: #5948C4;      /* Índigo */
-  --primary-dark: #4438A3; /* Índigo oscuro — hover, derivado */
+  /* Brand — paleta vibrante (manual v1.1 julio 2026) */
+  --primary: #5B4BC4;      /* Índigo */
+  --primary-dark: #463AA0; /* Índigo oscuro — hover, derivado */
   --primary-soft: #E7E3F8; /* Lila claro — focus ring, chips */
-  --lila: #A679F0;         /* Lila — acentos secundarios */
+  --lila: #A79AF0;         /* Lila — acentos secundarios */
   --secondary: #DB4C8E;    /* Rosa */
   --bg: #F6F5FC;           /* Superficie */
   --surface: #FFFFFF;      /* Blanco */
-  --text: #1E382E;         /* Tinta */
-  --text-2: #514063;       /* Gris */
+  --text: #1E1B2E;         /* Tinta */
+  --text-2: #514D63;       /* Gris */
+  --on-dark-secondary: #DDD9F0; /* texto secundario sobre índigo/tinta — manual sección 10 */
   --success: #1E874B;
   --success-bg: #E6F4EC;
   --success-on-dark: #6BE8A3; /* success sobre paneles oscuros/vidrio — --success no contrasta ahí */
@@ -24,15 +25,15 @@
   --danger-bg: #FBE9EC;
   --border: #DEDAF0;
   --border-strong: #C4BEE4;
-  --shadow: 0 1px 2px rgba(30,56,46,0.06), 0 2px 8px rgba(30,56,46,0.05);
+  --shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05);
   --radius: 10px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-nunito-sans);
+  --font-heading: var(--font-quicksand);
   --animate-fade-up: fade-up 0.8s ease both;
   --animate-fade-in: fade-in 1s ease both;
   --animate-dot-bounce: dot-bounce 1.4s ease-in-out infinite;
@@ -113,7 +114,7 @@ body {
 }
 
 .glass-dark {
-  background: rgba(89, 72, 196, 0.35);
+  background: rgba(91, 75, 196, 0.35);
   backdrop-filter: blur(24px) saturate(1.2);
   -webkit-backdrop-filter: blur(24px) saturate(1.2);
   border: 1px solid rgba(255, 255, 255, 0.22);

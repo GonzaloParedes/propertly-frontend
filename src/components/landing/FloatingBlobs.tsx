@@ -9,8 +9,8 @@ export default function FloatingBlobs({ dark = false }: { dark?: boolean }) {
           top: "-160px",
           left: "-5%",
           background: dark
-            ? "rgba(166, 121, 240, 0.35)"
-            : "rgba(89, 72, 196, 0.18)",
+            ? "rgba(167, 154, 240, 0.35)"
+            : "rgba(91, 75, 196, 0.18)",
         }}
       />
       <div
@@ -21,8 +21,8 @@ export default function FloatingBlobs({ dark = false }: { dark?: boolean }) {
           top: "20px",
           right: "-5%",
           background: dark
-            ? "rgba(89, 72, 196, 0.30)"
-            : "rgba(166, 121, 240, 0.15)",
+            ? "rgba(91, 75, 196, 0.30)"
+            : "rgba(167, 154, 240, 0.15)",
         }}
       />
       <div

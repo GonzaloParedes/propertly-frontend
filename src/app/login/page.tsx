@@ -20,7 +20,7 @@ function CheckIcon() {
       className="size-5 shrink-0"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#A679F0"
+      stroke="var(--lila)"
       strokeWidth="3"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -130,8 +130,8 @@ export default function LoginPage() {
         <Image
           src="/logos/lockup-oscuro.svg"
           alt="Alquia"
-          width={130}
-          height={48}
+          width={360}
+          height={160}
           priority
           className="h-10 w-auto"
         />
@@ -151,20 +151,17 @@ export default function LoginPage() {
               <Image
                 src="/logos/lockup-oscuro.svg"
                 alt="Alquia — volver al inicio"
-                width={280}
-                height={108}
+                width={360}
+                height={160}
                 priority
                 className="mb-10 block h-[108px] w-auto"
               />
             </Link>
 
-            <h1
-              className="mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]"
-              style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-            >
+            <h1 className="font-heading mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]">
               Sus alquileres, en orden y a la vista.
             </h1>
-            <p className="max-w-[420px] text-[17.5px] text-[var(--primary-soft)]">
+            <p className="max-w-[420px] text-[17.5px] text-[var(--on-dark-secondary)]">
               Controle pagos, contratos y vencimientos de todas sus propiedades
               desde un solo lugar, sin planillas ni papeles sueltos.
             </p>
@@ -198,10 +195,7 @@ export default function LoginPage() {
               className="mx-auto mb-4 h-12 w-auto"
             />
 
-            <h2
-              className="mb-2 text-center text-[22px] font-bold"
-              style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-            >
+            <h2 className="font-heading mb-2 text-center text-[22px] font-bold">
               Ingresar a su cuenta
             </h2>
             <p className="mb-6 text-center" style={{ color: "var(--text-2)" }}>

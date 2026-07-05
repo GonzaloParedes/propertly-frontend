@@ -6,9 +6,9 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 const TIPS = [
-  "Usá al menos 8 caracteres",
-  "Combiná letras, números y símbolos",
-  "No compartás tu contraseña con nadie",
+  "Use al menos 8 caracteres",
+  "Combine letras, números y símbolos",
+  "No comparta su contraseña con nadie",
 ];
 
 function CheckIcon() {
@@ -18,7 +18,7 @@ function CheckIcon() {
       className="size-5 shrink-0"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#A679F0"
+      stroke="var(--lila)"
       strokeWidth="3"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -120,10 +120,7 @@ function RestablecerContrasenaForm() {
   if (!token) {
     return (
       <div className="flex flex-col items-center text-center">
-        <h2
-          className="mb-3 text-[22px] font-bold"
-          style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-        >
+        <h2 className="font-heading mb-3 text-[22px] font-bold">
           Enlace inválido
         </h2>
         <p
@@ -153,14 +150,11 @@ function RestablecerContrasenaForm() {
         >
           <CheckCircleIcon />
         </div>
-        <h2
-          className="mb-2 text-[22px] font-bold"
-          style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-        >
-          ¡Contraseña actualizada!
+        <h2 className="font-heading mb-2 text-[22px] font-bold">
+          Contraseña actualizada
         </h2>
         <p className="mb-6" style={{ color: "var(--text-2)" }}>
-          Tu contraseña fue guardada correctamente. Ya podés ingresar a tu
+          Su contraseña fue guardada correctamente. Ya puede ingresar a su
           cuenta.
         </p>
         <Link
@@ -207,21 +201,18 @@ function RestablecerContrasenaForm() {
       await new Promise((r) => setTimeout(r, 800));
       setSubmitted(true);
     } catch {
-      setError("Ocurrió un error inesperado. Intentá nuevamente más tarde.");
+      setError("Ocurrió un error inesperado. Intente nuevamente más tarde.");
       setIsPending(false);
     }
   }
 
   return (
     <>
-      <h2
-        className="mb-2 text-center text-[22px] font-bold"
-        style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-      >
+      <h2 className="font-heading mb-2 text-center text-[22px] font-bold">
         Nueva contraseña
       </h2>
       <p className="mb-6 text-center" style={{ color: "var(--text-2)" }}>
-        Ingresá y confirmá tu nueva contraseña.
+        Ingrese y confirme su nueva contraseña.
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -240,7 +231,7 @@ function RestablecerContrasenaForm() {
               disabled={isPending}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
               style={{
                 borderColor: fieldErrors.password
                   ? "var(--danger)"
@@ -252,7 +243,7 @@ function RestablecerContrasenaForm() {
               type="button"
               aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+              className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
               style={{ color: "var(--text-2)" }}
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
@@ -275,12 +266,12 @@ function RestablecerContrasenaForm() {
               name="confirm"
               type={showConfirm ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="Repetí la contraseña"
+              placeholder="Repita la contraseña"
               required
               disabled={isPending}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
               style={{
                 borderColor: fieldErrors.confirm
                   ? "var(--danger)"
@@ -292,7 +283,7 @@ function RestablecerContrasenaForm() {
               type="button"
               aria-label={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"}
               onClick={() => setShowConfirm((v) => !v)}
-              className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+              className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
               style={{ color: "var(--text-2)" }}
             >
               {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
@@ -349,8 +340,8 @@ export default function RestablecerContrasenaPage() {
         <Image
           src="/logos/lockup-oscuro.svg"
           alt="Alquia"
-          width={130}
-          height={48}
+          width={360}
+          height={160}
           priority
           className="h-10 w-auto"
         />
@@ -369,20 +360,17 @@ export default function RestablecerContrasenaPage() {
             <Image
               src="/logos/lockup-oscuro.svg"
               alt="Alquia"
-              width={280}
-              height={108}
+              width={360}
+              height={160}
               priority
               className="mb-10 block h-[108px] w-auto"
             />
 
-            <h1
-              className="mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]"
-              style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-            >
-              Creá una nueva contraseña segura.
+            <h1 className="font-heading mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]">
+              Cree una nueva contraseña segura.
             </h1>
-            <p className="max-w-[420px] text-[17.5px] text-[#DDD9F0]">
-              Elegí una contraseña fuerte para proteger tu cuenta y tus datos.
+            <p className="max-w-[420px] text-[17.5px] text-[var(--on-dark-secondary)]">
+              Elija una contraseña fuerte para proteger su cuenta y sus datos.
             </p>
 
             <ul className="mt-8 flex flex-col gap-3.5">
@@ -397,7 +385,7 @@ export default function RestablecerContrasenaPage() {
         </section>
 
         {/* Right form panel */}
-        <section className="flex items-center justify-center bg-[#F6F5FC] p-6 sm:p-8 lg:bg-white">
+        <section className="flex items-center justify-center bg-[var(--bg)] p-6 sm:p-8 lg:bg-white">
           <div
             className="w-full max-w-[430px] rounded-2xl border bg-white p-6 sm:p-8"
             style={{

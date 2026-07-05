@@ -18,9 +18,6 @@ const nunitoSans = Nunito_Sans({
 export const metadata: Metadata = {
   title: "Alquia | Gestión de alquileres",
   description: "Una mejor manera de gestionar tus alquileres.",
-  icons: {
-    icon: "/favicon.svg",
-  },
 };
 
 export default function RootLayout({

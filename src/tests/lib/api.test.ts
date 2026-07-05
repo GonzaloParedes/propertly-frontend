@@ -94,7 +94,7 @@ describe("manejo de errores HTTP", () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({}), { status: 400, statusText: "Bad Request" })
     );
-    const error = await apiGet("/test", { retry: false }).catch((e) => e);
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(400);
   });
@@ -103,7 +103,7 @@ describe("manejo de errores HTTP", () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response("", { status: 500, statusText: "Internal Server Error" })
     );
-    const error = await apiGet("/test", { retry: false }).catch((e) => e);
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(500);
   });
@@ -115,7 +115,7 @@ describe("manejo de errores HTTP", () => {
         statusText: "Unprocessable",
       })
     );
-    const error = await apiGet("/test", { retry: false }).catch((e) => e);
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
     expect(error.message).toBe("Error personalizado");
   });
 
@@ -123,7 +123,7 @@ describe("manejo de errores HTTP", () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({}), { status: 400, statusText: "Bad Request" })
     );
-    const error = await apiGet("/test", { retry: false }).catch((e) => e);
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
     expect(error.message).toBe("Bad Request");
   });
 });
@@ -158,7 +158,7 @@ describe("lógica de reintento en 401", () => {
 
   it("no reintenta cuando retry=false, lanza ApiError directamente", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 401 }));
-    const error = await apiGet("/test", { retry: false }).catch((e) => e);
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(401);
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -170,7 +170,7 @@ describe("lógica de reintento en 401", () => {
     fetchMock.mockResolvedValueOnce(new Response("", { status: 200 })); // refresh: ok
     fetchMock.mockResolvedValueOnce(new Response("", { status: 401 })); // reintento: 401 de nuevo
 
-    const error = await apiGet("/test").catch((e) => e);
+    const error = (await apiGet("/test").catch((e) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(401);
     expect(fetch).toHaveBeenCalledTimes(3);

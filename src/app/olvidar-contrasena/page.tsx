@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 
 const BENEFITS = [
-  "Te enviamos un enlace seguro a tu email",
+  "Le enviamos un enlace seguro a su correo electrónico",
   "El enlace expira en 30 minutos",
-  "Tu contraseña actual no se modifica hasta que confirmes",
+  "Su contraseña actual no se modifica hasta que confirme",
 ];
 
 function CheckIcon() {
@@ -17,7 +17,7 @@ function CheckIcon() {
       className="size-5 shrink-0"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#A679F0"
+      stroke="var(--lila)"
       strokeWidth="3"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -78,7 +78,7 @@ export default function OlvidarContrasenaPage() {
       await new Promise((r) => setTimeout(r, 800));
       setSubmitted(true);
     } catch {
-      setError("Ocurrió un error inesperado. Intentá nuevamente más tarde.");
+      setError("Ocurrió un error inesperado. Intente nuevamente más tarde.");
       setIsPending(false);
     }
   }
@@ -93,8 +93,8 @@ export default function OlvidarContrasenaPage() {
         <Image
           src="/logos/lockup-oscuro.svg"
           alt="Alquia"
-          width={130}
-          height={48}
+          width={360}
+          height={160}
           priority
           className="h-10 w-auto"
         />
@@ -113,20 +113,17 @@ export default function OlvidarContrasenaPage() {
             <Image
               src="/logos/lockup-oscuro.svg"
               alt="Alquia"
-              width={280}
-              height={108}
+              width={360}
+              height={160}
               priority
               className="mb-10 block h-[108px] w-auto"
             />
 
-            <h1
-              className="mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]"
-              style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-            >
-              Recuperá el acceso a tu cuenta.
+            <h1 className="font-heading mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]">
+              Recupere el acceso a su cuenta.
             </h1>
-            <p className="max-w-[420px] text-[17.5px] text-[#DDD9F0]">
-              Ingresá tu correo y te enviamos un enlace para restablecer tu
+            <p className="max-w-[420px] text-[17.5px] text-[var(--on-dark-secondary)]">
+              Ingrese su correo y le enviaremos un enlace para restablecer su
               contraseña de forma segura.
             </p>
 
@@ -142,7 +139,7 @@ export default function OlvidarContrasenaPage() {
         </section>
 
         {/* Right form panel */}
-        <section className="flex items-center justify-center bg-[#F6F5FC] p-6 sm:p-8 lg:bg-white">
+        <section className="flex items-center justify-center bg-[var(--bg)] p-6 sm:p-8 lg:bg-white">
           <div
             className="w-full max-w-[430px] rounded-2xl border bg-white p-6 sm:p-8"
             style={{
@@ -168,15 +165,12 @@ export default function OlvidarContrasenaPage() {
                 >
                   <MailIcon />
                 </div>
-                <h2
-                  className="mb-2 text-[22px] font-bold"
-                  style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-                >
-                  Revisá tu correo
+                <h2 className="font-heading mb-2 text-[22px] font-bold">
+                  Revise su correo
                 </h2>
                 <p className="mb-6" style={{ color: "var(--text-2)" }}>
-                  Si existe una cuenta asociada a ese email, recibirás un enlace
-                  en breve. Revisá tu bandeja de entrada y la carpeta de spam.
+                  Si existe una cuenta asociada a ese correo, recibirá un enlace
+                  en breve. Revise su bandeja de entrada y la carpeta de spam.
                 </p>
                 <Link
                   href="/login"
@@ -189,14 +183,11 @@ export default function OlvidarContrasenaPage() {
             ) : (
               /* Form state */
               <>
-                <h2
-                  className="mb-2 text-center text-[22px] font-bold"
-                  style={{ fontFamily: "var(--font-quicksand), system-ui, sans-serif" }}
-                >
+                <h2 className="font-heading mb-2 text-center text-[22px] font-bold">
                   Recuperar contraseña
                 </h2>
                 <p className="mb-6 text-center" style={{ color: "var(--text-2)" }}>
-                  Ingresá tu correo y te enviamos un enlace para restablecer tu
+                  Ingrese su correo y le enviaremos un enlace para restablecer su
                   contraseña.
                 </p>
 
@@ -210,10 +201,10 @@ export default function OlvidarContrasenaPage() {
                       name="email"
                       type="email"
                       autoComplete="email"
-                      placeholder="Ej: tu@correo.com"
+                      placeholder="ejemplo@ejemplo.com"
                       required
                       disabled={isPending}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[#5948C4] focus-visible:outline-[3px] focus-visible:outline-[#E7E3F8]"
+                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
                       style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
                     />
                   </div>
@@ -249,7 +240,7 @@ export default function OlvidarContrasenaPage() {
                 </form>
 
                 <p className="mt-4 text-center" style={{ color: "var(--text-2)" }}>
-                  ¿Recordaste tu contraseña?{" "}
+                  ¿Recordó su contraseña?{" "}
                   <Link
                     href="/login"
                     className="font-bold underline"

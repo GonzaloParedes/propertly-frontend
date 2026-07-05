@@ -8,7 +8,7 @@ export default function Hero() {
       className="relative overflow-hidden px-6 py-24 sm:py-32 sm:px-10"
       style={{
         background:
-          "linear-gradient(135deg, #1A1050 0%, #2C1B6E 35%, #3D2B91 65%, #5948C4 100%)",
+          "linear-gradient(135deg, #1A1050 0%, #2C1B6E 35%, #3D2B91 65%, #5B4BC4 100%)",
       }}
     >
       <FloatingBlobs dark />
@@ -28,17 +28,14 @@ export default function Hero() {
           </span>
 
           <h1
-            className="mb-6 text-[42px] leading-[1.15] font-bold tracking-[-0.025em] text-white sm:text-[54px] lg:text-[58px]"
-            style={{
-              fontFamily: "var(--font-quicksand), system-ui, sans-serif",
-              textWrap: "pretty",
-            } as React.CSSProperties}
+            className="font-heading mb-6 text-[42px] leading-[1.15] font-bold tracking-[-0.025em] text-white sm:text-[54px] lg:text-[58px]"
+            style={{ textWrap: "pretty" } as React.CSSProperties}
           >
-            Tus alquileres,
+            Sus alquileres,
             <br className="hidden lg:block" />{" "}
             <span
               style={{
-                background: "linear-gradient(90deg, #C4A8FF, #A679F0)",
+                background: "linear-gradient(90deg, #C4A8FF, #A79AF0)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -51,9 +48,9 @@ export default function Hero() {
 
           <p
             className="mb-10 max-w-[500px] text-[18px] leading-[1.65] lg:mx-0 mx-auto"
-            style={{ color: "rgba(220,215,245,0.9)" }}
+            style={{ color: "var(--on-dark-secondary)" }}
           >
-            Controlá pagos, contratos y vencimientos de todas tus propiedades
+            Controle pagos, contratos y vencimientos de todas sus propiedades
             desde un solo lugar. Sin planillas ni papeles sueltos.
           </p>
 

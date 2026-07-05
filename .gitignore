@@ -19,8 +19,6 @@
 
 # production
 /build
-/docs
-/docs/brand
 # misc
 .DS_Store
 *.pem
@@ -44,4 +42,8 @@ next-env.d.ts
 # Sentry Config File
 .env.sentry-build-plugin
 
+# Brand kit — entregables de imprenta/Illustrator/redes, no consumidos por el código
+docs/brand/logos/eps/
+docs/brand/logos/pdf/
+docs/brand/logos/png/
 
