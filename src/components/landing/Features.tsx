@@ -50,7 +50,7 @@ export default function Features() {
   return (
     <section
       className="px-6 py-20 sm:px-10"
-      style={{ background: "var(--bg)" }}
+      style={{ background: "linear-gradient(180deg, var(--bg) 0%, #ffffff 100%)" }}
     >
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-12 text-center">

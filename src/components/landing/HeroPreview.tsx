@@ -183,7 +183,7 @@ export default function HeroPreview() {
           {toast && (
             <div
               key={toast.key}
-              className="absolute top-3.5 right-3.5 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold"
+              className="absolute top-3.5 right-3.5 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-bold"
               style={{
                 background: "rgba(18,110,55,0.7)",
                 color: "var(--success-on-dark)",
@@ -208,12 +208,13 @@ export default function HeroPreview() {
               </p>
             </div>
             <span
-              className="rounded-full px-3 py-1 text-[12px] font-bold transition-all duration-500"
-              style={
-                allPaid
+              className="rounded-full px-3 py-1 text-[12px] font-bold transition-all duration-300"
+              style={{
+                ...(allPaid
                   ? { background: "rgba(30,135,75,0.35)", color: "var(--success-on-dark)", border: "1px solid rgba(107,232,163,0.3)" }
-                  : { background: "rgba(160,100,0,0.30)", color: "var(--warn-on-dark)", border: "1px solid rgba(255,209,102,0.3)" }
-              }
+                  : { background: "rgba(160,100,0,0.30)", color: "var(--warn-on-dark)", border: "1px solid rgba(255,209,102,0.3)" }),
+                opacity: toast ? 0 : 1,
+              }}
             >
               {allPaid ? "✓ Al día" : `${pendienteCount} pendiente${pendienteCount > 1 ? "s" : ""}`}
             </span>

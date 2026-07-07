@@ -83,6 +83,15 @@ export default function Hero() {
           <HeroPreview />
         </div>
       </div>
+
+      {/* Fundido corto hacia la sección clara siguiente */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-32"
+        style={{
+          background:
+            "linear-gradient(180deg, transparent 0%, rgba(246,245,252,0.55) 65%, var(--bg) 100%)",
+        }}
+      />
     </section>
   );
 }

@@ -5,13 +5,22 @@ import FloatingBlobs from "./FloatingBlobs";
 export default function FinalCta() {
   return (
     <section
-      className="relative overflow-hidden px-6 py-28 sm:px-10"
+      className="relative overflow-hidden px-6 pt-32 pb-32 sm:px-10"
       style={{
         background:
           "linear-gradient(135deg, #1A1050 0%, #2C1B6E 40%, #5B4BC4 100%)",
       }}
     >
       <FloatingBlobs dark />
+
+      {/* Fundido corto desde la sección clara anterior */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-32"
+        style={{
+          background:
+            "linear-gradient(180deg, var(--bg) 0%, rgba(246,245,252,0.55) 35%, transparent 100%)",
+        }}
+      />
 
       <Reveal className="relative z-10 mx-auto max-w-2xl text-center">
         <h2 className="font-heading mb-5 text-[36px] font-bold leading-[1.18] tracking-[-0.015em] text-white sm:text-[44px]">
