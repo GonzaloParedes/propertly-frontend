@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Quicksand, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
@@ -18,6 +18,11 @@ const nunitoSans = Nunito_Sans({
 export const metadata: Metadata = {
   title: "Alquia | Gestión de alquileres",
   description: "Una mejor manera de gestionar tus alquileres.",
+};
+
+// Barra del navegador (móvil) siempre blanca — la landing es de tema claro
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({

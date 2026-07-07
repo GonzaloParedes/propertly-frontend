@@ -40,12 +40,8 @@
   --animate-shimmer: shimmer 2.5s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* La landing es de tema claro: no invertimos a oscuro con el esquema del sistema
+   (evita que el body y la barra del navegador se pongan negros en modo oscuro). */
 
 body {
   background: var(--background);

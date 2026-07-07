@@ -21,7 +21,7 @@ const MONTH_DAYS = 31;
 const TICK_MS = 500;
 
 function formatAmount(n: number): string {
-  return `$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function daysLabel(daysLeft: number): string {
@@ -222,9 +222,8 @@ export default function HeroPreview() {
 
           {/* Month progress bar */}
           <div className="relative z-10 mb-5">
-            <div className="mb-1.5 flex justify-between text-[10px] font-medium" style={{ color: "rgba(200,190,240,0.5)" }}>
+            <div className="mb-1.5 flex text-[10px] font-medium" style={{ color: "rgba(200,190,240,0.5)" }}>
               <span>Día {day} de {MONTH_DAYS}</span>
-              <span>{progressPct}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.10)" }}>
               <div

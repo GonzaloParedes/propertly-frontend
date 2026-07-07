@@ -20,22 +20,19 @@ export default function Nav() {
       style={
         scrolled
           ? {
-              background: "rgba(255,255,255,0.90)",
-              backdropFilter: "blur(24px) saturate(1.4)",
-              WebkitBackdropFilter: "blur(24px) saturate(1.4)",
+              background: "#ffffff",
               borderBottom: "1px solid var(--border)",
+              boxShadow: "0 1px 8px rgba(30,27,46,0.06)",
             }
           : {
-              background: "rgba(255,255,255,0.07)",
-              backdropFilter: "blur(24px) saturate(1.4)",
-              WebkitBackdropFilter: "blur(24px) saturate(1.4)",
-              borderBottom: "1px solid rgba(255,255,255,0.12)",
+              background: "#ffffff",
+              borderBottom: "1px solid transparent",
             }
       }
     >
       <Link href="/" aria-label="Alquia — inicio" className="flex items-center">
         <Image
-          src={scrolled ? "/logos/lockup.svg" : "/logos/lockup-oscuro.svg"}
+          src="/logos/lockup.svg"
           alt="Alquia"
           width={360}
           height={160}
@@ -48,7 +45,7 @@ export default function Nav() {
         <Link
           href="/login"
           className="hidden rounded-[10px] px-4 py-2 text-[15px] font-bold transition-colors hover:opacity-80 sm:inline-flex"
-          style={{ color: scrolled ? "var(--primary)" : "var(--on-dark-secondary)" }}
+          style={{ color: "var(--primary)" }}
         >
           Iniciar sesión
         </Link>
