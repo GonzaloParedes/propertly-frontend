@@ -51,6 +51,7 @@ describe("con sesión", () => {
     mockUseAuth.mockReturnValue({
       user: { email: "a@a.com" },
       isLoading: false,
+      logout: vi.fn(),
     });
     render(<DashboardLayout>contenido</DashboardLayout>);
     expect(mockReplace).not.toHaveBeenCalled();
@@ -60,6 +61,7 @@ describe("con sesión", () => {
     mockUseAuth.mockReturnValue({
       user: { email: "a@a.com" },
       isLoading: false,
+      logout: vi.fn(),
     });
     render(<DashboardLayout>contenido</DashboardLayout>);
     expect(screen.getByText("contenido")).toBeInTheDocument();

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import DashboardNav from "@/components/dashboard/DashboardNav";
 
 export default function DashboardLayout({
   children,
@@ -26,5 +27,10 @@ export default function DashboardLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="flex min-h-full flex-1 flex-col">
+      <DashboardNav />
+      <main className="flex flex-1 flex-col">{children}</main>
+    </div>
+  );
 }
