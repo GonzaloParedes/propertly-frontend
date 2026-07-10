@@ -4,10 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
 
 export interface AuthUser {
-  id: string;
   email: string;
-  firstName: string;
-  lastName: string;
 }
 
 interface AuthContextValue {
@@ -30,9 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const id = ++authRequestId.current;
     // retry:false a propósito: para un visitante anónimo este 401 es esperado,
     // no queremos gastar un /auth/refresh en cada carga de página sin sesión.
-    apiGet<AuthUser>("/auth/me", { retry: false })
-      .then((u) => {
-        if (authRequestId.current === id) setUser(u);
+    // /auth/me responde el email en texto plano, no un objeto JSON.
+    apiGet<string>("/auth/me", { retry: false })
+      .then((email) => {
+        if (authRequestId.current === id) setUser({ email });
       })
       .catch(() => {
         if (authRequestId.current === id) setUser(null);
@@ -43,8 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function login(email: string, password: string) {
     const id = ++authRequestId.current;
     await apiPost("/auth/login", { email, password }, { retry: false });
-    const me = await apiGet<AuthUser>("/auth/me");
-    if (authRequestId.current === id) setUser(me);
+    const me = await apiGet<string>("/auth/me");
+    if (authRequestId.current === id) setUser({ email: me });
   }
 
   async function logout() {

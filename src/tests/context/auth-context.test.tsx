@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "@/context/auth-context";
-import type { AuthUser } from "@/context/auth-context";
 
 vi.mock("@/lib/api", () => ({
   apiGet: vi.fn(),
@@ -12,12 +11,8 @@ import { apiGet, apiPost } from "@/lib/api";
 const mockApiGet = vi.mocked(apiGet);
 const mockApiPost = vi.mocked(apiPost);
 
-const TEST_USER: AuthUser = {
-  id: "1",
-  email: "test@test.com",
-  firstName: "Juan",
-  lastName: "Pérez",
-};
+// /auth/me responde el email en texto plano, no un objeto JSON.
+const TEST_EMAIL = "test@test.com";
 
 function TestConsumer() {
   const { user, isLoading, login, logout } = useAuth();
@@ -54,10 +49,10 @@ describe("carga inicial", () => {
   });
 
   it("muestra usuario cuando /auth/me devuelve datos", async () => {
-    mockApiGet.mockResolvedValueOnce(TEST_USER);
+    mockApiGet.mockResolvedValueOnce(TEST_EMAIL);
     renderAuth();
     await waitFor(() =>
-      expect(screen.getByText(`Sesión: ${TEST_USER.email}`)).toBeInTheDocument()
+      expect(screen.getByText(`Sesión: ${TEST_EMAIL}`)).toBeInTheDocument()
     );
   });
 
@@ -79,7 +74,7 @@ describe("login()", () => {
     // login → post ok
     mockApiPost.mockResolvedValueOnce({});
     // /auth/me tras login → usuario
-    mockApiGet.mockResolvedValueOnce(TEST_USER);
+    mockApiGet.mockResolvedValueOnce(TEST_EMAIL);
 
     renderAuth();
     await waitFor(() => screen.getByText("Sin sesión"));
@@ -87,7 +82,7 @@ describe("login()", () => {
     await userEvent.click(screen.getByRole("button", { name: "Login" }));
 
     await waitFor(() =>
-      expect(screen.getByText(`Sesión: ${TEST_USER.email}`)).toBeInTheDocument()
+      expect(screen.getByText(`Sesión: ${TEST_EMAIL}`)).toBeInTheDocument()
     );
     expect(mockApiPost).toHaveBeenCalledWith(
       "/auth/login",
@@ -102,11 +97,11 @@ describe("login()", () => {
 
 describe("logout()", () => {
   it("llama a /auth/logout y limpia el usuario", async () => {
-    mockApiGet.mockResolvedValueOnce(TEST_USER); // sesión activa
+    mockApiGet.mockResolvedValueOnce(TEST_EMAIL); // sesión activa
     mockApiPost.mockResolvedValueOnce({});        // logout ok
 
     renderAuth();
-    await waitFor(() => screen.getByText(`Sesión: ${TEST_USER.email}`));
+    await waitFor(() => screen.getByText(`Sesión: ${TEST_EMAIL}`));
 
     await userEvent.click(screen.getByRole("button", { name: "Logout" }));
 
@@ -121,11 +116,11 @@ describe("logout()", () => {
   });
 
   it("limpia el usuario incluso si el POST falla", async () => {
-    mockApiGet.mockResolvedValueOnce(TEST_USER);
+    mockApiGet.mockResolvedValueOnce(TEST_EMAIL);
     mockApiPost.mockRejectedValueOnce(new Error("Network error"));
 
     renderAuth();
-    await waitFor(() => screen.getByText(`Sesión: ${TEST_USER.email}`));
+    await waitFor(() => screen.getByText(`Sesión: ${TEST_EMAIL}`));
 
     await userEvent.click(screen.getByRole("button", { name: "Logout" }));
 

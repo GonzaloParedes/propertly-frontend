@@ -59,6 +59,17 @@ describe("apiGet", () => {
     const result = await apiGet("/test");
     expect(result).toEqual({});
   });
+
+  it("retorna texto plano cuando el content-type no es JSON", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response("test@test.com", {
+        status: 200,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      })
+    );
+    const result = await apiGet<string>("/test");
+    expect(result).toBe("test@test.com");
+  });
 });
 
 // --- apiPost ---

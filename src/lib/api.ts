@@ -54,7 +54,11 @@ async function request<T>(
   }
 
   const text = await res.text();
-  return text ? (JSON.parse(text) as T) : ({} as T);
+  if (!text) return {} as T;
+  // Algunos endpoints (ej. /auth/me) responden texto plano en vez de JSON.
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return text as unknown as T;
+  return JSON.parse(text) as T;
 }
 
 export function apiGet<T>(path: string, options?: { retry?: boolean }): Promise<T> {

@@ -49,7 +49,7 @@ describe("sin sesión", () => {
 describe("con sesión", () => {
   it("no redirige", () => {
     mockUseAuth.mockReturnValue({
-      user: { id: "1", email: "a@a.com", firstName: "Ana", lastName: "Pérez" },
+      user: { email: "a@a.com" },
       isLoading: false,
     });
     render(<DashboardLayout>contenido</DashboardLayout>);
@@ -58,7 +58,7 @@ describe("con sesión", () => {
 
   it("muestra el contenido protegido", () => {
     mockUseAuth.mockReturnValue({
-      user: { id: "1", email: "a@a.com", firstName: "Ana", lastName: "Pérez" },
+      user: { email: "a@a.com" },
       isLoading: false,
     });
     render(<DashboardLayout>contenido</DashboardLayout>);
