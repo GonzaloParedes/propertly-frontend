@@ -1,0 +1,28 @@
+/* Alquia · tokens de color v1.1 */
+:root {
+  --alquia-indigo: #5B4BC4;
+  --alquia-indigo-oscuro: #463AA0; /* hover de botón primario */
+  --alquia-rosa: #DB4C8E;
+  --alquia-tinta: #1E1B2E;
+  --alquia-lila: #A79AF0;
+  --alquia-rosa-claro: #F5A6CB;
+  --alquia-superficie: #F6F5FC;
+  --alquia-gris: #514D63;
+  --alquia-blanco: #FFFFFF;
+  --alquia-borde-tarjeta: #DEDAF0; /* producto; NO confundir con el divisor editorial #EDEBF7 */
+  --alquia-divisor-suave: #EDEBF7;
+  --alquia-indigo-active: #3A3084; /* pressed */
+  --alquia-focus-ring: #A79AF0; /* 3px + 2px offset blanco */
+  --alquia-disabled-fondo: #E7E3F8;
+  --alquia-disabled-texto: #9B95B5;
+  --alquia-borde-campo: #C4BEE4;
+  --alquia-hover-fila: #F1EFFA;
+  --alquia-indigo-suave: #E7E3F8;
+  --alquia-exito: #1E874B;
+  --alquia-exito-fondo: #E6F4EC;
+  --alquia-advertencia: #B26A00;
+  --alquia-advertencia-fondo: #F8EFDB;
+  --alquia-error: #CE3F53;
+  --alquia-error-fondo: #FBE9EC;
+  --alquia-texto-secundario-oscuro: #DDD9F0; /* texto secundario sobre índigo/tinta — manual sección 10 */
+}

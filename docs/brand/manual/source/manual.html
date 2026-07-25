@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #FFFFFF; }
+  </style>
+</helmet>
+
+<div style="font-family: 'Nunito Sans', sans-serif; color: #1E1B2E; max-width: 1080px; margin: 0 auto; padding: 48px 40px 80px 40px; display: flex; flex-direction: column; gap: 72px;">
+
+  <!-- Header -->
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <svg width="28" height="28" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"></circle></svg>
+    <span style="font: 700 16px 'Quicksand', sans-serif;">Alquia</span>
+    <span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63; margin-left: auto;">Manual de marca · v1.1 · Julio 2026</span>
+  </div>
+
+  <!-- Portada -->
+  <sc-if value="{{ portadaOscura }}" hint-placeholder-val="{{ false }}">
+    <div style="background: #5B4BC4; border-radius: 24px; padding: 100px 40px; display: flex; flex-direction: column; align-items: center; gap: 28px;">
+      <img src="../../logos/svg/alquia-lockup-sobre-oscuro.svg" alt="alquia" style="height: 110px;">
+      <span style="font: 400 17px 'Nunito Sans', sans-serif; color: #DDD9F0;">Plataforma de gestión de alquileres</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ portadaClara }}" hint-placeholder-val="{{ true }}">
+    <div style="background: #F6F5FC; border-radius: 24px; padding: 100px 40px; display: flex; flex-direction: column; align-items: center; gap: 28px;">
+      <img src="../../logos/svg/alquia-lockup-principal.svg" alt="alquia" style="height: 110px;">
+      <span style="font: 400 17px 'Nunito Sans', sans-serif; color: #514D63;">Plataforma de gestión de alquileres</span>
+    </div>
+  </sc-if>
+
+  <!-- 01 Logotipo -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">01</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">El logotipo</h2>
+      <p style="margin: 0; font: 400 15px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 640px;">El nombre en minúsculas, dibujado a medida con trazos geométricos redondeados (círculos y bastones, sin serifas ni contraste), con la marca viviendo dentro de la palabra: el punto de la i es una persona (o una propiedad) y el techito rosa la cobija. El logotipo es un dibujo, no una fuente: se usa siempre desde los archivos de la carpeta logos/, nunca tipeado.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <div style="background: #F6F5FC; border-radius: 18px; padding: 48px; display: flex; align-items: center; justify-content: center;">
+        <img src="../../logos/svg/alquia-lockup-principal.svg" alt="alquia" style="height: 78px;">
+      </div>
+      <div style="background: #FFFFFF; border: 2px solid #EDEBF7; border-radius: 18px; padding: 48px; display: flex; align-items: center; justify-content: center; gap: 40px;">
+        <div style="position: relative; width: 150px; height: 150px;">
+          <svg width="150" height="150" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"></circle></svg>
+          <sc-if value="{{ guias }}" hint-placeholder-val="{{ false }}">
+            <svg width="150" height="150" viewBox="0 0 30 30" fill="none" style="position: absolute; left: 0; top: 0;"><line x1="15" y1="0" x2="15" y2="30" stroke="#5B4BC4" stroke-width="0.4" stroke-dasharray="1.2 1.2" opacity="0.5"></line><circle cx="15" cy="22.5" r="5.5" stroke="#5B4BC4" stroke-width="0.4" stroke-dasharray="1.2 1.2" opacity="0.5"></circle><line x1="1" y1="13" x2="29" y2="13" stroke="#DB4C8E" stroke-width="0.4" stroke-dasharray="1.2 1.2" opacity="0.5"></line><line x1="1" y1="3.5" x2="29" y2="3.5" stroke="#DB4C8E" stroke-width="0.4" stroke-dasharray="1.2 1.2" opacity="0.5"></line><rect x="0.75" y="0.75" width="28.5" height="28.5" rx="2" stroke="#514D63" stroke-width="0.3" stroke-dasharray="1.2 1.2" opacity="0.4"></rect></svg>
+          </sc-if>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: #DB4C8E;"></span><span style="font: 600 13.5px 'Nunito Sans', sans-serif; color: #514D63;">Techo · trazo redondeado</span></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #5B4BC4;"></span><span style="font: 600 13.5px 'Nunito Sans', sans-serif; color: #514D63;">Punto · círculo pleno</span></div>
+          <span style="font: 400 13px/1.5 'Nunito Sans', sans-serif; color: #514D63; max-width: 200px;">El isotipo se usa solo cuando el espacio es reducido: avatar, favicon, ícono de app.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 Versiones -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">02</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Versiones y archivos</h2>
+      <p style="margin: 0; font: 400 15px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 640px;">Sobre fondo claro se usa la versión principal; sobre índigo o tinta, la versión clara. La monocroma es para contextos de una sola tinta. Cada tarjeta descarga su SVG.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      <a href="../../logos/svg/alquia-lockup-principal.svg" download="alquia-lockup.svg" style="text-decoration: none; color: inherit; border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #F6F5FC; height: 130px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-lockup-principal.svg" style="height: 52px;" alt="Lockup principal"></div>
+        <div style="padding: 14px 16px; display: flex; align-items: center; gap: 8px;"><span style="font: 600 13.5px 'Nunito Sans', sans-serif;">Principal</span><span style="font: 400 12px 'Nunito Sans', sans-serif; color: #514D63; margin-left: auto;">lockup.svg ↓</span></div>
+      </a>
+      <a href="../../logos/svg/alquia-lockup-sobre-oscuro.svg" download="alquia-lockup-oscuro.svg" style="text-decoration: none; color: inherit; border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #1E1B2E; height: 130px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-lockup-sobre-oscuro.svg" style="height: 52px;" alt="Lockup sobre oscuro"></div>
+        <div style="padding: 14px 16px; display: flex; align-items: center; gap: 8px;"><span style="font: 600 13.5px 'Nunito Sans', sans-serif;">Sobre oscuro</span><span style="font: 400 12px 'Nunito Sans', sans-serif; color: #514D63; margin-left: auto;">lockup-oscuro.svg ↓</span></div>
+      </a>
+      <a href="../../logos/svg/alquia-lockup-mono-indigo.svg" download="alquia-lockup-mono.svg" style="text-decoration: none; color: inherit; border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #FFFFFF; height: 130px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-lockup-mono-indigo.svg" style="height: 52px;" alt="Lockup monocromo"></div>
+        <div style="padding: 14px 16px; display: flex; align-items: center; gap: 8px;"><span style="font: 600 13.5px 'Nunito Sans', sans-serif;">Monocromo</span><span style="font: 400 12px 'Nunito Sans', sans-serif; color: #514D63; margin-left: auto;">lockup-mono-indigo.svg ↓</span></div>
+      </a>
+      <a href="../../logos/svg/alquia-isotipo-principal.svg" download="alquia-isotipo.svg" style="text-decoration: none; color: inherit; border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #F6F5FC; height: 130px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-isotipo-principal.svg" style="height: 64px;" alt="Isotipo"></div>
+        <div style="padding: 14px 16px; display: flex; align-items: center; gap: 8px;"><span style="font: 600 13.5px 'Nunito Sans', sans-serif;">Isotipo</span><span style="font: 400 12px 'Nunito Sans', sans-serif; color: #514D63; margin-left: auto;">isotipo.svg ↓</span></div>
+      </a>
+      <a href="../../logos/svg/alquia-isotipo-blanco.svg" download="alquia-isotipo-blanco.svg" style="text-decoration: none; color: inherit; border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #5B4BC4; height: 130px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-isotipo-blanco.svg" style="height: 64px;" alt="Isotipo blanco"></div>
+        <div style="padding: 14px 16px; display: flex; align-items: center; gap: 8px;"><span style="font: 600 13.5px 'Nunito Sans', sans-serif;">Isotipo blanco</span><span style="font: 400 12px 'Nunito Sans', sans-serif; color: #514D63; margin-left: auto;">isotipo-blanco.svg ↓</span></div>
+      </a>
+      <a href="../../logos/svg/alquia-isotipo-sobre-indigo.svg" download="alquia-isotipo-sobre-indigo.svg" style="text-decoration: none; color: inherit; border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #5B4BC4; height: 130px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-isotipo-sobre-indigo.svg" style="height: 64px;" alt="Isotipo bicolor sobre índigo"></div>
+        <div style="padding: 14px 16px; display: flex; align-items: center; gap: 8px;"><span style="font: 600 13.5px 'Nunito Sans', sans-serif;">Bicolor sobre índigo</span><span style="font: 400 12px 'Nunito Sans', sans-serif; color: #514D63; margin-left: auto;">isotipo-sobre-indigo.svg ↓</span></div>
+      </a>
+    </div>
+    <p style="margin: 0; font: 400 13.5px 'Nunito Sans', sans-serif; color: #514D63;">También en PNG para redes: <a href="../../logos/png/alquia-isotipo-principal-1024.png" download="alquia-isotipo-1024.png" style="color: #5B4BC4;">isotipo 1024 px</a> · <a href="../../logos/png/alquia-lockup-principal-3000px.png" download="alquia-lockup-3000.png" style="color: #5B4BC4;">lockup 3000 px</a> · <a href="../../logos/svg/alquia-isotipo-mono-indigo.svg" download="alquia-isotipo-mono.svg" style="color: #5B4BC4;">isotipo monocromo SVG</a></p>
+  </div>
+
+  <!-- 03 Color -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">03</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Color</h2>
+      <p style="margin: 0; font: 400 15px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 640px;">Paleta Vibrante. El índigo lidera, el rosa acentúa (nunca más del 10% de una pieza), la tinta escribe. Los claros son fondos y estados suaves.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #5B4BC4; height: 110px;"></div><div style="padding: 14px 16px; display: flex; align-items: baseline; gap: 8px;"><span style="font: 600 14px 'Nunito Sans', sans-serif;">Índigo</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63; margin-left: auto;">#5B4BC4</span></div></div>
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #DB4C8E; height: 110px;"></div><div style="padding: 14px 16px; display: flex; align-items: baseline; gap: 8px;"><span style="font: 600 14px 'Nunito Sans', sans-serif;">Rosa</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63; margin-left: auto;">#DB4C8E</span></div></div>
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #1E1B2E; height: 110px;"></div><div style="padding: 14px 16px; display: flex; align-items: baseline; gap: 8px;"><span style="font: 600 14px 'Nunito Sans', sans-serif;">Tinta</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63; margin-left: auto;">#1E1B2E</span></div></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #A79AF0; height: 64px;"></div><div style="padding: 10px 14px;"><div style="font: 600 13px 'Nunito Sans', sans-serif;">Lila</div><div style="font: 400 12px ui-monospace, monospace; color: #514D63;">#A79AF0</div></div></div>
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #F5A6CB; height: 64px;"></div><div style="padding: 10px 14px;"><div style="font: 600 13px 'Nunito Sans', sans-serif;">Rosa claro</div><div style="font: 400 12px ui-monospace, monospace; color: #514D63;">#F5A6CB</div></div></div>
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #F6F5FC; height: 64px; border-bottom: 1px solid #EDEBF7;"></div><div style="padding: 10px 14px;"><div style="font: 600 13px 'Nunito Sans', sans-serif;">Superficie</div><div style="font: 400 12px ui-monospace, monospace; color: #514D63;">#F6F5FC</div></div></div>
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #514D63; height: 64px;"></div><div style="padding: 10px 14px;"><div style="font: 600 13px 'Nunito Sans', sans-serif;">Gris</div><div style="font: 400 12px ui-monospace, monospace; color: #514D63;">#514D63</div></div></div>
+      <div style="border-radius: 16px; overflow: hidden; border: 2px solid #EDEBF7;"><div style="background: #FFFFFF; height: 64px; border-bottom: 1px solid #EDEBF7;"></div><div style="padding: 10px 14px;"><div style="font: 600 13px 'Nunito Sans', sans-serif;">Blanco</div><div style="font: 400 12px ui-monospace, monospace; color: #514D63;">#FFFFFF</div></div></div>
+    </div>
+
+    <h3 style="margin: 12px 0 0; font: 700 19px 'Quicksand', sans-serif;">Colores semánticos de interfaz</h3>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px;"><span style="display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; font: 700 13.5px 'Nunito Sans', sans-serif; color: #1E874B; background: #E6F4EC; border: 1.5px solid currentColor; border-radius: 999px; padding: 4px 12px;">Éxito</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">#1E874B / #E6F4EC</span><span style="font: 400 12.5px 'Nunito Sans', sans-serif; color: #514D63;">Pagado, confirmaciones</span></div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px;"><span style="display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; font: 700 13.5px 'Nunito Sans', sans-serif; color: #B26A00; background: #F8EFDB; border: 1.5px solid currentColor; border-radius: 999px; padding: 4px 12px;">Advertencia</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">#B26A00 / #F8EFDB</span><span style="font: 400 12.5px 'Nunito Sans', sans-serif; color: #514D63;">Por vencer, avisos</span></div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px;"><span style="display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; font: 700 13.5px 'Nunito Sans', sans-serif; color: #CE3F53; background: #FBE9EC; border: 1.5px solid currentColor; border-radius: 999px; padding: 4px 12px;">Error</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">#CE3F53 / #FBE9EC</span><span style="font: 400 12.5px 'Nunito Sans', sans-serif; color: #514D63;">Vencido, errores</span></div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px;"><span style="display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; font: 700 13.5px 'Nunito Sans', sans-serif; color: #5B4BC4; background: #E7E3F8; border: 1.5px solid currentColor; border-radius: 999px; padding: 4px 12px;">Info</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">#5B4BC4 / #E7E3F8</span><span style="font: 400 12.5px 'Nunito Sans', sans-serif; color: #514D63;">Contratos, notas neutras</span></div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <h3 style="margin: 0; font: 700 19px 'Quicksand', sans-serif;">Valores para imprenta</h3>
+        <table style="width: 100%; border-collapse: collapse; font: 400 13px 'Nunito Sans', sans-serif;">
+          <thead><tr><th style="text-align: left; color: #514D63; padding: 6px 8px; border-bottom: 2px solid #C4BEE4; font-size: 12px;">Color</th><th style="text-align: left; color: #514D63; padding: 6px 8px; border-bottom: 2px solid #C4BEE4; font-size: 12px;">RGB</th><th style="text-align: left; color: #514D63; padding: 6px 8px; border-bottom: 2px solid #C4BEE4; font-size: 12px;">CMYK ref.</th><th style="text-align: left; color: #514D63; padding: 6px 8px; border-bottom: 2px solid #C4BEE4; font-size: 12px;">Pantone ref.</th></tr></thead>
+          <tbody>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;"><strong>Índigo</strong></td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">91 · 75 · 196</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">54/62/0/23</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">2098 C</td></tr>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;"><strong>Rosa</strong></td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">219 · 76 · 142</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">0/65/35/14</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">7423 C</td></tr>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;"><strong>Tinta</strong></td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">30 · 27 · 46</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">35/41/0/82</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">5255 C</td></tr>
+            <tr><td style="padding: 7px 8px;"><strong>Lila</strong></td><td style="padding: 7px 8px;">167 · 154 · 240</td><td style="padding: 7px 8px;">30/36/0/6</td><td style="padding: 7px 8px;">2705 C</td></tr>
+          </tbody>
+        </table>
+        <span style="font: 400 12px/1.5 'Nunito Sans', sans-serif; color: #514D63;">CMYK y Pantone son conversiones de referencia: validar con prueba de color antes de imprimir. Tabla completa en color/alquia-paleta.md.</span>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <h3 style="margin: 0; font: 700 19px 'Quicksand', sans-serif;">Contraste WCAG (AA = 4.5:1)</h3>
+        <table style="width: 100%; border-collapse: collapse; font: 400 13px 'Nunito Sans', sans-serif;">
+          <thead><tr><th style="text-align: left; color: #514D63; padding: 6px 8px; border-bottom: 2px solid #C4BEE4; font-size: 12px;">Combinación</th><th style="text-align: left; color: #514D63; padding: 6px 8px; border-bottom: 2px solid #C4BEE4; font-size: 12px;">Ratio</th><th style="text-align: left; color: #514D63; padding: 6px 8px; border-bottom: 2px solid #C4BEE4; font-size: 12px;">Uso</th></tr></thead>
+          <tbody>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">Tinta sobre blanco</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">16.2:1</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7; color: #1E874B; font-weight: 700;">✓ Todo texto</td></tr>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">Gris sobre blanco</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">7.5:1</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7; color: #1E874B; font-weight: 700;">✓ Todo texto</td></tr>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">Índigo ↔ blanco</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">6.3:1</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7; color: #1E874B; font-weight: 700;">✓ Todo texto</td></tr>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">Semánticos sobre blanco</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">≥ 4.6:1</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7; color: #1E874B; font-weight: 700;">✓ Todo texto</td></tr>
+            <tr><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">Rosa sobre blanco</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7;">3.9:1</td><td style="padding: 7px 8px; border-bottom: 1px solid #EDEBF7; color: #B26A00; font-weight: 700;">Solo ≥ 24 px bold</td></tr>
+            <tr><td style="padding: 7px 8px;">Lila sobre índigo</td><td style="padding: 7px 8px;">2.3:1</td><td style="padding: 7px 8px; color: #CE3F53; font-weight: 700;">Solo decorativo</td></tr>
+          </tbody>
+        </table>
+        <span style="font: 400 12px/1.5 'Nunito Sans', sans-serif; color: #514D63;">Prohibido: rosa sobre índigo, lila sobre blanco, gris sobre índigo.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 Tipografía -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">04</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Tipografía</h2>
+      <p style="margin: 0; font: 400 15px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 640px;">Dos familias, ambas en Google Fonts. Quicksand para títulos y cifras destacadas; Nunito Sans para interfaz y texto corrido. El logotipo no se tipea con ninguna de las dos: es un dibujo propio y se usa desde sus archivos.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; gap: 16px;">
+        <span style="font: 700 72px/1 'Quicksand', sans-serif;">Aa</span>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font: 700 17px 'Quicksand', sans-serif;">Quicksand</span>
+          <span style="font: 400 13.5px 'Nunito Sans', sans-serif; color: #514D63;">Marca, títulos y cifras destacadas · Medium 500, SemiBold 600, Bold 700</span>
+        </div>
+        <span style="font: 600 20px 'Quicksand', sans-serif; color: #514D63;">alquia gestiona tus alquileres</span>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; gap: 16px;">
+        <span style="font: 700 72px/1 'Nunito Sans', sans-serif;">Aa</span>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font: 700 17px 'Nunito Sans', sans-serif;">Nunito Sans</span>
+          <span style="font: 400 13.5px 'Nunito Sans', sans-serif; color: #514D63;">Interfaz y texto corrido · Regular 400, SemiBold 600, Bold 700</span>
+        </div>
+        <span style="font: 400 15px/1.5 'Nunito Sans', sans-serif; color: #514D63;">Contratos, pagos y comunicación con inquilinos en un solo lugar.</span>
+      </div>
+    </div>
+    <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 4px;">
+      <h3 style="margin: 0 0 12px; font: 700 19px 'Quicksand', sans-serif;">Jerarquía</h3>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px 24px; align-items: baseline;">
+        <span style="font: 700 30px/1.25 'Quicksand', sans-serif;">Título de pantalla</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">Quicksand 700 · 28–32 px · 1.25</span>
+        <span style="font: 700 22px/1.3 'Quicksand', sans-serif;">Título de sección</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">Quicksand 700 · 22 px · 1.3</span>
+        <span style="font: 700 34px/1.1 'Quicksand', sans-serif; font-variant-numeric: tabular-nums;">$ 2.910.000</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">Quicksand 700 · 34 px · tabular</span>
+        <span style="font: 400 17px/1.55 'Nunito Sans', sans-serif;">Texto de cuerpo, siempre generoso y legible.</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">Nunito Sans 400 · 17 px · 1.55</span>
+        <span style="font: 400 15px/1.5 'Nunito Sans', sans-serif; color: #514D63;">Texto secundario en gris.</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">Nunito Sans 400 · 15 px · 1.5</span>
+        <span style="font: 700 17px 'Nunito Sans', sans-serif; color: #5B4BC4;">Etiqueta o botón</span><span style="font: 400 12.5px ui-monospace, monospace; color: #514D63;">Nunito Sans 700 · 16–17 px</span>
+      </div>
+      <span style="margin-top: 12px; font: 400 12.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">Mínimos: 15 px en pantalla, 12 pt en impresos. Fallbacks: Quicksand → 'Trebuchet MS', 'Segoe UI', sans-serif · Nunito Sans → 'Segoe UI', Arial, sans-serif. En email, usar fuentes seguras (Verdana/Arial).</span>
+    </div>
+  </div>
+
+  <!-- 05 Área de respeto y tamaños -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">05</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Área de respeto y tamaños mínimos</h2>
+      <p style="margin: 0; font: 400 15px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 640px;">Alrededor del logo se reserva un margen igual al diámetro del punto (●). Nada entra en esa zona: ni texto, ni bordes, ni otros logos.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 40px; display: flex; align-items: center; justify-content: center;">
+        <div style="position: relative; border: 1.5px dashed #A79AF0; border-radius: 8px; padding: 34px 38px;">
+          <img src="../../logos/svg/alquia-lockup-principal.svg" alt="alquia" style="height: 56px; display: block;">
+          <span style="position: absolute; left: 8px; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: #EDEBF7; border: 1.5px dashed #A79AF0;"></span>
+          <span style="position: absolute; right: 8px; bottom: -8px; width: 16px; height: 16px; border-radius: 50%; background: #EDEBF7; border: 1.5px dashed #A79AF0;"></span>
+        </div>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <img src="../../logos/svg/alquia-lockup-principal.svg" style="height: 26px;" alt="Lockup 26px">
+          <span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63;">Logotipo: mínimo 24 px de alto</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <svg width="18" height="18" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"></circle></svg>
+          <span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63;">Isotipo: mínimo 16 px</span>
+        </div>
+        <span style="font: 400 13px/1.5 'Nunito Sans', sans-serif; color: #514D63;">Por debajo de estos tamaños, el techito pierde definición.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 06 Usos incorrectos -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">06</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Usos incorrectos</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden;">
+        <div style="background: #F6F5FC; height: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden;"><img src="../../logos/svg/alquia-lockup-principal.svg" style="height: 40px; transform: scaleX(1.5);" alt="Logo estirado"></div>
+        <div style="padding: 12px 16px; display: flex; align-items: center; gap: 8px;"><span style="color: #CE3F53; font: 700 14px 'Nunito Sans', sans-serif;">✕</span><span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63;">No deformar</span></div>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden;">
+        <div style="background: #F6F5FC; height: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden;"><img src="../../logos/svg/alquia-lockup-principal.svg" style="height: 40px; transform: rotate(-14deg);" alt="Logo rotado"></div>
+        <div style="padding: 12px 16px; display: flex; align-items: center; gap: 8px;"><span style="color: #CE3F53; font: 700 14px 'Nunito Sans', sans-serif;">✕</span><span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63;">No rotar</span></div>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden;">
+        <div style="background: #F6F5FC; height: 120px; display: flex; align-items: center; justify-content: center; gap: 6px;"><img src="../../logos/svg/alquia-lockup-principal.svg" style="height: 48px; filter: hue-rotate(150deg) saturate(1.4);" alt="Logo con colores cambiados"></div>
+        <div style="padding: 12px 16px; display: flex; align-items: center; gap: 8px;"><span style="color: #CE3F53; font: 700 14px 'Nunito Sans', sans-serif;">✕</span><span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63;">No cambiar los colores</span></div>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 16px; overflow: hidden;">
+        <div style="background: #F6F5FC; height: 120px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-lockup-principal.svg" style="height: 40px; filter: drop-shadow(3px 4px 3px rgba(30,27,46,0.45));" alt="Logo con sombra"></div>
+        <div style="padding: 12px 16px; display: flex; align-items: center; gap: 8px;"><span style="color: #CE3F53; font: 700 14px 'Nunito Sans', sans-serif;">✕</span><span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63;">No agregar sombras</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 07 Aplicaciones -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">07</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Aplicaciones</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 18px;">
+        <div style="width: 96px; height: 96px; border-radius: 50%; background: #5B4BC4; display: flex; align-items: center; justify-content: center;"><svg width="52" height="52" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#F5A6CB" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#FFFFFF"></circle></svg></div>
+        <span style="font: 600 13.5px 'Nunito Sans', sans-serif; color: #514D63;">Avatar de redes</span>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 18px;">
+        <div style="width: 96px; height: 96px; border-radius: 24px; background: #5B4BC4; display: flex; align-items: center; justify-content: center;"><svg width="52" height="52" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#F5A6CB" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#FFFFFF"></circle></svg></div>
+        <span style="font: 600 13.5px 'Nunito Sans', sans-serif; color: #514D63;">Ícono de app</span>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;">
+        <div style="display: flex; align-items: flex-end; gap: 20px;">
+          <svg width="32" height="32" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"></circle></svg>
+          <svg width="16" height="16" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"></circle></svg>
+        </div>
+        <span style="font: 600 13.5px 'Nunito Sans', sans-serif; color: #514D63;">Favicon · 32 y 16 px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 08 Tono de voz -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">08</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Tono de voz</h2>
+      <p style="margin: 0; font: 400 15px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 640px;">Alquia le habla a propietarios e inmobiliarias que buscan simplicidad, no más trabajo. La marca suena como un administrador de confianza: sabe del tema, avisa a tiempo y nunca dramatiza.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font: 700 17px 'Quicksand', sans-serif; color: #5B4BC4;">Claro</span>
+        <p style="margin: 0; font: 400 13.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">Frases cortas, palabras de todos los días. Nada de jerga técnica, contable ni legal sin explicar.</p>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font: 700 17px 'Quicksand', sans-serif; color: #5B4BC4;">Cercano</span>
+        <p style="margin: 0; font: 400 13.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">Tratamiento de usted, cálido y directo. Le habla a una persona, no a un «usuario». Sin exclamaciones ni emojis.</p>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font: 700 17px 'Quicksand', sans-serif; color: #5B4BC4;">Tranquilizador</span>
+        <p style="margin: 0; font: 400 13.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">Avisa antes de que sea un problema y dice qué hacer a continuación. Informa la urgencia sin alarmar.</p>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font: 700 17px 'Quicksand', sans-serif; color: #5B4BC4;">Concreto</span>
+        <p style="margin: 0; font: 400 13.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">Siempre con monto, fecha, propiedad y persona. «El alquiler de julio vence el viernes 10», no «tiene vencimientos próximos».</p>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; overflow: hidden;">
+        <div style="padding: 14px 24px; background: #E6F4EC; display: flex; align-items: center; gap: 8px;"><span style="color: #1E874B; font: 700 15px 'Nunito Sans', sans-serif;">✓ Así habla Alquia</span></div>
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif;">«Le avisamos: el alquiler de Güemes 1120 ($ 465.000) vence mañana.»</p>
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif;">«Pago guardado. La propiedad ahora figura como pagada.»</p>
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif;">«No pudimos guardar los cambios. Revise su conexión y pruebe de nuevo.»</p>
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif;">«El contrato con Jorge Paletta termina en 58 días. Conviene definir la renovación con tiempo.»</p>
+        </div>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; overflow: hidden;">
+        <div style="padding: 14px 24px; background: #FBE9EC; display: flex; align-items: center; gap: 8px;"><span style="color: #CE3F53; font: 700 15px 'Nunito Sans', sans-serif;">✕ Así no</span></div>
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">«¡ATENCIÓN! Vencimiento inminente en su cartera.»</p>
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">«La transacción fue procesada exitosamente en el sistema.»</p>
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">«Error 500: excepción interna del servidor.»</p>
+          <p style="margin: 0; font: 400 14.5px/1.6 'Nunito Sans', sans-serif; color: #514D63;">«Su contrato entra en período de caducidad contractual.»</p>
+        </div>
+      </div>
+    </div>
+    <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+      <h3 style="margin: 0; font: 700 19px 'Quicksand', sans-serif;">Vocabulario</h3>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 24px; font: 400 14px 'Nunito Sans', sans-serif;">
+        <span><strong style="color: #1E874B;">pago</strong> <span style="color: #514D63;">— no «transacción»</span></span>
+        <span><strong style="color: #1E874B;">aviso</strong> <span style="color: #514D63;">— no «notificación push»</span></span>
+        <span><strong style="color: #1E874B;">propiedad</strong> <span style="color: #514D63;">— no «unidad» ni «activo»</span></span>
+        <span><strong style="color: #1E874B;">inquilino</strong> <span style="color: #514D63;">— no «locatario»</span></span>
+        <span><strong style="color: #1E874B;">vencimiento</strong> <span style="color: #514D63;">— no «fecha límite de pago»</span></span>
+        <span><strong style="color: #1E874B;">guardar</strong> <span style="color: #514D63;">— no «persistir» ni «procesar»</span></span>
+      </div>
+    </div>
+    <p style="margin: 0; font: 400 13.5px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 720px;">Regla rápida: antes de publicar un texto, léalo en voz alta. Si no se lo diría a un propietario en persona, se reescribe.</p>
+  </div>
+
+  <!-- 09 Nombre y tagline -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">09</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Nombre y tagline</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="background: #5B4BC4; border-radius: 18px; padding: 40px; display: flex; flex-direction: column; gap: 12px; justify-content: center;">
+        <span style="font: 700 26px/1.3 'Quicksand', sans-serif; color: #FFFFFF;">Sus alquileres, en orden y a la vista.</span>
+        <span style="font: 400 14px 'Nunito Sans', sans-serif; color: #DDD9F0;">Propuesta de valor oficial. Descriptor corto: «Plataforma de gestión de alquileres».</span>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 10px; font: 400 14.5px/1.6 'Nunito Sans', sans-serif;">
+        <span><strong style="color: #1E874B;">✓</strong> En texto corrido: <strong>Alquia</strong> (mayúscula inicial, sin cursiva ni comillas).</span>
+        <span><strong style="color: #1E874B;">✓</strong> En el logotipo: siempre en minúsculas y siempre desde los archivos.</span>
+        <span><strong style="color: #CE3F53;">✕</strong> Nunca «ALQUIA», «AlquiA», «alquia» en texto, ni traducciones del nombre.</span>
+        <span><strong style="color: #CE3F53;">✕</strong> Nunca combinar el nombre con otro techo, casa o ícono inmobiliario.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 Aplicaciones digitales -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">10</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Modo oscuro, email y redes</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #1E1B2E; padding: 32px; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-lockup-sobre-oscuro.svg" alt="Lockup sobre oscuro" style="height: 44px;"></div>
+        <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; font: 400 13.5px/1.55 'Nunito Sans', sans-serif; color: #514D63;">
+          <strong style="color: #1E1B2E; font-size: 15px;">Modo oscuro</strong>
+          <span>Fondo tinta #1E1B2E (nunca negro puro). Logo «sobre oscuro», texto blanco, secundario #DDD9F0, acentos en lila.</span>
+        </div>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #F6F5FC; padding: 32px; display: flex; align-items: center; justify-content: center;"><div style="background: #FFFFFF; border: 1px solid #DEDAF0; border-radius: 10px; padding: 14px 22px;"><img src="../../logos/svg/alquia-lockup-principal.svg" alt="Logo en email" style="height: 34px; display: block;"></div></div>
+        <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; font: 400 13.5px/1.55 'Nunito Sans', sans-serif; color: #514D63;">
+          <strong style="color: #1E1B2E; font-size: 15px;">Email</strong>
+          <span>Solo los PNG de email/ (fondo blanco y margen aplicados: sobreviven al modo oscuro del cliente). Máx. 180 px de ancho, fuentes seguras, botones índigo.</span>
+        </div>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="background: #F6F5FC; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: #5B4BC4; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#F5A6CB" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#FFFFFF"></circle></svg></div>
+          <div style="width: 96px; height: 50px; border-radius: 8px; background: #5B4BC4; display: flex; align-items: center; justify-content: center;"><img src="../../logos/svg/alquia-lockup-sobre-oscuro.svg" alt="OG" style="height: 22px;"></div>
+        </div>
+        <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; font: 400 13.5px/1.55 'Nunito Sans', sans-serif; color: #514D63;">
+          <strong style="color: #1E1B2E; font-size: 15px;">Redes</strong>
+          <span>Avatar: isotipo blanco sobre índigo con 26% de margen (a salvo del recorte circular). Open Graph 1200×630 en social/.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 Iconografía y fotografía -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">11</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Iconografía y fotografía</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; gap: 20px; color: #1E1B2E;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9z"></path><path d="M10 20a2.2 2.2 0 004 0"></path></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2"></rect><path d="M2.5 10h19"></path><path d="M6 14.5h4"></path></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h8l4 4V21.5H6z"></path><path d="M14 2.5v4h4"></path><path d="M9 12h6M9 16h6"></path></svg>
+        </div>
+        <p style="margin: 0; font: 400 14px/1.6 'Nunito Sans', sans-serif; color: #514D63;"><strong style="color: #1E1B2E;">Iconografía:</strong> trazo de 2 px, terminaciones y uniones redondeadas, sin rellenos, grilla de 24 px. En color tinta o índigo; los semánticos solo en estados. Coherente con el trazo redondeado del logotipo.</p>
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 12px; font: 400 14px/1.6 'Nunito Sans', sans-serif; color: #514D63;">
+        <strong style="color: #1E1B2E; font-size: 15px;">Fotografía</strong>
+        <span><strong style="color: #1E874B;">✓</strong> Hogares reales y habitados, luz natural cálida, personas genuinas (propietarios e inquilinos, no modelos posando).</span>
+        <span><strong style="color: #1E874B;">✓</strong> Sobre fotos, texto solo con capa índigo al 60% o sobre zonas limpias.</span>
+        <span><strong style="color: #CE3F53;">✕</strong> Nada de stock genérico: apretones de manos, llaves gigantes, rascacielos corporativos, filtros saturados.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 Archivos y versiones -->
+  <div style="display: flex; flex-direction: column; gap: 28px;">
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font: 700 14px 'Quicksand', sans-serif; color: #5B4BC4; letter-spacing: 0.08em;">12</span>
+      <h2 style="margin: 0; font: 700 30px 'Quicksand', sans-serif;">Archivos y versiones</h2>
+      <p style="margin: 0; font: 400 15px/1.6 'Nunito Sans', sans-serif; color: #514D63; max-width: 640px;">Todo se entrega en la carpeta <span style="font-family: ui-monospace, monospace;">Alquia_Brand_v1.1/</span>. Los logotipos están convertidos a trazados en todos los formatos: no dependen de ninguna fuente instalada.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 28px; font: 400 13.5px/1.9 ui-monospace, monospace; color: #1E1B2E;">
+Alquia_Brand_v1.1/<br>
+├── manual/ <span style="color: #514D63;">— fuente y export del manual</span><br>
+├── logos/svg · pdf · eps · png<br>
+├── icons/ <span style="color: #514D63;">— favicons, touch, PWA</span><br>
+├── social/ <span style="color: #514D63;">— avatar, app icon, OG</span><br>
+├── email/ · fonts/ · color/<br>
+├── README.md<br>
+└── CHANGELOG.md
+      </div>
+      <div style="border: 2px solid #EDEBF7; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 10px; font: 400 14px/1.6 'Nunito Sans', sans-serif; color: #514D63;">
+        <strong style="color: #1E1B2E; font-size: 15px;">Versionado</strong>
+        <span><strong style="color: #1E1B2E;">v1.1</strong> — Julio 2026 · logotipo a trazados, paquete completo de entrega, tono de voz y reglas digitales.</span>
+        <span><strong style="color: #1E1B2E;">v1.0</strong> — Julio 2026 · primera versión de la identidad.</span>
+        <span>Cada cambio de identidad sube la versión y se anota en <span style="font-family: ui-monospace, monospace;">CHANGELOG.md</span>. La fuente editable del manual es este documento HTML.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="border-top: 2px solid #EDEBF7; padding-top: 24px; display: flex; align-items: center; gap: 12px;">
+    <svg width="20" height="20" viewBox="0 0 30 30" fill="none"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"></circle></svg>
+    <span style="font: 400 13px 'Nunito Sans', sans-serif; color: #514D63;">Alquia · Manual de marca v1.1 — Todos los archivos de entrega viven en la carpeta <span style="font-family: ui-monospace, monospace;">Alquia_Brand_v1.1/</span></span>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;guias&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Construcción&quot;}, &quot;portadaOscura&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Portada&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const oscura = this.props.portadaOscura ?? false;
+    return {
+      guias: this.props.guias ?? false,
+      portadaOscura: oscura,
+      portadaClara: !oscura
+    };
+  }
+}
+</script>
+</body>
+</html>

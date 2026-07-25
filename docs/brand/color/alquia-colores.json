@@ -1,0 +1,158 @@
+{
+  "version": "1.1",
+  "marca": {
+    "indigo": {
+      "hex": "#5B4BC4",
+      "rgb": [
+        91,
+        75,
+        196
+      ],
+      "cmyk_ref": [
+        54,
+        62,
+        0,
+        23
+      ],
+      "pantone_ref": "2098 C"
+    },
+    "rosa": {
+      "hex": "#DB4C8E",
+      "rgb": [
+        219,
+        76,
+        142
+      ],
+      "cmyk_ref": [
+        0,
+        65,
+        35,
+        14
+      ],
+      "pantone_ref": "7423 C"
+    },
+    "tinta": {
+      "hex": "#1E1B2E",
+      "rgb": [
+        30,
+        27,
+        46
+      ],
+      "cmyk_ref": [
+        35,
+        41,
+        0,
+        82
+      ],
+      "pantone_ref": "5255 C"
+    },
+    "lila": {
+      "hex": "#A79AF0",
+      "rgb": [
+        167,
+        154,
+        240
+      ],
+      "cmyk_ref": [
+        30,
+        36,
+        0,
+        6
+      ],
+      "pantone_ref": "2705 C"
+    },
+    "rosaClaro": {
+      "hex": "#F5A6CB",
+      "rgb": [
+        245,
+        166,
+        203
+      ],
+      "cmyk_ref": [
+        0,
+        32,
+        17,
+        4
+      ],
+      "pantone_ref": "217 C"
+    },
+    "superficie": {
+      "hex": "#F6F5FC",
+      "rgb": [
+        246,
+        245,
+        252
+      ]
+    },
+    "gris": {
+      "hex": "#514D63",
+      "rgb": [
+        81,
+        77,
+        99
+      ],
+      "cmyk_ref": [
+        18,
+        22,
+        0,
+        61
+      ],
+      "pantone_ref": "5285 C"
+    },
+    "blanco": {
+      "hex": "#FFFFFF",
+      "rgb": [
+        255,
+        255,
+        255
+      ]
+    }
+  },
+  "semanticos": {
+    "exito": {
+      "texto": "#1E874B",
+      "fondo": "#E6F4EC"
+    },
+    "advertencia": {
+      "texto": "#B26A00",
+      "fondo": "#F8EFDB"
+    },
+    "error": {
+      "texto": "#CE3F53",
+      "fondo": "#FBE9EC"
+    },
+    "info": {
+      "texto": "#5B4BC4",
+      "fondo": "#E7E3F8"
+    }
+  },
+  "bordes": {
+    "tarjeta": "#DEDAF0",
+    "campo": "#C4BEE4",
+    "divisorSuave": "#EDEBF7",
+    "hoverFila": "#F1EFFA"
+  },
+  "modoOscuro": {
+    "textoSecundario": {
+      "hex": "#DDD9F0",
+      "rgb": [221, 217, 240],
+      "uso": "Texto secundario sobre índigo o tinta (paneles hero, formularios de auth)"
+    }
+  },
+  "estadosInteraccion": {
+    "normal": "#5B4BC4",
+    "hover": "#463AA0",
+    "active": "#3A3084",
+    "focusRing": {
+      "color": "#A79AF0",
+      "grosor": "3px",
+      "offsetBlanco": "2px",
+      "sobreOscuro": "#FFFFFF"
+    },
+    "disabled": {
+      "fondo": "#E7E3F8",
+      "texto": "#9B95B5"
+    },
+    "nota": "El rosa nunca es fondo de botón/CTA"
+  }
+}
