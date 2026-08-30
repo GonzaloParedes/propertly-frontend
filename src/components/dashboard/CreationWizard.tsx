@@ -1,33 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 
 type WizardKind = "property" | "contract" | "tenant";
-
-/**
- * Validación de CUIT/CUIL con dígito verificador (módulo 11).
- * El backend lo exige con @ValidTaxId en TenantRequest: si acá no se valida,
- * el alta falla recién al guardar y sin decir por qué.
- */
-const PESOS = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-
-function soloDigitos(s: string) { return s.replace(/\D/g, "").slice(0, 11); }
-
-function formatearCuit(s: string) {
-  const d = soloDigitos(s);
-  if (d.length <= 2) return d;
-  if (d.length <= 10) return `${d.slice(0, 2)}-${d.slice(2)}`;
-  return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
-}
-
-function cuitValido(s: string) {
-  const d = soloDigitos(s);
-  if (d.length !== 11) return false;
-  const suma = PESOS.reduce((acc, peso, i) => acc + peso * Number(d[i]), 0);
-  const resto = suma % 11;
-  const esperado = resto === 0 ? 0 : resto === 1 ? 9 : 11 - resto;
-  return esperado === Number(d[10]);
-}
 
 const correoValido = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
 

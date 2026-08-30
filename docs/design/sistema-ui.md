@@ -502,10 +502,14 @@ Corregirlo antes de tocar Cobranzas.
 
 ## Pendientes
 
-- [ ] **Bug: el registro no puede funcionar.** `RegisterRequest` exige `taxId`
-      (`@NotBlank @ValidTaxId`, y `User.taxId` es `nullable = false, unique`),
-      pero `/registro` no tiene campo de CUIT y no lo manda. Devuelve 400
-      siempre.
+- [x] **Bug: el registro no podía funcionar.** `RegisterRequest` exige `taxId`
+      (`@NotBlank @ValidTaxId`, y `User.taxId` es `nullable = false, unique`)
+      y `/registro` no lo mandaba: devolvía 400 siempre. Resuelto el 30/08/2026
+      agregando el campo al formulario. Ojo con el cruce: son **dos** CUIT
+      distintos —el de `User`, que es el propietario dueño de la cuenta, y el
+      de `Tenant`, que es el inquilino y ya lo pedía el asistente—. La
+      validación con dígito verificador vive ahora en `src/lib/cuit.ts` y la
+      usan los dos.
 - [ ] Corregir `payments` y `tenantPortal` en `backend-client.ts` y
       `backend-types.ts` (ver «Deuda del cliente HTTP»).
 - [ ] Pasar al backend la lista de campos y cambios estructurales pedidos.
