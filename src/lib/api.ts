@@ -14,18 +14,23 @@ export class AuthExpiredError extends Error {
   }
 }
 
-async function request<T>(
+async function fetchWithAuth(
   path: string,
   init: RequestInit = {},
   retry = true
-): Promise<T> {
+): Promise<Response> {
+  // Un body FormData no lleva Content-Type propio: fetch calcula el boundary
+  // multipart solo cuando arma el header él mismo.
+  const isFormData = init.body instanceof FormData;
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
+    headers: isFormData
+      ? init.headers
+      : {
+          "Content-Type": "application/json",
+          ...init.headers,
+        },
   });
 
   if (res.status === 401 && retry) {
@@ -37,7 +42,7 @@ async function request<T>(
       credentials: "include",
     });
     if (refreshRes.ok) {
-      return request<T>(path, init, false);
+      return fetchWithAuth(path, init, false);
     }
     throw new AuthExpiredError();
   }
@@ -53,6 +58,15 @@ async function request<T>(
     throw new ApiError(res.status, message);
   }
 
+  return res;
+}
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  retry = true
+): Promise<T> {
+  const res = await fetchWithAuth(path, init, retry);
   const text = await res.text();
   if (!text) return {} as T;
   // Algunos endpoints (ej. /auth/me) responden texto plano en vez de JSON.
@@ -78,4 +92,36 @@ export function apiPost<T>(
     },
     options?.retry ?? true
   );
+}
+
+export function apiPostForm<T>(
+  path: string,
+  formData: FormData,
+  options?: { retry?: boolean }
+): Promise<T> {
+  return request<T>(path, { method: "POST", body: formData }, options?.retry ?? true);
+}
+
+export function apiPut<T>(
+  path: string,
+  body?: unknown,
+  options?: { retry?: boolean }
+): Promise<T> {
+  return request<T>(
+    path,
+    {
+      method: "PUT",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    },
+    options?.retry ?? true
+  );
+}
+
+export function apiDelete<T>(path: string, options?: { retry?: boolean }): Promise<T> {
+  return request<T>(path, { method: "DELETE" }, options?.retry ?? true);
+}
+
+export async function apiGetBlob(path: string, options?: { retry?: boolean }): Promise<Blob> {
+  const res = await fetchWithAuth(path, { method: "GET" }, options?.retry ?? true);
+  return res.blob();
 }
