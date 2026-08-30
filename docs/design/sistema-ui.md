@@ -18,6 +18,17 @@ cómo se comportan los componentes de la app.
 | `docs/prototypes/alquia-mvp.html` | **Congelado el 19/08/2026.** Fue el prototipo original en HTML autónomo; el port a React lo dejó atrás. Sirve como referencia de la dirección de diseño, **no** como fuente de verdad: no tiene el buscador de direcciones, la validación de CUIT, el panel de filtros ni el asistente de inquilino. |
 | `docs/prototypes/maquetas-app.html` | Maquetas viejas. Fuente de **Claude Design Canvas** (usa `<x-dc>`, `<sc-if>`): no se ve bien en un navegador común, es normal. |
 
+**`/prototipo` sigue siendo una demo navegable sin sesión**, y es la hoja de ruta
+a la que hay que llegar: se mira ahí el diseño completo, incluidas las pantallas
+que todavía no existen. Por eso, cuando una vista se conecta al backend **no
+puede dejar de andar en el prototipo**. `OwnerWorkspace` recibe una prop `demo`
+que `PrototypeShell` pasa siempre: en modo demo no se llama al backend —esa ruta
+no tiene sesión y daría 401— y la vista usa los arrays de ejemplo del propio
+archivo. Al conectar la próxima vista, sumarle su rama `demo`.
+
+Los datos de ejemplo del prototipo también muestran los estados nuevos, no sólo
+el camino feliz: por eso hay un inquilino sin contrato en la lista.
+
 El modelo de datos del prototipo sale de `propertly-backend` rama **`origin/mvp`**,
 no de `main` ni de `src/lib/types.ts`. Ver «Modelo de datos: qué manda y qué
 se pide» al final.

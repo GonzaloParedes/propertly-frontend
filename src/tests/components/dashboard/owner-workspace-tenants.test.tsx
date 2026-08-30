@@ -76,6 +76,35 @@ describe("carga", () => {
   });
 });
 
+// --- Modo demo (/prototipo) ---
+
+describe("modo demo", () => {
+  it("no llama al backend: la ruta del prototipo no tiene sesión", () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" demo />);
+
+    expect(mockTenants).not.toHaveBeenCalled();
+    expect(mockContracts).not.toHaveBeenCalled();
+    expect(mockInvoices).not.toHaveBeenCalled();
+  });
+
+  it("muestra los inquilinos de ejemplo en vez de quedarse cargando", () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" demo />);
+
+    expect(screen.getByText("Jorge Paletta")).toBeInTheDocument();
+    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+  });
+
+  it("incluye un inquilino sin contrato, que también es parte del diseño", () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" demo />);
+
+    expect(screen.getByText("Sin contrato")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear contrato" })).toBeInTheDocument();
+  });
+});
+
 // --- Filas ---
 
 describe("filas", () => {

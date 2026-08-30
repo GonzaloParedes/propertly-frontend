@@ -10,7 +10,7 @@ export default function PrototypeShell() {
   return (
     <div className="min-h-screen" style={{ background: "var(--superficie)" }}>
       <DashboardNav activeView={view} onNavigate={setView} />
-      <OwnerWorkspace initialView="inicio" activeView={view} onNavigate={setView} />
+      <OwnerWorkspace initialView="inicio" activeView={view} onNavigate={setView} demo />
     </div>
   );
 }

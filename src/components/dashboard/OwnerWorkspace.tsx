@@ -62,6 +62,27 @@ const tenants = [
   { name: "Ana Ferreyra", tax: "27-28904113-9", email: "ana.ferreyra@gmail.com", property: properties[3] },
 ];
 
+/**
+ * Las filas de inquilino del prototipo salen de los mismos arrays de ejemplo que
+ * el resto de las vistas, así la demo no se contradice a sí misma. Se suma uno
+ * sin contrato: desde que el asistente permite cargar un inquilino suelto, ese
+ * estado es parte del diseño y el prototipo tiene que mostrarlo.
+ */
+const inquilinosDemo: TenantRow[] = [
+  ...tenants.map((tenant, indice) => ({
+    id: indice + 1,
+    nombre: tenant.name,
+    cuit: tenant.tax,
+    email: tenant.email,
+    contratoId: indice + 1,
+    direccion: tenant.property.address,
+    alquiler: tenant.property.rent,
+    estado: tenant.property.state === "Sin alquilar" ? ("Al día" as const) : tenant.property.state,
+  })),
+  { id: 90, nombre: "Luis Cabrera", cuit: "20-31447290-0", email: "luis.cabrera@gmail.com",
+    contratoId: null, direccion: null, alquiler: null, estado: "Sin contrato" },
+];
+
 function Status({ children }: { children: string }) {
   const config = children === "Al día" ? ["ok", "check"] : children === "Vencida" ? ["bad", "x"] : children === "Sin alquilar" ? ["none", "building"] : children === "Sin contrato" ? ["none", "file"] : children === "Pago a confirmar" ? ["info", "clock"] : ["warn", "clock"];
   return <span className={`owner-status owner-status--${config[0]}`}><Icon name={config[1] as IconName} size={15} />{children}</span>;
@@ -80,7 +101,7 @@ function Dialog({ title, children, onClose }: { title: string; children: React.R
   return <div className="owner-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><button type="button" aria-label="Cerrar" className="owner-dialog__backdrop" onClick={onClose} /><section className="owner-dialog__panel"><div className="owner-dialog__head"><h2 id="dialog-title">{title}</h2><button type="button" className="owner-icon-button" aria-label="Cerrar" onClick={onClose}><Icon name="x" /></button></div>{children}</section></div>;
 }
 
-export default function OwnerWorkspace({ initialView, activeView, onNavigate }: { initialView: View; activeView?: View; onNavigate?: (view: View) => void }) {
+export default function OwnerWorkspace({ initialView, activeView, onNavigate, demo = false }: { initialView: View; activeView?: View; onNavigate?: (view: View) => void; demo?: boolean }) {
   const [localView, setLocalView] = useState<View>(initialView);
   const [detail, setDetail] = useState<Detail>(null);
   const [creation, setCreation] = useState<Creation>(null);
@@ -105,7 +126,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate }: 
 
   // Sólo se cargan cuando la pantalla los necesita: el workspace también rinde
   // inicio, propiedades y cobranzas, y ahí estas tres llamadas serían al pedo.
-  const necesitaInquilinos = view === "inquilinos" || detail === "tenant";
+  // En /prototipo no se llama al backend: esa ruta es una demo navegable sin
+  // sesión, y las tres llamadas darían 401.
+  const necesitaInquilinos = !demo && (view === "inquilinos" || detail === "tenant");
 
   useEffect(() => {
     if (!necesitaInquilinos) return;
@@ -129,8 +152,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate }: 
     };
   }, [necesitaInquilinos]);
 
-  const inquilinos = carga && "ok" in carga ? carga.ok : null;
-  const inquilinosError = carga !== null && "error" in carga;
+  const inquilinos = demo ? inquilinosDemo : carga && "ok" in carga ? carga.ok : null;
+  const inquilinosError = !demo && carga !== null && "error" in carga;
   const selectedProperty = properties.find((property) => property.id === selected) ?? properties[0];
   const selectedContract = contracts.find((contract) => contract.id === selected) ?? contracts[0];
 
