@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { ApiError } from "@/lib/api";
+import { AlquiaBackendClient } from "@/lib/backend-client";
 
 const TIPS = [
   "Use al menos 8 caracteres",
@@ -141,6 +143,8 @@ function RestablecerContrasenaForm() {
     );
   }
 
+  const validToken: string = token;
+
   if (submitted) {
     return (
       <div className="flex flex-col items-center text-center">
@@ -196,12 +200,17 @@ function RestablecerContrasenaForm() {
     setIsPending(true);
 
     try {
-      // TODO: reemplazar con llamada real al backend
-      // POST /api/auth/reset-password  Body: { token: string, password: string }
-      await new Promise((r) => setTimeout(r, 800));
+      await AlquiaBackendClient.auth.resetPassword({
+        token: validToken,
+        newPassword: password,
+      });
       setSubmitted(true);
-    } catch {
-      setError("Ocurrió un error inesperado. Intente nuevamente más tarde.");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 400) {
+        setError("El enlace es inválido o ya expiró. Solicite uno nuevo.");
+      } else {
+        setError("Ocurrió un error inesperado. Intente nuevamente más tarde.");
+      }
       setIsPending(false);
     }
   }
