@@ -5,6 +5,17 @@
   --background: #ffffff;
   --foreground: #171717;
 
+  /* Espaciado — escala derivada de los valores que el diseño ya usaba, no de
+     una grilla impuesta. El nombre es el valor en px a propósito: el sistema
+     todavía no tiene tokens de radio ni de altura, y con nombres abstractos
+     («esp-3») no habría forma de «copiar el literal del hermano más parecido»,
+     que es la regla vigente en docs/design/sistema-ui.md.
+     Quedan 112 declaraciones con literales fuera de escala: son deuda visible
+     a propósito — si no usan token, todavía no se revisaron. */
+  --esp-2:2px;   --esp-6:6px;   --esp-8:8px;   --esp-10:10px;
+  --esp-12:12px; --esp-14:14px; --esp-16:16px; --esp-18:18px;
+  --esp-20:20px; --esp-26:26px; --esp-32:32px; --esp-44:44px;
+
   /* Brand — paleta vibrante (manual v1.1 julio 2026) */
   --primary: #5B4BC4;      /* Índigo */
   --primary-dark: #463AA0; /* Índigo oscuro — hover, derivado */
