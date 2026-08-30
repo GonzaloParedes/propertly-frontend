@@ -205,6 +205,7 @@ nombre en todo `OwnerWorkspace.css`.
 > | Radios | 4 tokens | 7 literales: `10 · 11 · 14 · 16 · 18 · 20 · 999px` |
 > | Alturas de control | 3 tokens | 9 literales, de `34px` a `64px` |
 > | Anillos | 3 tokens | `box-shadow:inset` escrito a mano en cada regla |
+> | Espaciado | **12 tokens, ya en el código** | 112 literales sin migrar (ver Espaciado) |
 >
 > Los `14px` (radio) y `999px` (píldora) concentran la mayoría de los usos: ante
 > la duda, ésos.
@@ -237,6 +238,11 @@ nombre en todo `OwnerWorkspace.css`.
   /* alturas de control — tres, sin excepciones */
   --alto:52px; --alto-sm:40px; --alto-lg:58px;
 
+  /* espaciado — los únicos que hoy existen de verdad en el código */
+  --esp-2:2px;   --esp-6:6px;   --esp-8:8px;   --esp-10:10px;
+  --esp-12:12px; --esp-14:14px; --esp-16:16px; --esp-18:18px;
+  --esp-20:20px; --esp-26:26px; --esp-32:32px; --esp-44:44px;
+
   /* sombras */
   --sombra:0 1px 3px rgba(30,27,46,.03), 0 14px 34px -12px rgba(30,27,46,.13);
   --sombra-sm:0 1px 2px rgba(30,27,46,.04), 0 4px 12px -4px rgba(30,27,46,.07);
@@ -253,6 +259,54 @@ Reglas de uso:
   excepción, porque ahí el borde *es* el dato.
 - Texto base **17px** y objetivos táctiles de **48px o más** (mandato del manual
   de marca, no negociable por estética).
+
+---
+
+## Espaciado
+
+La única familia de tokens que **sí existe en el código** (`src/app/globals.css`).
+Sirve de modelo para las otras tres.
+
+La escala salió de contar los valores que el diseño ya usaba, no de imponer una
+grilla de 4 u 8. Doce pasos:
+
+```
+2 · 6 · 8 · 10 · 12 · 14 · 16 · 18 · 20 · 26 · 32 · 44
+```
+
+Los nombres son el valor en px (`--esp-12` = `12px`) a propósito. Con nombres
+abstractos («esp-3») la regla vigente de *copiar el literal del hermano más
+parecido* sería imposible de seguir mientras radios y alturas sigan siendo
+literales.
+
+### Cómo se migró
+
+`OwnerWorkspace.css` tenía **39 valores distintos en 289 declaraciones** de
+`margin`/`padding`/`gap`. Se reemplazaron **177 por tokens sin mover un solo
+píxel**: sólo se tocaron los literales que ya coincidían exacto con un paso. La
+migración se verificó resolviendo cada `var()` de vuelta a px y comparando la
+lista completa de (selector, propiedad, valor) contra el original.
+
+*Por qué no se colapsó todo de una:* el diseño estaba aprobado visualmente.
+Redondear los 112 restantes habría cambiado ~112 declaraciones de una pantalla
+que ya se había dado por buena, sin forma de distinguir «esto siempre estuvo
+mal» de «esto lo rompí en el refactor».
+
+### Los 112 literales que quedan
+
+Son **deuda deliberadamente visible**: si una declaración no usa token, todavía
+no se revisó. No se resuelven en masa — se miran con la pantalla abierta.
+
+| Grupo | Valores | Aprox. | Qué hacer |
+|---|---|---|---|
+| A 1px de un paso | `3 · 5 · 7 · 9 · 11 · 13 · 15 · 17 · 27` | ~68 | Ruido. Snap al paso vecino al revisar la pantalla. |
+| A 2px de un paso | `21 · 22 · 23 · 24 · 28 · 30 · 34` | ~28 | Mirar antes: puede ser intencional. |
+| No son espaciado | `36 · 38 · 48 · 54 · 56 · 68 · 80 · 96 · 238` | ~16 | **No forzar a la escala.** |
+
+La última fila importa: `238px` es el ancho del menú lateral
+(`.owner-content · margin`) y la mayoría del resto son gutters de página de
+`.owner-content` por breakpoint. Son constantes de layout, no ritmo vertical.
+Merecen tokens propios (`--ancho-menu`, `--gutter-*`), no un `--esp-*`.
 
 ---
 
@@ -373,11 +427,21 @@ Además: `propertly-backend` rama `main` está muy atrás de `mvp` (solo `User` 
 ## Pendientes
 
 - [ ] Resolver la divergencia de modelo de arriba.
-- [ ] Bajar el prototipo a componentes React con estos tokens.
+- [x] Bajar el prototipo a componentes React (`OwnerWorkspace` +
+      `CreationWizard`). Ojo: el port **aplanó espaciados por instancia** en
+      una sola clase y perdió al menos un margen (los chips del paso «Plazo»
+      quedaron pegados al contador). El HTML congelado tiene 11 márgenes
+      inline que ninguna clase replica: revisarlos al portar lo que falta.
 - [ ] Sumar al manual de marca la regla de contraste de los semánticos sobre su
       propio tinte.
 - [ ] Crear los tokens de radio, altura y anillo, y reemplazar los literales.
       Hoy el documento promete un contrato que el CSS no tiene (ver Tokens).
+      El espaciado ya se hizo así y sirve de molde: escala sacada de los valores
+      reales, migración sólo de coincidencias exactas, verificada contra el
+      original. Cero cambio visual y la deuda queda a la vista.
+- [ ] Bajar los 112 literales de espaciado, pantalla por pantalla, a medida que
+      se haga la revisión visual (ver Espaciado). Los grandes de `.owner-content`
+      no van a `--esp-*`: piden `--ancho-menu` y `--gutter-*` propios.
 - [ ] Revisión visual del prototipo en navegador — nunca se hizo; toda la
       verificación hasta ahora fue estática y de lógica. El apilado de cobranzas
       y de `.owner-document` en 620 px entra acá: se escribió sin poder abrirlo.
