@@ -19,7 +19,8 @@ cómo se comportan los componentes de la app.
 | `docs/prototypes/maquetas-app.html` | Maquetas viejas. Fuente de **Claude Design Canvas** (usa `<x-dc>`, `<sc-if>`): no se ve bien en un navegador común, es normal. |
 
 El modelo de datos del prototipo sale de `propertly-backend` rama **`origin/mvp`**,
-no de `main` ni de `src/lib/types.ts`. Ver «Divergencia abierta» al final.
+no de `main` ni de `src/lib/types.ts`. Ver «Modelo de datos: qué manda y qué
+se pide» al final.
 
 ---
 
@@ -406,27 +407,108 @@ Se probó y se descartó, con motivo:
 
 ---
 
-## Divergencia abierta
+## Modelo de datos: qué manda y qué se pide
 
-`src/lib/types.ts` (frontend) y `propertly-backend@origin/mvp` **modelan cosas
-distintas**. Está sin decidir cuál gana, y bloquea escribir componentes que
-dependan del shape de los datos.
+**Decidido el 30/08/2026.** Antes esta sección decía «está sin decidir cuál gana».
+Ya está decidido:
 
-| | `types.ts` | backend `mvp` |
+1. **Lo que el backend ya modela, manda el backend.** El front se adapta a su
+   forma, aunque la nuestra parezca más cómoda.
+2. **Lo que el backend no modela y el negocio necesita, se le pide al backend.**
+   No se inventa una versión paralela en `types.ts`.
+
+Fuente: `propertly-backend@origin/mvp`, `CLAUDE.md` de cada paquete. La rama
+`main` del backend está muy atrás; para integrar, apuntar siempre a `mvp`.
+
+### Glosario, porque los nombres confunden
+
+| Backend | Qué es |
+|---|---|
+| `User` | **El propietario.** Email y contraseña propios; es dueño de sus `Tenant`, `Property` y `Contract`. |
+| `User.realEstateAgency` | Booleano que marca las cuentas de **inmobiliaria** (el administrador). No hay entidad aparte: una inmobiliaria es un `User` con el flag en `true`. |
+| `Tenant` | **El inquilino.** No es la cuenta cliente —nada que ver con el «tenant» de multi-tenancy— ni el administrador. No tiene contraseña: entra con un token ligado a un contrato (`POST /tenant-auth/session`) para ver sus cuotas y subir comprobantes. Es el «Enlace para comprobantes» del prototipo. |
+
+### El front se adapta a esto
+
+Lo que ya está modelado en el backend y hay que dejar de modelar distinto:
+
+| Hoy en el front | Backend | Qué hacer |
 |---|---|---|
-| Propietario | entidad `Owner` + `ownershipPercent` | no existe: un `User` que tiene propiedades es un `User` |
-| Inquilinos por contrato | varios (`tenants[]`) | uno (`Contract.tenant`) |
-| Depósito, comisión, punitorios | sí | no |
-| Ciclo PreInvoice → Invoice → Payment | no existe | completo, con confirmación |
+| `startDate` + `endDate` sueltos | `startDate` + `termMonths`, `endDate` derivada | Pedir plazo en meses; no pedir fecha de fin |
+| `AdjustmentFrequency` MENSUAL/TRIMESTRAL/… | `incrementFrequencyMonths` (entero) | Guardar meses. El enum no puede decir «cada 4 meses» y el prototipo lo ofrece |
+| `IndexType` IPC/ICL/CUSTOM + `customIndexPercent` | `incrementMethod` FIXED_PERCENTAGE/FIXED_AMOUNT/INDEX + `incrementIndexName` | Separar **cómo** aumenta de **qué índice** usa. Son dos campos, no uno |
+| `ContractStatus = "vigente"` | ACTIVE / TERMINATED / EXPIRED / **SUPERSEDED** | Cuatro estados. `SUPERSEDED` es el contrato reemplazado por un cambio de condiciones |
+| Cambiar condiciones = editar el contrato | Parte el contrato en dos y los encadena (`predecessorContract` → `successorContractId`) | El diálogo «Cambiar condiciones» crea un contrato nuevo, no edita el viejo |
+| Pago colgado del contrato | `Payment` cuelga de la **cuota** (`Invoice`), no del contrato | Para llegar a un pago hay que pasar por su cuota |
+| — | `ContractRentAdjustment` es la fuente del alquiler actual | Nunca calcular el alquiler vigente en el front: leer `ContractResponse.currentRent` |
 
-Además: `propertly-backend` rama `main` está muy atrás de `mvp` (solo `User` y
-`Propietario`, y otro paquete raíz). Para integrar, apuntar a `mvp`.
+### Se le pide al backend
+
+**Campos que faltan** (agregados simples):
+
+- `Tenant.phone` — teléfono del inquilino.
+- `Property.propertyType` — Departamento / Casa / PH / Local / Oficina / Cochera / Terreno.
+- `Address.postalCode` — código postal.
+- Depósito: monto y tipo.
+- Comisión: porcentaje y quién la paga (propietario / inquilino / compartida).
+- Punitorios: tipo, valor y días de gracia.
+- Renovación automática y meses de preaviso.
+- Penalidad por rescisión anticipada.
+- Moneda del contrato (ARS / USD). Hoy los importes son `BigDecimal` sin moneda.
+
+**Cambios estructurales** (no son un campo más, conviene discutirlos aparte):
+
+- **Propietarios con porcentaje de tenencia.** Hoy el backend dice explícito que
+  no existe entidad propietario: *«un `User` que tiene propiedades es un
+  `User`»*. `OwnersField.tsx` modela copropiedad con porcentajes y no tiene
+  dónde persistirse.
+- **Varios inquilinos por contrato, con garantes.** El backend tiene
+  `Contract.tenant`, uno solo, y `Tenant` no tiene flag de garante.
+
+Mientras no estén, `PropertyForm` y `ContractForm` no se pueden guardar completos.
+
+### Alta de contrato: gana el asistente
+
+La UI de alta de contrato es la del **prototipo** (`CreationWizard`), no
+`ContractForm` de `/dashboard/contratos/nuevo`.
+
+*Por qué:* el asistente pide propiedad → inquilino → alquiler → fecha de inicio →
+plazo en meses → método de actualización → frecuencia, que es **campo por campo
+`ContractRequest`**. Quedó alineado con el backend sin que nadie lo planeara. El
+paso de inquilino pide nombre / apellido / CUIT / correo, que es exactamente
+`TenantRequest`. `ContractForm` pide veinte campos, la mayoría de los cuales
+todavía no tienen dónde guardarse.
+
+### Deuda del cliente HTTP
+
+`src/lib/backend-client.ts` se portó desde la rama `mvp` **del front**, que quedó
+vieja respecto del backend. Verificado el 30/08/2026 contra los controllers:
+
+- `auth`, `users`, `tenants`, `properties`, `contracts`, `invoices` — coinciden.
+- `payments` y `tenantPortal` — **desactualizados**. El commit `bb50542` del
+  backend (16/08) rehízo el ciclo de pagos: `GET /payments` ahora exige
+  `invoiceId`; `PUT /payments/{id}`, `POST /payments/{id}/status` y
+  `DELETE /payments/{id}/receipt` ya no existen; adjuntar comprobante es
+  `POST /payments` con `invoiceId` + archivo; `GET /tenant/payments` pasó a ser
+  `GET /tenant/invoices`.
+- `PaymentStatus` en `backend-types.ts` dice `PENDING | DUE | PAID |
+  AWAITING_CONFIRMATION`; el backend tiene `AWAITING_CONFIRMATION | CONFIRMED |
+  REJECTED`. `PaymentResponse` tampoco coincide: no trae `contractId`, `period`,
+  `dueDate` ni `amount`, y sí trae `invoiceId` y `submittedByTenant`.
+
+Corregirlo antes de tocar Cobranzas.
 
 ---
 
 ## Pendientes
 
-- [ ] Resolver la divergencia de modelo de arriba.
+- [ ] **Bug: el registro no puede funcionar.** `RegisterRequest` exige `taxId`
+      (`@NotBlank @ValidTaxId`, y `User.taxId` es `nullable = false, unique`),
+      pero `/registro` no tiene campo de CUIT y no lo manda. Devuelve 400
+      siempre.
+- [ ] Corregir `payments` y `tenantPortal` en `backend-client.ts` y
+      `backend-types.ts` (ver «Deuda del cliente HTTP»).
+- [ ] Pasar al backend la lista de campos y cambios estructurales pedidos.
 - [x] Bajar el prototipo a componentes React (`OwnerWorkspace` +
       `CreationWizard`). Ojo: el port **aplanó espaciados por instancia** en
       una sola clase y perdió al menos un margen (los chips del paso «Plazo»

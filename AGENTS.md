@@ -32,7 +32,9 @@ a proponerlo. El prototipo vigente corre en `localhost:3000/prototipo` y su cód
 `docs/prototypes/` quedó congelado y ya no refleja la app.
 
 Ojo: el modelo de dominio real está en `propertly-backend` rama `origin/mvp`, que
-diverge de `src/lib/types.ts`. La divergencia está documentada y sin resolver.
+diverge de `src/lib/types.ts`. Cómo se resuelve esa divergencia ya está
+decidido y anotado: lo que el backend modela manda, y lo que le falta se le
+pide. Leer «Modelo de datos: qué manda y qué se pide» antes de tocar tipos.
 
 ## Testing
 
