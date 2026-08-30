@@ -241,6 +241,12 @@ describe("AlquiaBackendClient.contracts", () => {
   });
 });
 
+// OJO: este grupo está desactualizado. El commit bb50542 del backend rehízo el
+// ciclo de pagos y varios de estos endpoints ya no existen (updateAmount,
+// updateStatus, removeReceipt) o cambiaron de forma (list ahora exige
+// invoiceId). Estos tests verifican que el cliente pega donde dice pegar, no
+// que el backend responda: siguen verdes contra endpoints muertos. Se corrigen
+// junto con Cobranzas — ver «Deuda del cliente HTTP» en docs/design/sistema-ui.md.
 describe("AlquiaBackendClient.payments", () => {
   it("list sin params pega a GET /payments", async () => {
     await AlquiaBackendClient.payments.list();
@@ -263,8 +269,8 @@ describe("AlquiaBackendClient.payments", () => {
   });
 
   it("updateStatus pega a POST /payments/{id}/status", async () => {
-    await AlquiaBackendClient.payments.updateStatus(7, { status: "DUE" });
-    expect(mockPost).toHaveBeenCalledWith("/payments/7/status", { status: "DUE" });
+    await AlquiaBackendClient.payments.updateStatus(7, { status: "CONFIRMED" });
+    expect(mockPost).toHaveBeenCalledWith("/payments/7/status", { status: "CONFIRMED" });
   });
 
   it("attachReceipt pega a POST /payments/{id}/receipt con un FormData con el archivo", async () => {

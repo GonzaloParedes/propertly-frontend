@@ -1,8 +1,10 @@
 "use client";
 /* eslint-disable react-hooks/static-components -- render helpers share the local prototype state. */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CreationWizard from "@/components/dashboard/CreationWizard";
+import { AlquiaBackendClient } from "@/lib/backend-client";
+import { buildTenantRows, resumenInquilinos, type TenantRow } from "@/lib/tenant-rows";
 
 export type OwnerView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "configuracion";
 type View = OwnerView;
@@ -61,7 +63,7 @@ const tenants = [
 ];
 
 function Status({ children }: { children: string }) {
-  const config = children === "Al día" ? ["ok", "check"] : children === "Vencida" ? ["bad", "x"] : children === "Sin alquilar" ? ["none", "building"] : children === "Pago a confirmar" ? ["info", "clock"] : ["warn", "clock"];
+  const config = children === "Al día" ? ["ok", "check"] : children === "Vencida" ? ["bad", "x"] : children === "Sin alquilar" ? ["none", "building"] : children === "Sin contrato" ? ["none", "file"] : children === "Pago a confirmar" ? ["info", "clock"] : ["warn", "clock"];
   return <span className={`owner-status owner-status--${config[0]}`}><Icon name={config[1] as IconName} size={15} />{children}</span>;
 }
 
@@ -96,7 +98,39 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate }: 
   const [dorms, setDorms] = useState<string[]>([]);
   const [extras, setExtras] = useState<string[]>([]);
   const [panelAbierto, setPanelAbierto] = useState(false);
+  // Un solo estado en vez de una lista y un error por separado: así no puede
+  // quedar un error viejo en pantalla mientras se está recargando.
+  const [carga, setCarga] = useState<{ ok: TenantRow[] } | { error: true } | null>(null);
   const view = activeView ?? localView;
+
+  // Sólo se cargan cuando la pantalla los necesita: el workspace también rinde
+  // inicio, propiedades y cobranzas, y ahí estas tres llamadas serían al pedo.
+  const necesitaInquilinos = view === "inquilinos" || detail === "tenant";
+
+  useEffect(() => {
+    if (!necesitaInquilinos) return;
+    let cancelado = false;
+    // En paralelo: la demora es la de la más lenta y no la suma de las tres.
+    // /invoices sin parámetros trae las cuotas de todos los contratos de una,
+    // así que no hay una llamada por inquilino.
+    Promise.all([
+      AlquiaBackendClient.tenants.list(),
+      AlquiaBackendClient.contracts.list(),
+      AlquiaBackendClient.invoices.list(),
+    ])
+      .then(([tenants, contracts, invoices]) => {
+        if (!cancelado) setCarga({ ok: buildTenantRows(tenants, contracts, invoices) });
+      })
+      .catch(() => {
+        if (!cancelado) setCarga({ error: true });
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [necesitaInquilinos]);
+
+  const inquilinos = carga && "ok" in carga ? carga.ok : null;
+  const inquilinosError = carga !== null && "error" in carga;
   const selectedProperty = properties.find((property) => property.id === selected) ?? properties[0];
   const selectedContract = contracts.find((contract) => contract.id === selected) ?? contracts[0];
 
@@ -277,7 +311,45 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate }: 
 
   function collectionsView() { return <>{pageHeader("Cobranzas", "Cuotas confirmadas, pagos y vencimientos de agosto.", <Button tone="secondary"><Icon name="download" size={18} />Descargar resumen</Button>)}<div className="owner-filter"><button type="button" aria-pressed="true">Todas <b>4</b></button><button type="button">Vencidas <b>2</b></button><button type="button">A vencer <b>1</b></button><button type="button">Pagadas <b>1</b></button></div><div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody><tr><td data-cell="propiedad"><b>Av. Rivadavia 2340, 5.º A</b><small>Jorge Paletta · agosto</small></td><td data-cell="monto" className="owner-number owner-money">$ 478.691</td><td data-cell="vencimiento">10/08/2026</td><td data-cell="estado"><Status>Vencida</Status></td><td data-cell="accion"><Button tone="secondary" small>Registrar pago</Button></td></tr><tr><td data-cell="propiedad"><b>Lavalle 950, 3.º B</b><small>Marta Suárez · agosto</small></td><td data-cell="monto" className="owner-number owner-money">$ 520.000</td><td data-cell="vencimiento">10/08/2026</td><td data-cell="estado">{paymentConfirmed ? <Status>Al día</Status> : <span className="owner-status owner-status--info"><Icon name="clock" size={15} />Pago a confirmar</span>}</td><td data-cell="accion"><Button tone="secondary" small onClick={() => setPaymentOpen(true)}>{paymentConfirmed ? "Comprobante" : "Revisar pago"}</Button></td></tr><tr><td data-cell="propiedad"><b>Colón 2255, 4.º D</b><small>Diego Ferrari · agosto</small></td><td data-cell="monto" className="owner-number owner-money">$ 505.000</td><td data-cell="vencimiento">25/08/2026</td><td data-cell="estado"><Status>A vencer</Status><small className="owner-substatus">Sin confirmar</small></td><td data-cell="accion"><Button tone="secondary" small>Confirmar cuota</Button></td></tr><tr><td data-cell="propiedad"><b>Belgrano 445, PB</b><small>Ana Ferreyra · agosto</small></td><td data-cell="monto" className="owner-number owner-money">$ 430.000</td><td data-cell="vencimiento">05/08/2026</td><td data-cell="estado"><Status>Al día</Status></td><td data-cell="accion"><Button tone="secondary" small><Icon name="download" size={16} />Comprobante</Button></td></tr></tbody></table></div></>; }
 
-  function tenantsView() { return <>{pageHeader("Inquilinos", "4 inquilinos · todos con contrato vigente", <Button onClick={() => beginCreation("tenant")}><Icon name="plus" size={18} />Agregar inquilino</Button>)}<div className="owner-list">{tenants.map((tenant) => <button type="button" className="owner-row owner-row--button" key={tenant.tax} onClick={() => openDetail("tenant", tenant.property.id)}><span className="owner-row__icon"><Icon name="users" /></span><span className="owner-row__body"><b>{tenant.name}</b><small>{tenant.tax} · {tenant.email} · {tenant.property.address}</small></span><span className="owner-row__amount"><b>{tenant.property.rent}</b><small>por mes</small></span><Status>{tenant.property.state}</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div></>; }
+  function tenantsView() {
+    const bajada = inquilinos ? resumenInquilinos(inquilinos) : "";
+    const accion = <Button onClick={() => beginCreation("tenant")}><Icon name="plus" size={18} />Agregar inquilino</Button>;
+
+    return <>
+      {pageHeader("Inquilinos", bajada, accion)}
+      <div className="owner-list">
+        {inquilinosError && <p className="owner-list-note" role="alert"><b>No pudimos cargar sus inquilinos</b>Inténtelo de nuevo más tarde.</p>}
+        {!inquilinosError && inquilinos === null && <p className="owner-list-note">Cargando…</p>}
+        {!inquilinosError && inquilinos?.length === 0 && (
+          <p className="owner-list-note"><b>Todavía no cargó ningún inquilino</b>Use «Agregar inquilino» para cargar el primero.</p>
+        )}
+        {inquilinos?.map((inquilino) => inquilino.contratoId === null
+          // Sin contrato no hay dirección, ni monto, ni cuotas de las que hablar:
+          // la fila ofrece el paso que falta en vez de mostrar huecos.
+          ? <div className="owner-row owner-row--linked" key={inquilino.id}>
+              <span className="owner-row__icon"><Icon name="users" /></span>
+              <span className="owner-row__body">
+                <b><button type="button" className="owner-row__link" onClick={() => openDetail("tenant", String(inquilino.id))}>{inquilino.nombre}</button></b>
+                <small>{inquilino.cuit} · {inquilino.email}</small>
+              </span>
+              <span className="owner-row__amount"><Button tone="secondary" small onClick={() => beginCreation("contract")}>Crear contrato</Button></span>
+              <Status>{inquilino.estado}</Status>
+              <span className="owner-row__arrow"><Icon name="arrow" /></span>
+            </div>
+          : <button type="button" className="owner-row owner-row--button" key={inquilino.id} onClick={() => openDetail("tenant", String(inquilino.id))}>
+              <span className="owner-row__icon"><Icon name="users" /></span>
+              <span className="owner-row__body">
+                <b>{inquilino.nombre}</b>
+                <small>{inquilino.cuit} · {inquilino.email} · {inquilino.direccion}</small>
+              </span>
+              <span className="owner-row__amount"><b>{inquilino.alquiler}</b><small>por mes</small></span>
+              <Status>{inquilino.estado}</Status>
+              <span className="owner-row__arrow"><Icon name="arrow" /></span>
+            </button>
+        )}
+      </div>
+    </>;
+  }
 
   function settingsView() { return <>{pageHeader("Configuración", "Preferencias de su cuenta y recordatorios.")}<section className="owner-detail-grid owner-detail-grid--even"><div className="owner-card"><h2>Recordatorios de pago</h2><p className="owner-card__copy">Los inquilinos reciben recordatorios por correo cuando una cuota está por vencer o se encuentra vencida.</p><dl className="owner-definition"><div><dt>Antes del vencimiento</dt><dd>7 días</dd></div><div><dt>El día del vencimiento</dt><dd>Activo</dd></div><div><dt>Después del vencimiento</dt><dd>3 días</dd></div></dl><Button tone="secondary" small>Editar recordatorios</Button></div><div className="owner-card"><h2>Cuenta</h2><dl className="owner-definition"><div><dt>Nombre</dt><dd>Ricardo Rosas</dd></div><div><dt>Correo</dt><dd>ricardo@alquia.com</dd></div><div><dt>Moneda operativa</dt><dd>Pesos argentinos (ARS)</dd></div></dl><Button tone="secondary" small>Editar datos</Button></div></section></>; }
 
@@ -285,7 +357,45 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate }: 
 
   function ContractDetail() { return <>{<nav className="owner-crumb"><button type="button" onClick={() => setDetail(null)}>Contratos</button><span>/</span><span>{selectedContract.property.address}</span></nav>}{pageHeader(selectedContract.property.address, `Contrato con ${selectedContract.property.tenant} · vigente hasta el ${selectedContract.end}`, <><Button tone="secondary" onClick={() => setConditionsOpen(true)}><Icon name="edit" size={18} />Cambiar condiciones</Button><Button tone="danger">Finalizar contrato</Button></>)}<section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{selectedContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{selectedContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {selectedContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{selectedContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{selectedContract.property.tenant}</b><small>{tenants.find((tenant) => tenant.property.id === selectedContract.id)?.email}</small></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>Activo hasta que finalice este contrato</small></span></div><Button tone="secondary" small onClick={() => setLinkCopied(true)}><Icon name="copy" size={16} />{linkCopied ? "Copiado" : "Copiar enlace"}</Button></div></div><div className="owner-card"><h2>Documento firmado</h2>{selectedContract.document ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{selectedContract.document}</b><small>PDF · 2,4 MB · cargado el 01/03/2025</small></div><Button tone="quiet" small><Icon name="download" size={16} />Descargar</Button></div> : <div className="owner-empty-callout"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><Button small>Adjuntar</Button></div>}</div></section></>; }
 
-  function TenantDetail() { const tenant = tenants.find((item) => item.property.id === selected) ?? tenants[0]; return <>{<nav className="owner-crumb"><button type="button" onClick={() => setDetail(null)}>Inquilinos</button><span>/</span><span>{tenant.name}</span></nav>}{pageHeader(tenant.name, `${tenant.tax} · ${tenant.email}`, <Button tone="secondary"><Icon name="edit" size={18} />Editar datos</Button>)}<section className="owner-detail-grid"><div className="owner-card"><h2>Contrato vigente</h2><button type="button" className="owner-contract-callout" onClick={() => openDetail("contract", tenant.property.id)}><span><Icon name="file" /></span><div><b>{tenant.property.address}</b><small>{tenant.property.rent} por mes · {tenant.property.state}</small></div><Icon name="arrow" /></button></div><div className="owner-card"><h2>Acceso de pago</h2><p className="owner-card__copy">El inquilino no necesita una cuenta. Comparte un enlace seguro para ver cuotas habilitadas y subir su comprobante.</p><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace activo</b><small>Se puede revocar y regenerar cuando quiera.</small></span></div><Button tone="secondary" small>Administrar</Button></div></div></section></>; }
+  function TenantDetail() {
+    const inquilino = inquilinos?.find((item) => String(item.id) === selected);
+    const volver = <nav className="owner-crumb"><button type="button" onClick={() => setDetail(null)}>Inquilinos</button><span>/</span><span>{inquilino?.nombre ?? "…"}</span></nav>;
+
+    if (!inquilino) {
+      return <>{volver}<div className="owner-card"><p className="owner-list-note">{inquilinosError ? "No pudimos cargar este inquilino." : "Cargando…"}</p></div></>;
+    }
+
+    return <>
+      {volver}
+      {pageHeader(inquilino.nombre, `${inquilino.cuit} · ${inquilino.email}`, <Button tone="secondary"><Icon name="edit" size={18} />Editar datos</Button>)}
+      <section className="owner-detail-grid">
+        <div className="owner-card">
+          <h2>Contrato vigente</h2>
+          {inquilino.contratoId === null
+            ? <div className="owner-empty-callout">
+                <Icon name="file" />
+                <div><b>Todavía no tiene un contrato</b><small>Cuando le alquile una propiedad, cree el contrato para empezar a cobrarle.</small></div>
+                <Button small onClick={() => beginCreation("contract")}>Crear contrato</Button>
+              </div>
+            // Resumen sin link: el detalle de contrato todavía sale de datos de
+            // ejemplo, así que llevar hasta ahí mostraría el contrato de otro.
+            : <div className="owner-contract-callout">
+                <span><Icon name="file" /></span>
+                <div><b>{inquilino.direccion}</b><small>{inquilino.alquiler} por mes · {inquilino.estado}</small></div>
+              </div>}
+        </div>
+        {/* El enlace de comprobantes se emite por contrato: sin contrato no hay
+            acceso del que hablar, y decir «Enlace activo» sería falso. */}
+        {inquilino.contratoId !== null && (
+          <div className="owner-card">
+            <h2>Acceso de pago</h2>
+            <p className="owner-card__copy">El inquilino no necesita una cuenta. Comparte un enlace seguro para ver cuotas habilitadas y subir su comprobante.</p>
+            <div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace activo</b><small>Se puede revocar y regenerar cuando quiera.</small></span></div><Button tone="secondary" small>Administrar</Button></div>
+          </div>
+        )}
+      </section>
+    </>;
+  }
 
   const content = wizard ? <CreationWizard kind={wizard} onClose={() => setWizard(null)} onNewTenant={() => beginCreation("tenant")} onComplete={() => go(wizard === "property" ? "propiedades" : wizard === "tenant" ? "inquilinos" : "contratos")} /> : detail === "property" ? propertyDetail() : detail === "contract" ? <ContractDetail /> : detail === "tenant" ? <TenantDetail /> : view === "propiedades" ? propertiesView() : view === "contratos" ? contractsView() : view === "cobranzas" ? collectionsView() : view === "inquilinos" ? tenantsView() : view === "configuracion" ? settingsView() : overview();
   return <div className="owner-workspace"><main className="owner-content">{content}</main>{paymentOpen && <Dialog title="Revisar pago de Marta Suárez" onClose={() => setPaymentOpen(false)}><div className="owner-dialog__body"><p>Lavalle 950, 3.º B · cuota de agosto por <b>$ 520.000</b>.</p><div className="owner-receipt"><Icon name="receipt" size={34} /><b>comprobante-transferencia.jpg</b><small>Imagen · 1,8 MB · subido el 18/08/2026</small><Button tone="secondary" small><Icon name="download" size={16} />Ver archivo</Button></div><p className="owner-dialog__hint">Al confirmar, la cuota quedará marcada como pagada. Si el comprobante no corresponde, puede rechazarlo; el inquilino podrá cargar uno nuevo.</p><div className="owner-dialog__actions"><Button tone="danger" onClick={() => setPaymentOpen(false)}>Rechazar</Button><Button onClick={() => { setPaymentConfirmed(true); setPaymentOpen(false); }}>Confirmar pago</Button></div></div></Dialog>}{conditionsOpen && <Dialog title="Cambiar condiciones" onClose={() => setConditionsOpen(false)}><div className="owner-dialog__body"><p>Los cambios no alteran cuotas ya emitidas ni el historial del contrato.</p><div className="owner-mode"><button type="button" aria-pressed={conditionMode === "one"} onClick={() => setConditionMode("one")}><span><Icon name="calendar" /></span><div><b>Modificar solo la próxima cuota</b><small>Para un ajuste puntual. Define el importe final y un motivo.</small></div></button><button type="button" aria-pressed={conditionMode === "future"} onClick={() => setConditionMode("future")}><span><Icon name="trend" /></span><div><b>Cambiar condiciones a futuro</b><small>Modifica el monto, frecuencia o ajuste desde el próximo período.</small></div></button></div>{conditionMode === "one" ? <div className="owner-form-preview"><label>Importe final de la próxima cuota <b>$</b><input defaultValue="520.000" inputMode="numeric" /></label><label>Motivo <input placeholder="Ej.: reparación acordada" /></label></div> : <div className="owner-form-preview"><label>Nuevo alquiler mensual <b>$</b><input defaultValue="520.000" inputMode="numeric" /></label><label>Actualización <span className="owner-input-static">8 % cada 3 meses</span></label></div>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={() => setConditionsOpen(false)}>Cancelar</Button><Button onClick={() => setConditionsOpen(false)}>{conditionMode === "one" ? "Guardar ajuste" : "Revisar cambios"}</Button></div></div></Dialog>}{creation && <Dialog title={creation === "property" ? "Agregar propiedad" : "Nuevo contrato"} onClose={() => setCreation(null)}><div className="owner-dialog__body">{creationComplete === creation ? <div className="owner-creation-success"><span><Icon name="check" size={28} /></span><h3>{creation === "property" ? "Propiedad guardada" : "Contrato creado"}</h3><p>{creation === "property" ? "Ya puede asignarle un inquilino o crear su contrato." : "La propiedad queda asociada al inquilino y se generarán las próximas cuotas."}</p><Button onClick={() => go(creation === "property" ? "propiedades" : "contratos")}>Ver {creation === "property" ? "propiedades" : "contratos"}</Button></div> : creation === "property" ? <><p>Empiece por registrar la ubicación. Los demás datos se pueden completar después.</p><div className="owner-form-preview owner-creation-form"><label>Dirección<input placeholder="Ej.: Av. Santa Fe 1420" autoFocus /></label><label>Tipo de propiedad<span className="owner-input-static">Departamento</span></label><label>Ciudad<input placeholder="Ej.: CABA" /></label></div><div className="owner-dialog__actions"><Button tone="secondary" onClick={() => setCreation(null)}>Cancelar</Button><Button onClick={() => setCreationComplete("property")}>Guardar propiedad</Button></div></> : <><p>Asocie una propiedad disponible con su inquilino y defina las condiciones iniciales.</p><div className="owner-creation-choice"><span><Icon name="building" /></span><div><b>Mitre 78</b><small>Local · San Isidro · propiedad disponible</small></div></div><div className="owner-creation-choice"><span><Icon name="users" /></span><div><b>Nuevo inquilino</b><small>Complete sus datos y recibirá su enlace de comprobantes.</small></div></div><div className="owner-form-preview owner-creation-form"><label>Alquiler mensual<input defaultValue="450.000" inputMode="numeric" /></label><label>Actualización<span className="owner-input-static">Porcentaje fijo · cada 3 meses</span></label></div><div className="owner-dialog__actions"><Button tone="secondary" onClick={() => setCreation(null)}>Cancelar</Button><Button onClick={() => setCreationComplete("contract")}>Crear contrato</Button></div></>}</div></Dialog>}</div>;

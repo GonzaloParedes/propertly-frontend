@@ -1,0 +1,174 @@
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
+import type { ContractResponse, InvoiceResponse, TenantResponse } from "@/lib/backend-types";
+
+vi.mock("@/lib/backend-client", () => ({
+  AlquiaBackendClient: {
+    tenants: { list: vi.fn() },
+    contracts: { list: vi.fn() },
+    invoices: { list: vi.fn() },
+  },
+}));
+
+import { AlquiaBackendClient } from "@/lib/backend-client";
+const mockTenants = vi.mocked(AlquiaBackendClient.tenants.list);
+const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
+const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
+
+const JORGE = { id: 1, firstName: "Jorge", lastName: "Paletta", taxId: "20224567899", email: "jorge@ejemplo.com" };
+const MARTA = { id: 2, firstName: "Marta", lastName: "Suárez", taxId: "27248910556", email: "marta@ejemplo.com" };
+
+const CONTRATO_JORGE = {
+  id: 100,
+  property: { id: 10, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A", city: "CABA", province: "CABA" },
+  tenant: JORGE,
+  initialRentAmount: 400000, startDate: "2025-03-01", termMonths: 36, endDate: "2028-02-29",
+  status: "ACTIVE" as const, incrementMethod: "FIXED_PERCENTAGE" as const,
+  incrementFrequencyMonths: 3, currentRent: 478691,
+};
+
+beforeEach(() => {
+  vi.resetAllMocks();
+});
+
+function conDatos({
+  tenants = [JORGE],
+  contracts = [CONTRATO_JORGE],
+  invoices = [],
+}: {
+  tenants?: TenantResponse[];
+  contracts?: ContractResponse[];
+  invoices?: InvoiceResponse[];
+} = {}) {
+  mockTenants.mockResolvedValue(tenants);
+  mockContracts.mockResolvedValue(contracts);
+  mockInvoices.mockResolvedValue(invoices);
+}
+
+// --- Carga ---
+
+describe("carga", () => {
+  it("avisa que está cargando antes de tener los datos", () => {
+    mockTenants.mockReturnValue(new Promise(() => {}));
+    mockContracts.mockReturnValue(new Promise(() => {}));
+    mockInvoices.mockReturnValue(new Promise(() => {}));
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+  });
+
+  it("pide las tres listas en paralelo, no una por inquilino", async () => {
+    conDatos({ tenants: [JORGE, MARTA] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await screen.findByText("Jorge Paletta");
+
+    expect(mockTenants).toHaveBeenCalledOnce();
+    expect(mockContracts).toHaveBeenCalledOnce();
+    expect(mockInvoices).toHaveBeenCalledOnce();
+  });
+
+  it("no pide nada si la pantalla no es la de inquilinos", () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="propiedades" />);
+
+    expect(mockTenants).not.toHaveBeenCalled();
+  });
+});
+
+// --- Filas ---
+
+describe("filas", () => {
+  it("muestra nombre, documento, correo, dirección y alquiler", async () => {
+    conDatos({ invoices: [{ id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-01", baseAmount: 478691, total: 478691, status: "DUE" as const, confirmed: true, adjustments: [], payments: [] }] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    const fila = (await screen.findByText("Jorge Paletta")).closest(".owner-row") as HTMLElement;
+    expect(within(fila).getByText(/20-22456789-9/)).toBeInTheDocument();
+    expect(within(fila).getByText(/jorge@ejemplo\.com/)).toBeInTheDocument();
+    expect(within(fila).getByText(/Av\. Rivadavia 2340, 5\.º A/)).toBeInTheDocument();
+    expect(within(fila).getByText("$ 478.691")).toBeInTheDocument();
+    expect(within(fila).getByText("Vencida")).toBeInTheDocument();
+  });
+
+  it("el inquilino sin contrato ofrece crearlo y no muestra monto", async () => {
+    conDatos({ tenants: [MARTA], contracts: [] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    const fila = (await screen.findByText("Marta Suárez")).closest(".owner-row") as HTMLElement;
+    expect(within(fila).getByText("Sin contrato")).toBeInTheDocument();
+    expect(within(fila).getByRole("button", { name: "Crear contrato" })).toBeInTheDocument();
+    expect(within(fila).queryByText("por mes")).not.toBeInTheDocument();
+  });
+
+  it("el nombre del inquilino sin contrato sigue abriendo su detalle", async () => {
+    conDatos({ tenants: [MARTA], contracts: [] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Marta Suárez" }));
+
+    expect(await screen.findByText("Todavía no tiene un contrato")).toBeInTheDocument();
+  });
+});
+
+// --- Bajada de la cabecera ---
+
+describe("bajada de la cabecera", () => {
+  it("cuenta los inquilinos y avisa cuántos no tienen contrato", async () => {
+    conDatos({ tenants: [JORGE, MARTA] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    expect(await screen.findByText("2 inquilinos · 1 sin contrato")).toBeInTheDocument();
+  });
+
+  it("no afirma nada sobre contratos si todos tienen", async () => {
+    conDatos({ tenants: [JORGE] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    expect(await screen.findByText("1 inquilino")).toBeInTheDocument();
+  });
+});
+
+// --- Lista vacía y error ---
+
+describe("lista vacía y error", () => {
+  it("invita a cargar el primero cuando no hay ninguno", async () => {
+    conDatos({ tenants: [], contracts: [] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    expect(await screen.findByText("Todavía no cargó ningún inquilino")).toBeInTheDocument();
+  });
+
+  it("avisa si alguna de las llamadas falla", async () => {
+    mockTenants.mockResolvedValue([JORGE]);
+    mockContracts.mockRejectedValue(new Error("Network error"));
+    mockInvoices.mockResolvedValue([]);
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar sus inquilinos");
+  });
+});
+
+// --- Detalle ---
+
+describe("detalle", () => {
+  it("muestra el contrato vigente del inquilino", async () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    await userEvent.click(await screen.findByText("Jorge Paletta"));
+
+    expect(await screen.findByText("Av. Rivadavia 2340, 5.º A")).toBeInTheDocument();
+    expect(screen.getByText(/\$ 478\.691 por mes/)).toBeInTheDocument();
+  });
+
+  it("no ofrece el enlace de comprobantes a quien no tiene contrato", async () => {
+    conDatos({ tenants: [MARTA], contracts: [] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Marta Suárez" }));
+
+    await screen.findByText("Todavía no tiene un contrato");
+    expect(screen.queryByText("Acceso de pago")).not.toBeInTheDocument();
+  });
+});

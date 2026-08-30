@@ -137,15 +137,19 @@ export interface ContractListParams {
 
 // --- Payments ---
 
-export type PaymentStatus = "PENDING" | "DUE" | "PAID" | "AWAITING_CONFIRMATION";
+// Corregidos el 30/08/2026 contra PaymentStatus.java y PaymentResponse.java de
+// origin/mvp. El commit bb50542 del backend movió el pago: dejó de colgar del
+// contrato y pasó a colgar de la cuota, y sus estados no son los de la cuota.
+// Los métodos del grupo `payments` en backend-client.ts siguen desactualizados
+// —ver «Deuda del cliente HTTP» en docs/design/sistema-ui.md—; acá se arregla
+// sólo lo que se consume hoy, que son los pagos embebidos en InvoiceResponse.
+export type PaymentStatus = "AWAITING_CONFIRMATION" | "CONFIRMED" | "REJECTED";
 
 export interface PaymentResponse {
   id: number;
-  contractId: number;
-  period: string;
-  dueDate: string;
-  amount: number;
+  invoiceId: number;
   status: PaymentStatus;
+  submittedByTenant: boolean;
   receiptFileName?: string;
   receiptContentType?: string;
   receiptSizeBytes?: number;

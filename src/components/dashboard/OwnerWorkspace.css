@@ -260,6 +260,26 @@
   color:var(--error);font:600 15.5px var(--font-nunito-sans),sans-serif}
 .owner-wizard-alert svg{flex:none}
 
+/* Fila de inquilino sin contrato. No puede ser un <button> entero como las
+   demás, porque adentro lleva otra acción y un botón no anida. El nombre es el
+   control y su ::after cubre la fila, así que el área de click sigue siendo
+   toda la fila; la acción va por encima para que el ::after no se la coma. */
+.owner-row--linked{position:relative}
+.owner-row--linked:hover{background:var(--superficie)}
+.owner-row--linked:hover .owner-row__icon{background:var(--indigo-suave);color:var(--indigo)}
+.owner-row__link{border:0;padding:0;background:transparent;color:inherit;font:inherit;
+  text-align:left;cursor:pointer}
+.owner-row__link::after{content:"";position:absolute;inset:0}
+.owner-row--linked .owner-row__amount{position:relative;z-index:1}
+/* El foco se dibuja sobre el ::after, que es el área real del control. */
+.owner-row__link:focus-visible{outline:0}
+.owner-row__link:focus-visible::after{outline:3px solid var(--lila);outline-offset:-3px}
+
+/* Estados de carga y vacío del listado. */
+.owner-list-note{padding:var(--esp-32) var(--esp-20);color:var(--gris);text-align:center;
+  font:600 16px var(--font-nunito-sans),sans-serif}
+.owner-list-note b{display:block;margin-bottom:var(--esp-6);color:var(--tinta);font-size:17px}
+
 
 /* ── Regla de peso de los botones ──────────────────────────────────────
    El peso lo decide la ZONA, no la urgencia del momento:

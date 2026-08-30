@@ -455,6 +455,11 @@ Lo que ya está modelado en el backend y hay que dejar de modelar distinto:
 - Renovación automática y meses de preaviso.
 - Penalidad por rescisión anticipada.
 - Moneda del contrato (ARS / USD). Hoy los importes son `BigDecimal` sin moneda.
+- Poder acotar `GET /invoices`. Hoy sin parámetros devuelve **todas** las cuotas
+  del propietario desde siempre: un contrato de 36 meses son 36 cuotas, cada una
+  con sus ajustes y pagos embebidos. La vista de inquilinos sólo necesita la
+  situación corriente de cada contrato. Sirve un filtro por período o un
+  «última cuota por contrato».
 
 **Cambios estructurales** (no son un campo más, conviene discutirlos aparte):
 
@@ -491,12 +496,17 @@ vieja respecto del backend. Verificado el 30/08/2026 contra los controllers:
   `DELETE /payments/{id}/receipt` ya no existen; adjuntar comprobante es
   `POST /payments` con `invoiceId` + archivo; `GET /tenant/payments` pasó a ser
   `GET /tenant/invoices`.
-- `PaymentStatus` en `backend-types.ts` dice `PENDING | DUE | PAID |
-  AWAITING_CONFIRMATION`; el backend tiene `AWAITING_CONFIRMATION | CONFIRMED |
-  REJECTED`. `PaymentResponse` tampoco coincide: no trae `contractId`, `period`,
-  `dueDate` ni `amount`, y sí trae `invoiceId` y `submittedByTenant`.
+- `PaymentStatus` y `PaymentResponse` en `backend-types.ts` — **ya corregidos**
+  el 30/08/2026, porque la vista de inquilinos lee los pagos embebidos en
+  `InvoiceResponse` y no se podía escribir contra un tipo falso. `PaymentStatus`
+  es `AWAITING_CONFIRMATION | CONFIRMED | REJECTED`, y `PaymentResponse` trae
+  `invoiceId` y `submittedByTenant` en vez de `contractId`, `period`, `dueDate`
+  y `amount`.
 
-Corregirlo antes de tocar Cobranzas.
+Falta corregir los **métodos** del grupo `payments` en `backend-client.ts`, que
+siguen apuntando a endpoints muertos. Sus tests en `backend-client.test.ts`
+verifican que el cliente pega donde dice pegar, no que el backend conteste: van
+a seguir verdes contra endpoints que ya no existen. Corregirlo con Cobranzas.
 
 ---
 
@@ -510,8 +520,9 @@ Corregirlo antes de tocar Cobranzas.
       de `Tenant`, que es el inquilino y ya lo pedía el asistente—. La
       validación con dígito verificador vive ahora en `src/lib/cuit.ts` y la
       usan los dos.
-- [ ] Corregir `payments` y `tenantPortal` en `backend-client.ts` y
-      `backend-types.ts` (ver «Deuda del cliente HTTP»).
+- [ ] Corregir los métodos de `payments` y `tenantPortal` en
+      `backend-client.ts` (los tipos de `backend-types.ts` ya se corrigieron).
+      Ver «Deuda del cliente HTTP».
 - [ ] Pasar al backend la lista de campos y cambios estructurales pedidos.
 - [x] Bajar el prototipo a componentes React (`OwnerWorkspace` +
       `CreationWizard`). Ojo: el port **aplanó espaciados por instancia** en
