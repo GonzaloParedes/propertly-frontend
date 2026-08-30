@@ -322,3 +322,46 @@ describe("lógica de reintento en 401", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 });
+
+// --- header anti-CSRF ---
+
+describe("header X-Requested-With", () => {
+  it("lo envía en requests con body JSON", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPost("/test", { name: "test" });
+    expect(fetch).toHaveBeenCalledWith(
+      "/test",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Requested-With": "XMLHttpRequest" }),
+      })
+    );
+  });
+
+  it("lo envía en requests con FormData, sin agregar Content-Type", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    const form = new FormData();
+    form.append("file", new File(["hello"], "test.txt"));
+    await apiPostForm("/test", form);
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    const headers = init.headers as Record<string, string>;
+    expect(headers["X-Requested-With"]).toBe("XMLHttpRequest");
+    expect(headers["Content-Type"]).toBeUndefined();
+  });
+
+  it("lo envía también en el POST a /auth/refresh", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 401 }));
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 200 }));
+    fetchMock.mockResolvedValueOnce(ok({ ok: true }));
+
+    await apiGet("/test");
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "/auth/refresh",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "X-Requested-With": "XMLHttpRequest" }),
+      })
+    );
+  });
+});

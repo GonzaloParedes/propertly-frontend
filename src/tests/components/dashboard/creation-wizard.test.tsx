@@ -190,3 +190,74 @@ describe("validación previa", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 });
+
+// --- contador de plazo del contrato ---
+
+describe("asistente de contrato · plazo", () => {
+  async function irAlPasoDePlazo() {
+    render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
+    for (let i = 0; i < 3; i++) {
+      await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    }
+  }
+
+  it("suma y resta de a un mes, no de a seis", async () => {
+    await irAlPasoDePlazo();
+    expect(screen.getByText("36")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sumar meses" }));
+    expect(screen.getByText("37")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Restar meses" }));
+    await userEvent.click(screen.getByRole("button", { name: "Restar meses" }));
+    expect(screen.getByText("35")).toBeInTheDocument();
+  });
+
+  it("no baja de un mes", async () => {
+    await irAlPasoDePlazo();
+    await userEvent.click(screen.getByRole("button", { name: "12 meses" }));
+    const restar = screen.getByRole("button", { name: "Restar meses" });
+    for (let i = 0; i < 15; i++) await userEvent.click(restar);
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+});
+
+// --- paso opcional de características de la propiedad ---
+
+describe("asistente de propiedad · características", () => {
+  async function irAlPasoDeCaracteristicas() {
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByText(/Lavalle 950/));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+  }
+
+  it("arranca sin valores puestos por defecto", async () => {
+    await irAlPasoDeCaracteristicas();
+    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Restar dormitorios" })).toBeDisabled();
+    expect(screen.getByLabelText(/Superficie cubierta/)).toHaveValue("");
+  });
+
+  it("el primer + deja el contador en 1", async () => {
+    await irAlPasoDeCaracteristicas();
+    await userEvent.click(screen.getByRole("button", { name: "Sumar dormitorios" }));
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restar dormitorios" })).toBeEnabled();
+  });
+
+  it("se puede saltear y el resumen queda sin cargar", async () => {
+    await irAlPasoDeCaracteristicas();
+    await userEvent.click(screen.getByRole("button", { name: "Saltear este paso" }));
+    expect(screen.getByText("Sin cargar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar propiedad" })).toBeInTheDocument();
+  });
+
+  it("lista solo lo que se cargó", async () => {
+    await irAlPasoDeCaracteristicas();
+    await userEvent.click(screen.getByRole("button", { name: "Sumar baños" }));
+    await userEvent.type(screen.getByLabelText(/Superficie cubierta/), "68");
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    expect(screen.getByText("1 baño · 68 m²")).toBeInTheDocument();
+  });
+});

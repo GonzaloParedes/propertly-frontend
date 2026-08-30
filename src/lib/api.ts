@@ -1,5 +1,12 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+// El backend rechaza con 403 todo POST/PUT/PATCH/DELETE que no traiga este header
+// (CsrfHeaderFilter). Es su defensa anti-CSRF: un <form> cross-site no puede setear
+// headers propios, y hacerlo por fetch fuerza un preflight que allowed-origins corta.
+// Va en todas las requests, no solo en las mutantes: el filtro solo mira los métodos
+// que cambian estado, pero mandarlo siempre evita tener que decidirlo acá.
+const CSRF_HEADER = { "X-Requested-With": "XMLHttpRequest" } as const;
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -26,9 +33,10 @@ async function fetchWithAuth(
     ...init,
     credentials: "include",
     headers: isFormData
-      ? init.headers
+      ? { ...CSRF_HEADER, ...init.headers }
       : {
           "Content-Type": "application/json",
+          ...CSRF_HEADER,
           ...init.headers,
         },
   });
@@ -40,6 +48,7 @@ async function fetchWithAuth(
     const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
+      headers: { ...CSRF_HEADER },
     });
     if (refreshRes.ok) {
       return fetchWithAuth(path, init, false);
