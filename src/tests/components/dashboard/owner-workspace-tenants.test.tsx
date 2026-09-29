@@ -1,12 +1,20 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
+import { ApiError } from "@/lib/api";
 import type { ContractResponse, InvoiceResponse, TenantResponse } from "@/lib/backend-types";
+
+// OwnerWorkspace nombra la cuenta desde la sesión; estas vistas no la usan.
+vi.mock("@/context/auth-context", () => ({
+  useAuth: () => ({ user: null, isLoading: false }),
+}));
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
-    tenants: { list: vi.fn() },
-    contracts: { list: vi.fn() },
+    tenants: { list: vi.fn(), update: vi.fn(), archive: vi.fn() },
+    contracts: { list: vi.fn(), getTenantAccess: vi.fn() },
+    properties: { list: vi.fn(), archive: vi.fn() },
+    users: { getReminderSettings: vi.fn() },
     invoices: { list: vi.fn() },
   },
 }));
@@ -16,16 +24,16 @@ const mockTenants = vi.mocked(AlquiaBackendClient.tenants.list);
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
 
-const JORGE = { id: 1, firstName: "Jorge", lastName: "Paletta", taxId: "20224567899", email: "jorge@ejemplo.com" };
-const MARTA = { id: 2, firstName: "Marta", lastName: "Suárez", taxId: "27248910556", email: "marta@ejemplo.com" };
+const JORGE = { id: 1, firstName: "Jorge", lastName: "Paletta", taxId: "20224567899", email: "jorge@ejemplo.com", phoneNumber: "+5491144552210" };
+const MARTA = { id: 2, firstName: "Marta", lastName: "Suárez", taxId: "27248910556", email: "marta@ejemplo.com", phoneNumber: "+5491155667788" };
 
 const CONTRATO_JORGE = {
   id: 100,
-  property: { id: 10, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A", city: "CABA", province: "CABA" },
+  property: { id: 10, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A", city: "CABA", province: "CABA", category: "APARTMENT" as const },
   tenant: JORGE,
   initialRentAmount: 400000, startDate: "2025-03-01", termMonths: 36, endDate: "2028-02-29",
   status: "ACTIVE" as const, incrementMethod: "FIXED_PERCENTAGE" as const,
-  incrementFrequencyMonths: 3, currentRent: 478691,
+  incrementFrequencyMonths: 3, currentRent: 478691, dueDay: 1,
 };
 
 beforeEach(() => {
@@ -199,5 +207,167 @@ describe("detalle", () => {
 
     await screen.findByText("Todavía no tiene un contrato");
     expect(screen.queryByText("Acceso de pago")).not.toBeInTheDocument();
+  });
+});
+
+// --- Lo que le faltaba al detalle: editar, archivar y el enlace ---
+
+describe("detalle · editar datos", () => {
+  const mockUpdate = vi.mocked(AlquiaBackendClient.tenants.update);
+
+  async function abrirEdicion() {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await userEvent.click(await screen.findByText("Jorge Paletta"));
+    await userEvent.click(await screen.findByRole("button", { name: /Editar datos/ }));
+    return screen.getByRole("dialog");
+  }
+
+  it("muestra también el teléfono en la bajada", async () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await userEvent.click(await screen.findByText("Jorge Paletta"));
+
+    expect(await screen.findByText(/\+5491144552210/)).toBeInTheDocument();
+  });
+
+  it("abre con los datos cargados y guarda el objeto completo", async () => {
+    mockUpdate.mockResolvedValueOnce(JORGE);
+    const dialogo = await abrirEdicion();
+
+    const correo = within(dialogo).getByLabelText("Correo electrónico");
+    await userEvent.clear(correo);
+    await userEvent.type(correo, "jorge.nuevo@ejemplo.com");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith(1, {
+        firstName: "Jorge",
+        lastName: "Paletta",
+        taxId: "20224567899",
+        email: "jorge.nuevo@ejemplo.com",
+        // En dígitos, como el alta: el patrón del backend admite un solo
+        // separador, y su normalizador reconstruye el +549 igual.
+        phoneNumber: "5491144552210",
+      })
+    );
+  });
+
+  it("no deja guardar con un documento inválido", async () => {
+    const dialogo = await abrirEdicion();
+
+    const cuit = within(dialogo).getByLabelText("CUIT o CUIL");
+    await userEvent.clear(cuit);
+    await userEvent.type(cuit, "20224567890");
+
+    expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeDisabled();
+  });
+
+  it("no deja guardar con un correo inválido", async () => {
+    const dialogo = await abrirEdicion();
+
+    const correo = within(dialogo).getByLabelText("Correo electrónico");
+    await userEvent.clear(correo);
+    await userEvent.type(correo, "no-es-un-correo");
+
+    expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeDisabled();
+  });
+
+  it("explica el documento duplicado, que es lo que el propietario puede resolver", async () => {
+    mockUpdate.mockRejectedValueOnce(new ApiError(400, "Tax ID already registered"));
+    const dialogo = await abrirEdicion();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Ese documento ya figura en otro inquilino suyo"
+    );
+  });
+});
+
+describe("detalle · acceso y contrato", () => {
+  const mockAccess = vi.mocked(AlquiaBackendClient.contracts.getTenantAccess);
+
+  async function abrirDetalle() {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await userEvent.click(await screen.findByText("Jorge Paletta"));
+    await screen.findByText("Contrato vigente");
+  }
+
+  it("copia el enlace real del contrato", async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    mockAccess.mockResolvedValueOnce({ url: "http://localhost:3000/tenant-portal?token=abc" });
+    await abrirDetalle();
+
+    await userEvent.click(screen.getByRole("button", { name: /Copiar enlace/ }));
+
+    await waitFor(() => expect(mockAccess).toHaveBeenCalledWith(100));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "http://localhost:3000/tenant-portal?token=abc"
+    );
+  });
+
+  // Sin endpoint detrás, y el spec del portal la dejó fuera de alcance.
+  it("no promete revocar ni regenerar el enlace", async () => {
+    await abrirDetalle();
+    expect(screen.queryByText(/revocar y regenerar/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Administrar" })).not.toBeInTheDocument();
+  });
+
+  it("el resumen del contrato lleva a su detalle", async () => {
+    await abrirDetalle();
+    const callout = screen.getByText("Av. Rivadavia 2340, 5.º A").closest("button");
+    expect(callout).toBeInTheDocument();
+  });
+
+  it("un inquilino sin contrato no muestra la sección de acceso", async () => {
+    conDatos({ tenants: [MARTA], contracts: [] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Marta Suárez" }));
+
+    expect(await screen.findByText("Todavía no tiene un contrato")).toBeInTheDocument();
+    expect(screen.queryByText("Acceso de pago")).not.toBeInTheDocument();
+  });
+});
+
+describe("detalle · archivar", () => {
+  const mockArchive = vi.mocked(AlquiaBackendClient.tenants.archive);
+
+  async function abrirDialogo() {
+    conDatos({ tenants: [MARTA], contracts: [] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Marta Suárez" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Archivar/ }));
+    return screen.getByRole("dialog");
+  }
+
+  it("aclara que su historia se conserva", async () => {
+    const dialogo = await abrirDialogo();
+
+    expect(within(dialogo).getByText(/se conserva/)).toBeInTheDocument();
+    expect(mockArchive).not.toHaveBeenCalled();
+  });
+
+  it("archiva y vuelve a pedir la lista", async () => {
+    mockArchive.mockResolvedValueOnce(MARTA);
+    const dialogo = await abrirDialogo();
+    mockTenants.mockResolvedValue([]);
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Archivar" }));
+
+    await waitFor(() => expect(mockArchive).toHaveBeenCalledWith(2));
+    expect(await screen.findByText("Todavía no cargó ningún inquilino")).toBeInTheDocument();
+  });
+
+  it("explica el 409 y el inquilino sigue en la lista", async () => {
+    mockArchive.mockRejectedValueOnce(new ApiError(409, "Request violates a data constraint"));
+    const dialogo = await abrirDialogo();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Archivar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se puede archivar: el inquilino tiene datos asociados"
+    );
   });
 });
