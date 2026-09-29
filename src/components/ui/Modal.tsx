@@ -45,7 +45,7 @@ export default function Modal({ open, onClose, title, description, children }: M
       const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
       if (items.length === 0) return;
       const first = items[0];
-      const last = items[items.length - 1];
+      const last = items.at(-1)!;
 
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();

@@ -18,7 +18,7 @@ export default function Field({
   error,
   children,
   className,
-}: FieldProps) {
+}: Readonly<FieldProps>) {
   const hintId = hint ? `${htmlFor}-hint` : undefined;
   const errorId = error ? `${htmlFor}-error` : undefined;
 

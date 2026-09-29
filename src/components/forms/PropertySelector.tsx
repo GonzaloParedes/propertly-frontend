@@ -34,7 +34,7 @@ function HomeIcon() {
   );
 }
 
-export default function PropertySelector({ selectedProperty, onSelect, onClear, error }: PropertySelectorProps) {
+export default function PropertySelector({ selectedProperty, onSelect, onClear, error }: Readonly<PropertySelectorProps>) {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [availableProperties, setAvailableProperties] = useState<Property[]>(MOCK_PROPERTIES);

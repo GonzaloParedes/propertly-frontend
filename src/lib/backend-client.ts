@@ -110,7 +110,7 @@ export const AlquiaBackendClient = {
     listArchived: (): Promise<PropertyResponse[]> =>
       apiGet<PropertyResponse[]>("/properties/archived"),
     archive: (id: number): Promise<PropertyResponse> =>
-      apiPost<PropertyResponse>(`/properties/${id}/archive`, undefined),
+      apiPost<PropertyResponse>(`/properties/${id}/archive`),
     restore: (id: number): Promise<PropertyResponse> =>
       apiPost<PropertyResponse>(`/properties/${id}/restore`, undefined),
   },
@@ -141,7 +141,7 @@ export const AlquiaBackendClient = {
     getDocument: (id: number): Promise<Blob> => apiGetBlob(`/contracts/${id}/document`),
     removeDocument: (id: number): Promise<void> => apiDelete(`/contracts/${id}/document`),
     resendTenantAccess: (id: number): Promise<void> =>
-      apiPost(`/contracts/${id}/tenant-access/resend`, undefined),
+      apiPost(`/contracts/${id}/tenant-access/resend`),
     // Devuelve el enlace sin reenviar el mail: es lo que necesita «Copiar
     // enlace». El QR lo arma el front.
     getTenantAccess: (id: number): Promise<TenantAccessResponse> =>
@@ -188,7 +188,7 @@ export const AlquiaBackendClient = {
     removeAdjustment: (id: number, adjustmentId: number): Promise<void> =>
       apiDelete(`/invoices/${id}/adjustments/${adjustmentId}`),
     confirm: (id: number): Promise<InvoiceResponse> =>
-      apiPost<InvoiceResponse>(`/invoices/${id}/confirm`, undefined),
+      apiPost<InvoiceResponse>(`/invoices/${id}/confirm`),
     schemaChange: (id: number, body: SchemaChangeRequest): Promise<ContractResponse> =>
       apiPost<ContractResponse>(`/invoices/${id}/schema-change`, body),
   },

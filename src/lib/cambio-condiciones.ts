@@ -46,11 +46,14 @@ export function mesesElegibles(contract: ContractResponse, hoyISO: string): MesE
   return meses;
 }
 
+function indiceDelContrato(contract: ContractResponse): "IPC" | "ICL" | null {
+  if (contract.incrementMethod !== "INDEX") return null;
+  return contract.incrementIndexName === "IPC" ? "IPC" : "ICL";
+}
+
 /** Las condiciones actuales, para que el propietario cambie sólo lo que cambia. */
 export function condicionesIniciales(contract: ContractResponse, meses: MesElegible[]): CondicionesNuevas {
-  const indice = contract.incrementMethod === "INDEX"
-    ? (contract.incrementIndexName === "IPC" ? "IPC" : "ICL")
-    : null;
+  const indice = indiceDelContrato(contract);
   return {
     mes: meses[0]?.valor ?? "",
     alquiler: String(Math.round(contract.currentRent)),

@@ -196,7 +196,7 @@ export function avisosPendientes(
   if (vencidas.length > 0) {
     const total = vencidas.reduce((suma, i) => suma + i.total, 0);
     // La más vieja fija el «desde cuándo»: es la que mide el atraso real.
-    const masVieja = vencidas.reduce((a, b) => (a.dueDate <= b.dueDate ? a : b));
+    const masVieja = vencidas.reduce((a, b) => (a.dueDate <= b.dueDate ? a : b), vencidas[0]);
     const cuando = hace(masVieja.dueDate, hoyISO);
     avisos.push({
       id: "vencidas",

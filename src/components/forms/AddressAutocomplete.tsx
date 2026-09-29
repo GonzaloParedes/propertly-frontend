@@ -23,7 +23,7 @@ export default function AddressAutocomplete({
   onSelectSuggestion,
   error,
   disabled,
-}: AddressAutocompleteProps) {
+}: Readonly<AddressAutocompleteProps>) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
