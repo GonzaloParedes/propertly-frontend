@@ -1,0 +1,1499 @@
+<title>Alquia MVP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════════════════════
+   Alquia · prototipo MVP
+   Marca v1.1 (docs/brand/) · dominio: propertly-backend@mvp
+
+   SISTEMA — una sola forma de dibujar cada cosa:
+   · contorno  → siempre box-shadow inset (nunca border), token --ani-*
+   · radio     → escala de 4 pasos, sin valores sueltos
+   · alto      → 3 alturas de control, sin excepciones
+   · elegido   → SIEMPRE anillo índigo + fondo índigo suave
+   Un solo mundo visual: la app es clara por diseño.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  /* marca */
+  --tinta:#1E1B2E;
+  --indigo:#5B4BC4; --indigo-osc:#463AA0; --indigo-act:#3A3084; --indigo-suave:#E7E3F8;
+  --lila:#A79AF0; --rosa:#DB4C8E;
+  --superficie:#F6F5FC; --gris:#514D63; --blanco:#FFFFFF;
+  --borde:#DEDAF0; --borde-campo:#C4BEE4; --divisor:#EDEBF7; --hover:#F1EFFA;
+  --exito:#1E874B; --exito-bg:#E6F4EC;
+  --adv:#B26A00;   --adv-bg:#F8EFDB;
+  --error:#CE3F53; --error-bg:#FBE9EC;
+  /* tipografía */
+  --display:'Quicksand','Trebuchet MS','Segoe UI',sans-serif;
+  --ui:'Nunito Sans','Segoe UI',Arial,sans-serif;
+  /* radios — 4 pasos, nada fuera de acá */
+  --r-sm:10px; --r-md:14px; --r-lg:20px; --r-full:999px;
+  --r-mark:4px;   /* punta de barra de gráfico — spec de dataviz */
+  /* anillos — el único mecanismo de contorno */
+  --ani-1:inset 0 0 0 1.5px var(--borde);
+  --ani-2:inset 0 0 0 1.5px var(--borde-campo);
+  --ani-sel:inset 0 0 0 2px var(--indigo);
+  /* alturas de control */
+  --alto:52px; --alto-sm:40px; --alto-lg:58px;
+  /* sombras */
+  --sombra:0 1px 3px rgba(30,27,46,.03), 0 14px 34px -12px rgba(30,27,46,.13);
+  --sombra-sm:0 1px 2px rgba(30,27,46,.04), 0 4px 12px -4px rgba(30,27,46,.07);
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html{ color-scheme:light; }
+body{
+  margin:0; background:var(--superficie); color:var(--tinta);
+  font:400 17px/1.55 var(--ui); -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{ text-wrap:balance; margin:0; }
+p{ margin:0; }
+ul{ margin:0; padding:0; list-style:none; }
+button,input{ font-family:inherit; }
+:where(a,button,input,[tabindex]):focus-visible{
+  outline:3px solid var(--lila); outline-offset:3px; border-radius:var(--r-sm);
+}
+@media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+.icon{ flex:none; width:21px; height:21px; }
+.icon--sm{ width:17px; height:17px; }
+.icon--lg{ width:27px; height:27px; }
+.sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+
+/* ───────── Chrome del prototipo ───────── */
+.viewer{
+  position:sticky; top:0; z-index:80; display:flex; flex-wrap:wrap;
+  align-items:center; gap:18px; padding:10px 20px;
+  background:var(--tinta); color:var(--blanco);
+}
+.viewer__mark{ display:inline-flex; align-items:center; gap:9px; font:700 15px var(--display); }
+.viewer__tabs{ display:flex; flex-wrap:wrap; gap:5px; }
+.viewer__tab{
+  font:600 13.5px var(--ui); padding:7px 13px; border-radius:var(--r-full);
+  border:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+  background:transparent; color:#DDD9F0; cursor:pointer; white-space:nowrap;
+  transition:background .15s, color .15s;
+}
+.viewer__tab:hover{ background:rgba(255,255,255,.12); color:var(--blanco); }
+.viewer__tab[aria-pressed="true"]{ background:var(--blanco); color:var(--tinta); font-weight:700; box-shadow:none; }
+.viewer__note{ margin-left:auto; font:600 13px var(--ui); color:#DDD9F0; display:inline-flex; align-items:center; gap:8px; }
+.viewer :focus-visible{ outline-color:var(--blanco); }
+
+/* ───────── Estructura ───────── */
+.app{ display:grid; grid-template-columns:238px minmax(0,1fr); min-height:calc(100vh - 52px); }
+.app.oculto{ display:none; }
+.side{ background:var(--blanco); box-shadow:1px 0 0 var(--divisor); padding:26px 14px; display:flex; flex-direction:column; gap:2px; }
+.side__logo{ height:29px; width:auto; align-self:flex-start; margin:0 10px 30px; }
+.side__group{ font:700 11px/1 var(--ui); letter-spacing:.12em; text-transform:uppercase; color:var(--gris); margin:0 10px 9px; opacity:.72; }
+.side__group + .side__group{ margin-top:24px; }
+.side__link{
+  display:flex; align-items:center; gap:12px; width:100%; min-height:var(--alto-sm);
+  padding:12px; border:0; border-radius:var(--r-sm);
+  background:transparent; color:var(--gris); font:600 16px var(--ui);
+  text-align:left; cursor:pointer; transition:background .15s, color .15s;
+}
+.side__link .icon{ color:var(--gris); transition:color .15s; }
+.side__link:hover{ background:var(--superficie); color:var(--tinta); }
+.side__link:hover .icon{ color:var(--tinta); }
+.side__link[aria-current="page"]{ background:var(--indigo-suave); color:var(--indigo-osc); font-weight:700; }
+.side__link[aria-current="page"] .icon{ color:var(--indigo); }
+.side__badge{
+  margin-left:auto; min-width:24px; height:24px; padding:0 8px; border-radius:var(--r-full);
+  background:var(--error); color:var(--blanco); font:700 12.5px/1 var(--ui);
+  display:grid; place-items:center; font-variant-numeric:tabular-nums;
+}
+.side__pie{ margin-top:auto; display:flex; align-items:center; gap:11px; padding:14px 10px 0; box-shadow:inset 0 1px 0 var(--divisor); }
+.avatar{ width:38px; height:38px; border-radius:var(--r-full); background:var(--indigo); color:var(--blanco); display:grid; place-items:center; font:700 14.5px var(--ui); flex:none; }
+.side__pie small{ display:block; font-size:13px; color:var(--gris); }
+.side__pie strong{ font-size:15px; }
+
+.col{ min-width:0; }
+.page{ display:none; padding:44px 48px 80px; max-width:1180px; }
+.page.on{ display:block; }
+.phead{ display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end; margin-bottom:34px; }
+.phead h1{ font:700 31px/1.2 var(--display); letter-spacing:-.02em; }
+.phead__d{ color:var(--gris); margin-top:7px; }
+.phead__act{ margin-left:auto; display:flex; gap:10px; flex-wrap:wrap; }
+.phead__meta{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px; color:var(--gris); }
+.crumb{ display:flex; align-items:center; gap:7px; font-size:15px; color:var(--gris); margin-bottom:11px; }
+.crumb button{ border:0; background:none; padding:0; font:600 15px var(--ui); color:var(--indigo); cursor:pointer; }
+.crumb button:hover{ text-decoration:underline; text-underline-offset:3px; }
+.eyebrow{ font:700 12px/1.2 var(--ui); letter-spacing:.1em; text-transform:uppercase; color:var(--gris); }
+.sect{ margin-top:44px; }
+.sect__h{ display:flex; align-items:baseline; gap:14px; margin-bottom:16px; flex-wrap:wrap; }
+.sect__h h2{ font:700 20px var(--display); }
+.sect__h > :last-child:not(h2){ margin-left:auto; }
+
+/* ───────── Botones ───────── */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:9px;
+  min-height:var(--alto); padding:0 22px; border:0; border-radius:var(--r-md);
+  font:700 16.5px var(--ui); cursor:pointer; white-space:nowrap;
+  transition:background .15s, box-shadow .15s, color .15s, transform .08s;
+}
+.btn:active{ transform:translateY(1px); }
+.btn--sm{ min-height:var(--alto-sm); padding:0 15px; font-size:15px; border-radius:var(--r-sm); }
+.btn--lg{ min-height:var(--alto-lg); padding:0 30px; font-size:17.5px; }
+.btn--pri{ background:var(--indigo); color:var(--blanco); }
+.btn--pri:hover{ background:var(--indigo-osc); }
+.btn--pri:active{ background:var(--indigo-act); }
+.btn--sec{ background:var(--blanco); color:var(--indigo); box-shadow:var(--ani-2); }
+.btn--sec:hover{ background:var(--indigo-suave); box-shadow:var(--ani-sel); }
+.btn--quiet{ background:transparent; color:var(--gris); }
+.btn--quiet:hover{ background:var(--superficie); color:var(--tinta); }
+.btn--peligro{ background:transparent; color:var(--error); }
+.btn--peligro:hover{ background:var(--error-bg); }
+
+/* ───────── Superficies ───────── */
+.card{ background:var(--blanco); border-radius:var(--r-lg); box-shadow:var(--sombra-sm); padding:26px 28px; }
+.card h3{ font:700 17.5px var(--display); margin-bottom:14px; }
+.card__note{ color:var(--gris); font-size:16px; line-height:1.7; }
+.card__cifra{ font:700 30px var(--display); letter-spacing:-.025em; }
+.g2{ display:grid; grid-template-columns:repeat(2,1fr); gap:18px; align-items:start; }
+.g3{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+
+/* ───────── Banda de cartera ───────── */
+.banda{ background:var(--blanco); border-radius:var(--r-lg); box-shadow:var(--sombra); display:grid; grid-template-columns:minmax(0,1.45fr) minmax(0,.9fr); }
+.banda__m{ padding:32px 34px; }
+.banda__s{ padding:32px 34px; display:flex; flex-direction:column; gap:26px; justify-content:center; box-shadow:inset 1px 0 0 var(--divisor); }
+.cifra{ font:700 38px/1.05 var(--display); letter-spacing:-.03em; margin:16px 0 0; }
+.cifra small{ display:block; font:400 16px/1.5 var(--ui); letter-spacing:0; color:var(--gris); margin-top:11px; }
+.meter{ display:flex; gap:2px; height:13px; margin:26px 0 20px; border-radius:var(--r-full); overflow:hidden; background:var(--blanco); }
+.meter__s{ min-width:6px; }
+.meter__s--ok{ background:var(--exito); }
+.meter__s--warn{ background:var(--adv); }
+.meter__s--bad{ background:var(--error); }
+.key{ display:flex; flex-wrap:wrap; gap:12px 28px; }
+.key__i{ display:flex; align-items:center; gap:9px; font-size:15.5px; }
+.key__i .icon{ width:17px; height:17px; }
+.key__i b{ font-variant-numeric:tabular-nums; }
+.key__i--ok .icon{ color:var(--exito); }
+.key__i--warn .icon{ color:var(--adv); }
+.key__i--bad .icon{ color:var(--error); }
+.stat b{ display:block; font:700 25px/1.1 var(--display); margin-top:6px; }
+.stat small{ display:block; font:400 14.5px var(--ui); color:var(--gris); margin-top:6px; }
+
+/* ───────── Estado ───────── */
+.pill{
+  display:inline-flex; align-items:center; gap:7px; padding:6px 12px;
+  border-radius:var(--r-full); font:700 14px/1.25 var(--ui); color:var(--tinta); white-space:nowrap;
+}
+.pill .icon{ width:15px; height:15px; }
+.pill--ok{ background:var(--exito-bg); }        .pill--ok .icon{ color:var(--exito); }
+.pill--warn{ background:var(--adv-bg); }        .pill--warn .icon{ color:var(--adv); }
+.pill--bad{ background:var(--error-bg); }       .pill--bad .icon{ color:var(--error); }
+.pill--info{ background:var(--indigo-suave); }  .pill--info .icon{ color:var(--indigo); }
+.pill--none{ background:var(--superficie); color:var(--gris); } .pill--none .icon{ color:var(--gris); }
+.pill--proy{ background:transparent; box-shadow:var(--ani-2); color:var(--gris); } .pill--proy .icon{ color:var(--gris); }
+
+/* ───────── Avisos ───────── */
+.avisos{ display:flex; flex-direction:column; gap:11px; }
+.aviso{
+  display:flex; align-items:flex-start; gap:15px; padding:20px 24px;
+  background:var(--blanco); border-radius:var(--r-md); box-shadow:var(--sombra-sm);
+  border-left:4px solid var(--gris);
+}
+.aviso--bad{ border-left-color:var(--error); }   .aviso--bad .aviso__i{ color:var(--error); }
+.aviso--warn{ border-left-color:var(--adv); }    .aviso--warn .aviso__i{ color:var(--adv); }
+.aviso--info{ border-left-color:var(--indigo); } .aviso--info .aviso__i{ color:var(--indigo); }
+.aviso--plano{ box-shadow:var(--ani-1); }
+.aviso--suelto{ margin-bottom:24px; }
+.aviso__i{ margin-top:2px; }
+.aviso__b{ min-width:0; }
+.aviso__b strong{ display:block; font-size:17px; margin-bottom:3px; }
+.aviso__b span{ color:var(--gris); font-size:16px; }
+.aviso__a{ margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; flex:none; padding-left:8px; }
+
+/* ───────── Lista de filas ─────────
+   Reemplaza a la tabla donde el dato NO es tabular: una propiedad
+   o un contrato es un objeto, no seis columnas comparables.
+   Toda la fila se puede tocar; las acciones quedan SIEMPRE visibles
+   (esconderlas hasta el hover es hostil para quien no descubre el hover). */
+.lista{ background:var(--blanco); border-radius:var(--r-lg); box-shadow:var(--sombra-sm); overflow:hidden; }
+.fila{ position:relative; display:flex; align-items:center; gap:18px; padding:18px 24px; transition:background .14s; }
+.fila + .fila{ box-shadow:inset 0 1px 0 var(--divisor); }
+.fila:hover{ background:var(--superficie); }
+.fila:focus-within{ background:var(--superficie); }
+.fila__ic{
+  width:44px; height:44px; flex:none; border-radius:var(--r-md); display:grid; place-items:center;
+  background:var(--superficie); color:var(--gris); transition:background .14s, color .14s;
+}
+.fila:hover .fila__ic{ background:var(--indigo-suave); color:var(--indigo); }
+.fila__b{ min-width:0; flex:1; }
+.fila__t{
+  border:0; background:none; padding:0; text-align:left; cursor:pointer;
+  font:700 17px var(--ui); color:var(--tinta);
+}
+.fila__t::after{ content:""; position:absolute; inset:0; }
+.fila__m{ display:block; color:var(--gris); font-size:14.5px; margin-top:3px; }
+.fila__d{ text-align:right; flex:none; }
+.fila__d b{ font:700 19px var(--display); font-variant-numeric:tabular-nums; letter-spacing:-.02em; display:block; }
+.fila__d small{ display:block; color:var(--gris); font-size:13.5px; margin-top:2px; }
+.fila__e{ flex:none; min-width:132px; display:flex; justify-content:flex-end; }
+.fila__a{ position:relative; z-index:1; flex:none; }
+
+/* ───────── Tabla ─────────
+   Solo donde el dato SÍ es tabular: cuotas y cobranzas, donde
+   hay que comparar montos y fechas alineados fila contra fila. */
+.tabla-wrap{ overflow-x:auto; }
+table.t{ width:100%; border-collapse:collapse; }
+table.t th, table.t td{ padding:16px 24px; text-align:left; vertical-align:middle; }
+table.t th{
+  font:600 14px/1.2 var(--ui); color:var(--gris);
+  padding-top:20px; padding-bottom:12px; white-space:nowrap;
+  box-shadow:inset 0 -1px 0 var(--divisor);
+}
+table.t tbody td{ box-shadow:inset 0 1px 0 var(--divisor); }
+table.t tbody tr:first-child td{ box-shadow:none; }
+table.t tbody tr{ transition:background .12s; }
+table.t tbody tr:hover{ background:var(--superficie); }
+.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.money{ font:700 17px var(--display); font-variant-numeric:tabular-nums; letter-spacing:-.015em; }
+.act{ text-align:right; white-space:nowrap; }
+.apagado{ color:var(--gris); }
+.t__tit{ font-weight:700; }
+.t__sub{ display:block; color:var(--gris); font-size:14.5px; margin-top:2px; }
+tr.hoy td{ background:var(--indigo-suave); }
+tr.hoy:hover td{ background:var(--indigo-suave); }
+
+/* ───────── Cronología ───────── */
+.tl{ padding:28px 30px 24px; }
+.tl__plot{ display:flex; align-items:flex-end; gap:3px; height:148px; box-shadow:inset 0 -1px 0 var(--borde); overflow-x:auto; }
+.tl__c{ flex:1 1 0; min-width:13px; max-width:26px; display:flex; align-items:flex-end; height:100%; }
+.tl__b{ width:100%; border-radius:var(--r-mark) var(--r-mark) 0 0; }
+.tl__b--pag{ background:var(--exito); }
+.tl__b--ven{ background:var(--error); }
+.tl__b--proy{ background:transparent; box-shadow:var(--ani-2); }
+.tl__ax{ display:flex; gap:3px; margin-top:9px; font:600 11.5px/1.2 var(--ui); color:var(--gris); }
+.tl__t{ flex:1 1 0; min-width:13px; max-width:26px; text-align:center; }
+.tl__t--hoy{ color:var(--indigo); font-weight:800; }
+.tl__ley{ display:flex; flex-wrap:wrap; gap:12px 26px; margin-top:22px; padding-top:19px; box-shadow:inset 0 1px 0 var(--divisor); }
+.tl__l{ display:flex; align-items:center; gap:9px; font-size:15px; }
+.tl__sw{ width:15px; height:15px; border-radius:var(--r-mark); flex:none; }
+.tl__sw--pag{ background:var(--exito); }
+.tl__sw--ven{ background:var(--error); }
+.tl__sw--proy{ box-shadow:var(--ani-2); }
+
+/* ══════════════════════════════════════════════════════════════
+   ASISTENTE · una pregunta por pantalla
+   ══════════════════════════════════════════════════════════════ */
+.wiz{ display:none; min-height:calc(100vh - 52px); background:var(--blanco); flex-direction:column; }
+.wiz.on{ display:flex; }
+.wiz__top{ display:flex; align-items:center; gap:20px; padding:18px 32px; box-shadow:inset 0 -1px 0 var(--divisor); }
+.wiz__salir{
+  width:46px; height:46px; display:grid; place-items:center; border:0;
+  border-radius:var(--r-full); background:var(--superficie); color:var(--gris);
+  cursor:pointer; transition:background .15s, color .15s;
+}
+.wiz__salir:hover{ background:var(--indigo-suave); color:var(--indigo); }
+.wiz__tit{ font:700 16px var(--display); }
+/* Barra de progreso: dice CUÁNTO FALTA. El rótulo dice CUÁNTOS. No se repiten. */
+.barra{ flex:1; max-width:300px; height:5px; border-radius:var(--r-full); background:var(--borde); overflow:hidden; margin-left:auto; }
+.barra__f{ height:100%; border-radius:var(--r-full); background:var(--indigo); width:0; transition:width .38s cubic-bezier(.4,0,.2,1); }
+.wiz__cuenta{ font:600 14.5px var(--ui); color:var(--gris); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+.wiz__cuerpo{ flex:1; display:grid; place-items:center; padding:44px 32px; }
+.wiz__caja{ width:100%; max-width:620px; }
+.wiz__paso{ display:none; }
+.wiz__paso.on{ display:block; animation:entra .32s ease both; }
+@keyframes entra{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+.preg{ font:700 32px/1.22 var(--display); letter-spacing:-.02em; margin-bottom:12px; }
+.ayuda{ color:var(--gris); font-size:17px; margin-bottom:32px; max-width:48ch; }
+
+/* Campo — misma familia que .op y .atajo: superficie + anillo */
+.grupo{
+  display:flex; align-items:baseline; gap:12px;
+  background:var(--superficie); border-radius:var(--r-md);
+  padding:16px 20px; box-shadow:var(--ani-1);
+  transition:box-shadow .16s, background .16s;
+}
+.grupo:focus-within{ background:var(--blanco); box-shadow:var(--ani-sel); }
+.grupo input{ flex:1; min-width:0; border:0; background:transparent; padding:0; font:inherit; color:var(--tinta); }
+.grupo input:focus{ outline:none; }
+.grupo input::placeholder{ color:var(--gris); opacity:.65; font-weight:400; }
+.grupo__fijo{ color:var(--gris); }
+.grupo--xl{ font:700 34px var(--display); letter-spacing:-.025em; padding:18px 22px; }
+.grupo--md{ font:700 24px var(--display); letter-spacing:-.02em; }
+.grupo--sm{ font:600 19px var(--display); }
+.grupo__suf{ font:600 17px var(--ui); color:var(--gris); white-space:nowrap; letter-spacing:0; }
+.bajo{ margin-top:14px; color:var(--gris); font-size:15.5px; }
+.apilado{ display:flex; flex-direction:column; gap:14px; }
+
+/* Tarjeta de opción */
+.ops{ display:flex; flex-direction:column; gap:11px; }
+.ops--2{ display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.op{
+  display:flex; align-items:center; gap:15px; width:100%; text-align:left;
+  min-height:var(--alto); padding:15px 18px; border:0; border-radius:var(--r-md);
+  cursor:pointer; background:var(--blanco); box-shadow:var(--ani-1);
+  transition:box-shadow .15s, background .15s;
+}
+.op:hover{ box-shadow:var(--ani-2); background:var(--superficie); }
+.op[aria-checked="true"]{ box-shadow:var(--ani-sel); background:var(--indigo-suave); }
+.op__ic{
+  width:42px; height:42px; border-radius:var(--r-md); flex:none; display:grid; place-items:center;
+  background:var(--superficie); color:var(--gris); transition:background .15s, color .15s;
+}
+.op[aria-checked="true"] .op__ic{ background:var(--indigo); color:var(--blanco); }
+.op__b{ min-width:0; flex:1; }
+.op__b strong{ display:block; font-size:16.5px; }
+.op__b small{ display:block; color:var(--gris); font-size:14.5px; margin-top:2px; }
+.op__tick{ color:var(--indigo); opacity:0; transition:opacity .15s; flex:none; }
+.op[aria-checked="true"] .op__tick{ opacity:1; }
+
+/* Contador */
+.stepper{ display:flex; align-items:center; gap:16px; }
+.stepper__b{
+  width:var(--alto); height:var(--alto); border-radius:var(--r-md); display:grid; place-items:center;
+  background:var(--superficie); color:var(--indigo); border:0; cursor:pointer;
+  box-shadow:var(--ani-1); transition:background .15s, box-shadow .15s;
+}
+.stepper__b:hover{ background:var(--indigo-suave); box-shadow:var(--ani-sel); }
+.stepper__v{ font:700 32px var(--display); min-width:2.6ch; text-align:center; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.stepper__u{ font:600 17px var(--ui); color:var(--gris); }
+
+/* Chip — mismo estado «elegido» que .op: anillo índigo + fondo suave */
+.chips{ display:flex; gap:9px; flex-wrap:wrap; }
+.chip{
+  min-height:var(--alto-sm); padding:0 17px; border-radius:var(--r-full);
+  background:var(--blanco); box-shadow:var(--ani-1); border:0;
+  color:var(--gris); font:600 15px var(--ui); cursor:pointer;
+  display:inline-flex; align-items:center; gap:8px;
+  transition:background .15s, box-shadow .15s, color .15s;
+}
+.chip:hover{ background:var(--superficie); box-shadow:var(--ani-2); color:var(--tinta); }
+.chip[aria-checked="true"], .chip[aria-pressed="true"]{
+  background:var(--indigo-suave); box-shadow:var(--ani-sel); color:var(--indigo-osc); font-weight:700;
+}
+
+.wiz__pie{ display:flex; align-items:center; gap:14px; padding:18px 32px; box-shadow:inset 0 1px 0 var(--divisor); background:var(--blanco); position:sticky; bottom:0; }
+.wiz__pie .btn--lg{ margin-left:auto; }
+
+/* Resumen */
+.res{ margin-bottom:26px; }
+.res__f{ display:flex; align-items:baseline; gap:16px; padding:14px 0; box-shadow:inset 0 -1px 0 var(--divisor); }
+.res__f:last-child{ box-shadow:none; }
+.res__k{ color:var(--gris); font-size:15.5px; min-width:148px; }
+.res__v{ font-weight:700; font-size:17px; margin-left:auto; text-align:right; }
+.res__ed{ border:0; background:none; color:var(--indigo); font:600 15px var(--ui); cursor:pointer; padding:6px 10px; border-radius:var(--r-sm); flex:none; }
+.res__ed:hover{ background:var(--indigo-suave); }
+.escala{ background:var(--superficie); border-radius:var(--r-md); padding:4px 20px; }
+.escala__f{ display:flex; align-items:baseline; gap:14px; padding:12px 0; box-shadow:inset 0 -1px 0 var(--borde); }
+.escala__f:last-child{ box-shadow:none; }
+.escala__p{ font:600 14.5px var(--ui); color:var(--gris); }
+.escala__m{ font:700 17px var(--display); font-variant-numeric:tabular-nums; margin-left:auto; }
+.escala__d{ font:600 14px var(--ui); color:var(--exito); font-variant-numeric:tabular-nums; min-width:58px; text-align:right; }
+
+/* ───────── Modal ───────── */
+.modal{ display:none; position:fixed; inset:0; z-index:90; background:rgba(30,27,46,.55); place-items:center; padding:20px; }
+.modal.on{ display:grid; }
+.modal__c{ background:var(--blanco); border-radius:var(--r-lg); box-shadow:0 24px 60px -12px rgba(30,27,46,.34); max-width:470px; width:100%; padding:38px; text-align:center; animation:entra .26s ease both; }
+.modal__m{ width:62px; height:62px; border-radius:var(--r-full); display:grid; place-items:center; margin:0 auto 18px; background:var(--exito-bg); color:var(--exito); }
+.modal__c h2{ font:700 22px var(--display); margin-bottom:10px; }
+.modal__c p{ color:var(--gris); margin-bottom:26px; }
+
+@media (max-width:1080px){
+  .banda{ grid-template-columns:1fr; }
+  .banda__s{ box-shadow:inset 0 1px 0 var(--divisor); flex-direction:row; flex-wrap:wrap; gap:30px; }
+  .g3, .g2{ grid-template-columns:1fr; }
+  .fila__e{ min-width:0; }
+}
+@media (max-width:900px){
+  .app{ grid-template-columns:1fr; }
+  .side{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:6px; padding:12px 16px; box-shadow:inset 0 -1px 0 var(--divisor); }
+  .side__logo{ margin:0 12px 0 0; height:26px; }
+  .side__group, .side__pie{ display:none; }
+  .side__link{ width:auto; }
+  .page{ padding:26px 20px 60px; }
+  .preg{ font-size:26px; }
+  .grupo--xl{ font-size:28px; }
+  .ops--2{ grid-template-columns:1fr; }
+  .wiz__top, .wiz__pie, .wiz__cuerpo{ padding-left:20px; padding-right:20px; }
+  .barra{ display:none; }
+  .fila{ flex-wrap:wrap; }
+  .fila__d, .fila__e{ text-align:left; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-inicio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.6V21h13V9.6"/><path d="M10 21v-5h4v5"/></symbol>
+  <symbol id="i-props" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7.5h2M13 7.5h2M9 11.5h2M13 11.5h2M9 15.5h2M13 15.5h2"/><path d="M10 21v-2.5h4V21"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h8l4 4V21.5H6z"/><path d="M14 2.5v4h4"/><path d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-pago" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/><path d="M6 14.5h4"/></symbol>
+  <symbol id="i-gente" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.2a3.5 3.5 0 010 5.6"/><path d="M17.5 14.4A6.5 6.5 0 0121.5 20"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6.5L9.5 17 4 11.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-reloj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.2l3.2 2"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5L2.5 20.5h19L12 3.5z"/><path d="M12 10v4.5"/><path d="M12 17.8v.1"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.7v.1"/></symbol>
+  <symbol id="i-mas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+  <symbol id="i-menos" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 12h13"/></symbol>
+  <symbol id="i-baja" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7.5 11L12 15.5 16.5 11"/><path d="M4.5 20h15"/></symbol>
+  <symbol id="i-izq" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5"/><path d="M10.5 6.5L5 12l5.5 5.5"/></symbol>
+  <symbol id="i-der" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"/><path d="M13.5 6.5L19.5 12l-6 5.5"/></symbol>
+  <symbol id="i-porc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5L5 19"/><circle cx="7.5" cy="7.5" r="2.6"/><circle cx="16.5" cy="16.5" r="2.6"/></symbol>
+  <symbol id="i-billete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/></symbol>
+  <symbol id="i-indice" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 17.5l5-5.5 4 3.5 7.5-8"/><path d="M15.5 7.5h5v5"/></symbol>
+  <symbol id="i-lapiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.5 2.5 0 00-3.5-3.5L4.5 16.5z"/><path d="M14.5 6.5L17.5 9.5"/></symbol>
+</svg>
+
+<header class="viewer">
+  <span class="viewer__mark">
+    <svg width="21" height="21" viewBox="0 0 30 30" fill="none" aria-hidden="true"><path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="22.5" r="5.5" fill="#A79AF0"/></svg>
+    Alquia · MVP
+  </span>
+  <nav class="viewer__tabs" aria-label="Pantallas del prototipo">
+    <button class="viewer__tab" data-go="inicio">Inicio</button>
+    <button class="viewer__tab" data-go="propiedades">Propiedades</button>
+    <button class="viewer__tab" data-go="contrato">Contrato</button>
+    <button class="viewer__tab" data-go="cobranzas">Cobranzas</button>
+    <button class="viewer__tab" data-go="inquilinos">Inquilinos</button>
+    <button class="viewer__tab" data-go="w-contrato">Asistente · contrato</button>
+    <button class="viewer__tab" data-go="w-propiedad">Asistente · propiedad</button>
+  </nav>
+  <span class="viewer__note"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-info"/></svg>Datos de ejemplo · 19/08/2026</span>
+</header>
+
+<div class="app" id="app">
+  <nav class="side" aria-label="Menú principal">
+    <svg class="side__logo" viewBox="0 0 360 160" role="img" aria-label="Alquia">
+      <g fill="none" stroke="#1E1B2E" stroke-width="15" stroke-linecap="round">
+        <circle cx="45" cy="90" r="22.5"/><path d="M67.5 67.5 V112.5"/><path d="M94.5 32.5 V112.5"/>
+        <circle cx="144" cy="90" r="22.5"/><path d="M166.5 67.5 V137.5"/>
+        <path d="M193.5 67.5 V90 A22.5 22.5 0 0 0 238.5 90 V67.5"/><path d="M265.5 67.5 V112.5"/>
+        <circle cx="315" cy="90" r="22.5"/><path d="M337.5 67.5 V112.5"/>
+      </g>
+      <g transform="translate(244.5,16) scale(1.4)" fill="none">
+        <path d="M4 13 L15 3.5 L26 13" stroke="#DB4C8E" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="15" cy="22.5" r="5.5" fill="#5B4BC4"/>
+      </g>
+    </svg>
+    <p class="side__group">Cartera</p>
+    <button class="side__link" data-nav="inicio"><svg class="icon" aria-hidden="true"><use href="#i-inicio"/></svg>Inicio</button>
+    <button class="side__link" data-nav="propiedades"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg>Propiedades</button>
+    <button class="side__link" data-nav="contrato"><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg>Contratos</button>
+    <button class="side__link" data-nav="inquilinos"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg>Inquilinos</button>
+    <p class="side__group">Dinero</p>
+    <button class="side__link" data-nav="cobranzas"><svg class="icon" aria-hidden="true"><use href="#i-pago"/></svg>Cobranzas<span class="side__badge">3</span></button>
+    <div class="side__pie">
+      <span class="avatar" aria-hidden="true">RG</span>
+      <span><strong>Ricardo Gómez</strong><small>Cuenta personal</small></span>
+    </div>
+  </nav>
+
+  <div class="col">
+
+    <!-- ───── INICIO ───── -->
+    <main class="page" id="p-inicio">
+      <div class="phead">
+        <div>
+          <h1>Buen día, Ricardo</h1>
+          <p class="phead__d">Así está su cartera hoy, miércoles 19 de agosto de 2026.</p>
+        </div>
+        <div class="phead__act">
+          <button class="btn btn--sec" data-go="w-propiedad"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-mas"/></svg>Agregar propiedad</button>
+          <button class="btn btn--pri" data-go="w-contrato"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-doc"/></svg>Nuevo contrato</button>
+        </div>
+      </div>
+
+      <section class="banda" aria-labelledby="bt">
+        <div class="banda__m">
+          <p class="eyebrow" id="bt">Cobranza de agosto 2026</p>
+          <p class="cifra">$ 430.000<small>de $ 1.933.691 emitidos este mes · 1 de 4 cuotas cobradas</small></p>
+          <div class="meter" role="img" aria-label="De $1.933.691 emitidos en agosto: $430.000 cobrados, $505.000 aún no vencidos y $998.691 vencidos.">
+            <div class="meter__s meter__s--ok" style="flex-grow:430000"></div>
+            <div class="meter__s meter__s--warn" style="flex-grow:505000"></div>
+            <div class="meter__s meter__s--bad" style="flex-grow:998691"></div>
+          </div>
+          <div class="key">
+            <span class="key__i key__i--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Cobrado <b>$ 430.000</b></span>
+            <span class="key__i key__i--warn"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>A vencer <b>$ 505.000</b></span>
+            <span class="key__i key__i--bad"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Vencido <b>$ 998.691</b></span>
+          </div>
+        </div>
+        <div class="banda__s">
+          <div class="stat"><span class="eyebrow">Propiedades</span><b>5</b><small>4 con contrato activo · 1 sin alquilar</small></div>
+          <div class="stat"><span class="eyebrow">Proyectado · septiembre</span><b>$ 1.451.986</b><small>más 1 contrato a definir según ICL</small></div>
+        </div>
+      </section>
+
+      <section class="sect">
+        <div class="sect__h">
+          <h2>Requieren su acción</h2>
+          <button class="btn btn--sec btn--sm" data-go="cobranzas">Ir a cobranzas</button>
+        </div>
+        <div class="avisos">
+          <div class="aviso aviso--info">
+            <svg class="icon aviso__i" aria-hidden="true"><use href="#i-pago"/></svg>
+            <div class="aviso__b">
+              <strong>Marta Suárez cargó un pago y espera su confirmación</strong>
+              <span>Lavalle 950, 3.º B · cuota de agosto ($ 520.000). Subió el comprobante el 18/08/2026.</span>
+            </div>
+            <div class="aviso__a"><button class="btn btn--pri btn--sm" data-go="cobranzas">Revisar</button></div>
+          </div>
+          <div class="aviso aviso--warn">
+            <svg class="icon aviso__i" aria-hidden="true"><use href="#i-warn"/></svg>
+            <div class="aviso__b">
+              <strong>La cuota de Colón 2255 está sin confirmar</strong>
+              <span>Hasta que la confirme no se le puede registrar un pago. Vence el 25/08/2026.</span>
+            </div>
+            <div class="aviso__a"><button class="btn btn--sec btn--sm" data-go="cobranzas">Confirmar</button></div>
+          </div>
+          <div class="aviso aviso--bad">
+            <svg class="icon aviso__i" aria-hidden="true"><use href="#i-x"/></svg>
+            <div class="aviso__b">
+              <strong>Dos cuotas vencidas sin pago</strong>
+              <span>Av. Rivadavia 2340 ($ 478.691) y Lavalle 950 ($ 520.000). Vencieron el 10/08, hace 9 días.</span>
+            </div>
+            <div class="aviso__a"><button class="btn btn--sec btn--sm" data-go="cobranzas">Ver</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sect">
+        <div class="sect__h">
+          <h2>Contratos activos</h2>
+          <button class="btn btn--quiet btn--sm" data-go="w-contrato"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-mas"/></svg>Nuevo contrato</button>
+        </div>
+        <ul class="lista">
+          <li class="fila">
+            <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+            <span class="fila__b">
+              <button class="fila__t" data-go="contrato">Av. Rivadavia 2340, 5.º A</button>
+              <span class="fila__m">Jorge Paletta · sube 8 % cada 3 meses · termina 31/08/2027</span>
+            </span>
+            <span class="fila__d"><b>$ 478.691</b><small>por mes</small></span>
+            <span class="fila__e"><span class="pill pill--bad"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Agosto vencida</span></span>
+          </li>
+          <li class="fila">
+            <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+            <span class="fila__b">
+              <button class="fila__t" data-go="contrato">Lavalle 950, 3.º B</button>
+              <span class="fila__m">Marta Suárez · ajusta por ICL cada 6 meses · termina 28/02/2028</span>
+            </span>
+            <span class="fila__d"><b>$ 520.000</b><small>por mes</small></span>
+            <span class="fila__e"><span class="pill pill--info"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>Pago a confirmar</span></span>
+          </li>
+          <li class="fila">
+            <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+            <span class="fila__b">
+              <button class="fila__t" data-go="contrato">Colón 2255, 4.º D</button>
+              <span class="fila__m">Diego Ferrari · sube 7 % cada 4 meses · termina 31/01/2028</span>
+            </span>
+            <span class="fila__d"><b>$ 505.000</b><small>por mes</small></span>
+            <span class="fila__e"><span class="pill pill--warn"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>A vencer</span></span>
+          </li>
+          <li class="fila">
+            <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+            <span class="fila__b">
+              <button class="fila__t" data-go="contrato">Belgrano 445, PB</button>
+              <span class="fila__m">Ana Ferreyra · sube $ 35.000 cada 6 meses · termina 30/06/2027</span>
+            </span>
+            <span class="fila__d"><b>$ 430.000</b><small>por mes</small></span>
+            <span class="fila__e"><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Al día</span></span>
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <!-- ───── PROPIEDADES ───── -->
+    <main class="page" id="p-propiedades">
+      <div class="phead">
+        <div>
+          <h1>Propiedades</h1>
+          <p class="phead__d">5 propiedades · 4 con contrato activo · 1 sin alquilar</p>
+        </div>
+        <div class="phead__act">
+          <button class="btn btn--pri" data-go="w-propiedad"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-mas"/></svg>Agregar propiedad</button>
+        </div>
+      </div>
+      <ul class="lista">
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Av. Rivadavia 2340, 5.º A</button>
+            <span class="fila__m">CABA · 2 dorm. · 1 baño · 68 m² · Jorge Paletta</span>
+          </span>
+          <span class="fila__d"><b>$ 478.691</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Alquilada</span></span>
+          <span class="fila__a"><button class="btn btn--quiet btn--sm" data-go="w-propiedad" aria-label="Editar Av. Rivadavia 2340"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar</button></span>
+        </li>
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Lavalle 950, 3.º B</button>
+            <span class="fila__m">CABA · 1 dorm. · 1 baño · 45 m² · Marta Suárez</span>
+          </span>
+          <span class="fila__d"><b>$ 520.000</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Alquilada</span></span>
+          <span class="fila__a"><button class="btn btn--quiet btn--sm" data-go="w-propiedad" aria-label="Editar Lavalle 950"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar</button></span>
+        </li>
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Colón 2255, 4.º D</button>
+            <span class="fila__m">Vicente López · 2 dorm. · 1 baño · 58 m² · Diego Ferrari</span>
+          </span>
+          <span class="fila__d"><b>$ 505.000</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Alquilada</span></span>
+          <span class="fila__a"><button class="btn btn--quiet btn--sm" data-go="w-propiedad" aria-label="Editar Colón 2255"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar</button></span>
+        </li>
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Belgrano 445, PB</button>
+            <span class="fila__m">Morón · 3 dorm. · 2 baños · 110 m² · acepta mascotas · Ana Ferreyra</span>
+          </span>
+          <span class="fila__d"><b>$ 430.000</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Alquilada</span></span>
+          <span class="fila__a"><button class="btn btn--quiet btn--sm" data-go="w-propiedad" aria-label="Editar Belgrano 445"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-lapiz"/></svg>Editar</button></span>
+        </li>
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="w-contrato">Mitre 78</button>
+            <span class="fila__m">San Isidro · local comercial · 1 baño · 52 m²</span>
+          </span>
+          <span class="fila__d"><b class="apagado">—</b><small>sin contrato</small></span>
+          <span class="fila__e"><span class="pill pill--none"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>Sin alquilar</span></span>
+          <span class="fila__a"><button class="btn btn--sec btn--sm" data-go="w-contrato">Crear contrato</button></span>
+        </li>
+      </ul>
+    </main>
+
+    <!-- ───── CONTRATO ───── -->
+    <main class="page" id="p-contrato">
+      <div class="phead">
+        <div>
+          <p class="crumb"><button data-go="inicio">Contratos</button> · Av. Rivadavia 2340</p>
+          <h1>Av. Rivadavia 2340, 5.º A</h1>
+          <p class="phead__meta">Jorge Paletta · contrato de 24 meses
+            <span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Vigente</span>
+          </p>
+        </div>
+        <div class="phead__act">
+          <button class="btn btn--sec"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-doc"/></svg>Contrato firmado</button>
+          <button class="btn btn--pri" data-go="cobranzas"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-pago"/></svg>Registrar pago</button>
+        </div>
+      </div>
+
+      <div class="aviso aviso--bad aviso--suelto">
+        <svg class="icon aviso__i" aria-hidden="true"><use href="#i-x"/></svg>
+        <div class="aviso__b">
+          <strong>La cuota de agosto está vencida</strong>
+          <span>$ 478.691 · venció el 10 de agosto, hace 9 días. Ya está confirmada, así que puede registrar el pago apenas lo reciba.</span>
+        </div>
+        <div class="aviso__a"><button class="btn btn--pri btn--sm" data-go="cobranzas">Registrar pago</button></div>
+      </div>
+
+      <div class="g3">
+        <div class="card">
+          <h3>Alquiler vigente</h3>
+          <p class="card__cifra">$ 478.691</p>
+          <p class="card__note">Período 4 de 8 · jun – ago 2026<br>Vence el día 10 de cada mes</p>
+        </div>
+        <div class="card">
+          <h3>Próxima actualización</h3>
+          <p class="card__cifra">$ 516.986</p>
+          <p class="card__note">Desde el 01/09/2026 · +8 %<br>Se aplica sola, no hay que hacer nada</p>
+        </div>
+        <div class="card">
+          <h3>Plazo</h3>
+          <p class="card__cifra" style="font-size:21px;">01/09/2025 → 31/08/2027</p>
+          <p class="card__note">Quedan 12 meses<br>Actualiza 8 % cada 3 meses</p>
+        </div>
+      </div>
+
+      <section class="sect">
+        <div class="sect__h"><h2>Cronología de cobranza</h2></div>
+        <div class="lista">
+          <div class="tl">
+            <div class="tl__plot" role="img" aria-label="24 cuotas. De septiembre 2025 a julio 2026: 11 pagadas, de $380.000 a $478.691. Agosto 2026: vencida, $478.691. De septiembre 2026 a agosto 2027: 12 proyectadas, de $516.986 a $651.254. El detalle mes a mes está en la tabla siguiente.">
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:55.9%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:55.9%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:55.9%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:60.4%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:60.4%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:60.4%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:65.2%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:65.2%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:65.2%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:70.4%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--pag" style="height:70.4%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--ven" style="height:70.4%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:76.0%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:76.0%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:76.0%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:82.1%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:82.1%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:82.1%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:88.7%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:88.7%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:88.7%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:95.8%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:95.8%"></span></span>
+              <span class="tl__c"><span class="tl__b tl__b--proy" style="height:95.8%"></span></span>
+            </div>
+            <div class="tl__ax" aria-hidden="true">
+              <span class="tl__t">S</span><span class="tl__t">O</span><span class="tl__t">N</span>
+              <span class="tl__t">D</span><span class="tl__t">E</span><span class="tl__t">F</span>
+              <span class="tl__t">M</span><span class="tl__t">A</span><span class="tl__t">M</span>
+              <span class="tl__t">J</span><span class="tl__t">J</span><span class="tl__t tl__t--hoy">A</span>
+              <span class="tl__t">S</span><span class="tl__t">O</span><span class="tl__t">N</span>
+              <span class="tl__t">D</span><span class="tl__t">E</span><span class="tl__t">F</span>
+              <span class="tl__t">M</span><span class="tl__t">A</span><span class="tl__t">M</span>
+              <span class="tl__t">J</span><span class="tl__t">J</span><span class="tl__t">A</span>
+            </div>
+            <div class="tl__ley">
+              <span class="tl__l"><span class="tl__sw tl__sw--pag"></span>Pagada · 11 cuotas · $ 4.658.278</span>
+              <span class="tl__l"><span class="tl__sw tl__sw--ven"></span>Vencida · 1 cuota · $ 478.691</span>
+              <span class="tl__l"><span class="tl__sw tl__sw--proy"></span>Proyectada · 12 cuotas · $ 6.988.794</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sect">
+        <div class="sect__h"><h2>Cuotas</h2></div>
+        <div class="lista"><div class="tabla-wrap">
+          <table class="t">
+            <thead><tr>
+              <th scope="col">Período</th><th scope="col" class="num">Monto</th>
+              <th scope="col" class="num">Vence</th><th scope="col" class="num">Se pagó</th>
+              <th scope="col">Estado</th><th scope="col"><span class="sr">Acciones</span></th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td>Junio 2026</td><td class="num money">$ 478.691</td>
+                <td class="num">10/06/2026</td><td class="num">09/06/2026</td>
+                <td><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Pagada</span></td>
+                <td class="act"><button class="btn btn--quiet btn--sm"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-baja"/></svg>Comprobante</button></td>
+              </tr>
+              <tr>
+                <td>Julio 2026</td><td class="num money">$ 478.691</td>
+                <td class="num">10/07/2026</td><td class="num">10/07/2026</td>
+                <td><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Pagada</span></td>
+                <td class="act"><button class="btn btn--quiet btn--sm"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-baja"/></svg>Comprobante</button></td>
+              </tr>
+              <tr class="hoy">
+                <td><strong>Agosto 2026</strong></td><td class="num money">$ 478.691</td>
+                <td class="num">10/08/2026</td><td class="num apagado">—</td>
+                <td><span class="pill pill--bad"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Vencida</span></td>
+                <td class="act"><button class="btn btn--pri btn--sm" data-go="cobranzas">Registrar pago</button></td>
+              </tr>
+              <tr>
+                <td>Septiembre 2026</td><td class="num money">$ 516.986</td>
+                <td class="num">10/09/2026</td><td class="num apagado">—</td>
+                <td><span class="pill pill--proy"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>Proyectada</span></td>
+                <td class="act apagado">Se emite el 01/09</td>
+              </tr>
+              <tr>
+                <td>Octubre 2026</td><td class="num money">$ 516.986</td>
+                <td class="num">10/10/2026</td><td class="num apagado">—</td>
+                <td><span class="pill pill--proy"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>Proyectada</span></td>
+                <td class="act apagado">Se emite el 01/10</td>
+              </tr>
+            </tbody>
+          </table>
+        </div></div>
+      </section>
+    </main>
+
+    <!-- ───── COBRANZAS ───── -->
+    <main class="page" id="p-cobranzas">
+      <div class="phead">
+        <div>
+          <h1>Cobranzas</h1>
+          <p class="phead__d">Las cuotas de agosto, en el orden en que conviene resolverlas.</p>
+        </div>
+      </div>
+      <div class="lista"><div class="tabla-wrap">
+        <table class="t">
+          <thead><tr>
+            <th scope="col">Propiedad e inquilino</th><th scope="col" class="num">Monto</th>
+            <th scope="col" class="num">Vence</th><th scope="col">Estado</th>
+            <th scope="col">Qué falta</th><th scope="col"><span class="sr">Acciones</span></th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="t__tit">Lavalle 950, 3.º B</span><span class="t__sub">Marta Suárez</span></td>
+              <td class="num money">$ 520.000</td><td class="num">10/08/2026</td>
+              <td><span class="pill pill--bad"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Vencida</span></td>
+              <td><span class="pill pill--info"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>Pago a confirmar</span></td>
+              <td class="act">
+                <button class="btn btn--pri btn--sm" data-modal="conf-pago">Confirmar</button>
+                <button class="btn btn--peligro btn--sm">Rechazar</button>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="t__tit">Av. Rivadavia 2340, 5.º A</span><span class="t__sub">Jorge Paletta</span></td>
+              <td class="num money">$ 478.691</td><td class="num">10/08/2026</td>
+              <td><span class="pill pill--bad"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Vencida</span></td>
+              <td class="apagado">Sin pago cargado</td>
+              <td class="act"><button class="btn btn--sec btn--sm" data-modal="pago">Registrar pago</button></td>
+            </tr>
+            <tr>
+              <td><span class="t__tit">Colón 2255, 4.º D</span><span class="t__sub">Diego Ferrari</span></td>
+              <td class="num money">$ 505.000</td><td class="num">25/08/2026</td>
+              <td><span class="pill pill--warn"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>A vencer</span></td>
+              <td><span class="pill pill--warn"><svg class="icon" aria-hidden="true"><use href="#i-warn"/></svg>Sin confirmar</span></td>
+              <td class="act"><button class="btn btn--pri btn--sm" data-modal="conf-cuota">Confirmar cuota</button></td>
+            </tr>
+            <tr>
+              <td><span class="t__tit">Belgrano 445, PB</span><span class="t__sub">Ana Ferreyra</span></td>
+              <td class="num money">$ 430.000</td><td class="num">05/08/2026</td>
+              <td><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Pagada</span></td>
+              <td class="apagado">Cobrada el 05/08</td>
+              <td class="act"><button class="btn btn--quiet btn--sm"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-baja"/></svg>Comprobante</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div></div>
+    </main>
+
+    <!-- ───── INQUILINOS ───── -->
+    <main class="page" id="p-inquilinos">
+      <div class="phead">
+        <div><h1>Inquilinos</h1><p class="phead__d">4 inquilinos · todos con contrato vigente</p></div>
+        <div class="phead__act"><button class="btn btn--pri"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-mas"/></svg>Agregar inquilino</button></div>
+      </div>
+      <ul class="lista">
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Jorge Paletta</button>
+            <span class="fila__m">20-22456789-3 · jorge.paletta@gmail.com · Av. Rivadavia 2340, 5.º A</span>
+          </span>
+          <span class="fila__d"><b>$ 478.691</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--bad"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>Agosto vencida</span></span>
+        </li>
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Marta Suárez</button>
+            <span class="fila__m">27-24891055-4 · marta.suarez@gmail.com · Lavalle 950, 3.º B</span>
+          </span>
+          <span class="fila__d"><b>$ 520.000</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--info"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>Pago a confirmar</span></span>
+        </li>
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Diego Ferrari</button>
+            <span class="fila__m">20-30115482-7 · diego.ferrari@outlook.com · Colón 2255, 4.º D</span>
+          </span>
+          <span class="fila__d"><b>$ 505.000</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--warn"><svg class="icon" aria-hidden="true"><use href="#i-reloj"/></svg>A vencer</span></span>
+        </li>
+        <li class="fila">
+          <span class="fila__ic"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg></span>
+          <span class="fila__b">
+            <button class="fila__t" data-go="contrato">Ana Ferreyra</button>
+            <span class="fila__m">27-28904113-9 · ana.ferreyra@gmail.com · Belgrano 445, PB</span>
+          </span>
+          <span class="fila__d"><b>$ 430.000</b><small>por mes</small></span>
+          <span class="fila__e"><span class="pill pill--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Al día</span></span>
+        </li>
+      </ul>
+    </main>
+
+  </div>
+</div>
+
+<!-- ══════════ ASISTENTE · NUEVO CONTRATO ══════════ -->
+<div class="wiz" id="w-contrato">
+  <div class="wiz__top">
+    <button class="wiz__salir" data-go="inicio" aria-label="Salir del asistente"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <span class="wiz__tit">Nuevo contrato</span>
+    <div class="barra" role="progressbar" aria-label="Progreso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="wc-barra"><div class="barra__f" id="wc-barra-f"></div></div>
+    <span class="wiz__cuenta" id="wc-cuenta">Paso 1 de 6</span>
+  </div>
+
+  <div class="wiz__cuerpo"><div class="wiz__caja">
+
+    <section class="wiz__paso" data-paso="1" aria-labelledby="wc-p1">
+      <h2 class="preg" id="wc-p1">¿Qué propiedad va a alquilar?</h2>
+      <p class="ayuda">Elija una de sus propiedades. Después le pedimos el inquilino.</p>
+      <div class="ops" role="radiogroup" aria-labelledby="wc-p1">
+        <button class="op" role="radio" aria-checked="true" data-campo="propiedad" data-valor="Mitre 78">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="op__b"><strong>Mitre 78</strong><small>Local · San Isidro · 52 m² · sin alquilar</small></span>
+          <span class="op__tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </button>
+        <button class="op" role="radio" aria-checked="false" data-campo="propiedad" data-valor="Av. Rivadavia 2340, 5.º A">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="op__b"><strong>Av. Rivadavia 2340, 5.º A</strong><small>Departamento · CABA · 68 m²</small></span>
+          <span class="op__tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </button>
+        <button class="op" role="radio" aria-checked="false" data-campo="propiedad" data-valor="Colón 2255, 4.º D">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-props"/></svg></span>
+          <span class="op__b"><strong>Colón 2255, 4.º D</strong><small>Departamento · Vicente López · 58 m²</small></span>
+          <span class="op__tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </button>
+      </div>
+    </section>
+
+    <section class="wiz__paso" data-paso="2" aria-labelledby="wc-p2">
+      <h2 class="preg" id="wc-p2">¿A quién se la alquila?</h2>
+      <p class="ayuda">El inquilino que va a figurar en el contrato y que va a recibir los avisos de vencimiento.</p>
+      <div class="ops" role="radiogroup" aria-labelledby="wc-p2">
+        <button class="op" role="radio" aria-checked="true" data-campo="inquilino" data-valor="Diego Ferrari">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg></span>
+          <span class="op__b"><strong>Diego Ferrari</strong><small>20-30115482-7 · diego.ferrari@outlook.com</small></span>
+          <span class="op__tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </button>
+        <button class="op" role="radio" aria-checked="false" data-campo="inquilino" data-valor="Jorge Paletta">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg></span>
+          <span class="op__b"><strong>Jorge Paletta</strong><small>20-22456789-3 · jorge.paletta@gmail.com</small></span>
+          <span class="op__tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </button>
+        <button class="op" role="radio" aria-checked="false" data-campo="inquilino" data-valor="Marta Suárez">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-gente"/></svg></span>
+          <span class="op__b"><strong>Marta Suárez</strong><small>27-24891055-4 · marta.suarez@gmail.com</small></span>
+          <span class="op__tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </button>
+      </div>
+      <button class="btn btn--quiet" style="margin-top:14px;"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-mas"/></svg>Agregar un inquilino nuevo</button>
+    </section>
+
+    <section class="wiz__paso" data-paso="3" aria-labelledby="wc-p3">
+      <h2 class="preg" id="wc-p3">¿Cuánto sale el alquiler por mes?</h2>
+      <p class="ayuda">Es el valor con el que arranca el contrato. En el paso siguiente definimos cómo se actualiza.</p>
+      <div class="grupo grupo--xl">
+        <span class="grupo__fijo" aria-hidden="true">$</span>
+        <label class="sr" for="wc-monto">Alquiler mensual inicial, en pesos</label>
+        <input id="wc-monto" type="text" inputmode="numeric" value="620.000" autocomplete="off">
+        <span class="grupo__suf">por mes</span>
+      </div>
+      <p class="bajo">Se cobra por mes adelantado, con vencimiento el día 10.</p>
+    </section>
+
+    <section class="wiz__paso" data-paso="4" aria-labelledby="wc-p4">
+      <h2 class="preg" id="wc-p4">¿Cuándo empieza y por cuánto tiempo?</h2>
+      <p class="ayuda">La fecha de fin se calcula sola a partir del plazo, no hace falta cargarla.</p>
+      <div class="grupo grupo--md" style="margin-bottom:32px;">
+        <label class="sr" for="wc-inicio">Fecha de inicio del contrato</label>
+        <input id="wc-inicio" type="text" value="01/09/2026" autocomplete="off">
+        <span class="grupo__suf">día / mes / año</span>
+      </div>
+      <p class="eyebrow" style="margin-bottom:14px;">Plazo del contrato</p>
+      <div class="stepper">
+        <button class="stepper__b" id="wc-menos" aria-label="Restar 6 meses al plazo"><svg class="icon" aria-hidden="true"><use href="#i-menos"/></svg></button>
+        <span class="stepper__v" id="wc-plazo" role="status" aria-live="polite">36</span>
+        <span class="stepper__u">meses</span>
+        <button class="stepper__b" id="wc-mas" aria-label="Sumar 6 meses al plazo"><svg class="icon" aria-hidden="true"><use href="#i-mas"/></svg></button>
+      </div>
+      <div class="chips" style="margin-top:20px;" role="group" aria-label="Plazos habituales">
+        <button class="chip" data-plazo="12">12 meses</button>
+        <button class="chip" data-plazo="24">24 meses</button>
+        <button class="chip" data-plazo="36">36 meses</button>
+      </div>
+      <p class="bajo" id="wc-fin">Termina el 31/08/2029.</p>
+    </section>
+
+    <section class="wiz__paso" data-paso="5" aria-labelledby="wc-p5">
+      <h2 class="preg" id="wc-p5">¿Cómo se actualiza el alquiler?</h2>
+      <p class="ayuda">Alquia aplica la actualización sola cuando corresponde. Usted no tiene que hacer nada.</p>
+      <div class="ops ops--2" role="radiogroup" aria-labelledby="wc-p5" style="margin-bottom:26px;">
+        <button class="op" role="radio" aria-checked="true" data-campo="metodo" data-valor="porcentaje">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-porc"/></svg></span>
+          <span class="op__b"><strong>Un porcentaje</strong><small>Sube un % fijo</small></span>
+        </button>
+        <button class="op" role="radio" aria-checked="false" data-campo="metodo" data-valor="monto">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-billete"/></svg></span>
+          <span class="op__b"><strong>Un monto fijo</strong><small>Sube $ fijos</small></span>
+        </button>
+        <button class="op" role="radio" aria-checked="false" data-campo="metodo" data-valor="indice">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-indice"/></svg></span>
+          <span class="op__b"><strong>Según el ICL</strong><small>Índice del BCRA</small></span>
+        </button>
+        <button class="op" role="radio" aria-checked="false" data-campo="metodo" data-valor="ipc">
+          <span class="op__ic"><svg class="icon" aria-hidden="true"><use href="#i-indice"/></svg></span>
+          <span class="op__b"><strong>Según el IPC</strong><small>Inflación INDEC</small></span>
+        </button>
+      </div>
+
+      <div id="wc-valor-caja">
+        <div class="grupo grupo--xl">
+          <label class="sr" for="wc-valor">Valor de la actualización</label>
+          <input id="wc-valor" type="text" inputmode="decimal" value="12" autocomplete="off">
+          <span class="grupo__suf" id="wc-valor-suf">% cada vez</span>
+        </div>
+      </div>
+      <div id="wc-indice-nota" style="display:none;">
+        <div class="aviso aviso--info aviso--plano" style="box-shadow:none;">
+          <svg class="icon aviso__i" aria-hidden="true"><use href="#i-info"/></svg>
+          <div class="aviso__b"><span>El valor lo toma Alquia del índice publicado, así que no hay porcentaje que cargar. La proyección de cuotas se arma recién cuando cada valor se publica.</span></div>
+        </div>
+      </div>
+
+      <p class="eyebrow" style="margin:30px 0 14px;">Cada cuánto se actualiza</p>
+      <div class="chips" role="radiogroup" aria-label="Frecuencia de actualización">
+        <button class="chip" role="radio" aria-checked="false" data-frec="3">Cada 3 meses</button>
+        <button class="chip" role="radio" aria-checked="false" data-frec="4">Cada 4 meses</button>
+        <button class="chip" role="radio" aria-checked="true" data-frec="6">Cada 6 meses</button>
+        <button class="chip" role="radio" aria-checked="false" data-frec="12">Cada 12 meses</button>
+      </div>
+    </section>
+
+    <section class="wiz__paso" data-paso="6" aria-labelledby="wc-p6">
+      <h2 class="preg" id="wc-p6">Revise que esté todo bien</h2>
+      <p class="ayuda">Si algo no cierra, toque «Cambiar» y vuelve directo a ese paso.</p>
+      <div class="res" id="wc-resumen"></div>
+      <p class="eyebrow" style="margin-bottom:12px;">Así va a evolucionar el alquiler</p>
+      <div class="escala" id="wc-escala"></div>
+      <p class="bajo" id="wc-total"></p>
+    </section>
+
+  </div></div>
+
+  <div class="wiz__pie">
+    <button class="btn btn--quiet" id="wc-atras"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-izq"/></svg>Atrás</button>
+    <button class="btn btn--pri btn--lg" id="wc-seguir">Seguir<svg class="icon icon--sm" aria-hidden="true"><use href="#i-der"/></svg></button>
+  </div>
+</div>
+
+<!-- ══════════ ASISTENTE · NUEVA PROPIEDAD ══════════ -->
+<div class="wiz" id="w-propiedad">
+  <div class="wiz__top">
+    <button class="wiz__salir" data-go="propiedades" aria-label="Salir del asistente"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <span class="wiz__tit">Nueva propiedad</span>
+    <div class="barra" role="progressbar" aria-label="Progreso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="wp-barra"><div class="barra__f" id="wp-barra-f"></div></div>
+    <span class="wiz__cuenta" id="wp-cuenta">Paso 1 de 3</span>
+  </div>
+
+  <div class="wiz__cuerpo"><div class="wiz__caja">
+
+    <section class="wiz__paso" data-paso="1" aria-labelledby="wp-p1">
+      <h2 class="preg" id="wp-p1">¿Dónde queda la propiedad?</h2>
+      <p class="ayuda">Con la calle y el número alcanza para empezar.</p>
+      <div class="apilado">
+        <div class="grupo grupo--md">
+          <label class="sr" for="wp-calle">Calle y número</label>
+          <input id="wp-calle" type="text" placeholder="Av. Rivadavia 2340" autocomplete="off">
+        </div>
+        <div class="grupo grupo--sm">
+          <label class="sr" for="wp-piso">Piso y departamento</label>
+          <input id="wp-piso" type="text" placeholder="5.º A — si corresponde" autocomplete="off">
+        </div>
+        <div class="grupo grupo--sm">
+          <label class="sr" for="wp-ciudad">Ciudad y provincia</label>
+          <input id="wp-ciudad" type="text" placeholder="CABA" autocomplete="off">
+        </div>
+      </div>
+    </section>
+
+    <section class="wiz__paso" data-paso="2" aria-labelledby="wp-p2">
+      <h2 class="preg" id="wp-p2">¿Cómo es la propiedad?</h2>
+      <p class="ayuda">Todo esto es opcional. Sirve para reconocerla rápido en la lista.</p>
+      <div class="g2" style="gap:30px;">
+        <div>
+          <p class="eyebrow" style="margin-bottom:14px;">Dormitorios</p>
+          <div class="stepper">
+            <button class="stepper__b" data-conta="dorm" data-delta="-1" aria-label="Restar un dormitorio"><svg class="icon" aria-hidden="true"><use href="#i-menos"/></svg></button>
+            <span class="stepper__v" id="wp-dorm" role="status" aria-live="polite">2</span>
+            <button class="stepper__b" data-conta="dorm" data-delta="1" aria-label="Sumar un dormitorio"><svg class="icon" aria-hidden="true"><use href="#i-mas"/></svg></button>
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:14px;">Baños</p>
+          <div class="stepper">
+            <button class="stepper__b" data-conta="banos" data-delta="-1" aria-label="Restar un baño"><svg class="icon" aria-hidden="true"><use href="#i-menos"/></svg></button>
+            <span class="stepper__v" id="wp-banos" role="status" aria-live="polite">1</span>
+            <button class="stepper__b" data-conta="banos" data-delta="1" aria-label="Sumar un baño"><svg class="icon" aria-hidden="true"><use href="#i-mas"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <p class="eyebrow" style="margin:32px 0 14px;">Superficie cubierta</p>
+      <div class="grupo grupo--md">
+        <label class="sr" for="wp-sup">Superficie cubierta en metros cuadrados</label>
+        <input id="wp-sup" type="text" inputmode="numeric" value="68" autocomplete="off">
+        <span class="grupo__suf">m²</span>
+      </div>
+      <p class="eyebrow" style="margin:32px 0 14px;">Además</p>
+      <div class="chips">
+        <button class="chip" aria-pressed="false" data-extra="Acepta mascotas">Acepta mascotas</button>
+        <button class="chip" aria-pressed="false" data-extra="Se alquila amueblada">Se alquila amueblada</button>
+      </div>
+    </section>
+
+    <section class="wiz__paso" data-paso="3" aria-labelledby="wp-p3">
+      <h2 class="preg" id="wp-p3">Listo. ¿La guardamos?</h2>
+      <p class="ayuda">Va a quedar sin alquilar hasta que le cree un contrato.</p>
+      <div class="res" id="wp-resumen"></div>
+      <div class="aviso aviso--info aviso--plano" style="box-shadow:none;">
+        <svg class="icon aviso__i" aria-hidden="true"><use href="#i-info"/></svg>
+        <div class="aviso__b"><span>Para empezar a cobrarla necesita un contrato, que es lo que la vincula con un inquilino y define el alquiler.</span></div>
+      </div>
+    </section>
+
+  </div></div>
+
+  <div class="wiz__pie">
+    <button class="btn btn--quiet" id="wp-atras"><svg class="icon icon--sm" aria-hidden="true"><use href="#i-izq"/></svg>Atrás</button>
+    <button class="btn btn--pri btn--lg" id="wp-seguir">Seguir<svg class="icon icon--sm" aria-hidden="true"><use href="#i-der"/></svg></button>
+  </div>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+  <div class="modal__c">
+    <div class="modal__m"><svg class="icon icon--lg" aria-hidden="true"><use href="#i-check"/></svg></div>
+    <h2 id="mt">Listo</h2>
+    <p id="md">—</p>
+    <button class="btn btn--pri" id="mok">Entendido</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var PAGS = ['inicio','propiedades','contrato','cobranzas','inquilinos'];
+  var WIZ  = ['w-contrato','w-propiedad'];
+  var vista = 'inicio';
+  var elApp = document.getElementById('app');
+  var elModal = document.getElementById('modal');
+
+  function pintarVista(){
+    var esWiz = WIZ.indexOf(vista) !== -1;
+    elApp.classList.toggle('oculto', esWiz);
+    WIZ.forEach(function(w){ document.getElementById(w).classList.toggle('on', w === vista); });
+    PAGS.forEach(function(p){
+      var el = document.getElementById('p-'+p);
+      if (el) el.classList.toggle('on', p === vista);
+    });
+    document.querySelectorAll('.viewer__tab').forEach(function(t){
+      t.setAttribute('aria-pressed', t.dataset.go === vista ? 'true':'false');
+    });
+    document.querySelectorAll('.side__link').forEach(function(b){
+      if (b.dataset.nav === vista) b.setAttribute('aria-current','page');
+      else b.removeAttribute('aria-current');
+    });
+  }
+  function ir(v){ vista = v; pintarVista(); window.scrollTo({top:0}); }
+
+  /* ── utilidades ── */
+  var MESC = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  function miles(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  function soloNum(s){ return parseInt(String(s).replace(/\D/g,''),10) || 0; }
+  function pesos(n){ return '$ ' + miles(n); }
+  function leerFecha(s){
+    var p = String(s).split('/');
+    var d = parseInt(p[0],10), m = parseInt(p[1],10), a = parseInt(p[2],10);
+    if (!d || !m || !a) return null;
+    return { d:d, m:m, a:a };
+  }
+  function sumarMeses(f,n){
+    var t = (f.m - 1) + n;
+    return { d:f.d, m:(t % 12) + 1, a:f.a + Math.floor(t / 12) };
+  }
+  function ultimoDia(m,a){ return new Date(a, m, 0).getDate(); }
+  function finContrato(s, plazo){
+    var f = leerFecha(s); if (!f) return null;
+    var n = sumarMeses(f, plazo);
+    if (n.d > 1) return { d:Math.min(n.d - 1, ultimoDia(n.m, n.a)), m:n.m, a:n.a };
+    var mA = n.m === 1 ? 12 : n.m - 1, aA = n.m === 1 ? n.a - 1 : n.a;
+    return { d:ultimoDia(mA, aA), m:mA, a:aA };
+  }
+  function fmtFecha(f){
+    if (!f) return '—';
+    return String(f.d).padStart(2,'0') + '/' + String(f.m).padStart(2,'0') + '/' + f.a;
+  }
+  function etiquetaTramo(f, desde, largo){
+    var a = sumarMeses(f, desde), b = sumarMeses(f, desde + largo - 1);
+    return a.a === b.a
+      ? MESC[a.m-1] + ' – ' + MESC[b.m-1] + ' ' + a.a
+      : MESC[a.m-1] + ' ' + a.a + ' – ' + MESC[b.m-1] + ' ' + b.a;
+  }
+
+  /* ── asistente genérico ── */
+  function Asistente(cfg){
+    var raiz = document.getElementById(cfg.id);
+    var pasos = Array.prototype.slice.call(raiz.querySelectorAll('.wiz__paso'));
+    var total = pasos.length, actual = 1;
+    var elBarra = document.getElementById(cfg.barra);
+    var elFill  = document.getElementById(cfg.barra + '-f');
+    var elCuenta= document.getElementById(cfg.cuenta);
+    var elAtras = document.getElementById(cfg.atras);
+    var elSeguir= document.getElementById(cfg.seguir);
+
+    function pintar(){
+      pasos.forEach(function(s){ s.classList.toggle('on', +s.dataset.paso === actual); });
+      var pct = Math.round(actual / total * 100);
+      elFill.style.width = pct + '%';
+      elBarra.setAttribute('aria-valuenow', String(pct));
+      elCuenta.textContent = 'Paso ' + actual + ' de ' + total;
+      elAtras.style.visibility = actual === 1 ? 'hidden' : 'visible';
+      elSeguir.innerHTML = actual === total
+        ? cfg.textoFinal
+        : 'Seguir<svg class="icon icon--sm" aria-hidden="true"><use href="#i-der"/></svg>';
+      if (actual === total && cfg.alResumen) cfg.alResumen();
+      var h = raiz.querySelector('.wiz__paso.on .preg');
+      if (h && raiz.classList.contains('on')){ h.setAttribute('tabindex','-1'); h.focus({preventScroll:true}); }
+    }
+    elSeguir.addEventListener('click', function(){
+      if (actual === total){ cfg.alTerminar(); return; }
+      actual++; pintar();
+    });
+    elAtras.addEventListener('click', function(){ if (actual > 1){ actual--; pintar(); } });
+    return { pintar:pintar, irA:function(n){ actual = n; pintar(); } };
+  }
+
+  /* ── estado del contrato ── */
+  var C = {
+    propiedad:'Mitre 78', inquilino:'Diego Ferrari',
+    monto:620000, inicio:'01/09/2026', plazo:36,
+    metodo:'porcentaje', valor:12, frecuencia:6
+  };
+  var NOMBRE = { porcentaje:'Un porcentaje fijo', monto:'Un monto fijo', indice:'Según el ICL', ipc:'Según el IPC' };
+  function esIndice(){ return C.metodo === 'indice' || C.metodo === 'ipc'; }
+
+  function escala(){
+    var f = leerFecha(C.inicio); if (!f) return [];
+    var tramos = Math.max(1, Math.ceil(C.plazo / C.frecuencia));
+    var filas = [], monto = C.monto;
+    for (var i=0; i<tramos; i++){
+      var desde = i * C.frecuencia;
+      var largo = Math.min(C.frecuencia, C.plazo - desde);
+      if (largo <= 0) break;
+      if (i > 0){
+        if (C.metodo === 'porcentaje') monto = Math.round(monto * (1 + C.valor/100));
+        else if (C.metodo === 'monto') monto = Math.round(monto + C.valor);
+      }
+      filas.push({ etiqueta:etiquetaTramo(f, desde, largo), monto:monto, meses:largo, primero:i===0 });
+    }
+    return filas;
+  }
+
+  function resumenContrato(){
+    var fin = finContrato(C.inicio, C.plazo);
+    var datos = [
+      ['Propiedad', C.propiedad, 1],
+      ['Inquilino', C.inquilino, 2],
+      ['Alquiler inicial', pesos(C.monto) + ' por mes', 3],
+      ['Plazo', C.plazo + ' meses · ' + C.inicio + ' → ' + fmtFecha(fin), 4],
+      ['Actualización', esIndice()
+        ? NOMBRE[C.metodo] + ', cada ' + C.frecuencia + ' meses'
+        : (C.metodo === 'porcentaje' ? C.valor + ' % ' : pesos(C.valor) + ' ') + 'cada ' + C.frecuencia + ' meses', 5]
+    ];
+    var cont = document.getElementById('wc-resumen');
+    cont.innerHTML = '';
+    datos.forEach(function(f){
+      var d = document.createElement('div');
+      d.className = 'res__f';
+      d.innerHTML = '<span class="res__k"></span><span class="res__v"></span>'
+                  + '<button class="res__ed" data-volver="'+f[2]+'">Cambiar</button>';
+      d.querySelector('.res__k').textContent = f[0];
+      d.querySelector('.res__v').textContent = f[1];
+      cont.appendChild(d);
+    });
+
+    var esc = document.getElementById('wc-escala');
+    var tot = document.getElementById('wc-total');
+    esc.innerHTML = '';
+    if (esIndice()){
+      var d0 = document.createElement('div');
+      d0.className = 'escala__f';
+      d0.innerHTML = '<span class="escala__p">La proyección se arma cuando se publique cada valor del índice.</span>';
+      esc.appendChild(d0);
+      tot.textContent = 'Por ahora solo está definida la primera cuota: ' + pesos(C.monto) + '.';
+      return;
+    }
+    var fs = escala();
+    fs.forEach(function(r){
+      var d = document.createElement('div');
+      d.className = 'escala__f';
+      var delta = r.primero ? 'inicial' : (C.metodo === 'porcentaje' ? '+'+C.valor+' %' : '+'+pesos(C.valor));
+      d.innerHTML = '<span class="escala__p"></span><span class="escala__m"></span><span class="escala__d"></span>';
+      d.querySelector('.escala__p').textContent = r.etiqueta;
+      d.querySelector('.escala__m').textContent = pesos(r.monto);
+      d.querySelector('.escala__d').textContent = delta;
+      esc.appendChild(d);
+    });
+    var total = fs.reduce(function(s,r){ return s + r.monto * r.meses; }, 0);
+    tot.textContent = 'Total a facturar en los ' + C.plazo + ' meses: ' + pesos(total) + '.';
+  }
+
+  var wc = Asistente({
+    id:'w-contrato', barra:'wc-barra', cuenta:'wc-cuenta',
+    atras:'wc-atras', seguir:'wc-seguir', textoFinal:'Crear contrato',
+    alResumen:resumenContrato,
+    alTerminar:function(){
+      abrirModal('Contrato creado',
+        'Alquia ya generó las cuotas de ' + C.propiedad + ' con ' + C.inquilino +
+        '. La primera vence el 10/09/2026 por ' + pesos(C.monto) + '.');
+      ir('inicio');
+    }
+  });
+
+  /* monto */
+  var elMonto = document.getElementById('wc-monto');
+  elMonto.addEventListener('input', function(){
+    var n = soloNum(elMonto.value); C.monto = n;
+    var desdeFin = elMonto.value.length - elMonto.selectionStart;
+    elMonto.value = n ? miles(n) : '';
+    var pos = Math.max(0, elMonto.value.length - desdeFin);
+    elMonto.setSelectionRange(pos, pos);
+  });
+
+  /* inicio + plazo */
+  var elInicio = document.getElementById('wc-inicio');
+  var elPlazo = document.getElementById('wc-plazo');
+  var elFin = document.getElementById('wc-fin');
+  function pintarPlazo(){
+    elPlazo.textContent = C.plazo;
+    var fin = finContrato(C.inicio, C.plazo);
+    elFin.textContent = fin ? 'Termina el ' + fmtFecha(fin) + '.' : 'Escriba la fecha como día/mes/año.';
+    document.querySelectorAll('.chip[data-plazo]').forEach(function(b){
+      b.setAttribute('aria-pressed', +b.dataset.plazo === C.plazo ? 'true':'false');
+    });
+  }
+  elInicio.addEventListener('input', function(){ C.inicio = elInicio.value; pintarPlazo(); });
+  document.getElementById('wc-mas').addEventListener('click', function(){ C.plazo = Math.min(120, C.plazo + 6); pintarPlazo(); });
+  document.getElementById('wc-menos').addEventListener('click', function(){ C.plazo = Math.max(6, C.plazo - 6); pintarPlazo(); });
+  document.querySelectorAll('.chip[data-plazo]').forEach(function(b){
+    b.addEventListener('click', function(){ C.plazo = +b.dataset.plazo; pintarPlazo(); });
+  });
+
+  /* método + valor + frecuencia */
+  var elValorCaja = document.getElementById('wc-valor-caja');
+  var elNota = document.getElementById('wc-indice-nota');
+  var elValor = document.getElementById('wc-valor');
+  var elValorSuf = document.getElementById('wc-valor-suf');
+  function pintarMetodo(){
+    var idx = esIndice();
+    elValorCaja.style.display = idx ? 'none' : '';
+    elNota.style.display = idx ? '' : 'none';
+    if (!idx){
+      elValorSuf.textContent = C.metodo === 'porcentaje' ? '% cada vez' : 'pesos cada vez';
+      elValor.value = C.metodo === 'porcentaje' ? String(C.valor) : miles(C.valor);
+    }
+  }
+  elValor.addEventListener('input', function(){
+    if (C.metodo === 'porcentaje'){
+      C.valor = parseFloat(elValor.value.replace(',','.')) || 0;
+    } else {
+      var n = soloNum(elValor.value); C.valor = n;
+      elValor.value = n ? miles(n) : '';
+    }
+  });
+  document.querySelectorAll('.chip[data-frec]').forEach(function(b){
+    b.addEventListener('click', function(){
+      C.frecuencia = +b.dataset.frec;
+      document.querySelectorAll('.chip[data-frec]').forEach(function(o){
+        o.setAttribute('aria-checked', o === b ? 'true':'false');
+      });
+    });
+  });
+
+  /* tarjetas de opción */
+  document.addEventListener('click', function(e){
+    var op = e.target.closest('.op');
+    if (!op) return;
+    op.parentElement.querySelectorAll('.op').forEach(function(o){ o.setAttribute('aria-checked','false'); });
+    op.setAttribute('aria-checked','true');
+    var campo = op.dataset.campo;
+    if (campo === 'propiedad') C.propiedad = op.dataset.valor;
+    if (campo === 'inquilino') C.inquilino = op.dataset.valor;
+    if (campo === 'metodo'){
+      C.metodo = op.dataset.valor;
+      if (C.metodo === 'porcentaje' && C.valor > 100) C.valor = 12;
+      if (C.metodo === 'monto' && C.valor < 1000) C.valor = 50000;
+      pintarMetodo();
+    }
+  });
+  document.getElementById('wc-resumen').addEventListener('click', function(e){
+    var b = e.target.closest('[data-volver]');
+    if (b) wc.irA(+b.dataset.volver);
+  });
+
+  /* ── asistente de propiedad ── */
+  var P = { dorm:2, banos:1, extras:[] };
+  function resumenProp(){
+    var calle = document.getElementById('wp-calle').value || 'Sin cargar';
+    var piso = document.getElementById('wp-piso').value;
+    var ciudad = document.getElementById('wp-ciudad').value || '—';
+    var sup = soloNum(document.getElementById('wp-sup').value);
+    var datos = [
+      ['Dirección', calle + (piso ? ', ' + piso : ''), 1],
+      ['Ciudad', ciudad, 1],
+      ['Ambientes', P.dorm + ' dorm. · ' + P.banos + (P.banos === 1 ? ' baño' : ' baños'), 2],
+      ['Superficie', sup ? sup + ' m²' : 'Sin cargar', 2]
+    ];
+    if (P.extras.length) datos.push(['Además', P.extras.join(' · '), 2]);
+    var cont = document.getElementById('wp-resumen');
+    cont.innerHTML = '';
+    datos.forEach(function(f){
+      var d = document.createElement('div');
+      d.className = 'res__f';
+      d.innerHTML = '<span class="res__k"></span><span class="res__v"></span>'
+                  + '<button class="res__ed" data-volver-p="'+f[2]+'">Cambiar</button>';
+      d.querySelector('.res__k').textContent = f[0];
+      d.querySelector('.res__v').textContent = f[1];
+      cont.appendChild(d);
+    });
+  }
+  var wp = Asistente({
+    id:'w-propiedad', barra:'wp-barra', cuenta:'wp-cuenta',
+    atras:'wp-atras', seguir:'wp-seguir', textoFinal:'Guardar propiedad',
+    alResumen:resumenProp,
+    alTerminar:function(){
+      abrirModal('Propiedad guardada','Ya figura en su lista. Para empezar a cobrarla necesita crearle un contrato.');
+      ir('propiedades');
+    }
+  });
+  document.getElementById('wp-resumen').addEventListener('click', function(e){
+    var b = e.target.closest('[data-volver-p]');
+    if (b) wp.irA(+b.dataset.volverP);
+  });
+  document.querySelectorAll('[data-conta]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var k = b.dataset.conta;
+      P[k] = Math.max(0, Math.min(20, P[k] + (+b.dataset.delta)));
+      document.getElementById('wp-' + k).textContent = P[k];
+    });
+  });
+  document.querySelectorAll('.chip[data-extra]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var on = b.getAttribute('aria-pressed') === 'true';
+      b.setAttribute('aria-pressed', on ? 'false':'true');
+      var txt = b.dataset.extra;
+      P.extras = P.extras.filter(function(x){ return x !== txt; });
+      if (!on) P.extras.push(txt);
+    });
+  });
+
+  /* ── modal ── */
+  function abrirModal(t,d){
+    document.getElementById('mt').textContent = t;
+    document.getElementById('md').textContent = d;
+    elModal.classList.add('on');
+  }
+  function cerrarModal(){ elModal.classList.remove('on'); }
+  document.getElementById('mok').addEventListener('click', cerrarModal);
+  elModal.addEventListener('click', function(e){ if (e.target === elModal) cerrarModal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') cerrarModal(); });
+
+  var MODALES = {
+    'pago':       ['Pago registrado','Guardó el pago de $ 478.691 de Jorge Paletta. La cuota de agosto figura como pagada.'],
+    'conf-pago':  ['Pago confirmado','Confirmó el pago de $ 520.000 que cargó Marta Suárez. La cuota de agosto de Lavalle 950 figura como pagada.'],
+    'conf-cuota': ['Cuota confirmada','La cuota de Colón 2255 quedó confirmada en $ 505.000. Ya se le puede registrar un pago.']
+  };
+
+  document.addEventListener('click', function(e){
+    var m = e.target.closest('[data-modal]');
+    if (m){ var d = MODALES[m.dataset.modal]; if (d) abrirModal(d[0], d[1]); return; }
+    var g = e.target.closest('[data-go]');
+    if (g){ ir(g.dataset.go); return; }
+    var n = e.target.closest('[data-nav]');
+    if (n){ ir(n.dataset.nav); return; }
+  });
+
+  pintarMetodo();
+  pintarPlazo();
+  wc.pintar();
+  wp.pintar();
+  pintarVista();
+})();
+</script>
