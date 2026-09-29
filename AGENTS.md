@@ -9,10 +9,32 @@ This version has breaking changes — APIs, conventions, and file structure may 
 Antes de crear o modificar interfaces, estilos, logos, colores o cualquier otro
 material visual, consultar el manual de marca ubicado en:
 
-`docs/brand/Manual_de_Marca_Alquia.pdf`
+`docs/brand/manual/Manual_de_Marca_Alquia_v1.1.pdf`
+
+Los tokens de color en formato usable están en `docs/brand/color/` — el archivo
+canónico es `alquia-colores.json`.
 
 Usar preferentemente los recursos existentes en `public/logos/`. No recrear,
 recolorear, deformar ni alterar los logos salvo que el manual lo permita.
+
+## Diseño de producto
+
+El manual de marca manda sobre color, tipografía y logo. Lo que el manual no
+cubre — cómo se comportan los componentes de la app — está en:
+
+`docs/design/sistema-ui.md`
+
+Leerlo antes de tocar UI. Incluye los tokens (radios, anillos, alturas), las
+decisiones ya tomadas con su porqué, las reglas de accesibilidad que salieron de
+medir contraste y daltonismo, y una lista de lo que ya se rechazó para no volver
+a proponerlo. El prototipo vigente corre en `localhost:3000/prototipo` y su código está en
+`src/components/dashboard/` (OwnerWorkspace + CreationWizard). El HTML de
+`docs/prototypes/` quedó congelado y ya no refleja la app.
+
+Ojo: el modelo de dominio real está en `propertly-backend` rama `origin/mvp`, que
+diverge de `src/lib/types.ts`. Cómo se resuelve esa divergencia ya está
+decidido y anotado: lo que el backend modela manda, y lo que le falta se le
+pide. Leer «Modelo de datos: qué manda y qué se pide» antes de tocar tipos.
 
 ## Testing
 
@@ -26,7 +48,7 @@ Framework: **Vitest + React Testing Library**. Los tests viven en `src/tests/`.
 
 **Por qué Vitest y no Jest:** React 19 + React Compiler requiere ESM nativo; Vitest lo soporta sin configuración Babel extra. El React Compiler no corre en tests (es solo una optimización de build).
 
-**Mocks globales** en `src/tests/setup.ts`: `next/navigation`, `next/image`, `next/link`.
+**Mocks globales** en `src/tests/setup.tsx`: `next/navigation`, `next/image`, `next/link`.
 
 ## Monitoreo de errores (Sentry)
 

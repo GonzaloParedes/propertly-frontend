@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { AlquiaBackendClient } from "@/lib/backend-client";
 
 const BENEFITS = [
   "Le enviamos un enlace seguro a su correo electrónico",
@@ -72,10 +73,11 @@ export default function OlvidarContrasenaPage() {
     e.preventDefault();
     setError(null);
     setIsPending(true);
+    const form = new FormData(e.currentTarget);
     try {
-      // TODO: reemplazar con llamada real al backend
-      // POST /api/auth/forgot-password  Body: { email: string }
-      await new Promise((r) => setTimeout(r, 800));
+      await AlquiaBackendClient.auth.forgotPassword({
+        email: form.get("email") as string,
+      });
       setSubmitted(true);
     } catch {
       setError("Ocurrió un error inesperado. Intente nuevamente más tarde.");
