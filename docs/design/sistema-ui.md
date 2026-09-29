@@ -378,13 +378,36 @@ Fáciles de errarle si uno diseña sin leer el backend. Fuente:
    `non-nullable`. En la UI nunca dice «(opcional)».
 2. **Una cuota tiene que estar confirmada antes de poder recibir un pago.**
    `Invoice.confirmed` es una acción explícita del propietario, y es un paso
-   propio en Cobranzas.
+   propio en Cobranzas. Lo que se confirma no es que la cuota exista: es el
+   **importe**. Mientras está sin confirmar, el propietario puede agregar,
+   editar y borrar ajustes —descuentos y recargos—, y
+   `InvoiceAdjustmentService` los bloquea apenas se confirma. Confirmar es
+   cerrar el número del mes, no avisar que hay cuota.
 3. **El pago que carga el inquilino necesita aprobación.** Arranca en
    `AWAITING_CONFIRMATION`; el que carga el propietario arranca `CONFIRMED`.
 4. **En contratos por índice (ICL/IPC) el futuro es desconocido.** Las
    `PreInvoice` se generan reactivamente, recién cuando se publica cada valor. La
    UI **no proyecta montos** ahí: muestra «a definir según ICL». El total de la
    cartera lo dice explícito en vez de inventar un número redondo.
+5. **La cuota sin confirmar se le muestra al inquilino con el importe, con la
+   aclaración de que no está cerrado y sin habilitarle el pago.** Sale de la
+   regla 2. Su portal lista el período, el vencimiento y el monto —el inquilino
+   necesita el número para ir juntando la plata—, y junto al monto dice que el
+   propietario todavía no lo confirmó y que puede cambiar. La carga del
+   comprobante queda deshabilitada hasta que lo confirme, que es además lo que
+   hace el backend: `PaymentService` rechaza el comprobante de una cuota sin
+   confirmar.
+
+   La aclaración tiene que decir que el importe **puede cambiar**, no sólo que
+   está «pendiente»: el inquilino puede transferir por fuera de la app mirando
+   ese número, y si después se le suma un ajuste, pagó de menos sin saberlo.
+   Decidido el 17/09/2026, antes de construir el portal.
+6. **El inquilino de una propiedad sale del contrato, no de `Property.tenant`.**
+   Ese campo existe, pero el backend confirmó el 17/09/2026 que es decoración
+   heredada: lo escribe sólo `PropertyService` y su único uso lector es llenar
+   `PropertyResponse.tenant`. No participa de ninguna lógica y nada garantiza
+   que coincida con el del contrato. Verificado que hoy no lo leemos en ningún
+   lado; la regla es para cuando se construya Propiedades.
 
 Los cuatro estados del dinero, y cómo se llaman de cara al usuario:
 
@@ -455,35 +478,43 @@ Lo que ya está modelado en el backend y hay que dejar de modelar distinto:
 
 ### Se le pide al backend
 
-**Campos que faltan** (agregados simples):
+El pedido vive en un documento propio: **`docs/backend/pedido-de-cambios-api.md`**
+(06/09/2026, con el estado de cada ítem actualizado in situ como cita, no como
+una segunda lista acá — dos listas del mismo estado se desincronizan). Su
+respuesta está en `docs/backend/respuesta-pedido-de-cambios.md`.
 
-- `Tenant.phone` — teléfono del inquilino.
-- `Property.propertyType` — Departamento / Casa / PH / Local / Oficina / Cochera / Terreno.
-- `Address.postalCode` — código postal.
-- Depósito: monto y tipo.
-- Comisión: porcentaje y quién la paga (propietario / inquilino / compartida).
-- Punitorios: tipo, valor y días de gracia.
-- Renovación automática y meses de preaviso.
-- Penalidad por rescisión anticipada.
-- Moneda del contrato (ARS / USD). Hoy los importes son `BigDecimal` sin moneda.
-- Poder acotar `GET /invoices`. Hoy sin parámetros devuelve **todas** las cuotas
-  del propietario desde siempre: un contrato de 36 meses son 36 cuotas, cada una
-  con sus ajustes y pagos embebidos. La vista de inquilinos sólo necesita la
-  situación corriente de cada contrato. Sirve un filtro por período o un
-  «última cuota por contrato».
+**Estado al 29/09/2026, confirmado por el backend y por nosotros contra la
+instancia real:** todo lo pedido está disponible en `codex/frontend-integration-lots`
+—P0-2 a P0-7, los cuatro puntos de «Contra su propio spec», P1-1 a P1-10— y ya
+está consumido en el panel del propietario y el portal del inquilino, los dos
+terminados. Lo único fuera del MVP, decidido de los dos lados: copropietarios
+con porcentaje de tenencia (P2-1), varios inquilinos por contrato con garantes
+(P2-2), y revocar o regenerar el enlace del inquilino. `OwnersField.tsx` y el
+badge «Garante» de `TenantsField` quedan como código muerto de las pantallas
+viejas hasta que se retiren (ver Pendientes).
 
-**Cambios estructurales** (no son un campo más, conviene discutirlos aparte):
-
-- **Propietarios con porcentaje de tenencia.** Hoy el backend dice explícito que
-  no existe entidad propietario: *«un `User` que tiene propiedades es un
-  `User`»*. `OwnersField.tsx` modela copropiedad con porcentajes y no tiene
-  dónde persistirse.
-- **Varios inquilinos por contrato, con garantes.** El backend tiene
-  `Contract.tenant`, uno solo, y `Tenant` no tiene flag de garante.
-
-Mientras no estén, `PropertyForm` y `ContractForm` no se pueden guardar completos.
+El caso más reciente, porque vale la pena como ejemplo de qué significa
+«consumido y validado» y no sólo «el campo llegó»: P1-10 no era un campo, era
+un bug (`PhoneNumberNormalizer` guardaba mal un teléfono con el 0 de la
+característica). El backend lo resolvió reescribiendo el normalizador; nosotros
+lo encontramos, portamos el mismo algoritmo a `telefono.ts` para no tener dos
+validaciones que puedan divergir, y lo verificamos en vivo antes de sacar el
+parche que lo tapaba —no alcanzaba con que el campo «exista», había que probar
+que el valor que vuelve es el correcto.
 
 ### Alta de contrato: gana el asistente
+
+**Conectado el 07/09/2026.** El asistente de contrato ya crea contra
+`POST /contracts`. Dos cosas que cambiaron al conectarlo:
+
+- **La fecha de inicio pasó a `<input type="date">`.** Antes era un campo de
+  texto con la ayuda «día / mes / año» al pie, que es exactamente el patrón que
+  esta misma guía tiene en «Rechazado». El control nativo además entrega la
+  fecha en ISO, que es lo que el backend espera, y evita parsear a mano.
+- **`CreationWizard` recibe `demo`.** Antes no lo recibía, así que el asistente
+  de inquilino en `/prototipo` pegaba al backend sin sesión y moría con un 401 —
+  la regla del prototipo existía pero el asistente se había quedado afuera.
+  Ahora los dos guardados cortan antes en modo demo.
 
 La UI de alta de contrato es la del **prototipo** (`CreationWizard`), no
 `ContractForm` de `/dashboard/contratos/nuevo`.
@@ -495,29 +526,95 @@ paso de inquilino pide nombre / apellido / CUIT / correo, que es exactamente
 `TenantRequest`. `ContractForm` pide veinte campos, la mayoría de los cuales
 todavía no tienen dónde guardarse.
 
-### Deuda del cliente HTTP
+### El cliente HTTP, al día
 
-`src/lib/backend-client.ts` se portó desde la rama `mvp` **del front**, que quedó
-vieja respecto del backend. Verificado el 30/08/2026 contra los controllers:
+**Saldado el 07/09/2026, al construir Cobranzas.** Antes esta sección listaba
+métodos que apuntaban a endpoints muertos. Ya no queda ninguno: `auth`, `users`,
+`tenants`, `properties`, `contracts`, `invoices`, `payments` y `tenantPortal`
+coinciden con el spec.
 
-- `auth`, `users`, `tenants`, `properties`, `contracts`, `invoices` — coinciden.
-- `payments` y `tenantPortal` — **desactualizados**. El commit `bb50542` del
-  backend (16/08) rehízo el ciclo de pagos: `GET /payments` ahora exige
-  `invoiceId`; `PUT /payments/{id}`, `POST /payments/{id}/status` y
-  `DELETE /payments/{id}/receipt` ya no existen; adjuntar comprobante es
-  `POST /payments` con `invoiceId` + archivo; `GET /tenant/payments` pasó a ser
-  `GET /tenant/invoices`.
-- `PaymentStatus` y `PaymentResponse` en `backend-types.ts` — **ya corregidos**
-  el 30/08/2026, porque la vista de inquilinos lee los pagos embebidos en
-  `InvoiceResponse` y no se podía escribir contra un tipo falso. `PaymentStatus`
-  es `AWAITING_CONFIRMATION | CONFIRMED | REJECTED`, y `PaymentResponse` trae
-  `invoiceId` y `submittedByTenant` en vez de `contractId`, `period`, `dueDate`
-  y `amount`.
+Lo que cambió en el grupo `payments`, por si aparece código viejo:
 
-Falta corregir los **métodos** del grupo `payments` en `backend-client.ts`, que
-siguen apuntando a endpoints muertos. Sus tests en `backend-client.test.ts`
-verifican que el cliente pega donde dice pegar, no que el backend conteste: van
-a seguir verdes contra endpoints que ya no existen. Corregirlo con Cobranzas.
+| Antes | Ahora |
+|---|---|
+| `list({ contractId, tenantId })` | `list(invoiceId)` — el `invoiceId` es obligatorio |
+| `attachReceipt(id, file)` | `create(invoiceId, file)` — el comprobante se manda al crear el pago, no hay paso aparte |
+| `updateAmount`, `updateStatus`, `removeReceipt` | no existen |
+| `confirmReceipt` / `rejectReceipt` | `confirm` / `reject` |
+| `tenantPortal.payments.list()` | `tenantPortal.invoices()` — el inquilino ve cuotas, y los pagos vienen embebidos |
+
+Sus tests verifican a qué URL pega cada método, no que el backend conteste. Eso
+significa que **seguirían verdes contra endpoints muertos**: cuando el backend
+cambie de forma otra vez, el test no lo va a avisar. La red de seguridad real es
+volver a mirar el spec, que es lo que pide el `CLAUDE.md` de `src/lib`.
+
+---
+
+## Estado de las pantallas
+
+Actualizado el 28/09/2026 (tarde). El detalle de qué falta de cada una está en el anexo
+de `docs/backend/pedido-de-cambios-api.md`.
+
+| Andando contra el backend | Todavía con datos de ejemplo |
+|---|---|
+| **Todo el panel del propietario** (sus tres detalles, tres altas, el ajuste de cuotas y el cambio de condiciones a futuro) **y el portal del inquilino** | Cancelar o editar un cambio ya programado (el backend no lo ofrece) |
+
+Dos reglas que salieron de conectarlas, y que valen para las que faltan:
+
+- **Una fila con datos reales no lleva a una pantalla con datos de ejemplo.**
+  Contratos e Inquilinos rinden sus filas sin link por eso: el detalle todavía
+  sale de los arrays del prototipo, y llevar hasta ahí mostraría el contrato o
+  el inquilino de otro. En modo demo sí navegan, porque ahí todo es de ejemplo.
+- **Lo que el backend no da, no se dibuja.** Sin fecha de carga del comprobante
+  (P0-4) la línea del archivo dice tipo y tamaño, y nada más. Sin endpoint para
+  el resumen de cobranzas, el botón «Descargar resumen» no está. Antes que
+  inventar un dato o dejar un botón muerto, se omite.
+- **El alta de propiedad guarda, pero la dirección sale de una lista fija.** El
+  asistente tiene desde el 17/09/2026 un paso de tipo —las cuatro categorías que
+  el backend acepta, ni una más— y hace el `POST /properties`. Lo que no cargó el
+  propietario no se manda: sin dormitorios es `undefined`, no cero, y los chips
+  apagados no afirman «no acepta mascotas». La dirección sigue saliendo de las
+  diez de ejemplo porque el autocompletado real está roto del lado del backend
+  (S-4 del pedido: las referencias que devuelve no las resuelve su propio
+  endpoint). Cuando lo arreglen, es cambiar el `AddressField` y nada más.
+- **Cuando lo que se guarda no es lo que se escribe, se anuncia antes.** En el
+  ajuste de una cuota el propietario escribe el importe final que quiere cobrar,
+  pero el backend guarda la diferencia contra el total vigente. El diálogo dice,
+  mientras se escribe, cuánto es esa diferencia y si queda como descuento o como
+  recargo. También muestra el importe base y los ajustes ya cargados: sin eso, un
+  importe final calculado sobre un total que ya venía ajustado sorprende.
+- **Un plazo se dice en fechas, no en meses.** El detalle de contrato muestra
+  «del 01/03/2025 al 29/02/2028», no «36 meses». El backend reportó que
+  `termMonths` queda un mes corto en todo contrato renegociado —el corte del
+  `schema-change` cae el día de vencimiento, así que el sucesor arranca a mitad
+  de mes—. La facturación es correcta; el número del plazo, no. Y las fechas son
+  además lo que el propietario reconoce de su contrato en papel.
+- **Una vigencia que no se puede sostener no se afirma.** El detalle de contrato
+  dejó de decir «Activo hasta que finalice este contrato» sobre el enlace del
+  inquilino: hoy el token vence a fin de mes (S-1) y el endpoint devuelve sólo la
+  URL, sin fecha. Cuando S-1 se resuelva y el enlace sea durable, se puede volver
+  a afirmar con verdad.
+- **Un total desconocido no se muestra como cero.** Inicio lo aplica a la
+  proyección del mes siguiente: si ningún contrato tiene pre-cuota todavía
+  —cartera enteramente por índice, o el job que las genera sin correr—, la
+  tarjeta explica que los importes dependen de un índice sin publicar en vez de
+  mostrar «$ 0», que se leería como «no va a cobrar nada». Y un bloque que
+  depende de un dato que falla se cae solo: si `/pre-invoices` no responde, la
+  tarjeta no se muestra y el resto del panel sí.
+- **Un dato que el backend no manda no se reemplaza por su valor por defecto.**
+  Propiedades lo aplica a `activeContract`: si la clave llega en `null`, la
+  propiedad no tiene contrato y el chip dice «Sin alquilar»; si no llega —un
+  build anterior a la rama de integración— se omiten los chips **y el filtro por
+  contrato**, porque contar todo como libre sería afirmar algo falso, no callar
+  algo que falta. La diferencia entre `null` y ausente es la que sostiene la
+  distinción, y por eso el tipo la conserva.
+- **La cuenta ya sale de la sesión.** Desde el 16/09/2026 el saludo de Inicio, la
+  tarjeta Cuenta de Configuración y la barra lateral nombran a quien está
+  logueado: `auth-context` verifica la sesión con `GET /users/me` —no con
+  `/auth/me`, que devolvía sólo el correo y está anotado para borrarse del lado
+  del backend— y guarda el `UserResponse` entero. En `/prototipo`, que corre sin
+  sesión, sigue el titular de ejemplo: es la ruta que existe para mostrar las
+  pantallas y a medio nombrar no las muestra.
 
 ---
 
@@ -531,15 +628,88 @@ a seguir verdes contra endpoints que ya no existen. Corregirlo con Cobranzas.
       de `Tenant`, que es el inquilino y ya lo pedía el asistente—. La
       validación con dígito verificador vive ahora en `src/lib/cuit.ts` y la
       usan los dos.
-- [ ] Corregir los métodos de `payments` y `tenantPortal` en
-      `backend-client.ts` (los tipos de `backend-types.ts` ya se corrigieron).
-      Ver «Deuda del cliente HTTP».
-- [ ] Pasar al backend la lista de campos y cambios estructurales pedidos.
+- [x] Corregir los métodos de `payments` y `tenantPortal` en
+      `backend-client.ts`. Hecho el 07/09/2026 junto con Cobranzas.
+- [x] Pasar al backend la lista de campos y cambios estructurales pedidos.
+      Mandada y contestada: `docs/backend/respuesta-pedido-de-cambios.md`
+      (17/09/2026).
 - [x] Bajar el prototipo a componentes React (`OwnerWorkspace` +
       `CreationWizard`). Ojo: el port **aplanó espaciados por instancia** en
       una sola clase y perdió al menos un margen (los chips del paso «Plazo»
       quedaron pegados al contador). El HTML congelado tiene 11 márgenes
       inline que ninguna clase replica: revisarlos al portar lo que falta.
+- [ ] **Qué límites tiene cambiar el importe de una cuota de un contrato
+      vigente.** Hoy el propietario puede sumarle un recargo o un descuento a
+      cualquier cuota mientras esté sin confirmar, sin tope y sin dejar rastro
+      del motivo del lado del inquilino. El mecanismo está bien para lo que se
+      pensó —punitorios, expensas, una quita pactada—, pero es plata que el
+      inquilino tiene que pagar sobre un contrato ya firmado. Hay que trabajar
+      qué se puede ajustar, con qué límite y qué ve el inquilino. Anotado el
+      16/09/2026 para resolverlo aparte, no sobre la marcha.
+- [x] **El inquilino ya recibe avisos de cuota.** Resuelto en
+      `codex/frontend-integration-lots`: `InvoiceNotificationService` manda cuatro
+      —cuota confirmada, por vencer, el día del vencimiento y vencida—, respeta
+      las preferencias del propietario y registra los envíos para no repetirlos.
+      El de cuota confirmada sale además al confirmar, sin esperar al job. Con eso
+      se cumple la condición que habíamos puesto para soltar S-1.
+- [ ] **El día que el backend pushee S-3, cambiar `fechaDeFin`**
+      (`CreationWizard.tsx:220`). Hoy replica a propósito la convención vieja
+      —`startDate + termMonths` sin restar el día— para no prometer una fecha
+      distinta de la que quedaba guardada. Con S-3 esa decisión se da vuelta y
+      el asistente pasaría a mostrar un día más que lo que el backend guarda.
+      Es el único cambio de ellos que nos rompe algo en silencio; quedaron en
+      avisar antes del deploy.
+- [ ] **Cuando deployen, verificar la pantalla contra el backend real.** Los
+      tipos y el cliente ya están al día con `codex/frontend-integration-lots`
+      (`263576d`) y verificados contra esa rama corriendo local, pero `:8080`
+      compartido sigue con el build viejo. Dos cosas que sólo se ven probando y
+      que ya están contempladas: `period` va como fecha completa
+      (`2026-08-01`, no `2026-08`, que da 400) y `activeContract` llega como
+      `null` explícito, no ausente — la diferencia entre los dos es lo que deja
+      distinguir «sin contrato» de «backend viejo».
+- [ ] **Sacar las diez direcciones fijas** de `CreationWizard.tsx` y conectar
+      `/address-lookup/autocomplete` y `/resolve`. S-4 ya está pusheado y
+      verificado; el alta de propiedad ya guarda — sólo falta de dónde sale la
+      dirección.
+- [x] **Sacar «se puede revocar y regenerar»** de la tarjeta Acceso de pago del
+      detalle de inquilino. Hecho en `completar-detalle-inquilino`: queda sólo
+      «Copiar enlace», que pide el `GET` sin prometer nada que no tenga endpoint
+      detrás. El backend había estimado la revocación en ~2 días contra ~0,5 del
+      `GET`, contradice el diseño stateless del token, y su propio spec del
+      portal ya la había dejado fuera de alcance.
+- [x] **«Registrar pago» pide una foto del recibo.** Decidido el 17/09/2026
+      (pregunta 3): el comprobante es obligatorio también para el propietario, y
+      para un cobro en efectivo la salida es la foto del recibo que él mismo
+      firma. El texto del diálogo tiene que pedir eso, no un comprobante
+      bancario.
+- [x] **En el detalle de contrato, mostrar fechas y no «X meses».** El backend
+      encontró que `termMonths` queda un mes corto en todo contrato renegociado
+      —el corte del `schema-change` es el día de vencimiento, así que el sucesor
+      arranca a mitad de mes—. La facturación es correcta; el número del plazo,
+      no.
+- [ ] **Retirar `OwnersField` y el badge «Garante» de `TenantsField`.**
+      Copropiedad (P2-1) y varios inquilinos por contrato (P2-2) quedaron fuera
+      del MVP. Salen junto con los formularios viejos.
+- [x] **Portal del inquilino construido.** `/tenant-portal`, fuera de
+      `dashboard/` porque su sesión (`tenant_access_token`) no tiene nada que
+      ver con la del propietario. Verificado de punta a punta contra el backend
+      real: canje del token, listado, subida de comprobante, rechazo con motivo
+      y nueva subida después. S-1 y S-2 confirmados en el mismo repaso — el
+      token del enlace ya no tiene `exp` y `getForTenantAccess` sigue
+      resolviendo después de terminar el contrato.
+- [x] **«Cambiar condiciones a futuro» programado desde el detalle del contrato.**
+      Usa `POST /contracts/{contractId}/schema-change` (backend `c791aeb`): manda
+      `effectiveFrom` (primer día de un mes futuro) más las condiciones nuevas, y
+      el contrato actual sigue vigente hasta ese mes. El sucesor nace `SCHEDULED`;
+      el vigente lo apunta con `successorContractId`, así que **ese campo ya no
+      significa «fue reemplazado»** salvo en un contrato `SUPERSEDED`. El detalle
+      muestra el cambio programado y deja de ofrecer otro (el backend admite uno
+      solo). Sin cancelar ni editar: el backend todavía no lo permite. El
+      `/invoices/{id}/schema-change` viejo no se usa. **Verificado en vivo el
+      28/09/2026**: programar un cambio deja el contrato vigente `ACTIVE` con
+      `successorContractId` apuntando al `SCHEDULED`, y un segundo intento sobre
+      el mismo contrato da 400 (`Contract already has a scheduled successor`),
+      tal como esperaba el diseño.
 - [ ] Sumar al manual de marca la regla de contraste de los semánticos sobre su
       propio tinte.
 - [ ] Crear los tokens de radio, altura y anillo, y reemplazar los literales.
@@ -553,6 +723,20 @@ a seguir verdes contra endpoints que ya no existen. Corregirlo con Cobranzas.
 - [ ] Revisión visual del prototipo en navegador — nunca se hizo; toda la
       verificación hasta ahora fue estática y de lógica. El apilado de cobranzas
       y de `.owner-document` en 620 px entra acá: se escribió sin poder abrirlo.
+
+### El proceso de las pantallas que faltan
+
+Desde el 28/09/2026 las pantallas que quedan se planifican con **OpenSpec**
+(`openspec/changes/`). La primera es `conectar-pantalla-propiedades`.
+
+La división, para que no se dupliquen: **este documento manda sobre las reglas**
+—tokens, accesibilidad, comportamiento de los componentes, lo ya rechazado— y
+OpenSpec lleva **las propuestas de cambio**: qué se construye ahora, con qué
+criterios de aceptación y qué queda explícitamente afuera. Una regla que sale de
+una propuesta se escribe acá cuando se archiva el cambio; una propuesta no
+redefine una regla de acá.
+
+---
 
 ### Desviaciones conocidas del sistema
 
