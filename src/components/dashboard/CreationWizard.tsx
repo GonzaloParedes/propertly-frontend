@@ -396,18 +396,29 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
 
   const finish = step === total;
   // No se puede avanzar con datos que el backend rechazaría (@NotBlank / @ValidTaxId / @Email)
-  const bloqueado = (() => {
-    if (guardando) return true;
-    if (kind === "tenant") return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
-    if (kind === "property" && step === 1) return !direccion;
-    if (kind === "property" && step === 2) return categoria === null;
-    if (kind === "contract" && step === 1) return propiedadId === null;
-    if (kind === "contract" && step === 2) return inquilinoId === null;
-    if (kind === "contract" && step === 3) return !alquilerOk;
-    if (kind === "contract" && step === 4) return !inicioOk;
-    if (kind === "contract" && step === 5) return !porcentajeOk;
+  function tenantBloqueado(): boolean {
+    return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
+  }
+  function propertyBloqueado(): boolean {
+    if (step === 1) return !direccion;
+    if (step === 2) return categoria === null;
     return false;
-  })();
+  }
+  function contractBloqueado(): boolean {
+    if (step === 1) return propiedadId === null;
+    if (step === 2) return inquilinoId === null;
+    if (step === 3) return !alquilerOk;
+    if (step === 4) return !inicioOk;
+    if (step === 5) return !porcentajeOk;
+    return false;
+  }
+  function calcularBloqueado(): boolean {
+    if (guardando) return true;
+    if (kind === "tenant") return tenantBloqueado();
+    if (kind === "property") return propertyBloqueado();
+    return contractBloqueado();
+  }
+  const bloqueado = calcularBloqueado();
   async function guardarInquilino() {
     // En /prototipo no hay sesión: guardar de verdad daría 401 y la demo se
     // cortaría justo en el paso que quiere mostrar.
