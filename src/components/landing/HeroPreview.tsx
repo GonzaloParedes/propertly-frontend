@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface Property {
   address: string;
@@ -61,7 +61,13 @@ function useCountUp(target: number, duration = 480) {
 
 export default function HeroPreview() {
   const [day, setDay] = useState(1);
-  const [paid, setPaid] = useState<Set<number>>(new Set());
+  // Derivado de day, no estado propio: no hace falta un efecto para
+  // sincronizar uno con el otro, se calcula directo en cada render.
+  const paid = useMemo(() => {
+    const next = new Set<number>();
+    PROPERTIES.forEach((p, i) => { if (day >= p.dueDay) next.add(i); });
+    return next;
+  }, [day]);
   const [newlyPaid, setNewlyPaid] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [entered, setEntered] = useState(false);
@@ -80,16 +86,6 @@ export default function HeroPreview() {
     }, TICK_MS);
     return () => clearInterval(timer);
   }, []);
-
-  // Mark properties as paid when their due day arrives
-  useEffect(() => {
-    if (day === 1) return;
-    setPaid((prev) => {
-      const next = new Set(prev);
-      PROPERTIES.forEach((p, i) => { if (day >= p.dueDay) next.add(i); });
-      return next;
-    });
-  }, [day]);
 
   // Detect newly-paid items → flash animations + toast
   useEffect(() => {
