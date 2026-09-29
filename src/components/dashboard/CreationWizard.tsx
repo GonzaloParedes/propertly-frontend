@@ -80,11 +80,11 @@ function normalizar(s: string) {
 }
 
 /** Combobox accesible: flechas para moverse, Enter para elegir, Escape para cerrar. */
-function AddressField({ value, onSelect, onClear }: {
+function AddressField({ value, onSelect, onClear }: Readonly<{
   value: Direccion | null;
   onSelect: (d: Direccion) => void;
   onClear: () => void;
-}) {
+}>) {
   const [query, setQuery] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [activo, setActivo] = useState(0);
@@ -174,7 +174,7 @@ function Icon({ name, size = 22 }: { name: "x" | "arrow" | "check" | "building" 
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
-function Option({ selected, icon, title, description, onClick }: { selected: boolean; icon: "building" | "users" | "trend"; title: string; description: string; onClick: () => void }) {
+function Option({ selected, icon, title, description, onClick }: Readonly<{ selected: boolean; icon: "building" | "users" | "trend"; title: string; description: string; onClick: () => void }>) {
   return <button type="button" className="owner-wizard-option" role="radio" aria-checked={selected} onClick={onClick}><span className="owner-wizard-option__icon"><Icon name={icon} /></span><span><b>{title}</b><small>{description}</small></span><span className="owner-wizard-option__check"><Icon name="check" /></span></button>;
 }
 
@@ -314,8 +314,9 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     };
   }, [kind, demo]);
 
+  const sufijoUnidad = unidad ? `, ${unidad}` : "";
   const direccionCompleta = direccion
-    ? `${etiquetaDireccion(direccion)}${unidad ? `, ${unidad}` : ""}`
+    ? `${etiquetaDireccion(direccion)}${sufijoUnidad}`
     : "Sin cargar";
   // El paso de características es opcional: se lista solo lo que se cargó.
   const caracteristicas =
@@ -395,17 +396,18 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
 
   const finish = step === total;
   // No se puede avanzar con datos que el backend rechazaría (@NotBlank / @ValidTaxId / @Email)
-  const bloqueado =
-    guardando ? true
-    : kind === "tenant" ? !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk
-    : kind === "property" && step === 1 ? !direccion
-    : kind === "property" && step === 2 ? categoria === null
-    : kind === "contract" && step === 1 ? propiedadId === null
-    : kind === "contract" && step === 2 ? inquilinoId === null
-    : kind === "contract" && step === 3 ? !alquilerOk
-    : kind === "contract" && step === 4 ? !inicioOk
-    : kind === "contract" && step === 5 ? !porcentajeOk
-    : false;
+  const bloqueado = (() => {
+    if (guardando) return true;
+    if (kind === "tenant") return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
+    if (kind === "property" && step === 1) return !direccion;
+    if (kind === "property" && step === 2) return categoria === null;
+    if (kind === "contract" && step === 1) return propiedadId === null;
+    if (kind === "contract" && step === 2) return inquilinoId === null;
+    if (kind === "contract" && step === 3) return !alquilerOk;
+    if (kind === "contract" && step === 4) return !inicioOk;
+    if (kind === "contract" && step === 5) return !porcentajeOk;
+    return false;
+  })();
   async function guardarInquilino() {
     // En /prototipo no hay sesión: guardar de verdad daría 401 y la demo se
     // cortaría justo en el paso que quiere mostrar.
@@ -654,7 +656,33 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
       <aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside>
     </>;
 
-  return <section className="owner-wizard" aria-label={kind === "property" ? "Asistente de nueva propiedad" : kind === "tenant" ? "Asistente de nuevo inquilino" : "Asistente de nuevo contrato"}><header className="owner-wizard__top"><button type="button" aria-label="Salir del asistente" onClick={onClose} disabled={guardando}><Icon name="x" /></button><b>{kind === "property" ? "Nueva propiedad" : kind === "tenant" ? "Nuevo inquilino" : "Nuevo contrato"}</b>{total > 1 && <><div className="owner-wizard__progress" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step}><i style={{ width: `${(step / total) * 100}%` }} /></div><span>Paso {step} de {total}</span></>}</header><main className="owner-wizard__body">{kind === "property" ? propertyStep : kind === "tenant" ? tenantStep : contractStep}</main><footer className="owner-wizard__footer"><button type="button" className="owner-wizard-quiet" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1 || guardando}>Atrás</button><button type="button" className="owner-wizard-next" onClick={next} disabled={bloqueado}>{guardando ? <><span className="owner-wizard-spinner" />Guardando…</> : finish ? (kind === "property" ? "Guardar propiedad" : kind === "tenant" ? "Guardar inquilino" : "Crear contrato") : <>Seguir <Icon name="arrow" /></>}</button></footer></section>;
+  const tituloAsistente = (() => {
+    if (kind === "property") return "Nueva propiedad";
+    if (kind === "tenant") return "Nuevo inquilino";
+    return "Nuevo contrato";
+  })();
+  const ariaAsistente = (() => {
+    if (kind === "property") return "Asistente de nueva propiedad";
+    if (kind === "tenant") return "Asistente de nuevo inquilino";
+    return "Asistente de nuevo contrato";
+  })();
+  const finishLabel = (() => {
+    if (kind === "property") return "Guardar propiedad";
+    if (kind === "tenant") return "Guardar inquilino";
+    return "Crear contrato";
+  })();
+  const stepContent = (() => {
+    if (kind === "property") return propertyStep;
+    if (kind === "tenant") return tenantStep;
+    return contractStep;
+  })();
+  const footerButtonContent = (() => {
+    if (guardando) return <><span className="owner-wizard-spinner" />Guardando…</>;
+    if (finish) return finishLabel;
+    return <>Seguir <Icon name="arrow" /></>;
+  })();
+
+  return <section className="owner-wizard" aria-label={ariaAsistente}><header className="owner-wizard__top"><button type="button" aria-label="Salir del asistente" onClick={onClose} disabled={guardando}><Icon name="x" /></button><b>{tituloAsistente}</b>{total > 1 && <><div className="owner-wizard__progress" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step}><i style={{ width: `${(step / total) * 100}%` }} /></div><span>Paso {step} de {total}</span></>}</header><main className="owner-wizard__body">{stepContent}</main><footer className="owner-wizard__footer"><button type="button" className="owner-wizard-quiet" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1 || guardando}>Atrás</button><button type="button" className="owner-wizard-next" onClick={next} disabled={bloqueado}>{footerButtonContent}</button></footer></section>;
 }
 
 

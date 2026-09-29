@@ -723,6 +723,22 @@ Dos reglas que salieron de conectarlas, y que valen para las que faltan:
 - [ ] Revisión visual del prototipo en navegador — nunca se hizo; toda la
       verificación hasta ahora fue estática y de lógica. El apilado de cobranzas
       y de `.owner-document` en 620 px entra acá: se escribió sin poder abrirlo.
+- [ ] **Partir `OwnerWorkspace.tsx` en un componente por pantalla.** SonarCloud
+      marca Complejidad Cognitiva 110 sobre 15 permitido en el componente
+      completo (2206 líneas), más un sub-componente inline con 16 sobre 15.
+      Anotado el 29/09/2026 al triar el Quality Gate de PR #10: se decidió
+      arreglar ahí los ~47 code smells menores (accesibilidad de labels,
+      `Readonly<Props>`, ternarios anidados fuera de este archivo, regexes con
+      riesgo de backtracking) y dejar este split para encararlo aparte, con
+      tiempo y sin apuro de PR. Plan: `Overview`, `PropertiesView`,
+      `ContractsView`, `CollectionsView`, `TenantsView`, `SettingsView`, más los
+      3 diálogos de detalle (`ContractDetail`, `TenantDetail`, el de
+      propiedad) y los diálogos de acción, cada uno en su propio archivo. Hasta
+      que se haga esto, tampoco tiene sentido tocar los ~10 ternarios anidados
+      ni los nueve `role="group"`/`role="status"` que Sonar señala dentro de
+      este mismo archivo (patrón consistente en filtros y avisos; usar
+      `<fieldset>`/`<output>` ahí implica tocar layout y CSS) — mejor resolverlos
+      como parte del split, no antes.
 
 ### El proceso de las pantallas que faltan
 

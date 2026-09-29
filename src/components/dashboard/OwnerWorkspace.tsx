@@ -82,7 +82,7 @@ type Detail = "property" | "contract" | "tenant" | null;
 type Creation = "property" | "contract" | "tenant" | null;
 type IconName = "search" | "sliders" | "plus" | "building" | "file" | "card" | "users" | "check" | "clock" | "alert" | "x" | "arrow" | "link" | "download" | "edit" | "archive" | "receipt" | "calendar" | "trend" | "paperclip" | "copy";
 
-function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
+function Icon({ name, size = 21 }: Readonly<{ name: IconName; size?: number }>) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   const paths: Record<IconName, React.ReactNode> = {
     search: <><circle cx="11" cy="11" r="7" /><path d="M20.5 20.5 16 16" /></>,
@@ -100,7 +100,7 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
     link: <><path d="M10 13.5a4.5 4.5 0 0 0 6.36.14l2-2a4.5 4.5 0 0 0-6.36-6.36L10.85 6.42" /><path d="M14 10.5a4.5 4.5 0 0 0-6.36-.14l-2 2A4.5 4.5 0 0 0 12 18.72l1.15-1.14" /></>,
     download: <><path d="M12 3v12" /><path d="m7.5 10.5 4.5 4.5 4.5-4.5M5 21h14" /></>,
     edit: <><path d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5z" /><path d="m14.5 6.5 3 2.5" /></>,
-    archive: <><path d="M4 7h16v13H4zM3 4h18v3H3zM10 12h4" /></>,
+    archive: <path d="M4 7h16v13H4zM3 4h18v3H3zM10 12h4" />,
     receipt: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></>,
     trend: <><path d="m3.5 17.5 5-5.5 4 3.5 7.5-8" /><path d="M15.5 7.5h5v5" /></>,
@@ -260,6 +260,22 @@ function periodoSiguienteEnLetras(demo: boolean): string {
 }
 
 /**
+ * Separa el número de calle del resto, para los contratos de la demo. Sin
+ * regex a propósito: un patrón como /\s+\d+$/ es del tipo que un analizador
+ * estático marca por su costo en el peor caso, y acá alcanza con recorrer las
+ * palabras a mano.
+ */
+function separarCalleYNumero(direccion: string): { calle: string; numero: string } {
+  const [calleYNumero] = direccion.split(",");
+  const palabras = calleYNumero.trim().split(" ");
+  const ultima = palabras[palabras.length - 1] ?? "";
+  const esNumero = ultima.length > 0 && [...ultima].every((ch) => ch >= "0" && ch <= "9");
+  return esNumero
+    ? { calle: palabras.slice(0, -1).join(" "), numero: ultima }
+    : { calle: calleYNumero.trim(), numero: "" };
+}
+
+/**
  * El panel del prototipo, con la forma del dato real. Los montos son los mismos
  * que mostraba el panel escrito a mano, así que la demo no se contradice con el
  * resto de sus pantallas.
@@ -285,8 +301,8 @@ const inicioDemo = {
     id: indice + 1,
     property: {
       id: indice + 1,
-      street: c.property.address.split(",")[0].replace(/\s+\d+$/, "").trim(),
-      number: c.property.address.match(/\s(\d+)/)?.[1] ?? "",
+      street: separarCalleYNumero(c.property.address).calle,
+      number: separarCalleYNumero(c.property.address).numero,
       floorUnit: c.property.address.split(",")[1]?.trim(),
       city: c.property.city,
       province: "Buenos Aires",
@@ -374,7 +390,7 @@ function Button({ children, tone = "primary", onClick, disabled = false, small =
   return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
-function Notice({ tone, title, children, action }: { tone: "info" | "warn" | "bad"; title: string; children: React.ReactNode; action: React.ReactNode }) {
+function Notice({ tone, title, children, action }: Readonly<{ tone: "info" | "warn" | "bad"; title: string; children: React.ReactNode; action: React.ReactNode }>) {
   const icon = tone === "info" ? "card" : tone === "warn" ? "alert" : "x";
   return <article className={`owner-notice owner-notice--${tone}`}><span className="owner-notice__icon"><Icon name={icon} /></span><div><strong>{title}</strong><p>{children}</p></div><div className="owner-notice__action">{action}</div></article>;
 }

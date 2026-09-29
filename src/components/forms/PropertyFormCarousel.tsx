@@ -85,7 +85,7 @@ function errorsForStep(step: number, allErrors: Errors): Errors {
   return Object.fromEntries(Object.entries(allErrors).filter(([key]) => keys.includes(key)));
 }
 
-export default function PropertyFormCarousel({ mode = "page", onSuccess, onCancel }: PropertyFormCarouselProps) {
+export default function PropertyFormCarousel({ mode = "page", onSuccess, onCancel }: Readonly<PropertyFormCarouselProps>) {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [province, setProvince] = useState("");

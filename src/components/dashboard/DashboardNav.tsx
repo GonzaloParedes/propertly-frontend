@@ -39,7 +39,7 @@ interface DashboardNavProps {
   onNavigate?: (view: WorkspaceView) => void;
 }
 
-export default function DashboardNav({ activeView, onNavigate }: DashboardNavProps) {
+export default function DashboardNav({ activeView, onNavigate }: Readonly<DashboardNavProps>) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
   // Sin sesión —el prototipo de /prototipo, o el instante previo a que

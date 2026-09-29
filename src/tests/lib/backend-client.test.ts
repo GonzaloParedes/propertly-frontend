@@ -242,7 +242,7 @@ describe("AlquiaBackendClient.contracts", () => {
 
   it("resendTenantAccess pega a POST /contracts/{id}/tenant-access/resend sin body", async () => {
     await AlquiaBackendClient.contracts.resendTenantAccess(4);
-    expect(mockPost).toHaveBeenCalledWith("/contracts/4/tenant-access/resend", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/contracts/4/tenant-access/resend");
   });
 });
 
@@ -333,7 +333,7 @@ describe("AlquiaBackendClient.invoices", () => {
 
   it("confirm pega a POST /invoices/{id}/confirm sin body", async () => {
     await AlquiaBackendClient.invoices.confirm(4);
-    expect(mockPost).toHaveBeenCalledWith("/invoices/4/confirm", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/invoices/4/confirm");
   });
 
   it("schemaChange pega a POST /invoices/{id}/schema-change", async () => {
@@ -434,7 +434,7 @@ describe("AlquiaBackendClient.preInvoices", () => {
 describe("archivado", () => {
   it("archiva una propiedad sin body", async () => {
     await AlquiaBackendClient.properties.archive(5);
-    expect(mockPost).toHaveBeenCalledWith("/properties/5/archive", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/properties/5/archive");
   });
 
   it("restaura una propiedad", async () => {
@@ -463,7 +463,7 @@ describe("contrato · enlace del inquilino e historial", () => {
 
   it("reenviar el mail sigue siendo otra cosa", async () => {
     await AlquiaBackendClient.contracts.resendTenantAccess(12);
-    expect(mockPost).toHaveBeenCalledWith("/contracts/12/tenant-access/resend", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/contracts/12/tenant-access/resend");
   });
 
   it("trae el historial de aumentos", async () => {
