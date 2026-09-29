@@ -1150,7 +1150,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
         // primero en el orden visual.
         return <>
           <Button tone="secondary" small disabled={accionEnCurso}
-            onClick={() => accionDeCuota(() => AlquiaBackendClient.invoices.confirm(fila.invoiceId))}>Confirmar cuota</Button>
+            onClick={() => void accionDeCuota(() => AlquiaBackendClient.invoices.confirm(fila.invoiceId))}>Confirmar cuota</Button>
           <Button tone="quiet" small disabled={accionEnCurso || demo}
             onClick={() => { setErrorAccion(null); setAjusteEditado(null); setMotivoAjuste(""); setImporteFinal(String(fila.totalVigente)); setAjustando(fila); }}>
             Ajustar importe
@@ -1159,7 +1159,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       }
       if (fila.accion === "comprobante") {
         return <Button tone="secondary" small disabled={!fila.pagoConfirmado}
-          onClick={() => fila.pagoConfirmado && verComprobante(fila.pagoConfirmado.id)}>
+          onClick={() => { if (fila.pagoConfirmado) void verComprobante(fila.pagoConfirmado.id); }}>
           <Icon name="download" size={16} />Comprobante</Button>;
       }
       return <Button tone="secondary" small onClick={() => { setErrorAccion(null); setArchivo(null); setARegistrar(fila); }}>Registrar pago</Button>;
@@ -2138,7 +2138,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
             dice lo que sabe: tipo y tamaño. */}
         <small>{descripcionArchivo(enRevision.pagoPendiente)}</small>
         <Button tone="secondary" small disabled={!enRevision.pagoPendiente}
-          onClick={() => enRevision.pagoPendiente && verComprobante(enRevision.pagoPendiente.id)}>
+          onClick={() => { if (enRevision.pagoPendiente) void verComprobante(enRevision.pagoPendiente.id); }}>
           <Icon name="download" size={16} />Ver archivo
         </Button>
       </div>
@@ -2146,13 +2146,13 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       {errorAccion && <p className="owner-list-note" role="alert">{errorAccion}</p>}
       <div className="owner-dialog__actions">
         <Button tone="danger" disabled={accionEnCurso}
-          onClick={() => enRevision.pagoPendiente && accionDeCuota(
+          onClick={() => { if (enRevision.pagoPendiente) void accionDeCuota(
             () => AlquiaBackendClient.payments.reject(enRevision.pagoPendiente!.id),
-            () => setEnRevision(null))}>Rechazar</Button>
+            () => setEnRevision(null)); }}>Rechazar</Button>
         <Button disabled={accionEnCurso}
-          onClick={() => enRevision.pagoPendiente && accionDeCuota(
+          onClick={() => { if (enRevision.pagoPendiente) void accionDeCuota(
             () => AlquiaBackendClient.payments.confirm(enRevision.pagoPendiente!.id),
-            () => setEnRevision(null))}>
+            () => setEnRevision(null)); }}>
           {accionEnCurso ? "Guardando…" : "Confirmar pago"}
         </Button>
       </div>
@@ -2173,9 +2173,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       <div className="owner-dialog__actions">
         <Button tone="secondary" onClick={() => setARegistrar(null)}>Cancelar</Button>
         <Button disabled={!archivo || accionEnCurso}
-          onClick={() => archivo && accionDeCuota(
+          onClick={() => { if (archivo) void accionDeCuota(
             () => AlquiaBackendClient.payments.create(aRegistrar.invoiceId, archivo),
-            () => { setARegistrar(null); setArchivo(null); })}>
+            () => { setARegistrar(null); setArchivo(null); }); }}>
           {accionEnCurso ? "Guardando…" : "Registrar pago"}
         </Button>
       </div>
