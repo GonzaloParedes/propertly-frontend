@@ -2,24 +2,35 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 
-vi.mock("@/lib/api", () => ({
-  apiGet: vi.fn(),
-  apiPost: vi.fn(),
+vi.mock("@/lib/backend-client", () => ({
+  AlquiaBackendClient: {
+    auth: { login: vi.fn(), logout: vi.fn() },
+    users: { getMe: vi.fn() },
+  },
 }));
 
-import { apiGet, apiPost } from "@/lib/api";
-const mockApiGet = vi.mocked(apiGet);
-const mockApiPost = vi.mocked(apiPost);
+import { AlquiaBackendClient } from "@/lib/backend-client";
+const mockGetMe = vi.mocked(AlquiaBackendClient.users.getMe);
+const mockLogin = vi.mocked(AlquiaBackendClient.auth.login);
+const mockLogout = vi.mocked(AlquiaBackendClient.auth.logout);
 
-// /auth/me responde el email en texto plano, no un objeto JSON.
-const TEST_EMAIL = "test@test.com";
+// La sesión es el usuario entero, no sólo el correo: el nombre alimenta el
+// saludo de Inicio y la tarjeta Cuenta de Configuración.
+const USUARIO = {
+  id: 1,
+  email: "test@test.com",
+  firstName: "Ricardo",
+  lastName: "Rosas",
+  taxId: "20224567899",
+  phoneNumber: "+5491144552210",
+};
 
 function TestConsumer() {
   const { user, isLoading, login, logout } = useAuth();
   if (isLoading) return <p>Cargando</p>;
   return (
     <div>
-      <p>{user ? `Sesión: ${user.email}` : "Sin sesión"}</p>
+      <p>{user ? `Sesión: ${user.firstName} ${user.lastName} (${user.email})` : "Sin sesión"}</p>
       {/* Los handlers capturan el error para que no sea unhandled en tests */}
       <button onClick={() => void login("a@a.com", "123").catch(() => {})}>Login</button>
       <button onClick={() => void logout().catch(() => {})}>Logout</button>
@@ -35,6 +46,8 @@ function renderAuth() {
   );
 }
 
+const SESION = "Sesión: Ricardo Rosas (test@test.com)";
+
 beforeEach(() => {
   vi.resetAllMocks();
 });
@@ -42,26 +55,23 @@ beforeEach(() => {
 // --- Carga inicial ---
 
 describe("carga inicial", () => {
-  it("muestra estado de carga antes de que resuelva /auth/me", () => {
-    mockApiGet.mockReturnValueOnce(new Promise(() => {})); // nunca resuelve
+  it("muestra estado de carga antes de que resuelva la verificación de sesión", () => {
+    mockGetMe.mockReturnValueOnce(new Promise(() => {})); // nunca resuelve
     renderAuth();
     expect(screen.getByText("Cargando")).toBeInTheDocument();
   });
 
-  it("muestra usuario cuando /auth/me devuelve datos", async () => {
-    mockApiGet.mockResolvedValueOnce(TEST_EMAIL);
+  it("muestra el usuario completo cuando hay sesión", async () => {
+    mockGetMe.mockResolvedValueOnce(USUARIO);
     renderAuth();
-    await waitFor(() =>
-      expect(screen.getByText(`Sesión: ${TEST_EMAIL}`)).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText(SESION)).toBeInTheDocument());
   });
 
-  it("muestra sin sesión cuando /auth/me falla", async () => {
-    mockApiGet.mockRejectedValueOnce(new Error("401"));
+  it("no gasta un refresh verificando la sesión de un visitante anónimo", async () => {
+    mockGetMe.mockRejectedValueOnce(new Error("401"));
     renderAuth();
-    await waitFor(() =>
-      expect(screen.getByText("Sin sesión")).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
+    expect(mockGetMe).toHaveBeenCalledWith({ retry: false });
   });
 });
 
@@ -69,64 +79,46 @@ describe("carga inicial", () => {
 
 describe("login()", () => {
   it("llama a la API y actualiza el usuario en pantalla", async () => {
-    // /auth/me inicial → sin sesión
-    mockApiGet.mockRejectedValueOnce(new Error("401"));
-    // login → post ok
-    mockApiPost.mockResolvedValueOnce({});
-    // /auth/me tras login → usuario
-    mockApiGet.mockResolvedValueOnce(TEST_EMAIL);
+    mockGetMe.mockRejectedValueOnce(new Error("401")); // verificación inicial → sin sesión
+    mockLogin.mockResolvedValueOnce(undefined);
+    mockGetMe.mockResolvedValueOnce(USUARIO); // tras el login → usuario
 
     renderAuth();
     await waitFor(() => screen.getByText("Sin sesión"));
 
     await userEvent.click(screen.getByRole("button", { name: "Login" }));
 
-    await waitFor(() =>
-      expect(screen.getByText(`Sesión: ${TEST_EMAIL}`)).toBeInTheDocument()
-    );
-    expect(mockApiPost).toHaveBeenCalledWith(
-      "/auth/login",
-      { email: "a@a.com", password: "123" },
-      { retry: false }
-    );
+    await waitFor(() => expect(screen.getByText(SESION)).toBeInTheDocument());
+    expect(mockLogin).toHaveBeenCalledWith({ email: "a@a.com", password: "123" });
   });
-
 });
 
 // --- logout() ---
 
 describe("logout()", () => {
-  it("llama a /auth/logout y limpia el usuario", async () => {
-    mockApiGet.mockResolvedValueOnce(TEST_EMAIL); // sesión activa
-    mockApiPost.mockResolvedValueOnce({});        // logout ok
+  it("cierra la sesión y limpia el usuario", async () => {
+    mockGetMe.mockResolvedValueOnce(USUARIO);
+    mockLogout.mockResolvedValueOnce(undefined);
 
     renderAuth();
-    await waitFor(() => screen.getByText(`Sesión: ${TEST_EMAIL}`));
+    await waitFor(() => screen.getByText(SESION));
 
     await userEvent.click(screen.getByRole("button", { name: "Logout" }));
 
-    await waitFor(() =>
-      expect(screen.getByText("Sin sesión")).toBeInTheDocument()
-    );
-    expect(mockApiPost).toHaveBeenCalledWith(
-      "/auth/logout",
-      undefined,
-      { retry: false }
-    );
+    await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
+    expect(mockLogout).toHaveBeenCalled();
   });
 
-  it("limpia el usuario incluso si el POST falla", async () => {
-    mockApiGet.mockResolvedValueOnce(TEST_EMAIL);
-    mockApiPost.mockRejectedValueOnce(new Error("Network error"));
+  it("limpia el usuario incluso si el cierre de sesión falla", async () => {
+    mockGetMe.mockResolvedValueOnce(USUARIO);
+    mockLogout.mockRejectedValueOnce(new Error("Network error"));
 
     renderAuth();
-    await waitFor(() => screen.getByText(`Sesión: ${TEST_EMAIL}`));
+    await waitFor(() => screen.getByText(SESION));
 
     await userEvent.click(screen.getByRole("button", { name: "Logout" }));
 
-    await waitFor(() =>
-      expect(screen.getByText("Sin sesión")).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
   });
 });
 

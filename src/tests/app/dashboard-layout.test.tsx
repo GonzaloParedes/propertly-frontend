@@ -46,10 +46,20 @@ describe("sin sesión", () => {
   });
 });
 
+// La sesión es el `UserResponse` completo: la barra lo usa para nombrar la cuenta.
+const USUARIO = {
+  id: 1,
+  email: "a@a.com",
+  firstName: "Ana",
+  lastName: "Ferreyra",
+  taxId: "27289041139",
+  phoneNumber: "+5491144552210",
+};
+
 describe("con sesión", () => {
   it("no redirige", () => {
     mockUseAuth.mockReturnValue({
-      user: { email: "a@a.com" },
+      user: USUARIO,
       isLoading: false,
       logout: vi.fn(),
     });
@@ -59,7 +69,7 @@ describe("con sesión", () => {
 
   it("muestra el contenido protegido", () => {
     mockUseAuth.mockReturnValue({
-      user: { email: "a@a.com" },
+      user: USUARIO,
       isLoading: false,
       logout: vi.fn(),
     });

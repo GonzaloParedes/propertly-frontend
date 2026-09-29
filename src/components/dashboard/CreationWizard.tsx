@@ -1,15 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
+import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
+import type { PropertyCategory, PropertyResponse, TenantResponse } from "@/lib/backend-types";
+import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
+import Counter from "@/components/ui/Counter";
+import { correoValido } from "@/lib/correo";
+import { formatearDireccion } from "@/lib/tenant-rows";
 
 /**
- * El backend devuelve 400 tanto para el CUIT repetido como para cualquier otra
- * validación, y sólo se distinguen por el texto: el duplicado viaja como
- * IllegalArgumentException("Tax ID already registered") desde TenantService,
- * el resto como "Validation failed" desde el handler de bean validation.
+ * El backend devuelve 400 tanto para los duplicados como para cualquier otra
+ * validación, y sólo se distinguen por el texto: TenantService.create chequea
+ * dos unicidades y tira IllegalArgumentException("Tax ID already registered") o
+ * ("Phone number already registered"); el resto llega como "Validation failed"
+ * desde el handler de bean validation. Los dos duplicados son por propietario,
+ * no globales — de ahí el «en otro inquilino suyo».
  */
 function mensajeDeError(err: unknown): string {
   if (err instanceof AuthExpiredError) {
@@ -18,15 +26,32 @@ function mensajeDeError(err: unknown): string {
   if (err instanceof ApiError && err.message === "Tax ID already registered") {
     return "Ese CUIT ya figura en otro inquilino suyo.";
   }
+  if (err instanceof ApiError && err.message === "Phone number already registered") {
+    return "Ese teléfono ya figura en otro inquilino suyo.";
+  }
   if (err instanceof ApiError && err.status === 400) {
     return "Verifique los datos ingresados e inténtelo de nuevo.";
   }
   return "No pudimos guardar el inquilino. Inténtelo de nuevo más tarde.";
 }
 
+/**
+ * `PropertyService.create` no chequea unicidades ni nada propio: los únicos 400
+ * que puede devolver son de bean validation, y para el propietario todos
+ * significan lo mismo.
+ */
+function mensajeDeErrorPropiedad(err: unknown): string {
+  if (err instanceof AuthExpiredError) {
+    return "Su sesión expiró. Vuelva a iniciar sesión para guardar la propiedad.";
+  }
+  if (err instanceof ApiError && err.status === 400) {
+    return "Verifique los datos ingresados e inténtelo de nuevo.";
+  }
+  return "No pudimos guardar la propiedad. Inténtelo de nuevo más tarde.";
+}
+
 type WizardKind = "property" | "contract" | "tenant";
 
-const correoValido = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
 
 /**
  * Direcciones de ejemplo. Al conectar el backend esto se reemplaza por el
@@ -153,13 +178,79 @@ function Option({ selected, icon, title, description, onClick }: { selected: boo
   return <button type="button" className="owner-wizard-option" role="radio" aria-checked={selected} onClick={onClick}><span className="owner-wizard-option__icon"><Icon name={icon} /></span><span><b>{title}</b><small>{description}</small></span><span className="owner-wizard-option__check"><Icon name="check" /></span></button>;
 }
 
-export default function CreationWizard({ kind, onClose, onComplete, onNewTenant }: { kind: WizardKind; onClose: () => void; onComplete: () => void; onNewTenant?: () => void }) {
-  const total = kind === "contract" ? 6 : kind === "tenant" ? 1 : 3;
+/**
+ * Los 400 del alta de contrato también se distinguen sólo por el texto. El de
+ * la propiedad ocupada es el único que el propietario puede resolver solo, así
+ * que es el único que vale la pena traducir aparte.
+ */
+function mensajeDeErrorContrato(err: unknown): string {
+  if (err instanceof AuthExpiredError) {
+    return "Su sesión expiró. Vuelva a iniciar sesión para crear el contrato.";
+  }
+  if (err instanceof ApiError && err.message === "Property already has an active contract") {
+    return "Esa propiedad ya tiene un contrato vigente. Finalícelo antes de crear otro.";
+  }
+  if (err instanceof ApiError && err.status === 400) {
+    return "Verifique los datos del contrato e inténtelo de nuevo.";
+  }
+  return "No pudimos crear el contrato. Inténtelo de nuevo más tarde.";
+}
+
+/** El backend no acepta contratos que empiecen antes de diciembre de 2022. */
+const PISO_INICIO = "2022-12-01";
+
+/**
+ * La fecha de fin que el backend va a guardar es startDate + termMonths, sin
+ * restarle un día (ContractService.applyTerms). El prototipo mostraba la
+ * convención opuesta —«termina el 31/08» para un contrato que arranca un 01/09—,
+ * que da un día menos. Se muestra la del backend: es la que va a quedar
+ * guardada, y prometer otra sería mentirle al propietario por un día.
+ */
+function fechaDeFin(inicioISO: string, meses: number): string | null {
+  if (!inicioISO) return null;
+  const [anio, mes, dia] = inicioISO.split("-").map(Number);
+  if (!anio || !mes || !dia) return null;
+  const fin = new Date(Date.UTC(anio, mes - 1 + meses, dia));
+  return fin.toLocaleDateString("es-AR", { timeZone: "UTC" });
+}
+
+const soloNumeros = (s: string) => s.replace(/\D/g, "");
+
+function montoConSeparadores(digitos: string): string {
+  return digitos ? Number(digitos).toLocaleString("es-AR") : "";
+}
+
+type Opcion = { id: number; titulo: string; detalle: string };
+
+// En /prototipo no hay sesión, así que no se llama al backend: estas son las
+// mismas dos propiedades y dos inquilinos que mostraba el asistente cuando sus
+// tarjetas estaban escritas a mano, ahora con la forma que tiene el dato real.
+const PROPIEDADES_DEMO: Opcion[] = [
+  { id: -1, titulo: "Mitre 78", detalle: "Local comercial · San Isidro · 52 m²" },
+  { id: -2, titulo: "Colón 2255, 4.º D", detalle: "Departamento · Vicente López · 58 m²" },
+];
+const INQUILINOS_DEMO: Opcion[] = [
+  { id: -1, titulo: "Diego Ferrari", detalle: "20-30115482-9 · diego.ferrari@outlook.com" },
+  { id: -2, titulo: "Marta Suárez", detalle: "27-24891055-6 · marta.suarez@gmail.com" },
+];
+
+export default function CreationWizard({ kind, onClose, onComplete, onNewTenant, demo = false }: { kind: WizardKind; onClose: () => void; onComplete: () => void; onNewTenant?: () => void; demo?: boolean }) {
+  const total = kind === "contract" ? 6 : kind === "tenant" ? 1 : 4;
   const [step, setStep] = useState(1);
-  const [property, setProperty] = useState("Mitre 78");
-  const [tenant, setTenant] = useState("Diego Ferrari");
-  const [method, setMethod] = useState("Porcentaje fijo");
+  const [propiedadId, setPropiedadId] = useState<number | null>(null);
+  const [inquilinoId, setInquilinoId] = useState<number | null>(null);
+  const [method, setMethod] = useState<"FIXED_PERCENTAGE" | "ICL" | "IPC">("FIXED_PERCENTAGE");
   const [term, setTerm] = useState(36);
+  const [alquiler, setAlquiler] = useState("");
+  const [inicio, setInicio] = useState("");
+  const [diaVencimiento, setDiaVencimiento] = useState(1);
+  const [porcentaje, setPorcentaje] = useState("");
+  const [frecuencia, setFrecuencia] = useState(6);
+  // Las dos listas del alta de contrato, en un solo estado: o están las dos, o
+  // hubo error, o todavía se están trayendo. Nunca media pantalla usable.
+  const [cargaListas, setCargaListas] = useState<
+    { propiedades: Opcion[]; inquilinos: Opcion[] } | "error" | null
+  >(null);
   // null = todavía no lo cargó. El paso es opcional, así que no puede arrancar
   // con un número puesto por nosotros: se guardaría como si lo hubiera elegido.
   const [bedrooms, setBedrooms] = useState<number | null>(null);
@@ -167,12 +258,62 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant 
   const [superficie, setSuperficie] = useState("");
   const [direccion, setDireccion] = useState<Direccion | null>(null);
   const [unidad, setUnidad] = useState("");
+  const [categoria, setCategoria] = useState<PropertyCategory | null>(null);
+  // Los dos extras arrancan apagados y, si quedan así, no se mandan: el paso es
+  // opcional, y un `false` afirmaría «no acepta mascotas», que no es lo que el
+  // propietario dijo. Ver `guardarPropiedad`.
+  const [mascotas, setMascotas] = useState(false);
+  const [amoblada, setAmoblada] = useState(false);
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
   const [cuit, setCuit] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
   const [correo, setCorreo] = useState("");
+  const [telefono, setTelefono] = useState("");
+  // Sólo el alta de contrato necesita las listas, y en /prototipo no se piden:
+  // esa ruta no tiene sesión y las dos llamadas darían 401.
+  useEffect(() => {
+    // En demo las listas son constantes y se derivan más abajo: no hace falta
+    // pasarlas por el estado, y hacerlo dispararía un render en cascada.
+    if (kind !== "contract" || demo) return;
+    let cancelado = false;
+    // Los contratos entran para poder descartar las propiedades ya alquiladas:
+    // el backend rechaza la segunda con «Property already has an active
+    // contract», y es mejor no ofrecerla que explicar el error después.
+    Promise.all([
+      AlquiaBackendClient.properties.list(),
+      AlquiaBackendClient.tenants.list(),
+      AlquiaBackendClient.contracts.list(),
+    ])
+      .then(([propiedades, inquilinos, contratos]) => {
+        if (cancelado) return;
+        const ocupadas = new Set(
+          contratos.filter((c) => c.status === "ACTIVE").map((c) => c.property.id)
+        );
+        setCargaListas({
+          propiedades: propiedades
+            .filter((p: PropertyResponse) => !ocupadas.has(p.id))
+            .map((p: PropertyResponse) => ({
+              id: p.id,
+              titulo: formatearDireccion(p),
+              detalle: detallePropiedad(p),
+            })),
+          inquilinos: inquilinos.map((t: TenantResponse) => ({
+            id: t.id,
+            titulo: `${t.firstName} ${t.lastName}`,
+            detalle: t.email,
+          })),
+        });
+      })
+      .catch(() => {
+        if (!cancelado) setCargaListas("error");
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [kind, demo]);
+
   const direccionCompleta = direccion
     ? `${etiquetaDireccion(direccion)}${unidad ? `, ${unidad}` : ""}`
     : "Sin cargar";
@@ -182,15 +323,18 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant 
       bedrooms !== null && `${bedrooms} dormitorio${bedrooms === 1 ? "" : "s"}`,
       bathrooms !== null && `${bathrooms} baño${bathrooms === 1 ? "" : "s"}`,
       superficie && `${superficie} m²`,
+      mascotas && "acepta mascotas",
+      amoblada && "amoblada",
     ]
       .filter(Boolean)
       .join(" · ") || "Sin cargar";
   const cuitOk = cuitValido(cuit);
   const correoOk = correoValido(correo);
+  const telefonoOk = telefonoValido(telefono);
   const tenantStep = (
     <>
       <h1>¿Quién es el inquilino?</h1>
-      <p>Estos son los datos que van a figurar en el contrato. Al correo le llegan los avisos de vencimiento.</p>
+      <p>Estos son los datos que van a figurar en el contrato. Al correo le llegan los avisos de vencimiento y el enlace para subir comprobantes.</p>
       <div className="owner-wizard-stack">
         <div className="owner-wizard-duo">
           <label className="owner-wizard-field">
@@ -224,6 +368,15 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant 
         {correo.length > 0 && !correoOk && (
           <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>
         )}
+        <label className="owner-wizard-field">
+          <span className="sr-only">Teléfono</span>
+          <input type="tel" inputMode="tel" placeholder="Teléfono — 11 44552210" value={telefono}
+            aria-invalid={telefono.length > 0 && !telefonoOk}
+            onChange={(e) => setTelefono(e.target.value)} />
+        </label>
+        {telefono.length > 0 && !telefonoOk && (
+          <p className="owner-wizard-error" role="alert">{errorDeTelefono(telefono)}</p>
+        )}
         {errorGuardado && (
           <p className="owner-wizard-alert" role="alert">
             <Icon name="alert" size={19} />
@@ -233,14 +386,30 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant 
       </div>
     </>
   );
+  const listas = demo
+    ? { propiedades: PROPIEDADES_DEMO, inquilinos: INQUILINOS_DEMO }
+    : cargaListas && cargaListas !== "error" ? cargaListas : null;
+  const alquilerOk = Number(alquiler) > 0;
+  const inicioOk = inicio !== "" && inicio >= PISO_INICIO;
+  const porcentajeOk = method !== "FIXED_PERCENTAGE" || Number(porcentaje) > 0;
+
   const finish = step === total;
   // No se puede avanzar con datos que el backend rechazaría (@NotBlank / @ValidTaxId / @Email)
   const bloqueado =
     guardando ? true
-    : kind === "tenant" ? !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk
+    : kind === "tenant" ? !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk
     : kind === "property" && step === 1 ? !direccion
+    : kind === "property" && step === 2 ? categoria === null
+    : kind === "contract" && step === 1 ? propiedadId === null
+    : kind === "contract" && step === 2 ? inquilinoId === null
+    : kind === "contract" && step === 3 ? !alquilerOk
+    : kind === "contract" && step === 4 ? !inicioOk
+    : kind === "contract" && step === 5 ? !porcentajeOk
     : false;
   async function guardarInquilino() {
+    // En /prototipo no hay sesión: guardar de verdad daría 401 y la demo se
+    // cortaría justo en el paso que quiere mostrar.
+    if (demo) return onComplete();
     setErrorGuardado(null);
     setGuardando(true);
     try {
@@ -252,6 +421,11 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant 
         // esquive el chequeo de duplicados, que compara el string tal cual.
         taxId: soloDigitos(cuit),
         email: correo.trim(),
+        // En dígitos por la misma razón que el CUIT —dos formatos del mismo
+        // teléfono no deberían esquivar el chequeo de duplicados—, no porque el
+        // backend lo exija: su normalizador reconstruye el número igual venga
+        // con separadores. Ver src/lib/telefono.ts.
+        phoneNumber: soloDigitosTelefono(telefono),
       });
       // Sin setGuardando(false): onComplete desmonta el asistente.
       onComplete();
@@ -261,11 +435,82 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant 
     }
   }
 
+  async function guardarPropiedad() {
+    if (direccion === null || categoria === null) return;
+    if (demo) return onComplete();
+    setErrorGuardado(null);
+    setGuardando(true);
+    try {
+      await AlquiaBackendClient.properties.create({
+        street: direccion.street,
+        number: direccion.number,
+        // El piso y el departamento son un campo aparte del número de calle.
+        floorUnit: unidad.trim() || undefined,
+        city: direccion.city,
+        province: direccion.province,
+        category: categoria,
+        // Lo que el propietario no cargó no se manda: el paso es opcional y un
+        // cero o un false serían un dato que él nunca dio.
+        bedrooms: bedrooms ?? undefined,
+        bathrooms: bathrooms ?? undefined,
+        coveredArea: superficie ? Number(superficie) : undefined,
+        petsAllowed: mascotas || undefined,
+        furnished: amoblada || undefined,
+      });
+      onComplete();
+    } catch (err) {
+      setErrorGuardado(mensajeDeErrorPropiedad(err));
+      setGuardando(false);
+    }
+  }
+
+  async function guardarContrato() {
+    if (propiedadId === null || inquilinoId === null) return;
+    if (demo) return onComplete();
+    setErrorGuardado(null);
+    setGuardando(true);
+    try {
+      await AlquiaBackendClient.contracts.create({
+        propertyId: propiedadId,
+        tenantId: inquilinoId,
+        initialRentAmount: Number(alquiler),
+        startDate: inicio,
+        termMonths: term,
+        dueDay: diaVencimiento,
+        incrementFrequencyMonths: frecuencia,
+        // El backend separa el cómo del qué, y es excluyente: FIXED_PERCENTAGE
+        // exige incrementValue y prohíbe incrementIndexName, INDEX al revés.
+        // Mandar los dos, o ninguno, es un 400.
+        ...(method === "FIXED_PERCENTAGE"
+          ? { incrementMethod: "FIXED_PERCENTAGE" as const, incrementValue: Number(porcentaje) }
+          : { incrementMethod: "INDEX" as const, incrementIndexName: method }),
+      });
+      onComplete();
+    } catch (err) {
+      setErrorGuardado(mensajeDeErrorContrato(err));
+      setGuardando(false);
+    }
+  }
+
   const next = () => {
     if (!finish) return setStep((current) => current + 1);
     if (kind === "tenant") return void guardarInquilino();
-    onComplete();
+    if (kind === "contract") return void guardarContrato();
+    void guardarPropiedad();
   };
+
+  const categoryStep = (
+    <>
+      <h1>¿Qué tipo de propiedad es?</h1>
+      <p>Define cómo se lista y cómo se la reconoce después en el buscador.</p>
+      <div className="owner-wizard-options" role="radiogroup" aria-label="Tipo de propiedad">
+        {CATEGORIAS.map((c) => (
+          <Option key={c.valor} selected={categoria === c.valor} icon="building"
+            title={c.etiqueta} description={c.descripcion} onClick={() => setCategoria(c.valor)} />
+        ))}
+      </div>
+    </>
+  );
 
   const propertyStep = step === 1 ? <>
       <h1>¿Dónde queda la propiedad?</h1>
@@ -280,18 +525,137 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant 
           </label>
         )}
       </div>
-    </> : step === 2 ? <><h1>¿Cómo es la propiedad?</h1><p>Todo esto es opcional. Sirve para reconocerla rápido en la lista.</p><div className="owner-wizard-counters"><Counter label="Dormitorios" value={bedrooms} onChange={setBedrooms} /><Counter label="Baños" value={bathrooms} onChange={setBathrooms} /></div><p className="owner-wizard-label">SUPERFICIE CUBIERTA</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="sr-only">Superficie cubierta en metros cuadrados</span><input value={superficie} inputMode="numeric" placeholder="—" onChange={(e) => setSuperficie(e.target.value.replace(/\D/g, ""))} /><span>m²</span></label><p className="owner-wizard-label">ADEMÁS</p><div className="owner-wizard-chips"><button type="button">Acepta mascotas</button><button type="button">Se alquila amueblada</button></div><button type="button" className="owner-wizard-quiet" onClick={() => setStep(total)}>Saltear este paso</button></> : <><h1>Listo. ¿La guardamos?</h1><p>Va a quedar sin alquilar hasta que le cree un contrato.</p><Summary rows={[["Dirección", direccionCompleta], ["Ciudad", direccion ? `${direccion.city} · ${direccion.province}` : "Sin cargar"], ["Características", caracteristicas], ["Estado", "Sin alquilar"]]} /><aside className="owner-wizard-note"><Icon name="trend" />Para empezar a cobrarla necesita un contrato, que la vincula con un inquilino y define el alquiler.</aside></>;
+    </> : step === 2 ? categoryStep : step === 3 ? <><h1>¿Cómo es la propiedad?</h1><p>Todo esto es opcional. Sirve para reconocerla rápido en la lista.</p><div className="owner-wizard-counters"><Counter label="Dormitorios" value={bedrooms} onChange={setBedrooms} /><Counter label="Baños" value={bathrooms} onChange={setBathrooms} /></div><p className="owner-wizard-label">SUPERFICIE CUBIERTA</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="sr-only">Superficie cubierta en metros cuadrados</span><input value={superficie} inputMode="numeric" placeholder="—" onChange={(e) => setSuperficie(e.target.value.replace(/\D/g, ""))} /><span>m²</span></label><p className="owner-wizard-label">ADEMÁS</p><div className="owner-wizard-chips"><button type="button" aria-pressed={mascotas} onClick={() => setMascotas(!mascotas)}>Acepta mascotas</button><button type="button" aria-pressed={amoblada} onClick={() => setAmoblada(!amoblada)}>Se alquila amueblada</button></div><button type="button" className="owner-wizard-quiet" onClick={() => setStep(total)}>Saltear este paso</button></> : <><h1>Listo. ¿La guardamos?</h1><p>Va a quedar sin alquilar hasta que le cree un contrato.</p><Summary rows={[["Dirección", direccionCompleta], ["Ciudad", direccion ? `${direccion.city} · ${direccion.province}` : "Sin cargar"], ["Tipo", CATEGORIAS.find((c) => c.valor === categoria)?.etiqueta ?? "Sin cargar"], ["Características", caracteristicas], ["Estado", "Sin alquilar"]]} />{errorGuardado && (<p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{errorGuardado}</p>)}<aside className="owner-wizard-note"><Icon name="trend" />Para empezar a cobrarla necesita un contrato, que la vincula con un inquilino y define el alquiler.</aside></>;
 
-  const contractStep = step === 1 ? <><h1>¿Qué propiedad va a alquilar?</h1><p>Elija una de sus propiedades. Después le pedimos el inquilino.</p><div className="owner-wizard-options"><Option selected={property === "Mitre 78"} icon="building" title="Mitre 78" description="Local · San Isidro · 52 m² · sin alquilar" onClick={() => setProperty("Mitre 78")} /><Option selected={property === "Colón 2255"} icon="building" title="Colón 2255, 4.º D" description="Departamento · Vicente López · 58 m²" onClick={() => setProperty("Colón 2255")} /></div></> : step === 2 ? <><h1>¿A quién se la alquila?</h1><p>El inquilino va a figurar en el contrato y recibir los avisos de vencimiento.</p><div className="owner-wizard-options"><Option selected={tenant === "Diego Ferrari"} icon="users" title="Diego Ferrari" description="20-30115482-9 · diego.ferrari@outlook.com" onClick={() => setTenant("Diego Ferrari")} /><Option selected={tenant === "Marta Suárez"} icon="users" title="Marta Suárez" description="27-24891055-6 · marta.suarez@gmail.com" onClick={() => setTenant("Marta Suárez")} /></div><button type="button" className="owner-wizard-quiet" onClick={onNewTenant}><Icon name="plus" />Agregar un inquilino nuevo</button></> : step === 3 ? <><h1>¿Cuánto sale el alquiler por mes?</h1><p>Es el valor con el que arranca el contrato. Después definimos cómo se actualiza.</p><label className="owner-wizard-field owner-wizard-field--amount"><span>$</span><input defaultValue="620.000" inputMode="numeric" /><span>por mes</span></label><small className="owner-wizard-help">Se cobra por mes adelantado, con vencimiento el día 1.</small></> : step === 4 ? <><h1>¿Cuándo empieza y por cuánto tiempo?</h1><p>La fecha de fin se calcula sola a partir del plazo, no hace falta cargarla.</p><label className="owner-wizard-field owner-wizard-field--medium"><input defaultValue="01/09/2026" /><span>día / mes / año</span></label><p className="owner-wizard-label">PLAZO DEL CONTRATO</p><Counter value={term} unit="meses" min={1} onChange={setTerm} /><div className="owner-wizard-chips"><button type="button" onClick={() => setTerm(12)}>12 meses</button><button type="button" onClick={() => setTerm(24)}>24 meses</button><button type="button" aria-pressed={term === 36} onClick={() => setTerm(36)}>36 meses</button></div><small className="owner-wizard-help">Termina el 31/08/2029.</small></> : step === 5 ? <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid"><Option selected={method === "Porcentaje fijo"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => setMethod("Porcentaje fijo")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => setMethod("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => setMethod("IPC")} /></div>{method === "Porcentaje fijo" && <label className="owner-wizard-field owner-wizard-field--amount"><input defaultValue="12" inputMode="decimal" /><span>% cada vez</span></label>}<p className="owner-wizard-label">CADA CUÁNTO SE ACTUALIZA</p><div className="owner-wizard-chips"><button type="button">Cada 3 meses</button><button type="button">Cada 4 meses</button><button type="button" aria-pressed="true">Cada 6 meses</button><button type="button">Cada 12 meses</button></div></> : <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, vuelva al paso correspondiente y modifíquelo.</p><Summary rows={[["Propiedad", property], ["Inquilino", tenant], ["Alquiler inicial", "$ 620.000 por mes"], ["Plazo", `${term} meses · 01/09/2026 → 31/08/2029`], ["Actualización", `${method} · cada 6 meses`]]} /><aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
+  const elegirDe = (opciones: Opcion[], elegido: number | null, elegir: (id: number) => void,
+    icono: "building" | "users", vacio: React.ReactNode) =>
+    cargaListas === "error"
+      ? <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />No pudimos cargar sus datos. Inténtelo de nuevo más tarde.</p>
+      : listas === null
+        ? <p className="owner-wizard-help">Cargando…</p>
+        : opciones.length === 0
+          ? vacio
+          : <div className="owner-wizard-options" role="radiogroup">
+              {opciones.map((o) => (
+                <Option key={o.id} selected={elegido === o.id} icon={icono}
+                  title={o.titulo} description={o.detalle} onClick={() => elegir(o.id)} />
+              ))}
+            </div>;
+
+  const contractStep = step === 1 ? <>
+      <h1>¿Qué propiedad va a alquilar?</h1>
+      <p>Elija una de sus propiedades sin contrato vigente. Después le pedimos el inquilino.</p>
+      {elegirDe(listas?.propiedades ?? [], propiedadId, setPropiedadId, "building",
+        <p className="owner-wizard-help">
+          Todas sus propiedades ya tienen un contrato vigente. Cargue una nueva para poder alquilarla.
+        </p>)}
+    </> : step === 2 ? <>
+      <h1>¿A quién se la alquila?</h1>
+      <p>El inquilino va a figurar en el contrato y recibir los avisos de vencimiento.</p>
+      {elegirDe(listas?.inquilinos ?? [], inquilinoId, setInquilinoId, "users",
+        <p className="owner-wizard-help">Todavía no cargó ningún inquilino.</p>)}
+      <button type="button" className="owner-wizard-quiet" onClick={onNewTenant}>
+        <Icon name="plus" />Agregar un inquilino nuevo
+      </button>
+    </> : step === 3 ? <>
+      <h1>¿Cuánto sale el alquiler por mes?</h1>
+      <p>Es el valor con el que arranca el contrato. Después definimos cómo se actualiza.</p>
+      <label className="owner-wizard-field owner-wizard-field--amount">
+        <span>$</span>
+        <input inputMode="numeric" autoFocus aria-label="Alquiler mensual"
+          value={montoConSeparadores(alquiler)}
+          onChange={(e) => setAlquiler(soloNumeros(e.target.value))} />
+        <span>por mes</span>
+      </label>
+      <p className="owner-wizard-label">DÍA DE VENCIMIENTO</p>
+      {/* El backend acota el día al 1–28 (@Min/@Max en ContractRequest). El techo
+          es 28 y no 31 porque febrero no tiene más: así ningún contrato necesita
+          correrse de mes. Con 28 opciones los chips dejaron de ser la lista
+          completa, así que van contador para elegir cualquiera y chips para los
+          tres habituales — el mismo par que usa el paso de plazo. */}
+      <Counter value={diaVencimiento} unit="del mes" min={1} max={28}
+        onChange={setDiaVencimiento} />
+      <div className="owner-wizard-chips">
+        {[1, 5, 10].map((dia) => (
+          <button key={dia} type="button" aria-pressed={diaVencimiento === dia}
+            onClick={() => setDiaVencimiento(dia)}>Día {dia}</button>
+        ))}
+      </div>
+      <small className="owner-wizard-help">Se cobra por mes adelantado. El día se puede elegir del 1 al 28.</small>
+    </> : step === 4 ? <>
+      <h1>¿Cuándo empieza y por cuánto tiempo?</h1>
+      <p>La fecha de fin se calcula sola a partir del plazo, no hace falta cargarla.</p>
+      <label className="owner-wizard-field owner-wizard-field--medium">
+        <span className="sr-only">Fecha de inicio</span>
+        <input type="date" value={inicio} min={PISO_INICIO}
+          aria-invalid={inicio !== "" && !inicioOk}
+          onChange={(e) => setInicio(e.target.value)} />
+      </label>
+      {inicio !== "" && !inicioOk && (
+        <p className="owner-wizard-error" role="alert">
+          El contrato no puede empezar antes de diciembre de 2022.
+        </p>
+      )}
+      <p className="owner-wizard-label">PLAZO DEL CONTRATO</p>
+      <Counter value={term} unit="meses" min={1} onChange={setTerm} />
+      <div className="owner-wizard-chips">
+        {[12, 24, 36].map((meses) => (
+          <button key={meses} type="button" aria-pressed={term === meses}
+            onClick={() => setTerm(meses)}>{meses} meses</button>
+        ))}
+      </div>
+      {inicioOk && <small className="owner-wizard-help">Termina el {fechaDeFin(inicio, term)}.</small>}
+    </> : step === 5 ? <>
+      <h1>¿Cómo se actualiza el alquiler?</h1>
+      <p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p>
+      <div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup">
+        <Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje"
+          description="Sube un % fijo" onClick={() => setMethod("FIXED_PERCENTAGE")} />
+        <Option selected={method === "ICL"} icon="trend" title="Según el ICL"
+          description="Índice del BCRA" onClick={() => setMethod("ICL")} />
+        <Option selected={method === "IPC"} icon="trend" title="Según el IPC"
+          description="Inflación INDEC" onClick={() => setMethod("IPC")} />
+      </div>
+      {method === "FIXED_PERCENTAGE" && (
+        <label className="owner-wizard-field owner-wizard-field--amount">
+          <span className="sr-only">Porcentaje de aumento</span>
+          <input inputMode="decimal" value={porcentaje} aria-label="Porcentaje de aumento"
+            onChange={(e) => setPorcentaje(e.target.value.replace(/[^\d.]/g, ""))} />
+          <span>% cada vez</span>
+        </label>
+      )}
+      <p className="owner-wizard-label">CADA CUÁNTO SE ACTUALIZA</p>
+      <div className="owner-wizard-chips">
+        {[3, 4, 6, 12].map((meses) => (
+          <button key={meses} type="button" aria-pressed={frecuencia === meses}
+            onClick={() => setFrecuencia(meses)}>Cada {meses} meses</button>
+        ))}
+      </div>
+      {method === "FIXED_PERCENTAGE" && (
+        <small className="owner-wizard-help">
+          Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.
+        </small>
+      )}
+    </> : <>
+      <h1>Revise que esté todo bien</h1>
+      <p>Si algo no cierra, vuelva al paso correspondiente y modifíquelo.</p>
+      <Summary rows={[
+        ["Propiedad", listas?.propiedades.find((o) => o.id === propiedadId)?.titulo ?? "Sin cargar"],
+        ["Inquilino", listas?.inquilinos.find((o) => o.id === inquilinoId)?.titulo ?? "Sin cargar"],
+        ["Alquiler inicial", `$ ${montoConSeparadores(alquiler)} por mes · vence el día ${diaVencimiento}`],
+        ["Plazo", `${term} meses · termina el ${fechaDeFin(inicio, term) ?? "—"}`],
+        ["Actualización", method === "FIXED_PERCENTAGE"
+          ? `${porcentaje} % cada ${frecuencia} meses`
+          : `Según el ${method} · cada ${frecuencia} meses`],
+      ]} />
+      {errorGuardado && (
+        <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{errorGuardado}</p>
+      )}
+      <aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside>
+    </>;
 
   return <section className="owner-wizard" aria-label={kind === "property" ? "Asistente de nueva propiedad" : kind === "tenant" ? "Asistente de nuevo inquilino" : "Asistente de nuevo contrato"}><header className="owner-wizard__top"><button type="button" aria-label="Salir del asistente" onClick={onClose} disabled={guardando}><Icon name="x" /></button><b>{kind === "property" ? "Nueva propiedad" : kind === "tenant" ? "Nuevo inquilino" : "Nuevo contrato"}</b>{total > 1 && <><div className="owner-wizard__progress" role="progressbar" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step}><i style={{ width: `${(step / total) * 100}%` }} /></div><span>Paso {step} de {total}</span></>}</header><main className="owner-wizard__body">{kind === "property" ? propertyStep : kind === "tenant" ? tenantStep : contractStep}</main><footer className="owner-wizard__footer"><button type="button" className="owner-wizard-quiet" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1 || guardando}>Atrás</button><button type="button" className="owner-wizard-next" onClick={next} disabled={bloqueado}>{guardando ? <><span className="owner-wizard-spinner" />Guardando…</> : finish ? (kind === "property" ? "Guardar propiedad" : kind === "tenant" ? "Guardar inquilino" : "Crear contrato") : <>Seguir <Icon name="arrow" /></>}</button></footer></section>;
 }
 
-// value === null se muestra como «—»: el campo es opcional y todavía no se cargó.
-// El «−» queda deshabilitado ahí, porque no hay nada que bajar, y el «+» arranca en min + step.
-function Counter({ label, value, unit, step = 1, min = 0, onChange }: { label?: string; value: number | null; unit?: string; step?: number; min?: number; onChange: (value: number) => void }) {
-  const vacio = value === null;
-  return <div className="owner-wizard-counter">{label && <p className="owner-wizard-label">{label}</p>}<div><button type="button" aria-label={`Restar ${label?.toLowerCase() ?? unit}`} disabled={vacio} onClick={() => onChange(Math.max(min, (value ?? min) - step))}><Icon name="minus" /></button><strong>{vacio ? "—" : value}</strong>{unit && <span>{unit}</span>}<button type="button" aria-label={`Sumar ${label?.toLowerCase() ?? unit}`} onClick={() => onChange(vacio ? min + step : (value as number) + step)}><Icon name="plus" /></button></div></div>;
-}
 
 function Summary({ rows }: { rows: string[][] }) { return <div className="owner-wizard-summary">{rows.map(([label, value]) => <div key={label}><span>{label}</span><b>{value}</b></div>)}</div>; }

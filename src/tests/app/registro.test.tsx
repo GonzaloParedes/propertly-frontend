@@ -23,12 +23,14 @@ async function fillAndSubmit({
   lastName = "González",
   taxId = CUIT_VALIDO,
   email = "maria@ejemplo.com",
+  phone = "1144552210",
   password = "secreta123",
 } = {}) {
   await userEvent.type(screen.getByLabelText("Nombre"), firstName);
   await userEvent.type(screen.getByLabelText("Apellido"), lastName);
   if (taxId) await userEvent.type(screen.getByLabelText("CUIT o CUIL"), taxId);
   await userEvent.type(screen.getByLabelText("Correo electrónico"), email);
+  if (phone) await userEvent.type(screen.getByLabelText("Teléfono"), phone);
   await userEvent.type(screen.getByLabelText("Contraseña"), password);
   await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 }
@@ -36,7 +38,7 @@ async function fillAndSubmit({
 // --- Renderizado ---
 
 describe("renderizado", () => {
-  it("muestra los 5 campos del formulario", () => {
+  it("muestra los 6 campos del formulario", () => {
     render(<RegistroPage />);
     expect(screen.getByLabelText("Nombre")).toBeInTheDocument();
     expect(screen.getByLabelText("Apellido")).toBeInTheDocument();
@@ -95,6 +97,7 @@ describe("registro exitoso", () => {
           email: "maria@ejemplo.com",
           password: "secreta123",
           taxId: "27248910556",
+          phoneNumber: "1144552210",
         },
         { retry: false }
       )

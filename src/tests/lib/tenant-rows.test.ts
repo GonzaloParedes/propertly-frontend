@@ -14,17 +14,23 @@ import type {
 } from "@/lib/backend-types";
 
 function tenant(over: Partial<TenantResponse> = {}): TenantResponse {
-  return { id: 1, firstName: "Jorge", lastName: "Paletta", taxId: "20224567899", email: "jorge@ejemplo.com", ...over };
+  return {
+    id: 1, firstName: "Jorge", lastName: "Paletta", taxId: "20224567899",
+    email: "jorge@ejemplo.com", phoneNumber: "+5491144552210", ...over,
+  };
 }
 
 function property(over: Partial<PropertyResponse> = {}): PropertyResponse {
-  return { id: 10, street: "Av. Rivadavia", number: "2340", city: "CABA", province: "CABA", ...over };
+  return {
+    id: 10, street: "Av. Rivadavia", number: "2340", city: "CABA", province: "CABA",
+    category: "APARTMENT", ...over,
+  };
 }
 
 function contract(over: Partial<ContractResponse> = {}): ContractResponse {
   return {
     id: 100, property: property(), tenant: tenant(), initialRentAmount: 400000,
-    startDate: "2025-03-01", termMonths: 36, endDate: "2028-02-29", status: "ACTIVE",
+    startDate: "2025-03-01", termMonths: 36, dueDay: 1, endDate: "2028-02-29", status: "ACTIVE",
     incrementMethod: "FIXED_PERCENTAGE", incrementFrequencyMonths: 3, currentRent: 478691,
     ...over,
   };
@@ -122,8 +128,13 @@ describe("buildTenantRows", () => {
     expect(rows).toEqual([{
       id: 1,
       nombre: "Jorge Paletta",
+      // Separados además del completo: el formulario de edición los pide en dos
+      // campos, y partir el nombre por el espacio erra con apellidos compuestos.
+      nombrePila: "Jorge",
+      apellido: "Paletta",
       cuit: "20-22456789-9",
       email: "jorge@ejemplo.com",
+      telefono: "+5491144552210",
       contratoId: 100,
       direccion: "Av. Rivadavia 2340, 5.º A",
       alquiler: "$ 478.691",

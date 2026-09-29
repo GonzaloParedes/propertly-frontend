@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { apiPost, ApiError } from "@/lib/api";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
+import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 
 const BENEFITS = [
   "Configure sus propiedades en minutos",
@@ -110,6 +111,8 @@ export default function RegistroPage() {
   const [email, setEmail] = useState("");
   const [taxId, setTaxId] = useState("");
   const [taxIdTouched, setTaxIdTouched] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
 
   const taxIdOk = cuitValido(taxId);
   const taxIdError =
@@ -119,6 +122,8 @@ export default function RegistroPage() {
         ? "Faltan dígitos: son 11 en total."
         : "El número no es válido. Revise que no haya un dígito cambiado.";
 
+  const phoneOk = telefonoValido(phone);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -127,6 +132,10 @@ export default function RegistroPage() {
     // del backend que no dice qué campo está mal.
     if (!taxIdOk) {
       setTaxIdTouched(true);
+      return;
+    }
+    if (!phoneOk) {
+      setPhoneTouched(true);
       return;
     }
     setIsPending(true);
@@ -142,12 +151,22 @@ export default function RegistroPage() {
           // El backend lo exige: @NotBlank @ValidTaxId en RegisterRequest, y
           // User.tax_id es nullable = false y unique.
           taxId: soloDigitos(taxId),
+          // Igual que el CUIT: @NotBlank @ValidPhoneNumber en RegisterRequest, y
+          // User.phone_number es nullable = false y unique. En dígitos por
+          // simplicidad, no porque el backend lo exija: su normalizador ya
+          // reconstruye el número igual venga con espacios, guiones, el 0 de la
+          // característica o el 15 del celular — ver src/lib/telefono.ts.
+          phoneNumber: soloDigitosTelefono(phone),
         },
         { retry: false }
       );
       setSubmitted(true);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 400) {
+      if (err instanceof ApiError && err.message === "Tax ID already registered") {
+        setError("Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.");
+      } else if (err instanceof ApiError && err.message === "Phone number already registered") {
+        setError("Ese teléfono ya tiene una cuenta. Inicie sesión o use otro.");
+      } else if (err instanceof ApiError && err.status === 400) {
         setError("Verifique los datos ingresados e inténtelo de nuevo.");
       } else {
         setError("No pudimos crear su cuenta. Inténtelo de nuevo más tarde.");
@@ -336,6 +355,42 @@ export default function RegistroPage() {
                         style={{ color: "var(--danger)" }}
                       >
                         {taxIdError}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Teléfono */}
+                  <div className="mb-4 flex flex-col gap-1.5">
+                    <label htmlFor="rg-phone" className="font-bold">
+                      Teléfono
+                    </label>
+                    <input
+                      id="rg-phone"
+                      name="phoneNumber"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="11 44552210"
+                      required
+                      disabled={isPending}
+                      value={phone}
+                      aria-invalid={phoneTouched && !phoneOk}
+                      aria-describedby={phoneTouched && !phoneOk ? "rg-phone-error" : undefined}
+                      onChange={(e) => setPhone(e.target.value)}
+                      onBlur={() => setPhoneTouched(true)}
+                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                      style={{
+                        borderColor: phoneTouched && !phoneOk ? "var(--danger)" : "var(--border-strong)",
+                        color: "var(--text)",
+                      }}
+                    />
+                    {phoneTouched && !phoneOk && (
+                      <p
+                        id="rg-phone-error"
+                        className="text-[14px] font-semibold"
+                        style={{ color: "var(--danger)" }}
+                      >
+                        {errorDeTelefono(phone)}
                       </p>
                     )}
                   </div>

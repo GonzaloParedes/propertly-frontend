@@ -1,8 +1,8 @@
 import { formatearCuit, soloDigitos } from "@/lib/cuit";
+import { formatearDireccion, formatearMonto } from "@/lib/formato";
 import type {
   ContractResponse,
   InvoiceResponse,
-  PropertyResponse,
   TenantResponse,
 } from "@/lib/backend-types";
 
@@ -15,23 +15,25 @@ export type EstadoInquilino =
 
 export interface TenantRow {
   id: number;
+  /** «Jorge Paletta», para mostrar. */
   nombre: string;
+  /**
+   * El nombre y el apellido por separado, además del completo: el formulario de
+   * edición los pide en dos campos y partir «nombre» por el espacio se equivoca
+   * con cualquier apellido compuesto.
+   */
+  nombrePila: string;
+  apellido: string;
   cuit: string;
   email: string;
+  telefono: string;
   contratoId: number | null;
   direccion: string | null;
   alquiler: string | null;
   estado: EstadoInquilino;
 }
 
-export function formatearDireccion(property: PropertyResponse): string {
-  const base = `${property.street} ${property.number}`.trim();
-  return property.floorUnit ? `${base}, ${property.floorUnit}` : base;
-}
-
-export function formatearMonto(monto: number): string {
-  return `$ ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-}
+export { formatearDireccion, formatearMonto } from "@/lib/formato";
 
 /**
  * El backend guarda el documento sin formato y acepta también un DNI de 7 u 8
@@ -81,8 +83,11 @@ export function buildTenantRows(
     return {
       id: tenant.id,
       nombre: `${tenant.firstName} ${tenant.lastName}`,
+      nombrePila: tenant.firstName,
+      apellido: tenant.lastName,
       cuit: formatearDocumento(tenant.taxId),
       email: tenant.email,
+      telefono: tenant.phoneNumber,
       contratoId: contrato?.id ?? null,
       direccion: contrato ? formatearDireccion(contrato.property) : null,
       alquiler: contrato ? formatearMonto(contrato.currentRent) : null,

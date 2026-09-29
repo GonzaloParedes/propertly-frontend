@@ -1,17 +1,30 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { apiGet, apiPost } from "@/lib/api";
+import { AlquiaBackendClient, type UserResponse } from "@/lib/backend-client";
 
-export interface AuthUser {
-  email: string;
-}
+/**
+ * La sesión guarda el usuario entero, no sólo el correo. Son dos razones:
+ * el nombre y el apellido son datos de pantalla —el saludo de Inicio, la
+ * tarjeta Cuenta de Configuración— y salen de la misma llamada que ya hacía
+ * falta para saber si hay sesión; y `/auth/me`, que devolvíamos antes, es el
+ * único endpoint de la API que responde texto plano y está anotado para
+ * borrarse en el CODE_REVIEW del backend por redundante con `/users/me`.
+ */
+export type AuthUser = UserResponse;
 
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Adopta un usuario recién guardado sin volver a pedirlo. Configuración lo usa
+   * al editar los datos: el nombre alimenta el saludo de Inicio y la barra
+   * lateral, así que sin esto el propietario cambia su nombre y sigue viendo el
+   * anterior hasta recargar la página.
+   */
+  actualizarUsuario: (usuario: AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -27,10 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const id = ++authRequestId.current;
     // retry:false a propósito: para un visitante anónimo este 401 es esperado,
     // no queremos gastar un /auth/refresh en cada carga de página sin sesión.
-    // /auth/me responde el email en texto plano, no un objeto JSON.
-    apiGet<string>("/auth/me", { retry: false })
-      .then((email) => {
-        if (authRequestId.current === id) setUser({ email });
+    AlquiaBackendClient.users
+      .getMe({ retry: false })
+      .then((me) => {
+        if (authRequestId.current === id) setUser(me);
       })
       .catch(() => {
         if (authRequestId.current === id) setUser(null);
@@ -40,22 +53,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string) {
     const id = ++authRequestId.current;
-    await apiPost("/auth/login", { email, password }, { retry: false });
-    const me = await apiGet<string>("/auth/me");
-    if (authRequestId.current === id) setUser({ email: me });
+    await AlquiaBackendClient.auth.login({ email, password });
+    const me = await AlquiaBackendClient.users.getMe();
+    if (authRequestId.current === id) setUser(me);
   }
 
   async function logout() {
     authRequestId.current++;
     try {
-      await apiPost("/auth/logout", undefined, { retry: false });
+      await AlquiaBackendClient.auth.logout();
     } finally {
       setUser(null);
     }
   }
 
+  function actualizarUsuario(usuario: AuthUser) {
+    authRequestId.current++;
+    setUser(usuario);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, actualizarUsuario }}>
       {children}
     </AuthContext.Provider>
   );

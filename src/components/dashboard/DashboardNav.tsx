@@ -42,6 +42,11 @@ interface DashboardNavProps {
 export default function DashboardNav({ activeView, onNavigate }: DashboardNavProps) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
+  // Sin sesión —el prototipo de /prototipo, o el instante previo a que
+  // resuelva /users/me— la cuenta se nombra en genérico en vez de inventar
+  // un titular.
+  const nombre = user ? `${user.firstName} ${user.lastName}` : "Su cuenta";
+  const iniciales = user ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() : "";
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -83,15 +88,15 @@ export default function DashboardNav({ activeView, onNavigate }: DashboardNavPro
       <header className="owner-mobile-header">
         <button type="button" className="owner-icon-button" aria-label="Abrir menú" aria-expanded={open} onClick={() => setOpen(true)}><Icon name="menu" size={24} /></button>
         <Link href="/dashboard" aria-label="Alquia, inicio"><Image src="/logos/lockup.svg" alt="Alquia" width={124} height={40} priority /></Link>
-        <span className="owner-avatar" aria-label="Ricardo Rosas">RR</span>
+        <span className="owner-avatar" aria-label={nombre}>{iniciales}</span>
       </header>
       <aside className="owner-nav" aria-label="Navegación principal">
         <Link href="/dashboard" aria-label="Alquia, inicio" className="owner-nav__brand"><Image src="/logos/lockup.svg" alt="Alquia" width={124} height={40} priority /></Link>
         <p className="owner-nav__group">CARTERA</p>
         {navigation()}
         <div className="owner-nav__profile">
-          <span className="owner-avatar">RR</span>
-          <span><strong>Ricardo Rosas</strong><small>{user?.email ?? "ricardo@alquia.com"}</small></span>
+          <span className="owner-avatar" aria-hidden="true">{iniciales}</span>
+          <span><strong>{nombre}</strong>{user && <small>{user.email}</small>}</span>
         </div>
         <button type="button" className="owner-nav__logout" onClick={() => void logout()}><Icon name="logout" /><span>Cerrar sesión</span></button>
       </aside>
