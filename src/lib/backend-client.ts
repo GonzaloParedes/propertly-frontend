@@ -15,28 +15,38 @@ import type {
   ContractTerminateRequest,
   ContractListParams,
   PaymentResponse,
-  PaymentAmountUpdateRequest,
-  PaymentStatusUpdateRequest,
-  PaymentListParams,
   TenantSessionRequest,
-  InvoiceStatus,
-  AdjustmentKind,
-  AdjustmentValueType,
-  AdjustmentResponse,
   InvoiceResponse,
   InvoiceAdjustmentRequest,
   SchemaChangeRequest,
+  ScheduledSchemaChangeRequest,
   InvoiceListParams,
+  PreInvoiceResponse,
+  PreInvoiceListParams,
+  ReminderSettingsResponse,
+  ReminderSettingsRequest,
+  RentIncrementResponse,
+  TenantAccessResponse,
+  PaymentRejectionRequest,
 } from "@/lib/backend-types";
 
+/**
+ * Un array se repite como parámetro (`status=DUE&status=PAID`), que es como
+ * Spring espera una `List<T>`. `undefined` se omite; un array vacío también,
+ * porque el backend lo rechaza con un 400 y mandarlo nunca es intencional.
+ */
 function buildQuery(params: object): string {
-  const entries = Object.entries(params).filter(
-    (entry): entry is [string, number] => entry[1] !== undefined
-  );
-  if (entries.length === 0) return "";
   const search = new URLSearchParams();
-  for (const [key, value] of entries) search.set(key, String(value));
-  return `?${search.toString()}`;
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) search.append(key, String(item));
+    } else {
+      search.set(key, String(value));
+    }
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
 }
 
 export const AlquiaBackendClient = {
@@ -61,6 +71,12 @@ export const AlquiaBackendClient = {
     updateMe: (body: UserUpdateRequest): Promise<UserResponse> =>
       apiPut<UserResponse>("/users/me", body),
     deleteMe: (): Promise<void> => apiDelete("/users/me"),
+    getReminderSettings: (): Promise<ReminderSettingsResponse> =>
+      apiGet<ReminderSettingsResponse>("/users/me/reminder-settings"),
+    updateReminderSettings: (
+      body: ReminderSettingsRequest
+    ): Promise<ReminderSettingsResponse> =>
+      apiPut<ReminderSettingsResponse>("/users/me/reminder-settings", body),
   },
 
   tenants: {
@@ -71,7 +87,15 @@ export const AlquiaBackendClient = {
       apiGet<TenantResponse>(`/tenants/${id}`),
     update: (id: number, body: TenantRequest): Promise<TenantResponse> =>
       apiPut<TenantResponse>(`/tenants/${id}`, body),
+    // Borrado físico. Para sacarlo de las listas sin perder su historia va
+    // `archive`, que es lo que ofrece la UI.
     remove: (id: number): Promise<void> => apiDelete(`/tenants/${id}`),
+    listArchived: (): Promise<TenantResponse[]> =>
+      apiGet<TenantResponse[]>("/tenants/archived"),
+    archive: (id: number): Promise<TenantResponse> =>
+      apiPost<TenantResponse>(`/tenants/${id}/archive`, undefined),
+    restore: (id: number): Promise<TenantResponse> =>
+      apiPost<TenantResponse>(`/tenants/${id}/restore`, undefined),
   },
 
   properties: {
@@ -83,6 +107,12 @@ export const AlquiaBackendClient = {
     update: (id: number, body: PropertyRequest): Promise<PropertyResponse> =>
       apiPut<PropertyResponse>(`/properties/${id}`, body),
     remove: (id: number): Promise<void> => apiDelete(`/properties/${id}`),
+    listArchived: (): Promise<PropertyResponse[]> =>
+      apiGet<PropertyResponse[]>("/properties/archived"),
+    archive: (id: number): Promise<PropertyResponse> =>
+      apiPost<PropertyResponse>(`/properties/${id}/archive`, undefined),
+    restore: (id: number): Promise<PropertyResponse> =>
+      apiPost<PropertyResponse>(`/properties/${id}/restore`, undefined),
   },
 
   contracts: {
@@ -96,6 +126,13 @@ export const AlquiaBackendClient = {
       apiPut<ContractResponse>(`/contracts/${id}`, body),
     terminate: (id: number, body: ContractTerminateRequest): Promise<ContractResponse> =>
       apiPost<ContractResponse>(`/contracts/${id}/terminate`, body),
+    // Programa las condiciones nuevas para un mes futuro: devuelve el sucesor
+    // en SCHEDULED y deja vigente al contrato actual hasta ese mes.
+    scheduleSchemaChange: (
+      id: number,
+      body: ScheduledSchemaChangeRequest
+    ): Promise<ContractResponse> =>
+      apiPost<ContractResponse>(`/contracts/${id}/schema-change`, body, { retry: false }),
     attachDocument: (id: number, file: File): Promise<ContractResponse> => {
       const form = new FormData();
       form.append("file", file);
@@ -105,26 +142,34 @@ export const AlquiaBackendClient = {
     removeDocument: (id: number): Promise<void> => apiDelete(`/contracts/${id}/document`),
     resendTenantAccess: (id: number): Promise<void> =>
       apiPost(`/contracts/${id}/tenant-access/resend`, undefined),
+    // Devuelve el enlace sin reenviar el mail: es lo que necesita «Copiar
+    // enlace». El QR lo arma el front.
+    getTenantAccess: (id: number): Promise<TenantAccessResponse> =>
+      apiGet<TenantAccessResponse>(`/contracts/${id}/tenant-access`),
+    rentIncrements: (id: number): Promise<RentIncrementResponse[]> =>
+      apiGet<RentIncrementResponse[]>(`/contracts/${id}/rent-increments`),
   },
 
   payments: {
-    list: (params?: PaymentListParams): Promise<PaymentResponse[]> =>
-      apiGet<PaymentResponse[]>(`/payments${buildQuery(params ?? {})}`),
-    updateAmount: (id: number, body: PaymentAmountUpdateRequest): Promise<PaymentResponse> =>
-      apiPut<PaymentResponse>(`/payments/${id}`, body),
-    updateStatus: (id: number, body: PaymentStatusUpdateRequest): Promise<PaymentResponse> =>
-      apiPost<PaymentResponse>(`/payments/${id}/status`, body),
-    attachReceipt: (id: number, file: File): Promise<PaymentResponse> => {
+    // Un pago cuelga de la cuota, no del contrato: para llegar a él hay que
+    // pasar por su `invoiceId`, que además es obligatorio.
+    list: (invoiceId: number): Promise<PaymentResponse[]> =>
+      apiGet<PaymentResponse[]>(`/payments?invoiceId=${invoiceId}`),
+    // El comprobante es obligatorio al crear el pago: no hay un paso aparte de
+    // "adjuntar". El que carga el propietario nace CONFIRMED; el del inquilino,
+    // AWAITING_CONFIRMATION.
+    create: (invoiceId: number, file: File): Promise<PaymentResponse> => {
       const form = new FormData();
       form.append("file", file);
-      return apiPostForm<PaymentResponse>(`/payments/${id}/receipt`, form);
+      return apiPostForm<PaymentResponse>(`/payments?invoiceId=${invoiceId}`, form);
     },
-    getReceipt: (id: number): Promise<Blob> => apiGetBlob(`/payments/${id}/receipt`),
-    removeReceipt: (id: number): Promise<void> => apiDelete(`/payments/${id}/receipt`),
-    confirmReceipt: (id: number): Promise<PaymentResponse> =>
+    getReceipt: (id: number, options?: { download?: boolean }): Promise<Blob> =>
+      apiGetBlob(`/payments/${id}/receipt${options?.download ? "?download=true" : ""}`),
+    confirm: (id: number): Promise<PaymentResponse> =>
       apiPost<PaymentResponse>(`/payments/${id}/confirm`, undefined),
-    rejectReceipt: (id: number): Promise<PaymentResponse> =>
-      apiPost<PaymentResponse>(`/payments/${id}/reject`, undefined),
+    // El motivo es opcional y viaja en el body; vuelve como `rejectionReason`.
+    reject: (id: number, body?: PaymentRejectionRequest): Promise<PaymentResponse> =>
+      apiPost<PaymentResponse>(`/payments/${id}/reject`, body),
   },
 
   invoices: {
@@ -148,25 +193,30 @@ export const AlquiaBackendClient = {
       apiPost<ContractResponse>(`/invoices/${id}/schema-change`, body),
   },
 
+  preInvoices: {
+    list: (params?: PreInvoiceListParams): Promise<PreInvoiceResponse[]> =>
+      apiGet<PreInvoiceResponse[]>(`/pre-invoices${buildQuery(params ?? {})}`),
+  },
+
   tenantAuth: {
     session: (body: TenantSessionRequest): Promise<void> =>
       apiPost("/tenant-auth/session", body, { retry: false }),
   },
 
   tenantPortal: {
-    payments: {
-      list: (): Promise<PaymentResponse[]> =>
-        apiGet<PaymentResponse[]>("/tenant/payments", { retry: false }),
-      attachReceipt: (id: number, file: File): Promise<PaymentResponse> => {
-        const form = new FormData();
-        form.append("file", file);
-        return apiPostForm<PaymentResponse>(`/tenant/payments/${id}/receipt`, form, {
-          retry: false,
-        });
-      },
-      getReceipt: (id: number): Promise<Blob> =>
-        apiGetBlob(`/tenant/payments/${id}/receipt`, { retry: false }),
+    // El inquilino ve sus cuotas, no sus pagos: los pagos vienen embebidos en
+    // cada InvoiceResponse.
+    invoices: (): Promise<InvoiceResponse[]> =>
+      apiGet<InvoiceResponse[]>("/tenant/invoices", { retry: false }),
+    createPayment: (invoiceId: number, file: File): Promise<PaymentResponse> => {
+      const form = new FormData();
+      form.append("file", file);
+      return apiPostForm<PaymentResponse>(`/tenant/payments?invoiceId=${invoiceId}`, form, {
+        retry: false,
+      });
     },
+    getReceipt: (id: number): Promise<Blob> =>
+      apiGetBlob(`/tenant/payments/${id}/receipt`, { retry: false }),
   },
 };
 
@@ -188,9 +238,21 @@ export type {
   IncrementMethod,
   ContractStatus,
   PaymentResponse,
-  PaymentAmountUpdateRequest,
-  PaymentStatusUpdateRequest,
-  PaymentListParams,
   PaymentStatus,
   TenantSessionRequest,
+  ActiveContractSummary,
+  Currency,
+  DepositType,
+  CommissionPayer,
+  PropertyCategory,
+  InvoiceResponse,
+  InvoiceStatus,
+  InvoiceListParams,
+  PreInvoiceResponse,
+  PreInvoiceListParams,
+  ReminderSettingsResponse,
+  ReminderSettingsRequest,
+  RentIncrementResponse,
+  TenantAccessResponse,
+  PaymentRejectionRequest,
 } from "@/lib/backend-types";
