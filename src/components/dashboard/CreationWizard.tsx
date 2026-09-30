@@ -111,7 +111,7 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
       <div className="owner-ac-chosen">
         <span className="owner-ac-chosen__body">
           <b>{etiquetaDireccion(value)}</b>
-          <small>{value.city} · {value.province}</small>
+          <small>{[value.city, value.province].filter(Boolean).join(" · ") || "Falta la ciudad"}</small>
         </span>
         <button type="button" className="owner-ac-chosen__change" onClick={() => { onClear(); setQuery(""); }}>
           Cambiar
@@ -395,10 +395,13 @@ function ContractWizardStep(props: Readonly<{
   return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propertyId={stepProps.propertyId} tenantId={stepProps.tenantId} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} error={stepProps.error} />;
 }
 
-export default function CreationWizard({ kind, onClose, onComplete, onNewTenant, demo = false }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; onNewTenant?: () => void; demo?: boolean }>) {
+export default function CreationWizard({ kind, onClose, onComplete, onNewTenant, demo = false, initialPropertyId }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; onNewTenant?: () => void; demo?: boolean; initialPropertyId?: number }>) {
   const total = cantidadPasos(kind);
-  const [step, setStep] = useState(1);
-  const [propiedadId, setPropiedadId] = useState<number | null>(null);
+  // Si el contrato se abre desde una propiedad, ya se sabe cuál es: arranca en
+  // el paso del inquilino (se puede volver al 1 para cambiarla).
+  const preseleccionada = kind === "contract" && initialPropertyId !== undefined;
+  const [step, setStep] = useState(preseleccionada ? 2 : 1);
+  const [propiedadId, setPropiedadId] = useState<number | null>(preseleccionada ? initialPropertyId : null);
   const [inquilinoId, setInquilinoId] = useState<number | null>(null);
   const [method, setMethod] = useState<"FIXED_PERCENTAGE" | "ICL" | "IPC">("FIXED_PERCENTAGE");
   const [term, setTerm] = useState(36);
@@ -515,7 +518,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
   }
   function propertyBloqueado(): boolean {
-    if (step === 1) return !direccion;
+    if (step === 1) return !direccion || !direccion.city.trim() || !direccion.province.trim();
     if (step === 2) return categoria === null;
     return false;
   }
@@ -574,8 +577,8 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
         number: direccion.number,
         // El piso y el departamento son un campo aparte del número de calle.
         floorUnit: unidad.trim() || undefined,
-        city: direccion.city,
-        province: direccion.province,
+        city: direccion.city.trim(),
+        province: direccion.province.trim(),
         category: categoria,
         // Lo que el propietario no cargó no se manda: el paso es opcional y un
         // cero o un false serían un dato que él nunca dio.
@@ -642,16 +645,26 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     if (step === 1) {
       return <>
       <h1>¿Dónde queda la propiedad?</h1>
-      <p>Busque la dirección y completamos la ciudad y la provincia solas.</p>
+      <p>Busque la dirección. Si la ciudad o la provincia no aparecen, complételas a mano.</p>
       <div className="owner-wizard-stack">
         <AddressField demo={demo} value={direccion} onSelect={setDireccion} onClear={() => setDireccion(null)} />
-        {direccion && (
+        {direccion && (<>
+          <label className="owner-wizard-field">
+            <span>Ciudad</span>
+            <input required placeholder="Ej: Morón" value={direccion.city}
+              onChange={(e) => setDireccion({ ...direccion, city: e.target.value })} />
+          </label>
+          <label className="owner-wizard-field">
+            <span>Provincia</span>
+            <input required placeholder="Ej: Buenos Aires" value={direccion.province}
+              onChange={(e) => setDireccion({ ...direccion, province: e.target.value })} />
+          </label>
           <label className="owner-wizard-field">
             <span className="sr-only">Piso y departamento</span>
             <input placeholder="Piso y depto. — si corresponde" value={unidad}
               onChange={(e) => setUnidad(e.target.value)} />
           </label>
-        )}
+        </>)}
       </div>
       </>;
     }
@@ -683,7 +696,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
       <p>Va a quedar sin alquilar hasta que le cree un contrato.</p>
       <Summary rows={[
         ["Dirección", direccionCompleta],
-        ["Ciudad", direccion ? `${direccion.city} · ${direccion.province}` : "Sin cargar"],
+        ["Ciudad", direccion ? [direccion.city, direccion.province].filter(Boolean).join(" · ") : "Sin cargar"],
         ["Tipo", CATEGORIAS.find((categoriaItem) => categoriaItem.valor === categoria)?.etiqueta ?? "Sin cargar"],
         ["Características", caracteristicas],
         ["Estado", "Sin alquilar"],

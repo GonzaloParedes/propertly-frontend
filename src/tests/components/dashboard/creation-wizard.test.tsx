@@ -669,3 +669,42 @@ describe("asistente de contrato · día de vencimiento", () => {
     expect(mockCrearContrato).toHaveBeenCalledWith(expect.objectContaining({ dueDay: 5 }));
   });
 });
+
+describe("asistente de propiedad · ciudad y provincia", () => {
+  async function elegirDireccion() {
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByText(/Lavalle 950/));
+  }
+
+  it("no deja seguir si Pelias no trajo ciudad ni provincia hasta completarlas", async () => {
+    mockResolver.mockResolvedValue({
+      street: "Lavalle", number: "950", city: null, province: null,
+      postalCode: null, latitude: null, longitude: null,
+    });
+    await elegirDireccion();
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Ciudad"), "Chivilcoy");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Provincia"), "Buenos Aires");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+});
+
+describe("asistente de contrato · propiedad preseleccionada", () => {
+  it("arranca en el paso del inquilino con la propiedad ya elegida", async () => {
+    mockPropiedades.mockResolvedValue([MITRE, COLON]);
+    render(<CreationWizard kind="contract" initialPropertyId={MITRE.id} onClose={onClose} onComplete={onComplete} />);
+
+    expect(await screen.findByRole("radio", { name: /Diego Ferrari/ })).toBeInTheDocument();
+    expect(screen.getByText("Paso 2 de 6")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Mitre 78/ })).not.toBeInTheDocument();
+  });
+
+  it("sin propiedad preseleccionada arranca pidiéndola", async () => {
+    render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
+    expect(await screen.findByRole("radio", { name: /Mitre 78/ })).toBeInTheDocument();
+  });
+});
