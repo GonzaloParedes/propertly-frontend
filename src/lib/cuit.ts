@@ -24,6 +24,13 @@ export function cuitValido(s: string) {
   if (d.length !== 11) return false;
   const suma = PESOS.reduce((acc, peso, i) => acc + peso * Number(d[i]), 0);
   const resto = suma % 11;
-  const esperado = resto === 0 ? 0 : resto === 1 ? 9 : 11 - resto;
+  let esperado: number;
+  if (resto === 0) {
+    esperado = 0;
+  } else if (resto === 1) {
+    esperado = 9;
+  } else {
+    esperado = 11 - resto;
+  }
   return esperado === Number(d[10]);
 }

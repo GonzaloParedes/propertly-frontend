@@ -21,6 +21,76 @@ import TenantsField from "./TenantsField";
 
 type Errors = Record<string, string>;
 
+interface ContractFormValues {
+  property: Property | null;
+  tenants: Tenant[];
+  startDate: string;
+  endDate: string;
+  rentAmount: string;
+  paymentDueDay: string;
+  depositAmount: string;
+  depositType: string;
+  commissionPercent: string;
+  commissionPayer: CommissionPayer | "";
+  indexType: IndexType | "";
+  customIndexPercent: string;
+  adjustmentFrequency: AdjustmentFrequency | "";
+  autoRenewal: boolean | null;
+  terminationNoticeMonths: string;
+  hasEarlyTerminationPenalty: boolean;
+  earlyTerminationPenalty: string;
+  lateFeeValue: string;
+  lateFeeGraceDays: string;
+}
+
+function validarDatosBasicos(values: ContractFormValues, errors: Errors) {
+  if (!values.property) errors.property = "Seleccione o cree un inmueble para el contrato.";
+  if (values.tenants.length === 0) errors.tenants = "Agregue al menos un inquilino.";
+  if (!values.startDate) errors.startDate = "Ingrese la fecha de inicio.";
+  if (!values.endDate) errors.endDate = "Ingrese la fecha de fin.";
+  if (values.startDate && values.endDate && values.endDate <= values.startDate) {
+    errors.endDate = "La fecha de fin debe ser posterior a la de inicio.";
+  }
+  if (!values.rentAmount || Number(values.rentAmount) <= 0) {
+    errors.rentAmount = "Ingrese un monto de alquiler válido.";
+  }
+  if (!values.paymentDueDay || Number(values.paymentDueDay) < 1 || Number(values.paymentDueDay) > 31) {
+    errors.paymentDueDay = "Ingrese un día entre 1 y 31.";
+  }
+}
+
+function validarGarantiasYComision(values: ContractFormValues, errors: Errors) {
+  if (!values.depositAmount) errors.depositAmount = "Ingrese el monto del depósito.";
+  if (!values.depositType) errors.depositType = "Seleccione el tipo de garantía.";
+  if (!values.commissionPercent || Number(values.commissionPercent) < 0 || Number(values.commissionPercent) > 100) {
+    errors.commissionPercent = "Ingrese un porcentaje entre 0 y 100.";
+  }
+  if (!values.commissionPayer) errors.commissionPayer = "Indique quién está a cargo de la comisión.";
+}
+
+function validarIndexacionYReglas(values: ContractFormValues, errors: Errors) {
+  if (!values.indexType) errors.indexType = "Seleccione el tipo de índice.";
+  if (values.indexType === "CUSTOM" && !values.customIndexPercent) {
+    errors.customIndexPercent = "Ingrese el porcentaje de ajuste.";
+  }
+  if (!values.adjustmentFrequency) errors.adjustmentFrequency = "Seleccione la frecuencia de ajuste.";
+  if (values.autoRenewal === null) errors.autoRenewal = "Indique si el contrato se renueva automáticamente.";
+  if (!values.terminationNoticeMonths) errors.terminationNoticeMonths = "Ingrese el preaviso en meses.";
+  if (values.hasEarlyTerminationPenalty && !values.earlyTerminationPenalty) {
+    errors.earlyTerminationPenalty = "Ingrese el monto de la multa.";
+  }
+  if (!values.lateFeeValue) errors.lateFeeValue = "Ingrese el valor del punitorio.";
+  if (!values.lateFeeGraceDays) errors.lateFeeGraceDays = "Ingrese los días de gracia.";
+}
+
+function validarContrato(values: ContractFormValues): Errors {
+  const errors: Errors = {};
+  validarDatosBasicos(values, errors);
+  validarGarantiasYComision(values, errors);
+  validarIndexacionYReglas(values, errors);
+  return errors;
+}
+
 const SECTIONS = [
   { id: "section-inmueble", label: "Inmueble" },
   { id: "section-contrato", label: "Datos del contrato" },
@@ -135,6 +205,7 @@ export default function ContractForm() {
   const [errors, setErrors] = useState<Errors>({});
   const [isPending, setIsPending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const usaIndicePublicado = ["IPC", "ICL"].includes(indexType);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
@@ -147,43 +218,29 @@ export default function ContractForm() {
     setSignedContractFile(file);
   }
 
-  function validate(): Errors {
-    const newErrors: Errors = {};
-    if (!property) newErrors.property = "Seleccione o cree un inmueble para el contrato.";
-    if (tenants.length === 0) newErrors.tenants = "Agregue al menos un inquilino.";
-    if (!startDate) newErrors.startDate = "Ingrese la fecha de inicio.";
-    if (!endDate) newErrors.endDate = "Ingrese la fecha de fin.";
-    if (startDate && endDate && endDate <= startDate) {
-      newErrors.endDate = "La fecha de fin debe ser posterior a la de inicio.";
-    }
-    if (!rentAmount || Number(rentAmount) <= 0) newErrors.rentAmount = "Ingrese un monto de alquiler válido.";
-    if (!paymentDueDay || Number(paymentDueDay) < 1 || Number(paymentDueDay) > 31) {
-      newErrors.paymentDueDay = "Ingrese un día entre 1 y 31.";
-    }
-    if (!depositAmount) newErrors.depositAmount = "Ingrese el monto del depósito.";
-    if (!depositType) newErrors.depositType = "Seleccione el tipo de garantía.";
-    if (!commissionPercent || Number(commissionPercent) < 0 || Number(commissionPercent) > 100) {
-      newErrors.commissionPercent = "Ingrese un porcentaje entre 0 y 100.";
-    }
-    if (!commissionPayer) newErrors.commissionPayer = "Indique quién está a cargo de la comisión.";
-    if (!indexType) newErrors.indexType = "Seleccione el tipo de índice.";
-    if (indexType === "CUSTOM" && !customIndexPercent) {
-      newErrors.customIndexPercent = "Ingrese el porcentaje de ajuste.";
-    }
-    if (!adjustmentFrequency) newErrors.adjustmentFrequency = "Seleccione la frecuencia de ajuste.";
-    if (autoRenewal === null) newErrors.autoRenewal = "Indique si el contrato se renueva automáticamente.";
-    if (!terminationNoticeMonths) newErrors.terminationNoticeMonths = "Ingrese el preaviso en meses.";
-    if (hasEarlyTerminationPenalty && !earlyTerminationPenalty) {
-      newErrors.earlyTerminationPenalty = "Ingrese el monto de la multa.";
-    }
-    if (!lateFeeValue) newErrors.lateFeeValue = "Ingrese el valor del punitorio.";
-    if (!lateFeeGraceDays) newErrors.lateFeeGraceDays = "Ingrese los días de gracia.";
-    return newErrors;
-  }
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formErrors = validate();
+    const formErrors = validarContrato({
+      property,
+      tenants,
+      startDate,
+      endDate,
+      rentAmount,
+      paymentDueDay,
+      depositAmount,
+      depositType,
+      commissionPercent,
+      commissionPayer,
+      indexType,
+      customIndexPercent,
+      adjustmentFrequency,
+      autoRenewal,
+      terminationNoticeMonths,
+      hasEarlyTerminationPenalty,
+      earlyTerminationPenalty,
+      lateFeeValue,
+      lateFeeGraceDays,
+    });
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
       const firstErrorField = document.querySelector(`[aria-invalid="true"], [id="${Object.keys(formErrors)[0]}"]`);
@@ -442,7 +499,7 @@ export default function ContractForm() {
           </Field>
         )}
 
-        {(indexType === "IPC" || indexType === "ICL") && (
+        {usaIndicePublicado && (
           <p className="text-[15px]" style={{ color: "var(--text-2)" }}>
             El ajuste se calculará automáticamente según la variación del índice {indexType}.
           </p>

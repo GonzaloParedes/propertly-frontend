@@ -81,22 +81,21 @@ function variantesSinQuince(digitos: string): string[] {
   return variantes;
 }
 
+function candidatosNacionales(digitos: string, teniaMas: boolean): string[] {
+  return variantesSinPais(digitos, teniaMas)
+    .flatMap((sinPais) => variantesSinPrefijo(sinPais, "9"))
+    .flatMap((sinMovil) => variantesSinPrefijo(sinMovil, "0"))
+    .flatMap(variantesSinQuince);
+}
+
 /** El número nacional de 10 dígitos que el backend terminaría guardando, o `null`. */
 function numeroNacional(crudo: string): string | null {
   const digitos = digitosValidos(crudo);
   if (digitos === null) return null;
   const teniaMas = crudo.trim().startsWith("+");
-
-  for (const sinPais of variantesSinPais(digitos, teniaMas)) {
-    for (const sinMovil of variantesSinPrefijo(sinPais, "9")) {
-      for (const sinCero of variantesSinPrefijo(sinMovil, "0")) {
-        for (const candidato of variantesSinQuince(sinCero)) {
-          if (candidato.length === LARGO_NACIONAL) return candidato;
-        }
-      }
-    }
-  }
-  return null;
+  return candidatosNacionales(digitos, teniaMas).find(
+    (candidato) => candidato.length === LARGO_NACIONAL
+  ) ?? null;
 }
 
 export function soloDigitosTelefono(valor: string) {

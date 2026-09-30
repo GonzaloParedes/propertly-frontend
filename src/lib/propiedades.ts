@@ -150,17 +150,19 @@ const porDormitorios = (fila: FilaPropiedad, dormitorios: string[]) =>
     dormitorios.some((d) => (d === "4+" ? fila.dormitorios! >= 4 : fila.dormitorios === Number(d))));
 
 /** Los extras se acumulan: elegir los dos pide las dos condiciones. */
-const porExtras = (fila: FilaPropiedad, extras: string[]) =>
-  extras.every((extra) =>
-    extra === "mascotas" ? fila.mascotas : extra === "amoblada" ? fila.amoblada : true
-  );
+function tieneExtra(fila: FilaPropiedad, extra: string): boolean {
+  if (extra === "mascotas") return fila.mascotas;
+  if (extra === "amoblada") return fila.amoblada;
+  return true;
+}
 
-const porEstado = (fila: FilaPropiedad, estado: FiltroEstado) =>
-  estado === "todas"
-    ? true
-    : estado === "sinAlquilar"
-      ? fila.contratoId === null
-      : fila.contratoId !== null;
+const porExtras = (fila: FilaPropiedad, extras: string[]) =>
+  extras.every((extra) => tieneExtra(fila, extra));
+
+function porEstado(fila: FilaPropiedad, estado: FiltroEstado): boolean {
+  if (estado === "todas") return true;
+  return estado === "sinAlquilar" ? fila.contratoId === null : fila.contratoId !== null;
+}
 
 export function filtrarPropiedades(
   filas: FilaPropiedad[],

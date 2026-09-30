@@ -27,6 +27,8 @@ import type {
   ReminderSettingsRequest,
   RentIncrementResponse,
   TenantAccessResponse,
+  AddressSuggestionResponse,
+  ResolvedAddressResponse,
   PaymentRejectionRequest,
 } from "@/lib/backend-types";
 
@@ -93,9 +95,9 @@ export const AlquiaBackendClient = {
     listArchived: (): Promise<TenantResponse[]> =>
       apiGet<TenantResponse[]>("/tenants/archived"),
     archive: (id: number): Promise<TenantResponse> =>
-      apiPost<TenantResponse>(`/tenants/${id}/archive`, undefined),
+      apiPost<TenantResponse>(`/tenants/${id}/archive`),
     restore: (id: number): Promise<TenantResponse> =>
-      apiPost<TenantResponse>(`/tenants/${id}/restore`, undefined),
+      apiPost<TenantResponse>(`/tenants/${id}/restore`),
   },
 
   properties: {
@@ -112,7 +114,7 @@ export const AlquiaBackendClient = {
     archive: (id: number): Promise<PropertyResponse> =>
       apiPost<PropertyResponse>(`/properties/${id}/archive`),
     restore: (id: number): Promise<PropertyResponse> =>
-      apiPost<PropertyResponse>(`/properties/${id}/restore`, undefined),
+      apiPost<PropertyResponse>(`/properties/${id}/restore`),
   },
 
   contracts: {
@@ -166,7 +168,7 @@ export const AlquiaBackendClient = {
     getReceipt: (id: number, options?: { download?: boolean }): Promise<Blob> =>
       apiGetBlob(`/payments/${id}/receipt${options?.download ? "?download=true" : ""}`),
     confirm: (id: number): Promise<PaymentResponse> =>
-      apiPost<PaymentResponse>(`/payments/${id}/confirm`, undefined),
+      apiPost<PaymentResponse>(`/payments/${id}/confirm`),
     // El motivo es opcional y viaja en el body; vuelve como `rejectionReason`.
     reject: (id: number, body?: PaymentRejectionRequest): Promise<PaymentResponse> =>
       apiPost<PaymentResponse>(`/payments/${id}/reject`, body),
@@ -191,6 +193,13 @@ export const AlquiaBackendClient = {
       apiPost<InvoiceResponse>(`/invoices/${id}/confirm`),
     schemaChange: (id: number, body: SchemaChangeRequest): Promise<ContractResponse> =>
       apiPost<ContractResponse>(`/invoices/${id}/schema-change`, body),
+  },
+
+  addressLookup: {
+    autocomplete: (query: string): Promise<AddressSuggestionResponse[]> =>
+      apiGet<AddressSuggestionResponse[]>(`/address-lookup/autocomplete${buildQuery({ query })}`),
+    resolve: (reference: string): Promise<ResolvedAddressResponse> =>
+      apiGet<ResolvedAddressResponse>(`/address-lookup/resolve${buildQuery({ reference })}`),
   },
 
   preInvoices: {

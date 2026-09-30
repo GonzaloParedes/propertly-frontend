@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AlquiaBackendClient, type UserResponse } from "@/lib/backend-client";
 
 /**
@@ -51,29 +51,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  const login = useCallback(async (email: string, password: string) => {
     const id = ++authRequestId.current;
     await AlquiaBackendClient.auth.login({ email, password });
     const me = await AlquiaBackendClient.users.getMe();
     if (authRequestId.current === id) setUser(me);
-  }
+  }, []);
 
-  async function logout() {
+  const logout = useCallback(async () => {
     authRequestId.current++;
     try {
       await AlquiaBackendClient.auth.logout();
     } finally {
       setUser(null);
     }
-  }
+  }, []);
 
-  function actualizarUsuario(usuario: AuthUser) {
+  const actualizarUsuario = useCallback((usuario: AuthUser) => {
     authRequestId.current++;
     setUser(usuario);
-  }
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ user, isLoading, login, logout, actualizarUsuario }),
+    [user, isLoading, login, logout, actualizarUsuario]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, actualizarUsuario }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

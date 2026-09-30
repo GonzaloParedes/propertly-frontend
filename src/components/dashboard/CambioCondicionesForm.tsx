@@ -47,12 +47,12 @@ export default function CambioCondicionesForm({
   hoyISO,
   onCancelar,
   onProgramado,
-}: {
+}: Readonly<{
   contrato: ContractResponse;
   hoyISO: string;
   onCancelar: () => void;
   onProgramado: () => void;
-}) {
+}>) {
   const meses = mesesElegibles(contrato, hoyISO);
   const [c, setC] = useState<CondicionesNuevas>(() => condicionesIniciales(contrato, meses));
   const [revisando, setRevisando] = useState(false);

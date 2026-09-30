@@ -107,7 +107,7 @@ describe("filtros", () => {
 
   it("cuenta cada estado", async () => {
     conCuotas(cuatro);
-    const grupo = await screen.findByRole("group", { name: "Estado de la cuota" });
+    const grupo = await screen.findByRole("region", { name: "Estado de la cuota" });
 
     expect(within(grupo).getByRole("button", { name: /Todas/ })).toHaveTextContent("4");
     expect(within(grupo).getByRole("button", { name: /Vencidas/ })).toHaveTextContent("1");

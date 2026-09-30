@@ -42,7 +42,10 @@ export default function OwnersField({ owners, onChange, error }: OwnersFieldProp
       : [];
 
   const showPercent = owners.length > 1;
-  const percentSum = owners.reduce((sum, po) => sum + (parseFloat(po.ownershipPercent) || 0), 0);
+  const percentSum = owners.reduce(
+    (sum, po) => sum + (Number.parseFloat(po.ownershipPercent) || 0),
+    0
+  );
 
   function addOwner(owner: Owner) {
     onChange([...owners, { owner, ownershipPercent: "" }]);

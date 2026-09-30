@@ -274,7 +274,7 @@ describe("AlquiaBackendClient.payments", () => {
 
   it("confirm pega a POST /payments/{id}/confirm sin body", async () => {
     await AlquiaBackendClient.payments.confirm(7);
-    expect(mockPost).toHaveBeenCalledWith("/payments/7/confirm", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/payments/7/confirm");
   });
 
   it("reject pega a POST /payments/{id}/reject sin body", async () => {
@@ -439,7 +439,7 @@ describe("archivado", () => {
 
   it("restaura una propiedad", async () => {
     await AlquiaBackendClient.properties.restore(5);
-    expect(mockPost).toHaveBeenCalledWith("/properties/5/restore", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/properties/5/restore");
   });
 
   it("lista las propiedades archivadas aparte de las vigentes", async () => {
@@ -450,8 +450,8 @@ describe("archivado", () => {
   it("archiva y restaura inquilinos igual que propiedades", async () => {
     await AlquiaBackendClient.tenants.archive(9);
     await AlquiaBackendClient.tenants.restore(9);
-    expect(mockPost).toHaveBeenNthCalledWith(1, "/tenants/9/archive", undefined);
-    expect(mockPost).toHaveBeenNthCalledWith(2, "/tenants/9/restore", undefined);
+    expect(mockPost).toHaveBeenNthCalledWith(1, "/tenants/9/archive");
+    expect(mockPost).toHaveBeenNthCalledWith(2, "/tenants/9/restore");
   });
 });
 

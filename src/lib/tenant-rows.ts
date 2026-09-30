@@ -105,5 +105,6 @@ export function resumenInquilinos(rows: TenantRow[]): string {
   const sinContrato = rows.filter((row) => row.contratoId === null).length;
   const base = total === 1 ? "1 inquilino" : `${total} inquilinos`;
   if (sinContrato === 0) return base;
-  return `${base} · ${sinContrato === 1 ? "1 sin contrato" : `${sinContrato} sin contrato`}`;
+  const detalleSinContrato = sinContrato === 1 ? "1 sin contrato" : `${sinContrato} sin contrato`;
+  return `${base} · ${detalleSinContrato}`;
 }

@@ -30,7 +30,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-#.env* Temporaly removed
+.env*
 
 # vercel
 .vercel
@@ -47,3 +47,5 @@ docs/brand/logos/eps/
 docs/brand/logos/pdf/
 docs/brand/logos/png/
 
+# Local working notes — intentionally not versioned
+docs/local/

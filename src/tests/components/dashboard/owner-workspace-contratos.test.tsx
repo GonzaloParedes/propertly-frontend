@@ -132,7 +132,7 @@ describe("estados y filtros", () => {
 
   it("un contrato cerca del fin se marca por terminar, y sigue contando como vigente", async () => {
     conContratos(cuatro);
-    const grupo = await screen.findByRole("group", { name: "Estado del contrato" });
+    const grupo = await screen.findByRole("region", { name: "Estado del contrato" });
 
     expect(within(grupo).getByRole("button", { name: /Vigentes/ })).toHaveTextContent("2");
     expect(within(grupo).getByRole("button", { name: /Por terminar/ })).toHaveTextContent("1");
@@ -141,7 +141,7 @@ describe("estados y filtros", () => {
 
   it("arranca mostrando los vigentes, no todo el historial", async () => {
     conContratos(cuatro);
-    await screen.findByRole("group", { name: "Estado del contrato" });
+    await screen.findByRole("region", { name: "Estado del contrato" });
 
     // Los filtros dicen «Vigentes» y «Finalizados» en plural, así que el
     // singular sólo puede venir de un chip de fila. «Por terminar» aparece dos

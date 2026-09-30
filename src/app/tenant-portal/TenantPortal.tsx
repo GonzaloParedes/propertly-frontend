@@ -24,7 +24,7 @@ type Estado =
   | { fase: "error" }
   | { fase: "listo"; invoices: InvoiceResponse[] };
 
-function Icon({ name, size = 20 }: { name: "check" | "clock" | "alert" | "file" | "download" | "x"; size?: number }) {
+function Icon({ name, size = 20 }: Readonly<{ name: "check" | "clock" | "alert" | "file" | "download" | "x"; size?: number }>) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   const paths: Record<string, React.ReactNode> = {
     check: <path d="M20 6 9 17l-5-5" />,
@@ -37,7 +37,7 @@ function Icon({ name, size = 20 }: { name: "check" | "clock" | "alert" | "file" 
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" {...common}>{paths[name]}</svg>;
 }
 
-function EstadoBadge({ children }: { children: FilaCuotaInquilino["estado"] }) {
+function EstadoBadge({ children }: Readonly<{ children: FilaCuotaInquilino["estado"] }>) {
   const config: Record<FilaCuotaInquilino["estado"], ["ok" | "warn" | "bad" | "info", Parameters<typeof Icon>[0]["name"]]> = {
     Pagada: ["ok", "check"],
     "A vencer": ["warn", "clock"],

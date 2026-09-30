@@ -208,7 +208,7 @@ describe("filas", () => {
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
     expect(
-      screen.queryByRole("group", { name: "Estado de la propiedad" })
+      screen.queryByRole("region", { name: "Estado de la propiedad" })
     ).not.toBeInTheDocument();
   });
 });
