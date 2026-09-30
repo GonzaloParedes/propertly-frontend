@@ -41,6 +41,7 @@ export default function PropertyFormCarousel({ mode = "page", onSuccess, onCance
   const [direction, setDirection] = useState<"forward" | "back">("forward");
 
   const isLastStep = step === STEP_LABELS.length - 1;
+  const submitLabel = isPending ? "Guardando…" : "Guardar inmueble";
 
   function goBack() {
     setErrors({});
@@ -148,7 +149,7 @@ export default function PropertyFormCarousel({ mode = "page", onSuccess, onCance
             </Button>
           )}
           <Button type="submit" disabled={isPending}>
-            {isLastStep ? (isPending ? "Guardando…" : "Guardar inmueble") : "Siguiente"}
+            {isLastStep ? submitLabel : "Siguiente"}
           </Button>
         </div>
       </div>

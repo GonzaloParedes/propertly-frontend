@@ -89,15 +89,7 @@ const PAGADOR: Record<string, string> = {
   SHARED: "compartida",
 };
 
-/**
- * Lo que el contrato pactó y hasta ahora no se mostraba en ningún lado. Sólo se
- * listan las condiciones cargadas: mostrar «Depósito: $ 0» o «Renovación
- * automática: No» sobre un campo que nadie completó afirma algo que no se pactó.
- */
-export function condicionesComerciales(contract: ContractResponse): Condicion[] {
-  const condiciones: Condicion[] = [];
-  const moneda = contract.currency;
-
+function agregarDeposito(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
   if (contract.depositAmount) {
     condiciones.push({
       etiqueta: "Depósito",
@@ -111,50 +103,76 @@ export function condicionesComerciales(contract: ContractResponse): Condicion[] 
   } else if (contract.depositType) {
     condiciones.push({ etiqueta: "Depósito", valor: DEPOSITO[contract.depositType] });
   }
+}
 
-  if (contract.commissionPercent) {
-    condiciones.push({
-      etiqueta: "Comisión",
-      valor: [
-        `${contract.commissionPercent} %`,
-        contract.commissionPayer && PAGADOR[contract.commissionPayer],
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    });
-  }
+function agregarComision(condiciones: Condicion[], contract: ContractResponse) {
+  if (!contract.commissionPercent) return;
+  condiciones.push({
+    etiqueta: "Comisión",
+    valor: [
+      `${contract.commissionPercent} %`,
+      contract.commissionPayer && PAGADOR[contract.commissionPayer],
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  });
+}
 
-  if (contract.lateFeeValue) {
-    const valor =
-      contract.lateFeeType === "PERCENTAGE"
-        ? `${contract.lateFeeValue} % por mora`
-        : `${formatearImporte(contract.lateFeeValue, moneda)} por mora`;
-    const gracia = contract.lateFeeGraceDays
-      ? `tras ${contract.lateFeeGraceDays} ${contract.lateFeeGraceDays === 1 ? "día" : "días"} de gracia`
-      : null;
-    condiciones.push({ etiqueta: "Punitorios", valor: [valor, gracia].filter(Boolean).join(" · ") });
-  }
+function pluralizar(cantidad: number, singular: string, plural: string): string {
+  return cantidad === 1 ? singular : plural;
+}
 
-  if (contract.autoRenewal !== undefined && contract.autoRenewal !== null) {
-    condiciones.push({
-      etiqueta: "Renovación",
-      valor: contract.autoRenewal ? "Automática" : "No se renueva automáticamente",
-    });
-  }
+function agregarPunitorios(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
+  if (!contract.lateFeeValue) return;
+  const valor = contract.lateFeeType === "PERCENTAGE"
+    ? `${contract.lateFeeValue} % por mora`
+    : `${formatearImporte(contract.lateFeeValue, moneda)} por mora`;
+  const gracia = contract.lateFeeGraceDays
+    ? `tras ${contract.lateFeeGraceDays} ${pluralizar(contract.lateFeeGraceDays, "día", "días")} de gracia`
+    : null;
+  condiciones.push({ etiqueta: "Punitorios", valor: [valor, gracia].filter(Boolean).join(" · ") });
+}
 
-  if (contract.terminationNoticeMonths) {
-    condiciones.push({
-      etiqueta: "Preaviso de rescisión",
-      valor: `${contract.terminationNoticeMonths} ${contract.terminationNoticeMonths === 1 ? "mes" : "meses"}`,
-    });
-  }
+function agregarRenovacion(condiciones: Condicion[], contract: ContractResponse) {
+  if (contract.autoRenewal === undefined || contract.autoRenewal === null) return;
+  condiciones.push({
+    etiqueta: "Renovación",
+    valor: contract.autoRenewal ? "Automática" : "No se renueva automáticamente",
+  });
+}
 
-  if (contract.earlyTerminationPenalty) {
-    condiciones.push({
-      etiqueta: "Multa por rescisión anticipada",
-      valor: formatearImporte(contract.earlyTerminationPenalty, moneda),
-    });
-  }
+function agregarPreaviso(condiciones: Condicion[], contract: ContractResponse) {
+  if (!contract.terminationNoticeMonths) return;
+  const meses = contract.terminationNoticeMonths;
+  condiciones.push({
+    etiqueta: "Preaviso de rescisión",
+    valor: `${meses} ${pluralizar(meses, "mes", "meses")}`,
+  });
+}
+
+function agregarMulta(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
+  if (!contract.earlyTerminationPenalty) return;
+  condiciones.push({
+    etiqueta: "Multa por rescisión anticipada",
+    valor: formatearImporte(contract.earlyTerminationPenalty, moneda),
+  });
+}
+
+/**
+ * Lo que el contrato pactó y hasta ahora no se mostraba en ningún lado. Sólo se
+ * listan las condiciones cargadas: mostrar «Depósito: $ 0» o «Renovación
+ * automática: No» sobre un campo que nadie completó afirma algo que no se pactó.
+ */
+export function condicionesComerciales(contract: ContractResponse): Condicion[] {
+  const condiciones: Condicion[] = [];
+  const moneda = contract.currency;
+
+  agregarDeposito(condiciones, contract, moneda);
+  agregarComision(condiciones, contract);
+  agregarPunitorios(condiciones, contract, moneda);
+  agregarRenovacion(condiciones, contract);
+  agregarPreaviso(condiciones, contract);
+  agregarMulta(condiciones, contract, moneda);
 
   // La moneda va sólo si no es la de siempre: decir «Pesos argentinos» en todos
   // los contratos es ruido.
@@ -196,11 +214,7 @@ export function historialDeAumentos(
 
 /** «PDF · 2,4 MB · cargado el 01/03/2025». Sin fecha, se omite esa parte. */
 export function descripcionDocumento(contract: ContractResponse): string {
-  const tipo = contract.documentContentType?.startsWith("image/")
-    ? "Imagen"
-    : contract.documentContentType === "application/pdf"
-      ? "PDF"
-      : "Archivo";
+  const tipo = tipoDeDocumento(contract.documentContentType);
   const mb = contract.documentSizeBytes
     ? `${(contract.documentSizeBytes / 1_048_576).toLocaleString("es-AR", { maximumFractionDigits: 1 })} MB`
     : null;
@@ -208,4 +222,10 @@ export function descripcionDocumento(contract: ContractResponse): string {
     ? `cargado el ${formatearFecha(contract.documentUploadedAt.slice(0, 10))}`
     : null;
   return [tipo, mb, cuando].filter(Boolean).join(" · ");
+}
+
+function tipoDeDocumento(contentType: string | undefined): string {
+  if (contentType?.startsWith("image/")) return "Imagen";
+  if (contentType === "application/pdf") return "PDF";
+  return "Archivo";
 }
