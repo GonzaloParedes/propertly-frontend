@@ -4,6 +4,20 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  async redirects() {
+    return [
+      {
+        // El backend arma el enlace del mail de recupero como
+        // {app.frontend.base-url}/reset-password?token=… (AuthController.forgotPassword,
+        // replacePath("/reset-password")), pero acá la ruta está en castellano.
+        // Next reenvía el query string solo, así que el token sobrevive al salto.
+        // Temporal (307): si el backend pasa a apuntar a /restablecer-contrasena, se borra.
+        source: "/reset-password",
+        destination: "/restablecer-contrasena",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

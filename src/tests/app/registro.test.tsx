@@ -14,15 +14,23 @@ beforeEach(() => {
   vi.resetAllMocks();
 });
 
+// 27-24891055-6 es un CUIL con dígito verificador válido; el formulario lo
+// valida en el cliente, así que un número inventado no deja enviar.
+const CUIT_VALIDO = "27248910556";
+
 async function fillAndSubmit({
   firstName = "María",
   lastName = "González",
+  taxId = CUIT_VALIDO,
   email = "maria@ejemplo.com",
+  phone = "1144552210",
   password = "secreta123",
 } = {}) {
   await userEvent.type(screen.getByLabelText("Nombre"), firstName);
   await userEvent.type(screen.getByLabelText("Apellido"), lastName);
+  if (taxId) await userEvent.type(screen.getByLabelText("CUIT o CUIL"), taxId);
   await userEvent.type(screen.getByLabelText("Correo electrónico"), email);
+  if (phone) await userEvent.type(screen.getByLabelText("Teléfono"), phone);
   await userEvent.type(screen.getByLabelText("Contraseña"), password);
   await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 }
@@ -30,10 +38,11 @@ async function fillAndSubmit({
 // --- Renderizado ---
 
 describe("renderizado", () => {
-  it("muestra los 4 campos del formulario", () => {
+  it("muestra los 6 campos del formulario", () => {
     render(<RegistroPage />);
     expect(screen.getByLabelText("Nombre")).toBeInTheDocument();
     expect(screen.getByLabelText("Apellido")).toBeInTheDocument();
+    expect(screen.getByLabelText("CUIT o CUIL")).toBeInTheDocument();
     expect(screen.getByLabelText("Correo electrónico")).toBeInTheDocument();
     expect(screen.getByLabelText("Contraseña")).toBeInTheDocument();
   });
@@ -87,6 +96,8 @@ describe("registro exitoso", () => {
           lastName: "González",
           email: "maria@ejemplo.com",
           password: "secreta123",
+          taxId: "27248910556",
+          phoneNumber: "1144552210",
         },
         { retry: false }
       )
@@ -132,6 +143,78 @@ describe("registro exitoso", () => {
 
     expect(screen.getByRole("button", { name: "Creando cuenta…" })).toBeDisabled();
     expect(screen.getByLabelText("Correo electrónico")).toBeDisabled();
+  });
+});
+
+// --- CUIT ---
+
+describe("CUIT", () => {
+  it("se formatea con guiones mientras se escribe", async () => {
+    render(<RegistroPage />);
+    const campo = screen.getByLabelText("CUIT o CUIL");
+    await userEvent.type(campo, CUIT_VALIDO);
+    expect(campo).toHaveValue("27-24891055-6");
+  });
+
+  it("manda el CUIT sin guiones, que es lo que espera el backend", async () => {
+    mockApiPost.mockResolvedValueOnce({});
+    render(<RegistroPage />);
+    await fillAndSubmit();
+
+    await waitFor(() =>
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/auth/register",
+        expect.objectContaining({ taxId: "27248910556" }),
+        { retry: false }
+      )
+    );
+  });
+
+  it("no llama al backend si el dígito verificador no cierra", async () => {
+    render(<RegistroPage />);
+    await fillAndSubmit({ taxId: "27248910557" });
+
+    expect(await screen.findByText(/no es válido/)).toBeInTheDocument();
+    expect(mockApiPost).not.toHaveBeenCalled();
+  });
+
+  it("no llama al backend si faltan dígitos", async () => {
+    render(<RegistroPage />);
+    await fillAndSubmit({ taxId: "2724891" });
+
+    expect(await screen.findByText("Faltan dígitos: son 11 en total.")).toBeInTheDocument();
+    expect(mockApiPost).not.toHaveBeenCalled();
+  });
+
+  it("no llama al backend si el CUIT está vacío", async () => {
+    // Con el campo vacío corta el `required` nativo del navegador, así que
+    // handleSubmit ni llega a ejecutarse y el mensaje propio no aparece acá.
+    render(<RegistroPage />);
+    await fillAndSubmit({ taxId: "" });
+
+    expect(mockApiPost).not.toHaveBeenCalled();
+  });
+
+  it("pide el CUIT si el usuario borra lo que había escrito y sale del campo", async () => {
+    render(<RegistroPage />);
+    const campo = screen.getByLabelText("CUIT o CUIL");
+    await userEvent.type(campo, "27");
+    await userEvent.clear(campo);
+    await userEvent.tab();
+
+    expect(await screen.findByText("Ingrese su CUIT o CUIL.")).toBeInTheDocument();
+  });
+
+  it("no muestra el error antes de que el usuario toque el campo", () => {
+    render(<RegistroPage />);
+    expect(screen.queryByText("Ingrese su CUIT o CUIL.")).not.toBeInTheDocument();
+  });
+
+  it("marca el campo como inválido para lectores de pantalla", async () => {
+    render(<RegistroPage />);
+    await fillAndSubmit({ taxId: "27248910557" });
+
+    expect(screen.getByLabelText("CUIT o CUIL")).toHaveAttribute("aria-invalid", "true");
   });
 });
 

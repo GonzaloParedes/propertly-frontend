@@ -1,0 +1,145 @@
+import {
+  buildFilasInquilino,
+  ordenarCuotas,
+  puedeSubirComprobante,
+} from "@/lib/portal-inquilino";
+import type { InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
+
+function cuota(over: Partial<InvoiceResponse> = {}): InvoiceResponse {
+  return {
+    id: 1000,
+    contractId: 100,
+    period: "2026-09-01",
+    dueDate: "2026-09-10",
+    baseAmount: 478691,
+    total: 478691,
+    status: "PENDING",
+    confirmed: true,
+    adjustments: [],
+    payments: [],
+    ...over,
+  };
+}
+
+function pago(over: Partial<PaymentResponse> = {}): PaymentResponse {
+  return {
+    id: 1,
+    invoiceId: 1000,
+    status: "AWAITING_CONFIRMATION",
+    submittedByTenant: true,
+    ...over,
+  };
+}
+
+// --- puedeSubirComprobante ---
+
+describe("puedeSubirComprobante", () => {
+  it("una cuota confirmada sin pagos deja subir", () => {
+    expect(puedeSubirComprobante(cuota())).toBe(true);
+  });
+
+  // Regla ya decidida: sin confirmar, ni el botón se ofrece.
+  it("una cuota sin confirmar no deja subir", () => {
+    expect(puedeSubirComprobante(cuota({ confirmed: false }))).toBe(false);
+  });
+
+  it("con un pago esperando confirmación no deja subir otro", () => {
+    const conPago = cuota({ payments: [pago({ status: "AWAITING_CONFIRMATION" })] });
+    expect(puedeSubirComprobante(conPago)).toBe(false);
+  });
+
+  it("con un pago ya confirmado no deja subir otro", () => {
+    const conPago = cuota({ payments: [pago({ status: "CONFIRMED" })] });
+    expect(puedeSubirComprobante(conPago)).toBe(false);
+  });
+
+  // El backend excluye REJECTED al chequear si hay un pago activo: es lo que
+  // permite reintentar después de un rechazo.
+  it("con el último pago rechazado, sí deja subir de nuevo", () => {
+    const rechazado = cuota({ payments: [pago({ status: "REJECTED" })] });
+    expect(puedeSubirComprobante(rechazado)).toBe(true);
+  });
+});
+
+// --- buildFilasInquilino ---
+
+describe("buildFilasInquilino", () => {
+  it("arma la fila con período, vencimiento, monto y estado", () => {
+    const [fila] = buildFilasInquilino([cuota({ status: "DUE" })]);
+    expect(fila.periodo).toBe("septiembre 2026");
+    expect(fila.vencimiento).toBe("10/09/2026");
+    expect(fila.monto).toBe("$ 478.691");
+    expect(fila.estado).toBe("Vencida");
+  });
+
+  it("usa el mismo criterio de estado que Cobranzas: un pago esperando gana", () => {
+    const conPago = cuota({ status: "DUE", payments: [pago()] });
+    expect(buildFilasInquilino([conPago])[0].estado).toBe("Pago a confirmar");
+  });
+
+  it("elige el pago más reciente cuando hay más de uno", () => {
+    const cuotaConHistorial = cuota({
+      payments: [
+        pago({ id: 1, status: "REJECTED" }),
+        pago({ id: 2, status: "AWAITING_CONFIRMATION" }),
+      ],
+    });
+    expect(buildFilasInquilino([cuotaConHistorial])[0].pago?.id).toBe(2);
+  });
+
+  it("sin pagos, la fila no tiene ninguno que mostrar", () => {
+    expect(buildFilasInquilino([cuota()])[0].pago).toBeNull();
+  });
+
+  it("una lista vacía da una lista vacía", () => {
+    expect(buildFilasInquilino([])).toEqual([]);
+  });
+});
+
+// --- ordenarCuotas ---
+
+describe("ordenarCuotas", () => {
+  it("pone las que requieren atención antes que las pagadas", () => {
+    const filas = buildFilasInquilino([
+      cuota({ id: 1, status: "PAID" }),
+      cuota({ id: 2, status: "DUE" }),
+      cuota({ id: 3, status: "PENDING" }),
+    ]);
+    expect(ordenarCuotas(filas).map((f) => f.estado)).toEqual([
+      "Vencida",
+      "A vencer",
+      "Pagada",
+    ]);
+  });
+
+  it("un pago a confirmar va antes que una pagada pero después de las vencidas", () => {
+    const filas = buildFilasInquilino([
+      cuota({ id: 1, status: "PAID" }),
+      cuota({ id: 2, status: "PENDING", payments: [pago()] }),
+      cuota({ id: 3, status: "DUE" }),
+    ]);
+    expect(ordenarCuotas(filas).map((f) => f.estado)).toEqual([
+      "Vencida",
+      "Pago a confirmar",
+      "Pagada",
+    ]);
+  });
+
+  it("dentro del mismo estado, ordena por vencimiento", () => {
+    const filas = buildFilasInquilino([
+      cuota({ id: 1, status: "DUE", dueDate: "2026-09-20" }),
+      cuota({ id: 2, status: "DUE", dueDate: "2026-09-05" }),
+    ]);
+    expect(ordenarCuotas(filas).map((f) => f.vencimientoISO)).toEqual([
+      "2026-09-05",
+      "2026-09-20",
+    ]);
+  });
+
+  it("no muta el array original", () => {
+    const filas = buildFilasInquilino([cuota({ id: 1, status: "PAID" }), cuota({ id: 2, status: "DUE" })]);
+    const original = [...filas];
+    ordenarCuotas(filas);
+    expect(filas).toEqual(original);
+  });
+});

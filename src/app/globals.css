@@ -1,8 +1,20 @@
 @import "tailwindcss";
+@import "../components/dashboard/OwnerWorkspace.css";
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Espaciado — escala derivada de los valores que el diseño ya usaba, no de
+     una grilla impuesta. El nombre es el valor en px a propósito: el sistema
+     todavía no tiene tokens de radio ni de altura, y con nombres abstractos
+     («esp-3») no habría forma de «copiar el literal del hermano más parecido»,
+     que es la regla vigente en docs/design/sistema-ui.md.
+     Quedan 112 declaraciones con literales fuera de escala: son deuda visible
+     a propósito — si no usan token, todavía no se revisaron. */
+  --esp-2:2px;   --esp-6:6px;   --esp-8:8px;   --esp-10:10px;
+  --esp-12:12px; --esp-14:14px; --esp-16:16px; --esp-18:18px;
+  --esp-20:20px; --esp-26:26px; --esp-32:32px; --esp-44:44px;
 
   /* Brand — paleta vibrante (manual v1.1 julio 2026) */
   --primary: #5B4BC4;      /* Índigo */
@@ -27,6 +39,24 @@
   --border-strong: #C4BEE4;
   --shadow: 0 1px 2px rgba(30,27,46,0.06), 0 2px 8px rgba(30,27,46,0.05);
   --radius: 10px;
+
+  /* Alias del sistema de UI v1.1. Los nombres existentes se mantienen para
+     no romper pantallas previas; las vistas nuevas usan el vocabulario del
+     prototipo vigente. */
+  --tinta: #1E1B2E;
+  --indigo: #5B4BC4;
+  --indigo-osc: #463AA0;
+  --indigo-suave: #E7E3F8;
+  --superficie: #F6F5FC;
+  --gris: #514D63;
+  --borde: #DEDAF0;
+  --borde-campo: #C4BEE4;
+  --divisor: #EDEBF7;
+  --exito: #1E874B;
+  --exito-bg: #E6F4EC;
+  --adv: #B26A00;
+  --error: #CE3F53;
+  --error-bg: #FBE9EC;
 }
 
 @theme inline {
@@ -38,12 +68,18 @@
   --animate-fade-in: fade-in 1s ease both;
   --animate-dot-bounce: dot-bounce 1.4s ease-in-out infinite;
   --animate-shimmer: shimmer 2.5s ease-in-out infinite;
+  --animate-step-in-right: step-in-right 0.32s ease-out both;
+  --animate-step-in-left: step-in-left 0.32s ease-out both;
+  --animate-step-fill: step-fill 0.4s ease-out both;
 }
 
 /* La landing es de tema claro: no invertimos a oscuro con el esquema del sistema
    (evita que el body y la barra del navegador se pongan negros en modo oscuro). */
 
 body {
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-nunito-sans), system-ui, sans-serif;
@@ -90,6 +126,24 @@ body {
 @keyframes reveal-up {
   from { opacity: 0; transform: translateY(28px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Formulario carousel (paso a paso): entra desde la derecha al avanzar y
+   desde la izquierda al retroceder; la franja activa del StepIndicator se
+   rellena de izquierda a derecha al llegar a un paso. */
+@keyframes step-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes step-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes step-fill {
+  from { width: 0%; }
+  to   { width: 100%; }
 }
 
 /* Glass utilities */
@@ -146,4 +200,5 @@ body {
     transform: none !important;
     transition: none !important;
   }
+  [class*="animate-step-"] { animation: none !important; }
 }

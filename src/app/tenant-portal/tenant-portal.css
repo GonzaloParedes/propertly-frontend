@@ -1,0 +1,227 @@
+/*
+ * El portal del inquilino, aparte de OwnerWorkspace.css a propósito: es una
+ * pantalla sin navegación ni layout compartido con el propietario, así que no
+ * tiene sentido cargar sus 400 líneas para mostrar una lista y un botón.
+ * Reusa los mismos tokens de marca (globals.css) — misma identidad, pantalla
+ * más simple.
+ */
+
+.tenant-portal {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--esp-32) var(--esp-20) 68px;
+  color: var(--tinta);
+}
+
+.tenant-portal--centrado {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: var(--esp-20);
+}
+
+.tenant-header {
+  margin-bottom: var(--esp-26);
+}
+
+.tenant-header h1 {
+  margin: 0 0 var(--esp-6);
+  font: 700 28px var(--font-quicksand), sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.tenant-header p {
+  margin: 0;
+  color: var(--gris);
+  font-size: 16px;
+}
+
+.tenant-nota {
+  padding: var(--esp-20);
+  color: var(--gris);
+  text-align: center;
+}
+
+.tenant-mensaje {
+  display: flex;
+  max-width: 380px;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--esp-32) var(--esp-26);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(30, 27, 46, 0.04), 0 4px 12px -4px rgba(30, 27, 46, 0.07);
+  text-align: center;
+}
+
+.tenant-mensaje svg {
+  color: var(--error);
+}
+
+.tenant-mensaje h1 {
+  margin: var(--esp-14) 0 var(--esp-8);
+  font: 700 22px var(--font-quicksand), sans-serif;
+}
+
+.tenant-mensaje p {
+  margin: 0;
+  color: var(--gris);
+}
+
+.tenant-lista {
+  display: grid;
+  gap: var(--esp-14);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tenant-cuota {
+  padding: var(--esp-20);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(30, 27, 46, 0.04), 0 4px 12px -4px rgba(30, 27, 46, 0.07);
+}
+
+.tenant-cuota__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--esp-12);
+}
+
+.tenant-cuota__cabecera b {
+  display: block;
+  font-size: 17px;
+  text-transform: capitalize;
+}
+
+.tenant-cuota__cabecera small {
+  display: block;
+  margin-top: var(--esp-2);
+  color: var(--gris);
+  font-size: 14px;
+}
+
+.tenant-cuota__monto {
+  margin-top: var(--esp-16);
+}
+
+.tenant-cuota__monto > span {
+  display: block;
+  font: 700 24px var(--font-quicksand), sans-serif;
+}
+
+/* La aclaración de que el importe puede cambiar: no es un detalle chico, es la
+   diferencia entre saber cuánto va a pagar y creer que ya lo sabe. */
+.tenant-cuota__aviso {
+  display: block;
+  margin-top: var(--esp-6);
+  color: var(--adv);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tenant-cuota__pago {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-10);
+  margin-top: var(--esp-16);
+  padding-top: var(--esp-14);
+  box-shadow: inset 0 1px 0 var(--divisor);
+}
+
+.tenant-pago-estado {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.tenant-pago-estado--ok { color: var(--exito); }
+.tenant-pago-estado--info { color: var(--indigo); }
+.tenant-pago-estado--bad { color: var(--error); }
+
+.tenant-cuota__subir {
+  margin-top: var(--esp-16);
+}
+
+.tenant-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: var(--esp-6) var(--esp-10);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tenant-badge--ok { background: var(--exito-bg); color: var(--exito); }
+.tenant-badge--warn { background: var(--warn-bg, #F8EFDB); color: var(--adv); }
+.tenant-badge--bad { background: var(--error-bg); color: var(--error); }
+.tenant-badge--info { background: var(--indigo-suave); color: var(--indigo); }
+
+.tenant-boton,
+.tenant-link-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--esp-8);
+  min-height: 44px;
+  padding: 0 var(--esp-16);
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  font: 700 15px var(--font-nunito-sans), sans-serif;
+}
+
+.tenant-boton {
+  background: var(--indigo);
+  color: #fff;
+}
+
+.tenant-boton:hover:not(:disabled) {
+  background: var(--indigo-osc);
+}
+
+.tenant-boton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tenant-link-boton {
+  padding: 0;
+  background: transparent;
+  color: var(--indigo);
+}
+
+.tenant-link-boton:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tenant-link-boton:disabled {
+  color: var(--gris);
+  cursor: default;
+}
+
+.tenant-alerta {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-10);
+  margin: 0 0 var(--esp-18);
+  padding: var(--esp-14) var(--esp-16);
+  border-radius: 12px;
+  background: var(--error-bg);
+  color: var(--error);
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .tenant-cuota__pago {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
