@@ -384,3 +384,21 @@ export type ReminderSettingsRequest = ReminderSettingsResponse;
 export interface TenantSessionRequest {
   token: string;
 }
+
+// --- Address lookup (Pelias detrás del backend) ---
+
+/** `reference` es opaca: sólo sirve para pedirle a `/address-lookup/resolve` el detalle. */
+export interface AddressSuggestionResponse {
+  reference: string;
+  label: string;
+}
+
+export interface ResolvedAddressResponse {
+  street: string | null;
+  number: string | null;
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}

@@ -8,6 +8,7 @@ vi.mock("@/lib/backend-client", () => ({
     tenants: { create: vi.fn(), list: vi.fn() },
     properties: { list: vi.fn(), create: vi.fn() },
     contracts: { list: vi.fn(), create: vi.fn() },
+    addressLookup: { autocomplete: vi.fn(), resolve: vi.fn() },
   },
 }));
 
@@ -17,6 +18,8 @@ const mockPropiedades = vi.mocked(AlquiaBackendClient.properties.list);
 const mockCrearPropiedad = vi.mocked(AlquiaBackendClient.properties.create);
 const mockInquilinos = vi.mocked(AlquiaBackendClient.tenants.list);
 const mockContratos = vi.mocked(AlquiaBackendClient.contracts.list);
+const mockAutocompletar = vi.mocked(AlquiaBackendClient.addressLookup.autocomplete);
+const mockResolver = vi.mocked(AlquiaBackendClient.addressLookup.resolve);
 const mockCrearContrato = vi.mocked(AlquiaBackendClient.contracts.create);
 
 const MITRE = {
@@ -46,6 +49,11 @@ beforeEach(() => {
   mockPropiedades.mockResolvedValue([MITRE, COLON]);
   mockInquilinos.mockResolvedValue([DIEGO]);
   mockContratos.mockResolvedValue([]);
+  mockAutocompletar.mockResolvedValue([{ reference: "ref-lavalle", label: "Lavalle 950" }]);
+  mockResolver.mockResolvedValue({
+    street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires",
+    postalCode: "C1047", latitude: null, longitude: null,
+  });
 });
 
 function renderWizard() {

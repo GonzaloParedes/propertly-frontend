@@ -105,6 +105,17 @@ export function buildFilasCobranza(
     .sort((a, b) => b.vencimientoISO.localeCompare(a.vencimientoISO));
 }
 
+/**
+ * Las cuotas que le piden algo al propietario: las vencidas y las que tienen un
+ * comprobante esperando su revisión. Es el número del menú lateral.
+ */
+export function contarCuotasPendientes(invoices: InvoiceResponse[]): number {
+  return invoices.filter((i) => {
+    const estado = estadoDeCuota(i);
+    return estado === "Vencida" || estado === "Pago a confirmar";
+  }).length;
+}
+
 export type FiltroCobranza = "todas" | "vencidas" | "aVencer" | "pagadas";
 
 const COINCIDE: Record<FiltroCobranza, (fila: FilaCobranza) => boolean> = {
@@ -137,7 +148,7 @@ export function resumenCobranzas(filas: FilaCobranza[]): string {
     vencidas > 0 && `${vencidas} ${vencidas === 1 ? "vencida" : "vencidas"}`,
     aVencer > 0 && `${aVencer} por cobrar`,
   ].filter(Boolean);
-  return partes.length > 0
-    ? `${filas.length} ${filas.length === 1 ? "cuota" : "cuotas"} · ${partes.join(" · ")}`
-    : `${filas.length} ${filas.length === 1 ? "cuota" : "cuotas"} · todo cobrado`;
+  const cantidad = `${filas.length} ${filas.length === 1 ? "cuota" : "cuotas"}`;
+  const detalle = partes.length > 0 ? partes.join(" · ") : "todo cobrado";
+  return `${cantidad} · ${detalle}`;
 }

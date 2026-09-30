@@ -3,13 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { AlquiaBackendClient } from "@/lib/backend-client";
+import { contarCuotasPendientes } from "@/lib/cobranzas";
 
 type IconName = "home" | "building" | "file" | "card" | "users" | "settings" | "menu" | "close" | "logout";
 export type WorkspaceView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "configuracion";
 
-function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
+function Icon({ name, size = 21 }: Readonly<{ name: IconName; size?: number }>) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   const paths: Record<IconName, React.ReactNode> = {
     home: <><path d="m3 10 9-7 9 7" /><path d="M5.5 9.5V21h13V9.5M10 21v-5h4v5" /></>,
@@ -30,7 +32,7 @@ const ITEMS = [
   { label: "Propiedades", href: "/dashboard/propiedades", view: "propiedades" as const, icon: "building" as const },
   { label: "Contratos", href: "/dashboard/contratos", view: "contratos" as const, icon: "file" as const },
   { label: "Inquilinos", href: "/dashboard/inquilinos", view: "inquilinos" as const, icon: "users" as const },
-  { label: "Cobranzas", href: "/dashboard/cobranzas", view: "cobranzas" as const, icon: "card" as const, badge: "3" },
+  { label: "Cobranzas", href: "/dashboard/cobranzas", view: "cobranzas" as const, icon: "card" as const },
   { label: "Configuración", href: "/dashboard/configuracion", view: "configuracion" as const, icon: "settings" as const },
 ];
 
@@ -49,6 +51,22 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
   const iniciales = user ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() : "";
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [pendientes, setPendientes] = useState(0);
+
+  // Sólo con sesión real y dentro de /dashboard: el prototipo no tiene backend.
+  // Se recuenta al cambiar de pantalla, que es cuando el propietario pudo
+  // haber resuelto algo.
+  const hayUsuario = Boolean(user);
+  useEffect(() => {
+    if (!hayUsuario || onNavigate) return;
+    let vigente = true;
+    AlquiaBackendClient.invoices.list()
+      .then((invoices) => vigente && setPendientes(contarCuotasPendientes(invoices)))
+      .catch(() => vigente && setPendientes(0));
+    return () => { vigente = false; };
+  }, [hayUsuario, onNavigate, pathname]);
+
+  const badgeDe = (view: WorkspaceView) => (view === "cobranzas" && pendientes > 0 ? String(pendientes) : undefined);
 
   useEffect(() => {
     if (!open) return;
@@ -59,27 +77,31 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
   }, [open]);
 
   function isCurrent(href: string, view: WorkspaceView) {
-    return activeView ? activeView === view : href === "/dashboard" ? pathname === href : pathname.startsWith(href);
+    if (activeView) return activeView === view;
+    if (href === "/dashboard") return pathname === href;
+    return pathname.startsWith(href);
   }
 
   const navigation = () => (
     <ul className="owner-nav__links">
-      {ITEMS.map((item) => (
-        <Fragment key={item.href}>
-          {item.view === "configuracion" && <li className="owner-nav__group" key="account-group">CUENTA</li>}
-          <li>
+      {ITEMS.flatMap((item) => {
+        const link = (
+          <li key={item.href}>
           {onNavigate ? (
             <button type="button" onClick={() => { onNavigate(item.view); setOpen(false); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
-              <Icon name={item.icon} /><span>{item.label}</span>{item.badge && <span className="owner-nav__badge">{item.badge}</span>}
+              <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
             </button>
           ) : (
             <Link href={item.href} onClick={() => setOpen(false)} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
-              <Icon name={item.icon} /><span>{item.label}</span>{item.badge && <span className="owner-nav__badge">{item.badge}</span>}
+              <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
             </Link>
           )}
           </li>
-        </Fragment>
-      ))}
+        );
+        return item.view === "configuracion"
+          ? [<li className="owner-nav__group" key="account-group">CUENTA</li>, link]
+          : [link];
+      })}
     </ul>
   );
 
