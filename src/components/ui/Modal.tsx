@@ -80,7 +80,7 @@ export default function Modal({ open, onClose, title, description, children }: M
         open={open}
         aria-modal="true"
         aria-labelledby={titleId}
-        className="fixed inset-y-0 right-0 z-50 m-0 flex w-full max-w-2xl border-0 p-0 flex-col bg-white transition-transform duration-300"
+        className="fixed inset-y-0 right-0 z-50 m-0 flex h-full max-h-none w-full max-w-2xl border-0 p-0 flex-col bg-white transition-transform duration-300"
         style={{
           transform: open ? "translateX(0)" : "translateX(100%)",
           boxShadow: "-8px 0 30px rgba(30,27,46,0.15), -2px 0 8px rgba(30,27,46,0.08)",

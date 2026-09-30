@@ -5,6 +5,7 @@ import CreationWizard from "@/components/dashboard/CreationWizard";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type {
   ContractResponse,
+  PropertyRequest,
   PropertyResponse,
   ReminderSettingsResponse,
   RentIncrementResponse,
@@ -39,7 +40,7 @@ import {
   resumenPropiedades,
   type FilaPropiedad,
 } from "@/lib/propiedades";
-import { etiquetaCategoria } from "@/lib/propiedad";
+import { CATEGORIAS, etiquetaCategoria } from "@/lib/propiedad";
 import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
 import {
   avisosPendientes,
@@ -396,6 +397,12 @@ function mensajeErrorDeInquilino(err: unknown): string {
   if (err instanceof ApiError && err.message === "Phone number already registered") return "Ese teléfono ya figura en otro inquilino suyo.";
   if (err instanceof ApiError && err.status === 400) return "Verifique los datos ingresados e inténtelo de nuevo.";
   return "No pudimos guardar los datos. Inténtelo de nuevo más tarde.";
+}
+
+function mensajeErrorDePropiedad(err: unknown): string {
+  if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
+  if (err instanceof ApiError && err.status === 400) return "Verifique los datos ingresados e inténtelo de nuevo.";
+  return "No pudimos guardar la propiedad. Inténtelo de nuevo más tarde.";
 }
 
 function mensajeErrorAlArchivarInquilino(err: unknown): string {
@@ -817,6 +824,7 @@ type PropertyDetailProps = Readonly<{
   onCreateContract: () => void;
   onOpenDemoContract: (contractId: string) => void;
   onArchive: (property: FilaPropiedad) => void;
+  onEdit: (property: PropertyResponse) => void;
 }>;
 
 function PropertyBreadcrumb({ name, onBack }: Readonly<{ name: string; onBack: () => void }>) {
@@ -874,6 +882,7 @@ function PropertyDetail({
   onCreateContract,
   onOpenDemoContract,
   onArchive,
+  onEdit,
 }: PropertyDetailProps) {
   if (demo) {
     return <DemoPropertyDetail demoProperty={demoProperty} onBack={onBack} onCreateContract={onCreateContract} onOpenDemoContract={onOpenDemoContract} />;
@@ -891,7 +900,7 @@ function PropertyDetail({
   const contractTitle = rawProperty.tenant
     ? `Contrato con ${rawProperty.tenant.firstName} ${rawProperty.tenant.lastName}`
     : "Contrato vigente";
-  const headerActions = <><Button tone="secondary"><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="archive" size={18} />Archivar</Button></>;
+  const headerActions = <><Button tone="secondary" onClick={() => onEdit(rawProperty)}><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="archive" size={18} />Archivar</Button></>;
   const category = etiquetaCategoria(rawProperty.category);
 
   return <>
@@ -1494,6 +1503,40 @@ function ArchiveTenantDialog({ tenant, error, isBusy, onClose, onArchive }: Read
   return <Dialog title="Archivar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> sale de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarlo cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" disabled={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
+function isPropertyValid(property: PropertyRequest | null): boolean {
+  if (!property) return false;
+  return [property.street, property.number, property.city, property.province].every((value) => value.trim());
+}
+
+function numeroOpcional(value: string): number | undefined {
+  return value === "" ? undefined : Number(value);
+}
+
+function PropertyEditDialog({ property, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ property: PropertyRequest; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (property: PropertyRequest) => void; onSave: () => void }>) {
+  const saveLabel = isBusy ? "Guardando…" : "Guardar";
+  return <Dialog title="Editar propiedad" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack">
+    <div className="owner-wizard-duo">
+      <label className="owner-wizard-field"><span className="sr-only">Calle</span><input placeholder="Calle" value={property.street} onChange={(event) => onChange({ ...property, street: event.target.value })} /></label>
+      <label className="owner-wizard-field"><span className="sr-only">Número</span><input placeholder="Número" value={property.number} onChange={(event) => onChange({ ...property, number: event.target.value })} /></label>
+    </div>
+    <label className="owner-wizard-field"><span className="sr-only">Piso y departamento</span><input placeholder="Piso y depto. — si corresponde" value={property.floorUnit ?? ""} onChange={(event) => onChange({ ...property, floorUnit: event.target.value || undefined })} /></label>
+    <div className="owner-wizard-duo">
+      <label className="owner-wizard-field"><span className="sr-only">Ciudad</span><input placeholder="Ciudad" value={property.city} onChange={(event) => onChange({ ...property, city: event.target.value })} /></label>
+      <label className="owner-wizard-field"><span className="sr-only">Provincia</span><input placeholder="Provincia" value={property.province} onChange={(event) => onChange({ ...property, province: event.target.value })} /></label>
+    </div>
+    <label className="owner-wizard-field"><span>Tipo</span><select value={property.category} onChange={(event) => onChange({ ...property, category: event.target.value as PropertyRequest["category"] })}>{CATEGORIAS.map((categoria) => <option key={categoria.valor} value={categoria.valor}>{categoria.etiqueta}</option>)}</select></label>
+    <div className="owner-wizard-duo">
+      <label className="owner-wizard-field"><span>Dormitorios</span><input type="number" min={0} inputMode="numeric" value={property.bedrooms ?? ""} onChange={(event) => onChange({ ...property, bedrooms: numeroOpcional(event.target.value) })} /></label>
+      <label className="owner-wizard-field"><span>Baños</span><input type="number" min={0} inputMode="numeric" value={property.bathrooms ?? ""} onChange={(event) => onChange({ ...property, bathrooms: numeroOpcional(event.target.value) })} /></label>
+    </div>
+    <label className="owner-wizard-field"><span>Superficie cubierta (m²)</span><input type="number" min={0} inputMode="decimal" value={property.coveredArea ?? ""} onChange={(event) => onChange({ ...property, coveredArea: numeroOpcional(event.target.value) })} /></label>
+    <div className="owner-wizard-chips">
+      <button type="button" aria-pressed={Boolean(property.petsAllowed)} onClick={() => onChange({ ...property, petsAllowed: !property.petsAllowed })}>Acepta mascotas</button>
+      <button type="button" aria-pressed={Boolean(property.furnished)} onClick={() => onChange({ ...property, furnished: !property.furnished })}>Amoblado</button>
+    </div>
+  </div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button disabled={isBusy || !isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+}
+
 function ArchivePropertyDialog({ property, error, isBusy, onClose, onArchive }: Readonly<{ property: FilaPropiedad; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
   const buttonLabel = isBusy ? "Archivando…" : "Archivar";
   return <Dialog title="Archivar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> sale de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarla cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" disabled={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
@@ -1658,6 +1701,8 @@ type WorkspaceDialogState = {
   contract: ContractResponse | null;
   endDate: string;
   archivingProperty: FilaPropiedad | null;
+  editingProperty: PropertyRequest | null;
+  editingPropertyId: number | null;
   reviewingPayment: FilaCobranza | null;
   registeringPayment: FilaCobranza | null;
   paymentFile: File | null;
@@ -1697,6 +1742,9 @@ type WorkspaceDialogActions = {
   terminateContract: (id: number) => void;
   closePropertyArchive: () => void;
   archiveProperty: (property: FilaPropiedad) => void;
+  closePropertyEditor: () => void;
+  setProperty: (property: PropertyRequest) => void;
+  saveProperty: (id: number, property: PropertyRequest) => void;
   closePaymentReview: () => void;
   viewReceipt: (paymentId: number) => void;
   rejectPayment: (paymentId: number) => void;
@@ -1724,6 +1772,7 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
   const delta = adjustmentDelta(state.adjusting, state.amount);
   const accountIsValid = isAccountValid(state.editingAccount);
   const tenantIsValid = isTenantValid(state.editingTenant);
+  const propertyIsValid = isPropertyValid(state.editingProperty);
   return <>
     {state.adjusting && <InvoiceAdjustmentDialog invoice={state.adjusting} adjustmentId={state.adjustmentId} amount={state.amount} reason={state.reason} delta={delta} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeAdjustment} onAmountChange={actions.setAmount} onReasonChange={actions.setReason} onRemove={actions.chooseAdjustmentToRemove} onSave={actions.saveAdjustment} />}
     {state.removingAdjustment !== null && state.adjusting && <RemoveInvoiceAdjustmentDialog error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeRemoval} onRemove={actions.removeAdjustment} />}
@@ -1732,6 +1781,7 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
     {state.reminderSettings && <ReminderSettingsDialog settings={state.reminderSettings} error={state.settingsError} isBusy={state.settingsBusy} onClose={actions.closeReminders} onChange={actions.setReminders} onSave={() => actions.saveReminders(state.reminderSettings!)} />}
     {state.editingAccount && <AccountEditDialog account={state.editingAccount} email={state.accountEmail} error={state.settingsError} isBusy={state.settingsBusy} isValid={accountIsValid} onClose={actions.closeAccount} onChange={actions.setAccount} onSave={() => actions.saveAccount(state.editingAccount!)} />}
     {state.finishingContract && state.contract && <TerminateContractDialog endDate={state.endDate} error={state.contractError} isBusy={state.contractBusy} onClose={actions.closeTermination} onEndDateChange={actions.setEndDate} onTerminate={() => actions.terminateContract(state.contract!.id)} />}
+    {state.editingProperty && state.editingPropertyId !== null && <PropertyEditDialog property={state.editingProperty} error={state.settingsError} isBusy={state.settingsBusy} isValid={propertyIsValid} onClose={actions.closePropertyEditor} onChange={actions.setProperty} onSave={() => actions.saveProperty(state.editingPropertyId!, state.editingProperty!)} />}
     {state.archivingProperty && <ArchivePropertyDialog property={state.archivingProperty} error={state.archiveError} isBusy={state.archiveBusy} onClose={actions.closePropertyArchive} onArchive={() => actions.archiveProperty(state.archivingProperty!)} />}
     {state.reviewingPayment && <PaymentReviewDialog row={state.reviewingPayment} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentReview} onViewReceipt={actions.viewReceipt} onRejectPayment={actions.rejectPayment} onConfirmPayment={actions.confirmPayment} />}
     {state.registeringPayment && <PaymentRegistrationDialog row={state.registeringPayment} file={state.paymentFile} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentRegistration} onFileChange={actions.setPaymentFile} onRegister={(file) => actions.registerPayment(state.registeringPayment!.invoiceId, file)} />}
@@ -1747,6 +1797,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const [localView, setLocalView] = useState<OwnerView>(initialView);
   const [detail, setDetail] = useState<Detail>(null);
   const [wizard, setWizard] = useState<Creation>(null);
+  // La propiedad desde la que se abrió «Crear contrato», para no volver a pedirla.
+  const [wizardPropertyId, setWizardPropertyId] = useState<number | undefined>(undefined);
   const [selected, setSelected] = useState("rivadavia");
   const [conditionsOpen, setConditionsOpen] = useState(false);
   // El cambio programado del contrato abierto: el sucesor en SCHEDULED, o null.
@@ -1778,6 +1830,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const [editandoAvisos, setEditandoAvisos] = useState<ReminderSettingsResponse | null>(null);
   const [editandoCuenta, setEditandoCuenta] = useState<UserUpdateRequest | null>(null);
   const [editandoInquilino, setEditandoInquilino] = useState<TenantRequest | null>(null);
+  const [editandoPropiedad, setEditandoPropiedad] = useState<PropertyRequest | null>(null);
+  const [propiedadEditadaId, setPropiedadEditadaId] = useState<number | null>(null);
   const [inquilinoEditadoId, setInquilinoEditadoId] = useState<number | null>(null);
   const [archivandoInquilino, setArchivandoInquilino] = useState<TenantRow | null>(null);
   const [ajustando, setAjustando] = useState<FilaCobranza | null>(null);
@@ -1964,7 +2018,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     setWizard(null);
     setDetail(null);
   }
-  function beginCreation(kind: Creation) { setDetail(null); setWizard(kind); }
+  function beginCreation(kind: Creation, propertyId?: number) { setDetail(null); setWizardPropertyId(propertyId); setWizard(kind); }
   function editarInquilino(tenant: TenantRow) {
     setErrorAjustes(null);
     setAvisoGuardado(null);
@@ -1976,6 +2030,48 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       email: tenant.email,
       phoneNumber: tenant.telefono,
     });
+  }
+  function editarPropiedad(property: PropertyResponse) {
+    setErrorAjustes(null);
+    setPropiedadEditadaId(property.id);
+    // El PUT reemplaza la propiedad entera: lo que este formulario no edita
+    // (código postal, coordenadas) viaja igual para no borrarlo.
+    setEditandoPropiedad({
+      street: property.street,
+      number: property.number,
+      floorUnit: property.floorUnit,
+      city: property.city,
+      province: property.province,
+      postalCode: property.postalCode,
+      latitude: property.latitude,
+      longitude: property.longitude,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      coveredArea: property.coveredArea,
+      petsAllowed: property.petsAllowed,
+      furnished: property.furnished,
+      category: property.category,
+    });
+  }
+  async function guardarPropiedadEditada(id: number, datos: PropertyRequest) {
+    setErrorAjustes(null);
+    setGuardandoAjustes(true);
+    try {
+      await AlquiaBackendClient.properties.update(id, {
+        ...datos,
+        street: datos.street.trim(),
+        number: datos.number.trim(),
+        floorUnit: datos.floorUnit?.trim() || undefined,
+        city: datos.city.trim(),
+        province: datos.province.trim(),
+      });
+      setEditandoPropiedad(null);
+      setRecargaPropiedades((n) => n + 1);
+    } catch (err) {
+      setErrorAjustes(mensajeErrorDePropiedad(err));
+    } finally {
+      setGuardandoAjustes(false);
+    }
   }
   function prepararArchivoDeInquilino(tenant: TenantRow) {
     setErrorAjustes(null);
@@ -2196,9 +2292,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   const wizardDestinations: Record<Exclude<Creation, null>, OwnerView> = { property: "propiedades", tenant: "inquilinos", contract: "contratos" };
   const wizardKind = wizard ?? "contract";
-  const renderWizard = () => <CreationWizard kind={wizardKind} demo={demo} onClose={() => setWizard(null)} onNewTenant={() => beginCreation("tenant")} onComplete={() => go(wizardDestinations[wizardKind])} />;
+  const renderWizard = () => <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} onClose={() => setWizard(null)} onNewTenant={() => beginCreation("tenant")} onComplete={() => go(wizardDestinations[wizardKind])} />;
   const detailContent: Record<Exclude<Detail, null>, () => React.ReactNode> = {
-    property: () => <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => beginCreation("contract")} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} />,
+    property: () => <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => beginCreation("contract", demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
     contract: () => <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} paymentLink={enlace} demoLinkCopied={linkCopied} errorMessage={errorContrato} isFinishing={finalizando} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => setLinkCopied(true)} onCopyPaymentLink={(contractId) => void copiarEnlace(contractId)} onResendPaymentLink={(contractId) => void reenviarEnlace(contractId)} onDownloadDocument={(contract) => void descargarDocumento(contract)} onRemoveDocument={(contractId) => void quitarDocumento(contractId)} onAttachDocument={(contractId, file) => void adjuntarDocumento(contractId, file)} />,
     tenant: () => <TenantDetail selectedId={selected} tenants={inquilinos} hasError={inquilinosError} paymentLink={enlace} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => beginCreation("contract")} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => void copiarEnlace(contractId)} />,
   };
@@ -2243,6 +2339,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     contract: loadedContract(cargaContrato),
     endDate: fechaFin,
     archivingProperty: archivando,
+    editingProperty: editandoPropiedad,
+    editingPropertyId: propiedadEditadaId,
     reviewingPayment: enRevision,
     registeringPayment: aRegistrar,
     paymentFile: archivo,
@@ -2279,6 +2377,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     closeTermination: () => setFinalizando(false),
     setEndDate: setFechaFin,
     terminateContract: (id) => void finalizarContrato(id),
+    closePropertyEditor: () => setEditandoPropiedad(null),
+    setProperty: setEditandoPropiedad,
+    saveProperty: (id, property) => void guardarPropiedadEditada(id, property),
     closePropertyArchive: () => setArchivando(null),
     archiveProperty: (property) => void archivarPropiedad(property),
     closePaymentReview: () => setEnRevision(null),

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import type { InvoiceResponse, PropertyResponse } from "@/lib/backend-types";
@@ -12,7 +12,7 @@ vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { list: vi.fn() },
     contracts: { list: vi.fn() },
-    properties: { list: vi.fn(), archive: vi.fn() },
+    properties: { list: vi.fn(), archive: vi.fn(), update: vi.fn() },
     invoices: { list: vi.fn() },
   },
 }));
@@ -369,5 +369,59 @@ describe("archivar", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockArchive).not.toHaveBeenCalled();
+  });
+});
+
+// --- Editar ---
+
+describe("editar", () => {
+  const mockUpdate = vi.mocked(AlquiaBackendClient.properties.update);
+
+  async function abrirDialogo() {
+    conDatos([MITRE]);
+    render(<OwnerWorkspace initialView="propiedades" />);
+    await userEvent.click(await screen.findByText("Mitre 78"));
+    await userEvent.click(await screen.findByRole("button", { name: /Editar/ }));
+  }
+
+  it("abre con los datos de la propiedad", async () => {
+    await abrirDialogo();
+
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByPlaceholderText("Calle")).toHaveValue("Mitre");
+    expect(within(dialogo).getByPlaceholderText("Ciudad")).toHaveValue("San Isidro");
+    expect(within(dialogo).getByLabelText("Tipo")).toHaveValue("COMMERCIAL_PREMISES");
+  });
+
+  it("guarda los cambios y vuelve a pedir la lista", async () => {
+    await abrirDialogo();
+    mockUpdate.mockResolvedValueOnce({} as never);
+    const dialogo = screen.getByRole("dialog");
+
+    await userEvent.clear(within(dialogo).getByPlaceholderText("Número"));
+    await userEvent.type(within(dialogo).getByPlaceholderText("Número"), "80");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    expect(mockUpdate).toHaveBeenCalledWith(2, expect.objectContaining({ street: "Mitre", number: "80", city: "San Isidro", province: "Buenos Aires", category: "COMMERCIAL_PREMISES", coveredArea: 52 }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("no deja guardar sin ciudad", async () => {
+    await abrirDialogo();
+    const dialogo = screen.getByRole("dialog");
+
+    await userEvent.clear(within(dialogo).getByPlaceholderText("Ciudad"));
+
+    expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeDisabled();
+  });
+
+  it("explica el 400 y deja el diálogo abierto", async () => {
+    await abrirDialogo();
+    mockUpdate.mockRejectedValueOnce(new ApiError(400, "Validation failed"));
+
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Verifique los datos");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
