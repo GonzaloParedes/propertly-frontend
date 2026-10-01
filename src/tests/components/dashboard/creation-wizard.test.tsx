@@ -693,6 +693,22 @@ describe("asistente de propiedad · ciudad y provincia", () => {
   });
 });
 
+describe("asistente de propiedad · dirección que el buscador no encuentra", () => {
+  it("con «Usarla igual» pide número, ciudad y provincia antes de dejar seguir", async () => {
+    mockAutocompletar.mockResolvedValue([]);
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Calle Inexistente");
+    await userEvent.click(await screen.findByRole("button", { name: "Usarla igual" }));
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Número"), "123");
+    await userEvent.type(screen.getByLabelText("Ciudad"), "Chivilcoy");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Provincia"), "Buenos Aires");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+});
+
 describe("asistente de contrato · propiedad preseleccionada", () => {
   it("arranca en el paso del inquilino con la propiedad ya elegida", async () => {
     mockPropiedades.mockResolvedValue([MITRE, COLON]);

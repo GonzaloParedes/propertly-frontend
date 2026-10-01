@@ -518,7 +518,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
   }
   function propertyBloqueado(): boolean {
-    if (step === 1) return !direccion || !direccion.city.trim() || !direccion.province.trim();
+    if (step === 1) return !direccion || !direccion.number.trim() || !direccion.city.trim() || !direccion.province.trim();
     if (step === 2) return categoria === null;
     return false;
   }
@@ -574,7 +574,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     try {
       await AlquiaBackendClient.properties.create({
         street: direccion.street,
-        number: direccion.number,
+        number: direccion.number.trim(),
         // El piso y el departamento son un campo aparte del número de calle.
         floorUnit: unidad.trim() || undefined,
         city: direccion.city.trim(),
@@ -645,10 +645,15 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     if (step === 1) {
       return <>
       <h1>¿Dónde queda la propiedad?</h1>
-      <p>Busque la dirección. Si la ciudad o la provincia no aparecen, complételas a mano.</p>
+      <p>Busque la dirección. Si el número, la ciudad o la provincia no aparecen, complételos a mano.</p>
       <div className="owner-wizard-stack">
         <AddressField demo={demo} value={direccion} onSelect={setDireccion} onClear={() => setDireccion(null)} />
         {direccion && (<>
+          <label className="owner-wizard-field">
+            <span>Número</span>
+            <input required inputMode="numeric" placeholder="Ej: 950" value={direccion.number}
+              onChange={(e) => setDireccion({ ...direccion, number: e.target.value })} />
+          </label>
           <label className="owner-wizard-field">
             <span>Ciudad</span>
             <input required placeholder="Ej: Morón" value={direccion.city}
