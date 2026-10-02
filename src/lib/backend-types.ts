@@ -320,9 +320,22 @@ export interface TenantCalendarInvoiceResponse extends InvoiceResponse {
   canSubmitPayment: boolean;
 }
 
+/** Importe proyectado, todavía no emitido ni confirmado como cuota. */
+export interface TenantCalendarPreInvoiceResponse {
+  contractId: number;
+  period: string;
+  amount: number;
+}
+
 export interface TenantCalendarResponse {
+  /** Identidad mínima, derivada de la sesión del enlace para el encabezado. */
+  tenant: {
+    firstName: string;
+    lastName: string;
+  };
   coverage: TenantCalendarCoverage[];
   invoices: TenantCalendarInvoiceResponse[];
+  preInvoices: TenantCalendarPreInvoiceResponse[];
 }
 
 export interface InvoiceAdjustmentRequest {

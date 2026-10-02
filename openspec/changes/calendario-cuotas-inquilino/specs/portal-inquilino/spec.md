@@ -53,6 +53,16 @@ acciones que correspondan. La ubicación mensual SHALL usar `invoice.period`, no
 de vencimiento. El portal SHALL permitir navegar entre los años cubiertos por la cadena
 y los años con cuotas, incluyendo una elección directa de año.
 
+El encabezado SHALL saludar con `tenant.firstName` y `tenant.lastName` recibidos en el
+calendario. SHALL NOT solicitar ni mostrar un identificador, datos de contacto, fiscales,
+del propietario o de la propiedad para ese fin.
+
+#### Scenario: Saludo desde la sesión
+
+- **WHEN** el calendario devuelve `tenant.firstName: "Lucía"` y
+  `tenant.lastName: "Fernández"`
+- **THEN** el encabezado muestra «Hola, Lucía Fernández»
+
 #### Scenario: Contrato largo
 
 - **WHEN** el contrato abarca varios años y el inquilino abre el portal
@@ -119,10 +129,16 @@ un mes sin cuota como deuda.
 - **WHEN** el fin efectivo cae en septiembre y un mes posterior no tiene cuota
 - **THEN** ese mes dice «Después del contrato» y no ofrece detalle ni pago
 
-#### Scenario: Mes dentro del contrato sin cuota
+#### Scenario: Mes dentro del contrato sin importe
 
-- **WHEN** un mes dentro de la vigencia no tiene `InvoiceResponse`
+- **WHEN** un mes dentro de la vigencia no tiene `InvoiceResponse` ni `preInvoice`
 - **THEN** dice «Sin cuota generada», sin monto ni estado de deuda
+
+#### Scenario: Importe pendiente de confirmación
+
+- **WHEN** un mes dentro de la vigencia tiene una `preInvoice` y no tiene factura emitida
+- **THEN** muestra su importe como «Importe a confirmar»
+- **AND** no lo presenta como vencido, no muestra vencimiento ni permite comprobante
 
 #### Scenario: Hueco entre contratos relacionados
 

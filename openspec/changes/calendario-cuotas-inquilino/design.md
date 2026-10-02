@@ -30,6 +30,7 @@ vínculos predecesor/sucesor del contrato del enlace y devuelve:
 
 ```json
 {
+  "tenant": { "firstName": "Lucía", "lastName": "Fernández" },
   "coverage": [
     { "startDate": "2025-06-15", "effectiveEndDate": "2025-09-30" },
     { "startDate": "2025-10-01", "effectiveEndDate": "2027-05-31" }
@@ -38,6 +39,9 @@ vínculos predecesor/sucesor del contrato del enlace y devuelve:
     { "id": 10, "contractId": 1, "period": "2025-09-01", "dueDate": "2025-09-10",
       "baseAmount": 410000, "total": 410000, "status": "DUE", "confirmed": true,
       "adjustments": [], "payments": [], "canSubmitPayment": true }
+  ],
+  "preInvoices": [
+    { "contractId": 2, "period": "2025-11-01", "amount": 450000 }
   ]
 }
 ```
@@ -45,6 +49,8 @@ vínculos predecesor/sucesor del contrato del enlace y devuelve:
 Los dos enlaces de la cadena devuelven el mismo calendario completo, incluso después
 del reemplazo. Otros contratos del mismo inquilino sin vínculo predecesor/sucesor
 quedan excluidos. Los sucesores `SCHEDULED` no aparecen hasta que se activan.
+`tenant` se deriva de la sesión del enlace y permite el saludo del encabezado; no es
+un identificador ni incluye datos de contacto, fiscales, de propiedad o propietario.
 `GET /tenant/invoices` conserva su forma actual para otros consumidores. El portal
 usará `GET /tenant/calendar` y volverá a consultarlo después de subir un comprobante.
 `401` conserva el mensaje genérico del enlace inválido; otros errores no se presentan
@@ -53,15 +59,18 @@ como ausencia de cuotas.
 ## Proyección de meses
 
 Se comparan períodos `YYYY-MM`, sin convertir fechas ISO a medianoche de JavaScript.
-`invoice.period` ubica la cuota en el mes; `dueDate` sólo informa cuándo vence. Cada
+`invoice.period` ubica la cuota en el mes; `dueDate` sólo informa cuándo vence. Una
+`preInvoice.period` ubica un importe conocido pero todavía no emitido ni confirmado;
+`amount` es una proyección de renta base y puede cambiar con ajustes. Cada
 intervalo de `coverage` incluye los meses de sus fechas de inicio y fin. El primer mes
 de cada intervalo posterior al primero muestra una indicación discreta «Cambiaron las
-condiciones», incluso si todavía no tiene cuota. No muestra montos proyectados ni
-compite visualmente con el estado de pago.
+condiciones», incluso si todavía no tiene cuota. Un importe pendiente se presenta como
+«Importe a confirmar», sin estado de deuda, vencimiento, detalle de pago ni comprobante.
 
 | Situación del mes | Presentación | Acción |
 |---|---|---|
 | Tiene una cuota | Estado obtenido de `estadoDeCuota` | Abre el detalle actual |
+| Tiene `preInvoice` pero no cuota | Importe y «Importe a confirmar» | Ninguna |
 | Antes del primer intervalo | «Antes del contrato», atenuado | Ninguna |
 | Dentro de cualquier intervalo, sin cuota | «Sin cuota generada», neutro | Ninguna |
 | Entre intervalos, sin cuota | «Sin contrato vigente», atenuado | Ninguna |
@@ -87,9 +96,9 @@ exista un sucesor activo, el inquilino pueda subir el comprobante de esa cuota h
 si está confirmada y no tiene un pago activo. El detalle usa la misma acción «Subir
 comprobante» y puede añadir una aclaración breve: «Esta cuota corresponde a condiciones
 anteriores y sigue pendiente». El front no inventa elegibilidad: usa
-`invoice.canSubmitPayment` y el `POST /tenant/payments` debe aceptar exactamente esos
-casos. Esta es una **modificación solicitada** a la propuesta backend, que hoy rechaza
-cualquier pago de un contrato `SUPERSEDED`.
+`invoice.canSubmitPayment` y el `POST /tenant/payments` aceptan exactamente esos
+casos, según la spec acordada de `GET /tenant/calendar`; el front no reinterpreta esa
+regla.
 
 Si la cadena completa ya terminó y no hay sucesor activo, se mantiene la regla actual:
 historial y comprobantes legibles, sin nuevas cargas. Las cuotas impagas permanecen
@@ -100,7 +109,8 @@ visibles con su estado; se orienta al inquilino a consultar al propietario.
 El calendario se carga después de establecer la sesión. Si la consulta falla, se
 muestra un error con opción de reintentar; no se dibuja un calendario que afirme que
 faltan cuotas. `invoices: []` con `coverage` válido sí muestra los 12 meses
-clasificados por vigencia.
+clasificados por vigencia; si además llega una `preInvoice`, muestra su importe como
+pendiente de confirmación.
 
 El detalle conserva el comportamiento actual: desglose de ajustes; aviso de importe que
 puede cambiar cuando `confirmed=false`; estado y motivo del comprobante; volver a subir

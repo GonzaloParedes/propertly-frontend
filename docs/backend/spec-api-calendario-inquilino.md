@@ -12,22 +12,25 @@ sigue explicando el problema original.
   cadena efectiva completa de predecesores y sucesores vinculados. El enlace original
   y cada enlace sucesor muestran el mismo historial. Otro contrato del mismo inquilino
   sin vínculo explícito queda fuera.
-- **Meses y estados.** `coverage` permite clasificar meses sin cuota; `invoices`
-  conserva todas las cuotas, incluso varias del mismo período. El front ubica cada una
-  por `period` y muestra `dueDate` en su detalle. Un sucesor `SCHEDULED` no aparece
-  antes de activarse.
+- **Meses y estados.** `coverage` permite clasificar meses sin importe; `invoices`
+  conserva todas las cuotas, incluso varias del mismo período. `preInvoices` aporta
+  `{ contractId, period, amount }` cuando existe un importe proyectado todavía no
+  emitido ni confirmado. El front ubica cada elemento por `period`; una factura tiene
+  prioridad sobre su proyección consumida y una proyección se muestra como «Importe a
+  confirmar», sin acciones de pago. Un sucesor `SCHEDULED` no aparece antes de activarse.
+- **Encabezado personal.** `tenant.firstName` y `tenant.lastName` se derivan de la
+  sesión del enlace, sin enviar `tenantId` ni `contractId`. El portal los usa sólo
+  para el saludo; la respuesta no expone contacto, datos fiscales, propietario ni
+  propiedad.
 - **Marca visual discreta.** El primer mes de cada intervalo sucesor efectivo dice
   «Cambiaron las condiciones». No sustituye el estado de pago ni anticipa importes.
 - **Elegibilidad por cuota.** El front muestra «Subir comprobante» sólo cuando
   `canSubmitPayment` es verdadero. El endpoint de escritura sigue siendo autoridad
   si el estado cambia después de la lectura.
 
-## Ajuste solicitado: cuotas anteriores impagas
+## Regla aceptada: cuotas anteriores impagas
 
-La spec backend actual deja `canSubmitPayment: false` para todas las cuotas de un
-contrato `SUPERSEDED` y rechaza sus nuevos comprobantes. Para el inquilino esto deja
-una cuota vencida visible pero sin forma de acreditarla dentro de Alquia, aunque el
-contrato sucesor esté activo. Pedimos esta regla más precisa:
+La spec backend implementada permite la siguiente regla precisa:
 
 > Mientras la cadena tenga un sucesor `ACTIVE`, una cuota impaga y confirmada de un
 > contrato predecesor `SUPERSEDED`, cuyo período corresponda a su intervalo efectivo,
@@ -38,6 +41,5 @@ No se reabre una cuota pagada ni se recrean cuotas que el cambio de condiciones 
 eliminado. Cuando la cadena ya no tiene contrato activo, se conserva el comportamiento
 histórico: lectura de cuotas y comprobantes, sin nuevas cargas.
 
-Para cerrar este punto, backend debe ajustar en su spec la regla de `canSubmitPayment`,
-la autorización de `POST /tenant/payments` y su criterio de aceptación 6. El resto de
-la propuesta de seguridad y alcance de cadena nos sirve.
+`canSubmitPayment` y la autorización de `POST /tenant/payments` ya aplican esta misma
+regla. El front sólo la representa.

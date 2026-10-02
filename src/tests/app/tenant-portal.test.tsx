@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import TenantPortalPage from "@/app/tenant-portal/page";
 import { ApiError } from "@/lib/api";
-import type { TenantCalendarResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
+import type { TenantCalendarPreInvoiceResponse, TenantCalendarResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
 
 let searchParams = new URLSearchParams();
 
@@ -35,9 +35,10 @@ function cuota(over: Partial<TenantCalendarInvoiceResponse> = {}): TenantCalenda
 
 function calendario(
   invoices: TenantCalendarInvoiceResponse[] = [],
-  coverage: TenantCalendarResponse["coverage"] = [{ startDate: "2026-01-01", effectiveEndDate: "2026-12-31" }]
+  coverage: TenantCalendarResponse["coverage"] = [{ startDate: "2026-01-01", effectiveEndDate: "2026-12-31" }],
+  preInvoices: TenantCalendarPreInvoiceResponse[] = []
 ): TenantCalendarResponse {
-  return { coverage, invoices };
+  return { tenant: { firstName: "Lucía", lastName: "Fernández" }, coverage, invoices, preInvoices };
 }
 
 async function abrirMes(nombre: string, anio: number, estado: string) {
@@ -72,7 +73,8 @@ describe("canje del token y carga del calendario", () => {
   it("muestra el mensaje genérico si el enlace no tiene sesión válida", async () => {
     mockCalendario.mockRejectedValueOnce(new ApiError(401, "Invalid or expired access link"));
     render(<TenantPortalPage />);
-    expect(await screen.findByText("Este enlace no funciona")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Este enlace ya no está disponible" })).toBeInTheDocument();
+    expect(screen.getByText("Pídale a su propietario que le envíe un enlace nuevo para ingresar.")).toBeInTheDocument();
   });
 
   it("indica la carga mientras espera el calendario", () => {
@@ -87,6 +89,7 @@ describe("canje del token y carga del calendario", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Reintentar" }));
     expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
+    expect(screen.getByText("Hola, Lucía Fernández")).toBeInTheDocument();
     expect(mockCalendario).toHaveBeenCalledTimes(2);
   });
 });
@@ -97,7 +100,7 @@ describe("calendario anual", () => {
     render(<TenantPortalPage />);
 
     expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
-    expect(screen.getAllByText("Sin cuota generada")).toHaveLength(11);
+    expect(screen.getAllByText("Sin cuota")).toHaveLength(11);
     await abrirMes("Septiembre", 2026, "Vencida");
     const detalle = screen.getByRole("region", { name: "Detalle de septiembre 2026" });
     expect(within(detalle).getByText("Vence el 10/09/2026")).toBeInTheDocument();
@@ -111,10 +114,10 @@ describe("calendario anual", () => {
 
     expect(await screen.findByRole("heading", { name: "Cuotas de 2025" })).toBeInTheDocument();
     expect(screen.getAllByText("Antes del contrato")).toHaveLength(5);
-    expect(screen.getAllByText("Sin cuota generada")).toHaveLength(7);
+    expect(screen.getAllByText("Sin cuota")).toHaveLength(7);
   });
 
-  it("permite navegar entre años y elegir uno directamente", async () => {
+  it("permite elegir otro año directamente desde la tira de años", async () => {
     mockCalendario.mockResolvedValueOnce(calendario([], [
       { startDate: "2025-06-15", effectiveEndDate: "2025-12-31" },
       { startDate: "2026-01-01", effectiveEndDate: "2027-05-31" },
@@ -122,11 +125,30 @@ describe("calendario anual", () => {
     render(<TenantPortalPage />);
 
     expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Año siguiente" }));
+    await userEvent.click(screen.getByRole("button", { name: "2027" }));
     expect(screen.getByRole("heading", { name: "Cuotas de 2027" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Elegir año, actual 2027" }));
     await userEvent.click(screen.getByRole("button", { name: "2025" }));
     expect(screen.getByRole("heading", { name: "Cuotas de 2025" })).toBeInTheDocument();
+  });
+
+  it("muestra una pre-cuota como importe a confirmar, sin deuda ni acciones de pago", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([], undefined, [{ contractId: 100, period: "2026-09-01", amount: 478691 }]));
+    render(<TenantPortalPage />);
+
+    expect(await screen.findByText("$ 478.691")).toBeInTheDocument();
+    expect(screen.getByText("Importe a confirmar")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Septiembre 2026/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Subir comprobante" })).not.toBeInTheDocument();
+  });
+
+  it("tolera la respuesta anterior mientras el backend aún no devuelve pre-cuotas", async () => {
+    mockCalendario.mockResolvedValueOnce({
+      coverage: [{ startDate: "2026-01-01", effectiveEndDate: "2026-12-31" }],
+      invoices: [],
+    } as unknown as TenantCalendarResponse);
+    render(<TenantPortalPage />);
+
+    expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
   });
 
   it("marca el primer mes del sucesor una vez que sus condiciones están vigentes", async () => {
@@ -137,7 +159,7 @@ describe("calendario anual", () => {
     render(<TenantPortalPage />);
 
     await screen.findByRole("heading", { name: "Cuotas de 2026" });
-    await userEvent.click(screen.getByRole("button", { name: "Año anterior" }));
+    await userEvent.click(screen.getByRole("button", { name: "2025" }));
     expect(await screen.findByText("Cambiaron las condiciones")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Octubre 2025: A vencer. Ver detalle" })).toBeInTheDocument();
   });
@@ -150,10 +172,17 @@ describe("calendario anual", () => {
     render(<TenantPortalPage />);
 
     await screen.findByRole("heading", { name: "Cuotas de 2026" });
-    await userEvent.click(screen.getByRole("button", { name: "Año anterior" }));
+    await userEvent.click(screen.getByRole("button", { name: "2025" }));
     await abrirMes("Septiembre", 2025, "Vencida");
     expect(screen.getByText("Esta cuota sigue pendiente aunque las condiciones hayan cambiado.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Subir comprobante" })).toBeInTheDocument();
+  });
+
+  it("no presenta una cuota vencida actual como perteneciente a condiciones anteriores", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "DUE" })]));
+    render(<TenantPortalPage />);
+    await abrirMes("Septiembre", 2026, "Vencida");
+    expect(screen.queryByText("Esta cuota sigue pendiente aunque las condiciones hayan cambiado.")).not.toBeInTheDocument();
   });
 
   it("no ofrece subir cuando canSubmitPayment es falso", async () => {

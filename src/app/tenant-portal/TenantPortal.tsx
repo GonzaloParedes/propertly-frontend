@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { ApiError } from "@/lib/api";
 import {
   aniosDelCalendario,
   buildFilasInquilino,
+  buildImportesPendientesInquilino,
   mesesDelCalendario,
   type FilaCuotaInquilino,
   type MesCalendarioInquilino,
@@ -34,6 +36,17 @@ function Icon({ name, size = 20 }: Readonly<{ name: "check" | "clock" | "alert" 
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" {...common}>{paths[name]}</svg>;
 }
 
+function AccessLinkArt() {
+  const line = { fill: "none", stroke: "currentColor", strokeWidth: 2.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  return <svg className="tenant-access-state__art" aria-hidden="true" viewBox="0 0 120 96">
+    <circle cx="60" cy="50" r="42" fill="var(--indigo-suave)" />
+    <path {...line} d="M39 76h42M43 76V48l17-14 17 14v28M53 76V62h14v14" />
+    <path {...line} stroke="var(--rosa)" strokeWidth="4" d="m42 47 18-16 18 16" />
+    <path {...line} d="m74 38 5-5a8 8 0 0 1 11 11l-5 5M82 50l-5 5a8 8 0 0 1-11-11l5-5" />
+    <path {...line} d="m72 39 10 10" />
+  </svg>;
+}
+
 function EstadoBadge({ children }: Readonly<{ children: FilaCuotaInquilino["estado"] }>) {
   const config: Record<FilaCuotaInquilino["estado"], ["ok" | "warn" | "bad" | "info", Parameters<typeof Icon>[0]["name"]]> = {
     Pagada: ["ok", "check"], "A vencer": ["warn", "clock"], Vencida: ["bad", "alert"], "Pago a confirmar": ["info", "clock"],
@@ -44,8 +57,9 @@ function EstadoBadge({ children }: Readonly<{ children: FilaCuotaInquilino["esta
 
 function etiquetaMesVacio(mes: MesCalendarioInquilino): string {
   const etiquetas = {
-    "antes-del-contrato": "Antes del contrato", "sin-cuota-generada": "Sin cuota generada",
+    "antes-del-contrato": "Antes del contrato", "sin-cuota-generada": "Sin cuota",
     "sin-contrato-vigente": "Sin contrato vigente", "despues-del-contrato": "Después del contrato", cuota: "",
+    "importe-pendiente-confirmacion": "",
   } as const;
   return etiquetas[mes.estado];
 }
@@ -108,7 +122,6 @@ export default function TenantPortal() {
   const [estado, setEstado] = useState<Estado>({ fase: "cargando" });
   const [anioSeleccionado, setAnioSeleccionado] = useState<number | null>(null);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string | null>(null);
-  const [mostrarAnios, setMostrarAnios] = useState(false);
   const [subiendo, setSubiendo] = useState<number | null>(null);
   const [viendoComprobante, setViendoComprobante] = useState<number | null>(null);
   const toast = useToast();
@@ -164,13 +177,14 @@ export default function TenantPortal() {
   }
 
   if (estado.fase === "cargando") return <main className="tenant-portal tenant-portal--centrado"><Cargando>Cargando sus cuotas…</Cargando></main>;
-  if (estado.fase === "invalido") return <main className="tenant-portal tenant-portal--centrado"><div className="tenant-mensaje"><Icon name="alert" size={28} /><h1>Este enlace no funciona</h1><p>Puede haber vencido o no ser válido. Pídale a su propietario que se lo reenvíe.</p></div></main>;
+  if (estado.fase === "invalido") return <main className="tenant-portal tenant-portal--centrado tenant-portal--access"><section className="tenant-access-state" aria-labelledby="tenant-access-title"><div className="tenant-access-state__brand"><Image src="/logos/lockup.svg" alt="Alquia" width={102} height={36} priority /><span>Portal de inquilinos</span></div><AccessLinkArt /><p className="tenant-access-state__eyebrow">Acceso al portal</p><h1 id="tenant-access-title">Este enlace ya no está disponible</h1><p className="tenant-access-state__description">No pudimos validar este acceso.</p><div className="tenant-access-state__next"><b>¿Qué puede hacer?</b><span>Pídale a su propietario que le envíe un enlace nuevo para ingresar.</span></div></section></main>;
   if (estado.fase === "error") return <main className="tenant-portal tenant-portal--centrado"><div className="tenant-mensaje" role="alert"><Icon name="alert" size={28} /><h1>No pudimos cargar sus cuotas</h1><p>Inténtelo de nuevo más tarde.</p><button type="button" className="tenant-link-boton" onClick={() => void cargarCalendario()}>Reintentar</button></div></main>;
 
   const filas = buildFilasInquilino(estado.calendar.invoices);
-  const anios = aniosDelCalendario(estado.calendar.coverage, filas);
+  const importesPendientes = buildImportesPendientesInquilino(estado.calendar.preInvoices);
+  const anios = aniosDelCalendario(estado.calendar.coverage, filas, importesPendientes);
   const anio = anioSeleccionado && anios.includes(anioSeleccionado) ? anioSeleccionado : anioInicial(anios);
-  const meses = mesesDelCalendario(anio, estado.calendar.coverage, filas);
+  const meses = mesesDelCalendario(anio, estado.calendar.coverage, filas, importesPendientes);
   const mesSeleccionado = meses.find((mes) => mes.periodoISO === periodoSeleccionado);
 
   function seleccionarMes(mes: MesCalendarioInquilino) {
@@ -182,27 +196,25 @@ export default function TenantPortal() {
     setPeriodoSeleccionado(null);
     if (periodo) requestAnimationFrame(() => botonesMesRef.current[periodo]?.focus());
   }
-  function cambiarAnio(siguiente: number) {
-    if (!anios.includes(siguiente)) return;
-    setAnioSeleccionado(siguiente); setPeriodoSeleccionado(null); setMostrarAnios(false);
+  function seleccionarAnio(siguiente: number) {
+    setAnioSeleccionado(siguiente); setPeriodoSeleccionado(null);
   }
 
+  const nombreInquilino = estado.calendar.tenant ? `${estado.calendar.tenant.firstName} ${estado.calendar.tenant.lastName}`.trim() : null;
+
   return <main className="tenant-portal tenant-portal--calendar">
-    <header className="tenant-header"><h1>Sus cuotas</h1><p>Elija un mes para ver el detalle de su cuota y su comprobante.</p></header>
+    <header className="tenant-header">{nombreInquilino && <p className="tenant-header__greeting">Hola, {nombreInquilino}</p>}<h1>Sus cuotas</h1><p>Elija un mes para ver el detalle de su cuota y su comprobante.</p></header>
     <section className="tenant-calendar" aria-label="Cuotas por año">
       <div className="tenant-calendar__bar">
         <div><h2>Cuotas de {anio}</h2><p>Seleccione un mes para ver su cuota.</p></div>
         <div className="tenant-calendar__years" aria-label="Cambiar año">
-          <button type="button" onClick={() => cambiarAnio(anio - 1)} disabled={anio === anios[0]} aria-label="Año anterior">‹</button>
-          <div className="tenant-calendar__year-picker"><button type="button" className="tenant-calendar__year-current" onClick={() => setMostrarAnios(!mostrarAnios)} aria-expanded={mostrarAnios} aria-label={`Elegir año, actual ${anio}`}>{anio} <span aria-hidden="true">⌄</span></button>
-            {mostrarAnios && <div className="tenant-calendar__year-options" aria-label="Años disponibles">{anios.map((opcion) => <button type="button" key={opcion} aria-current={opcion === anio ? "date" : undefined} onClick={() => cambiarAnio(opcion)}>{opcion}</button>)}</div>}
-          </div>
-          <button type="button" onClick={() => cambiarAnio(anio + 1)} disabled={anio === anios[anios.length - 1]} aria-label="Año siguiente">›</button>
+          {anios.length === 1 ? <span className="tenant-calendar__year-static">{anio}</span> : anios.map((opcion) => <button type="button" className={`tenant-calendar__year-tab${opcion === anio ? " tenant-calendar__year-tab--selected" : ""}`} key={opcion} aria-pressed={opcion === anio} onClick={() => seleccionarAnio(opcion)}>{opcion}</button>)}
         </div>
       </div>
       <div className="tenant-calendar__months">
         {meses.map((mes) => {
-          if (mes.estado !== "cuota") return <div className={`tenant-calendar__month tenant-calendar__month--empty tenant-calendar__month--${mes.estado}`} key={mes.periodoISO}><span className="tenant-calendar__month-name">{mes.nombre}</span><span>{etiquetaMesVacio(mes)}</span></div>;
+          if (mes.estado === "importe-pendiente-confirmacion") return <div className="tenant-calendar__month tenant-calendar__month--estimate" key={mes.periodoISO}><span className="tenant-calendar__month-name">{mes.nombre}</span>{mes.cambioDeCondiciones && <span className="tenant-calendar__change">Cambiaron las condiciones</span>}<span className="tenant-calendar__estimate-amounts">{mes.importesPendientes.map((importe) => <span key={`${importe.contractId}-${importe.periodoISO}`}>{importe.monto}</span>)}</span><span className="tenant-calendar__estimate-status">Importe a confirmar</span></div>;
+          if (mes.estado !== "cuota") return <div className={`tenant-calendar__month tenant-calendar__month--empty tenant-calendar__month--${mes.estado}`} key={mes.periodoISO}><span className="tenant-calendar__month-name">{mes.nombre}</span><span className="tenant-calendar__empty-status">{etiquetaMesVacio(mes)}</span></div>;
           const estados = [...new Set(mes.cuotas.map((fila) => fila.estado))];
           const etiqueta = mes.cuotas.length === 1 ? estados[0] : `${mes.cuotas.length} cuotas`;
           const tono = estados.includes("Vencida") ? "bad" : estados.includes("Pago a confirmar") ? "info" : estados.includes("A vencer") ? "warn" : "ok";
@@ -214,8 +226,9 @@ export default function TenantPortal() {
       {mesSeleccionado?.cuotas.length ? <section ref={detalleRef} className="tenant-calendar__detail" aria-label={`Detalle de ${mesSeleccionado.nombre.toLowerCase()} ${anio}`} tabIndex={-1}>
         <div className="tenant-calendar__detail-head"><div><p>{mesSeleccionado.cuotas.length > 1 ? "Detalle de las cuotas" : "Detalle de la cuota"}</p><h3>{mesSeleccionado.nombre} {anio}</h3></div><button type="button" className="tenant-calendar__close" onClick={cerrarDetalle}>Cerrar <span aria-hidden="true">×</span></button></div>
         <div className="tenant-calendar__invoices">{mesSeleccionado.cuotas.map((fila) => <CuotaDetalle key={fila.invoiceId} fila={fila} perteneceACondicionesAnteriores={fila.estado === "Vencida" && estado.calendar.coverage.slice(1).some((tramo) => fila.periodoISO < tramo.startDate.slice(0, 7))} subiendo={subiendo} viendoComprobante={viendoComprobante} inputsRef={inputsRef} subirComprobante={subirComprobante} verComprobante={verComprobante} />)}</div>
+        {mesSeleccionado.importesPendientes.length > 0 && <section className="tenant-calendar__pending" aria-label="Importes pendientes de confirmación"><p>Importe pendiente de confirmación</p>{mesSeleccionado.importesPendientes.map((importe) => <span key={`${importe.contractId}-${importe.periodoISO}`}>{importe.monto}</span>)}<small>El importe puede cambiar antes de emitirse la cuota.</small></section>}
       </section> : null}
     </section>
-    <p className="tenant-calendar__note">«Antes del contrato» y «Después del contrato» son meses fuera de la vigencia. «Sin cuota generada» todavía no tiene un importe para consultar.</p>
+    <p className="tenant-calendar__note">«Antes del contrato» y «Después del contrato» son meses fuera de la vigencia. «Sin cuota» todavía no tiene un importe para consultar. Un «Importe a confirmar» aún no es una cuota.</p>
   </main>;
 }

@@ -6,6 +6,7 @@ import type {
   PaymentResponse,
   TenantCalendarCoverage,
   TenantCalendarInvoiceResponse,
+  TenantCalendarPreInvoiceResponse,
 } from "@/lib/backend-types";
 
 /**
@@ -36,8 +37,16 @@ export interface FilaCuotaInquilino {
   puedeSubirComprobante: boolean;
 }
 
+/** Un importe conocido para el mes, aún no emitido como cuota ni confirmado. */
+export interface ImportePendienteInquilino {
+  contractId: number;
+  periodoISO: string;
+  monto: string;
+}
+
 export type EstadoMesCalendario =
   | "cuota"
+  | "importe-pendiente-confirmacion"
   | "antes-del-contrato"
   | "sin-cuota-generada"
   | "sin-contrato-vigente"
@@ -48,6 +57,7 @@ export interface MesCalendarioInquilino {
   nombre: string;
   estado: EstadoMesCalendario;
   cuotas: FilaCuotaInquilino[];
+  importesPendientes: ImportePendienteInquilino[];
   cambioDeCondiciones: boolean;
 }
 
@@ -99,6 +109,16 @@ export function buildFilasInquilino(
   }));
 }
 
+export function buildImportesPendientesInquilino(
+  preInvoices: TenantCalendarPreInvoiceResponse[] | undefined
+): ImportePendienteInquilino[] {
+  return (preInvoices ?? []).map((preInvoice) => ({
+    contractId: preInvoice.contractId,
+    periodoISO: preInvoice.period.slice(0, 7),
+    monto: formatearMonto(preInvoice.amount),
+  }));
+}
+
 function mesISO(fecha: string): string {
   return fecha.slice(0, 7);
 }
@@ -112,7 +132,8 @@ function estaCubierto(periodo: string, coverage: TenantCalendarCoverage[]): bool
 /** Años que el selector debe poder mostrar: vigencia e historial de cuotas. */
 export function aniosDelCalendario(
   coverage: TenantCalendarCoverage[],
-  filas: FilaCuotaInquilino[]
+  filas: FilaCuotaInquilino[],
+  importesPendientes: ImportePendienteInquilino[] = []
 ): number[] {
   const anios = new Set<number>();
   for (const intervalo of coverage) {
@@ -121,6 +142,7 @@ export function aniosDelCalendario(
     }
   }
   for (const fila of filas) anios.add(Number(fila.periodoISO.slice(0, 4)));
+  for (const importe of importesPendientes) anios.add(Number(importe.periodoISO.slice(0, 4)));
   return [...anios].sort((a, b) => a - b);
 }
 
@@ -132,13 +154,20 @@ export function aniosDelCalendario(
 export function mesesDelCalendario(
   anio: number,
   coverage: TenantCalendarCoverage[],
-  filas: FilaCuotaInquilino[]
+  filas: FilaCuotaInquilino[],
+  importesPendientes: ImportePendienteInquilino[] = []
 ): MesCalendarioInquilino[] {
   const porPeriodo = new Map<string, FilaCuotaInquilino[]>();
   for (const fila of filas) {
     const existentes = porPeriodo.get(fila.periodoISO) ?? [];
     existentes.push(fila);
     porPeriodo.set(fila.periodoISO, existentes);
+  }
+  const pendientesPorPeriodo = new Map<string, ImportePendienteInquilino[]>();
+  for (const importe of importesPendientes) {
+    const existentes = pendientesPorPeriodo.get(importe.periodoISO) ?? [];
+    existentes.push(importe);
+    pendientesPorPeriodo.set(importe.periodoISO, existentes);
   }
   const inicio = coverage[0] ? mesISO(coverage[0].startDate) : undefined;
   const fin = coverage.at(-1) ? mesISO(coverage.at(-1)!.effectiveEndDate) : undefined;
@@ -147,8 +176,10 @@ export function mesesDelCalendario(
   return NOMBRES_MESES.map((nombre, indice) => {
     const periodoISO = `${anio}-${String(indice + 1).padStart(2, "0")}`;
     const cuotas = porPeriodo.get(periodoISO) ?? [];
+    const pendientes = pendientesPorPeriodo.get(periodoISO) ?? [];
     let estado: EstadoMesCalendario;
     if (cuotas.length > 0) estado = "cuota";
+    else if (pendientes.length > 0) estado = "importe-pendiente-confirmacion";
     else if (inicio && periodoISO < inicio) estado = "antes-del-contrato";
     else if (fin && periodoISO > fin) estado = "despues-del-contrato";
     else if (estaCubierto(periodoISO, coverage)) estado = "sin-cuota-generada";
@@ -158,6 +189,7 @@ export function mesesDelCalendario(
       nombre,
       estado,
       cuotas,
+      importesPendientes: pendientes,
       cambioDeCondiciones: iniciosSucesores.has(periodoISO),
     };
   });

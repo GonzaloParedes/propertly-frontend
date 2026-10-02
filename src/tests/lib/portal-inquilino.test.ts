@@ -1,11 +1,12 @@
 import {
   aniosDelCalendario,
   buildFilasInquilino,
+  buildImportesPendientesInquilino,
   mesesDelCalendario,
   ordenarCuotas,
   puedeSubirComprobante,
 } from "@/lib/portal-inquilino";
-import type { InvoiceResponse, PaymentResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
+import type { InvoiceResponse, PaymentResponse, TenantCalendarInvoiceResponse, TenantCalendarPreInvoiceResponse } from "@/lib/backend-types";
 
 function cuota(over: Partial<InvoiceResponse> = {}): InvoiceResponse {
   return {
@@ -131,6 +132,13 @@ describe("mesesDelCalendario", () => {
 
     expect(meses[8].estado).toBe("cuota");
     expect(meses[9].cambioDeCondiciones).toBe(true);
+  });
+
+  it("muestra una pre-cuota como importe pendiente y prioriza la factura emitida", () => {
+    const preInvoices: TenantCalendarPreInvoiceResponse[] = [{ contractId: 2, period: "2025-10-01", amount: 450000 }];
+    const importes = buildImportesPendientesInquilino(preInvoices);
+    expect(mesesDelCalendario(2025, coverage, [], importes)[9].estado).toBe("importe-pendiente-confirmacion");
+    expect(mesesDelCalendario(2025, coverage, buildFilasInquilino([cuota({ period: "2025-10-01" })]), importes)[9].estado).toBe("cuota");
   });
 
   it("incluye años de cobertura y de una cuota histórica fuera del intervalo", () => {

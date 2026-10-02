@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { aniosDelCalendario, buildFilasInquilino, mesesDelCalendario } from "@/lib/portal-inquilino";
-import type { TenantCalendarCoverage, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
+import { aniosDelCalendario, buildFilasInquilino, buildImportesPendientesInquilino, mesesDelCalendario } from "@/lib/portal-inquilino";
+import type { TenantCalendarCoverage, TenantCalendarInvoiceResponse, TenantCalendarPreInvoiceResponse } from "@/lib/backend-types";
 import "./calendario-inquilino.css";
 
 // Datos ficticios para probar el historial de un contrato que fue reemplazado.
@@ -95,24 +95,26 @@ const CUOTAS: TenantCalendarInvoiceResponse[] = [
 ];
 
 const FILAS = buildFilasInquilino(CUOTAS);
-const ANIOS = aniosDelCalendario(COBERTURA, FILAS);
+const PRECUOTAS: TenantCalendarPreInvoiceResponse[] = [
+  { contractId: 2, period: "2027-04-01", amount: 510000 },
+  { contractId: 2, period: "2027-05-01", amount: 510000 },
+];
+const IMPORTES_PENDIENTES = buildImportesPendientesInquilino(PRECUOTAS);
+const ANIOS = aniosDelCalendario(COBERTURA, FILAS, IMPORTES_PENDIENTES);
 
 export default function CalendarioInquilino() {
   const [anio, setAnio] = useState(2026);
-  const [mostrarAnios, setMostrarAnios] = useState(false);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string | null>(null);
   const detalleRef = useRef<HTMLElement>(null);
   const botonesRef = useRef<Record<number, HTMLButtonElement | null>>({});
 
-  const meses = mesesDelCalendario(anio, COBERTURA, FILAS);
+  const meses = mesesDelCalendario(anio, COBERTURA, FILAS, IMPORTES_PENDIENTES);
   const mesSeleccionado = meses.find((mes) => mes.periodoISO === periodoSeleccionado);
   const filaSeleccionada = mesSeleccionado?.cuotas[0] ?? null;
 
-  function cambiarAnio(siguiente: number) {
-    if (!ANIOS.includes(siguiente)) return;
+  function seleccionarAnio(siguiente: number) {
     setAnio(siguiente);
     setPeriodoSeleccionado(null);
-    setMostrarAnios(false);
   }
 
   function abrirMes(periodo: string) {
@@ -135,7 +137,7 @@ export default function CalendarioInquilino() {
 
       <header className="calinquilino__encabezado">
         <div>
-          <p className="calinquilino__eyebrow">Su alquiler, mes a mes</p>
+          <p className="calinquilino__eyebrow">Hola, Lucía Fernández</p>
           <h1>Sus cuotas</h1>
           <p>Elija un mes para ver cuánto vence y el detalle del pago.</p>
           <p className="calinquilino__contrato">El contrato comenzó en junio de 2025 y cambió sus condiciones en octubre.</p>
@@ -149,32 +151,20 @@ export default function CalendarioInquilino() {
             <p>Seleccione un mes para ver su cuota.</p>
           </div>
           <div className="calinquilino__anios" aria-label="Cambiar año">
-            <button type="button" onClick={() => cambiarAnio(anio - 1)} disabled={anio === ANIOS[0]} aria-label="Año anterior">‹</button>
-            <div className="calinquilino__selector">
-              <button type="button" className="calinquilino__anio-actual" onClick={() => setMostrarAnios(!mostrarAnios)} aria-expanded={mostrarAnios} aria-label={`Elegir año, actual ${anio}`}>
-                {anio} <span aria-hidden="true">⌄</span>
-              </button>
-              {mostrarAnios && (
-                <div className="calinquilino__opciones" aria-label="Años disponibles">
-                  {ANIOS.map((opcion) => (
-                    <button type="button" key={opcion} aria-current={opcion === anio ? "date" : undefined} onClick={() => cambiarAnio(opcion)}>{opcion}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button type="button" onClick={() => cambiarAnio(anio + 1)} disabled={anio === ANIOS[ANIOS.length - 1]} aria-label="Año siguiente">›</button>
+            {ANIOS.map((opcion) => <button type="button" className={`calinquilino__anio-tab${opcion === anio ? " calinquilino__anio-tab--elegido" : ""}`} key={opcion} aria-pressed={opcion === anio} onClick={() => seleccionarAnio(opcion)}>{opcion}</button>)}
           </div>
         </div>
 
         <div className="calinquilino__meses">
           {meses.map((mes, indice) => {
             const fila = mes.cuotas[0];
+            if (mes.estado === "importe-pendiente-confirmacion") return <div className="calinquilino__mes calinquilino__mes--estimado" key={mes.nombre}><span className="calinquilino__mes-nombre">{mes.nombre}</span><span className="calinquilino__estimado-montos">{mes.importesPendientes.map((importe) => <span key={`${importe.contractId}-${importe.periodoISO}`}>{importe.monto}</span>)}</span><span className="calinquilino__estimado-estado">Importe a confirmar</span></div>;
             if (!fila) {
-              const etiquetaVacia = mes.estado === "antes-del-contrato" ? "Antes del contrato" : mes.estado === "despues-del-contrato" ? "Después del contrato" : mes.estado === "sin-contrato-vigente" ? "Sin contrato vigente" : "Sin cuota generada";
+              const etiquetaVacia = mes.estado === "antes-del-contrato" ? "Antes del contrato" : mes.estado === "despues-del-contrato" ? "Después del contrato" : mes.estado === "sin-contrato-vigente" ? "Sin contrato vigente" : "Sin cuota";
               return (
                 <div className="calinquilino__mes calinquilino__mes--vacio" key={mes.nombre}>
                   <span className="calinquilino__mes-nombre">{mes.nombre}</span>
-                  <span>{etiquetaVacia}</span>
+                  <span className="calinquilino__vacio-estado">{etiquetaVacia}</span>
                 </div>
               );
             }
@@ -224,7 +214,7 @@ export default function CalendarioInquilino() {
           </section>
         )}
       </section>
-      <p className="calinquilino__nota">«Antes del contrato» significa que aún no correspondía pagar. «Sin cuota generada» significa que todavía no hay un importe para consultar. El historial muestra las cuotas previas y posteriores al cambio.</p>
+      <p className="calinquilino__nota">«Antes del contrato» significa que aún no correspondía pagar. «Sin cuota» significa que todavía no hay un importe para consultar. El historial muestra las cuotas previas y posteriores al cambio.</p>
     </main>
   );
 }

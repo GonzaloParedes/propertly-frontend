@@ -257,6 +257,7 @@ export type {
   TenantCalendarResponse,
   TenantCalendarCoverage,
   TenantCalendarInvoiceResponse,
+  TenantCalendarPreInvoiceResponse,
   ActiveContractSummary,
   Currency,
   DepositType,
