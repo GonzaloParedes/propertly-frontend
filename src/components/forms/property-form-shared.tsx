@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Home, Tag, Users } from "lucide-react";
 import Field from "@/components/ui/Field";
 import SectionCard from "@/components/ui/SectionCard";
 import Button from "@/components/ui/Button";
@@ -22,32 +23,15 @@ export interface PropertyFormValues {
 }
 
 export function HomeIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 11.5 12 4l9 7.5" />
-      <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
-    </svg>
-  );
+  return <Home aria-hidden="true" className="size-5" />;
 }
 
 export function TagIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.6 3H6.4A2.4 2.4 0 0 0 4 5.4v6.2c0 .6.24 1.18.66 1.6l9.6 9.6a2.2 2.2 0 0 0 3.1 0l4.24-4.24a2.2 2.2 0 0 0 0-3.1l-9.6-9.6A2.4 2.4 0 0 0 12.6 3Z" />
-      <circle cx="8.7" cy="8.7" r="1.4" fill="currentColor" stroke="none" />
-    </svg>
-  );
+  return <Tag aria-hidden="true" className="size-5" />;
 }
 
 export function UsersIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" />
-      <circle cx="17" cy="9" r="2.8" />
-      <path d="M21.5 20c0-2.9-1.9-5.3-4.5-6.1" />
-    </svg>
-  );
+  return <Users aria-hidden="true" className="size-5" />;
 }
 
 let idCounter = 0;
@@ -118,9 +102,7 @@ export function PropertyCreatedScreen({ property, onCreateAnother }: Readonly<{
         className="mb-4 flex size-16 items-center justify-center rounded-full"
         style={{ background: "var(--success-bg)", color: "var(--success)" }}
       >
-        <svg aria-hidden="true" className="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
+        <Check aria-hidden="true" className="size-8" strokeWidth={2.5} />
       </div>
       <h2 className="font-heading mb-2 text-[22px] font-bold">Inmueble creado</h2>
       <p className="mb-6" style={{ color: "var(--text-2)" }}>

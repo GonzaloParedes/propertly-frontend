@@ -9,6 +9,7 @@ import type { AddressSuggestionResponse, PropertyCategory, PropertyResponse, Ten
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
 import Counter from "@/components/ui/Counter";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
+import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
 import { correoValido } from "@/lib/correo";
 import { formatearDireccion } from "@/lib/tenant-rows";
 
@@ -192,20 +193,9 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
   );
 }
 
-function Icon({ name, size = 22 }: Readonly<{ name: "x" | "arrow" | "check" | "building" | "users" | "plus" | "minus" | "trend" | "search" | "alert"; size?: number }>) {
-  const paths = {
-    search: <><circle cx="11" cy="11" r="7" /><path d="m20.5 20.5-4.5-4.5" /></>,
-    x: <path d="m6.5 6.5 11 11m0-11-11 11" />,
-    arrow: <><path d="M4 12h15" /><path d="m13.5 6 5.5 6-5.5 6" /></>,
-    check: <path strokeWidth="2.6" d="m20 6.5-10.5 10L4 11.5" />,
-    building: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 7.5h2M13 7.5h2M9 11.5h2M13 11.5h2M9 15.5h2M13 15.5h2" /></>,
-    users: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5.2a3.5 3.5 0 0 1 0 5.6M17.5 14.4a6.5 6.5 0 0 1 4 5.6" /></>,
-    plus: <path d="M12 5v14M5 12h14" />,
-    minus: <path d="M5 12h14" />,
-    trend: <path d="m3.5 17.5 5-5.5 4 3.5 7.5-8M15.5 7.5h5v5" />,
-    alert: <><path d="M12 3.5 2.5 20.5h19L12 3.5Z" /><path d="M12 10v4.5M12 17.8v.1" /></>,
-  };
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
+/** En el wizard los íconos van un pelín más grandes (22) que el resto de la app (21). */
+function Icon({ name, size = 22 }: Readonly<{ name: IconName; size?: number }>) {
+  return <AppIcon name={name} size={size} />;
 }
 
 function Option({ selected, icon, title, description, onClick }: Readonly<{ selected: boolean; icon: "building" | "users" | "trend"; title: string; description: string; onClick: () => void }>) {

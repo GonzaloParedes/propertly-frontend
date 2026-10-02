@@ -10,6 +10,7 @@ import type {
   Property,
   Tenant,
 } from "@/lib/types";
+import { Building2, Check, FileText, TrendingUp, Upload } from "lucide-react";
 import { DEPOSIT_TYPES } from "@/lib/mock-data";
 import { inputClass, selectClass, fieldBorderStyle, labelClass } from "@/components/ui/field-styles";
 import Field from "@/components/ui/Field";
@@ -99,40 +100,19 @@ const SECTIONS = [
 ];
 
 function BuildingIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="3" width="16" height="18" rx="1" />
-      <path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01M9 16h.01M15 16h.01" />
-    </svg>
-  );
+  return <Building2 aria-hidden="true" className="size-5" />;
 }
 
 function TrendingUpIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 17 9 11 13 15 21 6" />
-      <polyline points="15 6 21 6 21 12" />
-    </svg>
-  );
+  return <TrendingUp aria-hidden="true" className="size-5" />;
 }
 
 function DocumentIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 2.5h8l4 4V21.5H6z" />
-      <path d="M14 2.5v4h4" />
-      <path d="M9 12h6M9 16h6" />
-    </svg>
-  );
+  return <FileText aria-hidden="true" className="size-5" />;
 }
 
 function UploadIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 16V4M7 9l5-5 5 5" />
-      <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-    </svg>
-  );
+  return <Upload aria-hidden="true" className="size-5" />;
 }
 
 function ToggleGroup<T extends string>({
@@ -267,9 +247,7 @@ export default function ContractForm() {
           className="mb-4 flex size-16 items-center justify-center rounded-full"
           style={{ background: "var(--success-bg)", color: "var(--success)" }}
         >
-          <svg aria-hidden="true" className="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
+          <Check aria-hidden="true" className="size-8" strokeWidth={2.5} />
         </div>
         <h2 className="font-heading mb-2 text-[22px] font-bold">Contrato creado</h2>
         <p className="mb-3" style={{ color: "var(--text-2)" }}>

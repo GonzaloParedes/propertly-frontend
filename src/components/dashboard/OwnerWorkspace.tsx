@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
 import CreationWizard from "@/components/dashboard/CreationWizard";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type {
+  AdjustmentResponse,
   ContractResponse,
   PropertyRequest,
   PropertyResponse,
@@ -72,7 +74,14 @@ import Counter from "@/components/ui/Counter";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { correoValido } from "@/lib/correo";
-import { calcularDelta, describirAjuste, describirDelta } from "@/lib/ajustes";
+import {
+  describirAjuste,
+  itemARequest,
+  totalPrevisualizado,
+  itemValido,
+  FORM_ITEM_VACIO,
+  type FormularioItem,
+} from "@/lib/ajustes";
 import { estadoDeContrato } from "@/lib/contratos";
 import { describirRecordatorios, resumenRecordatorios, DIAS_MAX, DIAS_MIN } from "@/lib/recordatorios";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
@@ -84,35 +93,6 @@ import { useAuth } from "@/context/auth-context";
 export type OwnerView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "configuracion";
 type Detail = "property" | "contract" | "tenant" | null;
 type Creation = "property" | "contract" | "tenant" | null;
-type IconName = "search" | "sliders" | "plus" | "building" | "file" | "card" | "users" | "check" | "clock" | "alert" | "x" | "arrow" | "link" | "download" | "edit" | "archive" | "receipt" | "calendar" | "trend" | "paperclip" | "copy";
-
-function Icon({ name, size = 21 }: Readonly<{ name: IconName; size?: number }>) {
-  const common = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  const paths: Record<IconName, React.ReactNode> = {
-    search: <><circle cx="11" cy="11" r="7" /><path d="M20.5 20.5 16 16" /></>,
-    sliders: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2.2" /><circle cx="10" cy="17" r="2.2" /></>,
-    plus: <path d="M12 5v14M5 12h14" />,
-    building: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 7.5h2M13 7.5h2M9 11.5h2M13 11.5h2M9 15.5h2M13 15.5h2M10 21v-2.5h4V21" /></>,
-    file: <><path d="M6 2.5h8l4 4V21.5H6z" /><path d="M14 2.5v4h4M9 12h6M9 16h6" /></>,
-    card: <><rect x="2.5" y="5.5" width="19" height="13" rx="2.5" /><path d="M2.5 10h19M6 14.5h4" /></>,
-    users: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5.2a3.5 3.5 0 0 1 0 5.6M17.5 14.4a6.5 6.5 0 0 1 4 5.6" /></>,
-    check: <path strokeWidth="2.6" d="m20 6.5-10.5 10L4 11.5" />,
-    clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5.2l3.2 2" /></>,
-    alert: <><path d="M12 3.5 2.5 20.5h19L12 3.5Z" /><path d="M12 10v4.5M12 17.8v.1" /></>,
-    x: <path strokeWidth="2.6" d="m6.5 6.5 11 11m0-11-11 11" />,
-    arrow: <><path d="M4 12h15" /><path d="m13.5 6 5.5 6-5.5 6" /></>,
-    link: <><path d="M10 13.5a4.5 4.5 0 0 0 6.36.14l2-2a4.5 4.5 0 0 0-6.36-6.36L10.85 6.42" /><path d="M14 10.5a4.5 4.5 0 0 0-6.36-.14l-2 2A4.5 4.5 0 0 0 12 18.72l1.15-1.14" /></>,
-    download: <><path d="M12 3v12" /><path d="m7.5 10.5 4.5 4.5 4.5-4.5M5 21h14" /></>,
-    edit: <><path d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5z" /><path d="m14.5 6.5 3 2.5" /></>,
-    archive: <path d="M4 7h16v13H4zM3 4h18v3H3zM10 12h4" />,
-    receipt: <><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></>,
-    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M7 3v4M17 3v4M3 10h18" /></>,
-    trend: <><path d="m3.5 17.5 5-5.5 4 3.5 7.5-8" /><path d="M15.5 7.5h5v5" /></>,
-    paperclip: <path d="m20 11-8.6 8.6a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.7 8.7a2 2 0 0 1-2.8-2.8L14.6 6.8" />,
-    copy: <><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
-  };
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" {...common}>{paths[name]}</svg>;
-}
 
 const properties = [
   { id: "rivadavia", address: "Av. Rivadavia 2340, 5.º A", city: "CABA", type: "Departamento", detail: "68 m² · 2 dormitorios · 1 baño", bedrooms: 2, area: 68, pets: false, furnished: false, tenant: "Jorge Paletta", rent: "$ 478.691", state: "Vencida" as const },
@@ -1600,35 +1580,45 @@ async function loadReminderSettings() {
 
 function InvoiceAdjustmentDialog({
   invoice,
-  adjustmentId,
-  amount,
-  reason,
-  delta,
+  form,
+  editingId,
   error,
   isBusy,
   onClose,
-  onAmountChange,
-  onReasonChange,
+  onFormChange,
+  onStartEdit,
   onRemove,
   onSave,
+  onCancelEdit,
 }: Readonly<{
   invoice: FilaCobranza;
-  adjustmentId: number | null;
-  amount: string;
-  reason: string;
-  delta: ReturnType<typeof calcularDelta>;
+  form: FormularioItem;
+  editingId: number | null;
   error: string | null;
   isBusy: boolean;
   onClose: () => void;
-  onAmountChange: (amount: string) => void;
-  onReasonChange: (reason: string) => void;
+  onFormChange: (form: FormularioItem) => void;
+  onStartEdit: (adjustment: AdjustmentResponse) => void;
   onRemove: (adjustmentId: number) => void;
   onSave: () => void;
+  onCancelEdit: () => void;
 }>) {
-  const isReady = Number(amount) > 0 && Boolean(reason.trim()) && delta !== null;
-  const title = adjustmentId === null ? "Ajustar el importe de la cuota" : "Cambiar un ajuste";
-  const saveLabel = isBusy ? "Guardando…" : "Guardar ajuste";
-  return <Dialog title={title} onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id}><dt>{line.nombre}{detail}</dt><dd>{line.efecto}<button type="button" className="owner-row__link" disabled={isBusy} onClick={() => onRemove(line.id)}>Quitar</button></dd></div>; })}<div><dt>Total actual</dt><dd><b>{formatearMonto(invoice.totalVigente)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field owner-wizard-field--amount"><span>$</span><input inputMode="numeric" aria-label="Importe final de la cuota" value={amount} onChange={(event) => onAmountChange(event.target.value.replace(/\D/g, ""))} /><span>final</span></label><label className="owner-wizard-field"><span>Motivo</span><input placeholder="Ej: reparación acordada" value={reason} onChange={(event) => onReasonChange(event.target.value)} /></label><output className="owner-wizard-help">{describirDelta(delta)}</output></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isReady} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  const total = totalPrevisualizado(invoice.importeBase, invoice.ajustes, form, editingId);
+  const puedeGuardar = itemValido(form, invoice.importeBase, invoice.ajustes, editingId);
+  const esPorcentaje = form.valueType === "PERCENTAGE";
+  const esSuma = form.kind === "SURCHARGE";
+  const saveLabel = isBusy ? "Guardando…" : editingId === null ? "Agregar ítem" : "Guardar ítem";
+  const previewLinea =
+    form.value > 0
+      ? describirAjuste(
+          { id: -1, name: form.nombre, kind: form.kind, valueType: form.valueType, value: form.value },
+          invoice.importeBase
+        )
+      : null;
+  const previewTexto = previewLinea
+    ? `Este ítem: ${previewLinea.efecto}${previewLinea.detalle ? ` · ${previewLinea.detalle}` : ""}`
+    : "Agregá un ítem: nombre, tipo (suma o resta) y valor (monto o porcentaje).";
+  return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><div className="owner-wizard-chips" role="group" aria-label="Suma o resta"><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></div><div className="owner-wizard-chips" role="group" aria-label="Tipo de valor"><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></div><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : "$"}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
 }
 
 function RemoveInvoiceAdjustmentDialog({ error, isBusy, onClose, onRemove }: Readonly<{ error: string | null; isBusy: boolean; onClose: () => void; onRemove: () => void }>) {
@@ -1825,10 +1815,6 @@ function overviewProjection(demo: boolean, projection: Proyeccion | "error" | nu
   return demo ? proyeccionDemo : projection;
 }
 
-function adjustmentDelta(row: FilaCobranza | null, amount: string) {
-  return row ? calcularDelta(Number(amount) || 0, row.totalVigente) : null;
-}
-
 function loadedContract(loadState: ContractDetailLoad): ContractResponse | null {
   return loadState !== null && "ok" in loadState ? loadState.ok : null;
 }
@@ -1836,8 +1822,7 @@ function loadedContract(loadState: ContractDetailLoad): ContractResponse | null 
 type WorkspaceDialogState = {
   adjusting: FilaCobranza | null;
   adjustmentId: number | null;
-  amount: string;
-  reason: string;
+  adjustmentForm: FormularioItem;
   removingAdjustment: number | null;
   editingTenant: TenantRequest | null;
   editingTenantId: number | null;
@@ -1868,8 +1853,9 @@ type WorkspaceDialogState = {
 
 type WorkspaceDialogActions = {
   closeAdjustment: () => void;
-  setAmount: (value: string) => void;
-  setReason: (value: string) => void;
+  setAdjustmentForm: (form: FormularioItem) => void;
+  startEditAdjustment: (adjustment: AdjustmentResponse) => void;
+  cancelAdjustmentEdit: () => void;
   chooseAdjustmentToRemove: (id: number) => void;
   saveAdjustment: () => void;
   closeRemoval: () => void;
@@ -1919,12 +1905,11 @@ function ContractConditionsDialog({ isOpen, contract, onClose, onProgrammed }: R
 }
 
 function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogState; actions: WorkspaceDialogActions }>) {
-  const delta = adjustmentDelta(state.adjusting, state.amount);
   const accountIsValid = isAccountValid(state.editingAccount);
   const tenantIsValid = isTenantValid(state.editingTenant);
   const propertyIsValid = isPropertyValid(state.editingProperty);
   return <>
-    {state.adjusting && <InvoiceAdjustmentDialog invoice={state.adjusting} adjustmentId={state.adjustmentId} amount={state.amount} reason={state.reason} delta={delta} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeAdjustment} onAmountChange={actions.setAmount} onReasonChange={actions.setReason} onRemove={actions.chooseAdjustmentToRemove} onSave={actions.saveAdjustment} />}
+    {state.adjusting && <InvoiceAdjustmentDialog invoice={state.adjusting} form={state.adjustmentForm} editingId={state.adjustmentId} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeAdjustment} onFormChange={actions.setAdjustmentForm} onStartEdit={actions.startEditAdjustment} onRemove={actions.chooseAdjustmentToRemove} onSave={actions.saveAdjustment} onCancelEdit={actions.cancelAdjustmentEdit} />}
     {state.removingAdjustment !== null && state.adjusting && <RemoveInvoiceAdjustmentDialog error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeRemoval} onRemove={actions.removeAdjustment} />}
     {state.editingTenant && state.editingTenantId !== null && <TenantEditDialog tenant={state.editingTenant} error={state.settingsError} isBusy={state.settingsBusy} isValid={tenantIsValid} onClose={actions.closeTenantEditor} onChange={actions.setTenant} onSave={() => actions.saveTenant(state.editingTenantId!, state.editingTenant!)} />}
     {state.archivingTenant && <ArchiveTenantDialog tenant={state.archivingTenant} error={state.settingsError} isBusy={state.settingsBusy} onClose={actions.closeTenantArchive} onArchive={() => actions.archiveTenant(state.archivingTenant!)} />}
@@ -1985,9 +1970,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const [propiedadEditadaId, setPropiedadEditadaId] = useState<number | null>(null);
   const [inquilinoEditadoId, setInquilinoEditadoId] = useState<number | null>(null);
   const [archivandoInquilino, setArchivandoInquilino] = useState<TenantRow | null>(null);
-  const [ajustando, setAjustando] = useState<FilaCobranza | null>(null);
-  const [importeFinal, setImporteFinal] = useState("");
-  const [motivoAjuste, setMotivoAjuste] = useState("");
+  const [ajustandoId, setAjustandoId] = useState<number | null>(null);
+  const [formItem, setFormItem] = useState<FormularioItem>(FORM_ITEM_VACIO);
   const [ajusteEditado, setAjusteEditado] = useState<number | null>(null);
   const [quitandoAjuste, setQuitandoAjuste] = useState<number | null>(null);
   const [recargaInquilinos, setRecargaInquilinos] = useState(0);
@@ -2103,6 +2087,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   const cobranzas = loadedData(demo, cobranzasDemo, cargaCobranzas);
   const cobranzasError = loadHasError(demo, cargaCobranzas);
+  // La cuota en edición se deriva por id desde la lista ya cargada, no se guarda
+  // una copia: así el diálogo refleja cada ítem agregado/editado/quitado apenas
+  // se recarga, sin re-apuntar un snapshot a mano.
+  const ajustando = ajustandoId === null ? null : cobranzas?.find((f) => f.invoiceId === ajustandoId) ?? null;
   const listaContratos = loadedData(demo, contratosDemo, cargaContratos);
   const contratosError = loadHasError(demo, cargaContratos);
 
@@ -2152,9 +2140,28 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   function prepararAjuste(fila: FilaCobranza) {
     setErrorAccion(null);
     setAjusteEditado(null);
-    setMotivoAjuste("");
-    setImporteFinal(String(fila.totalVigente));
-    setAjustando(fila);
+    setFormItem(FORM_ITEM_VACIO);
+    setAjustandoId(fila.invoiceId);
+  }
+  function editarAjuste(adjustment: AdjustmentResponse) {
+    setErrorAccion(null);
+    setAjusteEditado(adjustment.id);
+    setFormItem({
+      nombre: adjustment.name,
+      kind: adjustment.kind,
+      valueType: adjustment.valueType,
+      value: adjustment.value,
+    });
+  }
+  function cancelarEdicionAjuste() {
+    setErrorAccion(null);
+    setAjusteEditado(null);
+    setFormItem(FORM_ITEM_VACIO);
+  }
+  function cerrarAjuste() {
+    setAjustandoId(null);
+    setAjusteEditado(null);
+    setFormItem(FORM_ITEM_VACIO);
   }
   function registrarPago(fila: FilaCobranza) {
     setErrorAccion(null);
@@ -2337,7 +2344,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   /** Envuelve las acciones sobre ajustes: recargan la lista al terminar. */
-  async function accionDeAjuste(hacer: () => Promise<unknown>, alTerminar: (() => void) | undefined, exito: string) {
+  async function accionDeAjuste(hacer: () => Promise<unknown>, alTerminar?: () => void) {
     if (demo) return;
     setErrorAccion(null);
     setAccionEnCurso(true);
@@ -2345,11 +2352,13 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       await hacer();
       alTerminar?.();
       setRefresco((n) => n + 1);
-      toast.exito(exito);
     } catch (err) {
       let mensaje = mensajeDeErrorCobranza(err);
       if (err instanceof ApiError && err.message === "Cannot modify adjustments on a confirmed invoice") {
         mensaje = "La cuota quedó confirmada mientras editaba, así que su importe ya está cerrado.";
+      }
+      if (err instanceof ApiError && err.message === "Invoice total cannot be negative") {
+        mensaje = "El total de la cuota no puede quedar negativo.";
       }
       setErrorAccion(mensaje);
     } finally {
@@ -2472,29 +2481,28 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     inicio: () => <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} onCreateProperty={() => beginCreation("property")} onCreateContract={() => beginCreation("contract")} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };
   const content = <WorkspaceContent wizard={wizard} detail={detail} view={view} renderWizard={renderWizard} detailContent={detailContent} viewContent={viewContent} />;
-  const deltaAjuste = adjustmentDelta(ajustando, importeFinal);
   const guardarAjuste = () => {
-    if (!ajustando || !deltaAjuste) return;
-    const cuerpo = { name: motivoAjuste.trim(), ...deltaAjuste };
+    if (!ajustando) return;
+    const cuerpo = itemARequest(formItem);
     const guardar = ajusteEditado === null
       ? () => AlquiaBackendClient.invoices.addAdjustment(ajustando.invoiceId, cuerpo)
       : () => AlquiaBackendClient.invoices.editAdjustment(ajustando.invoiceId, ajusteEditado, cuerpo);
-    void accionDeAjuste(guardar, () => setAjustando(null), "Ajuste guardado.");
+    // No se cierra el diálogo: se limpia el formulario para seguir cargando ítems;
+    // la lista se actualiza sola al recargar (ajustando se deriva por id).
+    void accionDeAjuste(guardar, () => { setAjusteEditado(null); setFormItem(FORM_ITEM_VACIO); });
   };
 
   const quitarAjuste = () => {
     if (quitandoAjuste === null || !ajustando) return;
     void accionDeAjuste(
       () => AlquiaBackendClient.invoices.removeAdjustment(ajustando.invoiceId, quitandoAjuste),
-      () => { setQuitandoAjuste(null); setAjustando(null); },
-      "Ajuste quitado."
+      () => setQuitandoAjuste(null)
     );
   };
   const dialogState: WorkspaceDialogState = {
     adjusting: ajustando,
     adjustmentId: ajusteEditado,
-    amount: importeFinal,
-    reason: motivoAjuste,
+    adjustmentForm: formItem,
     removingAdjustment: quitandoAjuste,
     editingTenant: editandoInquilino,
     editingTenantId: inquilinoEditadoId,
@@ -2523,9 +2531,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     accountEmail: cuenta?.email,
   };
   const dialogActions: WorkspaceDialogActions = {
-    closeAdjustment: () => setAjustando(null),
-    setAmount: setImporteFinal,
-    setReason: setMotivoAjuste,
+    closeAdjustment: cerrarAjuste,
+    setAdjustmentForm: setFormItem,
+    startEditAdjustment: editarAjuste,
+    cancelAdjustmentEdit: cancelarEdicionAjuste,
     chooseAdjustmentToRemove: setQuitandoAjuste,
     saveAdjustment: guardarAjuste,
     closeRemoval: () => setQuitandoAjuste(null),

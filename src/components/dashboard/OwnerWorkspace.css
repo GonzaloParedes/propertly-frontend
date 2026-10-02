@@ -443,6 +443,22 @@
 .owner-dialog .owner-wizard-field--amount>span{font-size:15px}
 .owner-dialog .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-12)!important}
 .owner-dialog .owner-wizard-chips{margin-top:var(--esp-6)}
+.owner-wizard-actions{display:flex;gap:var(--esp-10);margin-top:var(--esp-16);justify-content:flex-end}
+
+/* Ítems del ajuste de cuota: cada línea del desglose lleva sus acciones
+   (Editar / Quitar) como botones compactos CON cuerpo —no texto suelto—,
+   siempre visibles (regla 5), con el anillo inset de la familia (regla 6) y
+   Quitar en tono danger con cuerpo (regla 7). Las acciones cuelgan debajo del
+   importe, alineadas a la derecha, para no apretar el monto en la misma línea. */
+.owner-ajuste-item{row-gap:var(--esp-8)}
+.owner-ajuste-item__acciones{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--esp-8);justify-content:flex-end;margin-top:var(--esp-2)}
+.owner-ajuste-accion{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 var(--esp-14);border:0;border-radius:999px;background:#fff;color:var(--indigo);box-shadow:inset 0 0 0 1.5px var(--borde-campo);cursor:pointer;font:600 14px var(--font-nunito-sans),sans-serif;transition:background .15s,box-shadow .15s}
+.owner-ajuste-accion:hover{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-ajuste-accion--quitar{color:var(--error);box-shadow:inset 0 0 0 1.5px rgba(206,63,83,.42)}
+.owner-ajuste-accion--quitar:hover{background:var(--error-bg);box-shadow:inset 0 0 0 2px var(--error)}
+.owner-ajuste-accion:focus-visible{outline:3px solid var(--lila);outline-offset:2px}
+.owner-ajuste-accion[disabled]{background:#fff;color:var(--gris);box-shadow:inset 0 0 0 1.5px var(--borde);opacity:.55;cursor:not-allowed}
+@media (max-width:620px){.owner-ajuste-item__acciones{justify-content:flex-start}}
 .owner-dialog .owner-wizard-counter button{width:44px;height:44px;border-radius:12px}
 .owner-dialog .owner-wizard-counter strong{font-size:26px}
 @media (max-width:620px){

@@ -16,6 +16,7 @@ import {
 import type { TenantCalendarResponse } from "@/lib/backend-types";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import { Icon } from "@/components/ui/Icon";
 import "./tenant-portal.css";
 
 type Estado =
@@ -23,18 +24,6 @@ type Estado =
   | { fase: "invalido" }
   | { fase: "error" }
   | { fase: "listo"; calendar: TenantCalendarResponse };
-
-function Icon({ name, size = 20 }: Readonly<{ name: "check" | "clock" | "alert" | "file" | "download"; size?: number }>) {
-  const common = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  const paths: Record<string, React.ReactNode> = {
-    check: <path d="M20 6 9 17l-5-5" />,
-    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></>,
-    alert: <><path d="M12 9v4M12 16.5h.01" /><path d="M10.3 3.9 1.8 18a1.7 1.7 0 0 0 1.5 2.6h17.4a1.7 1.7 0 0 0 1.5-2.6L13.7 3.9a1.7 1.7 0 0 0-3.4 0Z" /></>,
-    file: <><path d="M6 2.5h8l4 4V21.5H6z" /><path d="M14 2.5v4h4" /></>,
-    download: <><path d="M12 4v11m0 0-4-4m4 4 4-4" /><path d="M4 19.5h16" /></>,
-  };
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" {...common}>{paths[name]}</svg>;
-}
 
 function AccessLinkArt() {
   const line = { fill: "none", stroke: "currentColor", strokeWidth: 2.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
