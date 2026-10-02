@@ -178,6 +178,27 @@ describe("cobranza del mes", () => {
     ).toBeInTheDocument();
   });
 
+  it("un monto en cero no ocupa lugar en la barra", async () => {
+    conDatos({
+      invoices: [
+        cuota({ id: 1, status: "PAID", total: 500, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500 }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const barra = await screen.findByLabelText("50% cobrado, 0% por vencer y 50% vencido");
+    expect(barra.children).toHaveLength(2);
+  });
+
+  it("con cuotas pero todo en cero, la barra queda neutra", async () => {
+    conDatos({ invoices: [cuota({ id: 1, status: "PENDING", total: 0 })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const barra = await screen.findByLabelText("Sin montos emitidos");
+    expect(barra.children).toHaveLength(0);
+  });
+
   it("un mes sin cuotas lo dice en vez de mostrar ceros", async () => {
     conDatos({ invoices: [] });
     render(<OwnerWorkspace initialView="inicio" />);

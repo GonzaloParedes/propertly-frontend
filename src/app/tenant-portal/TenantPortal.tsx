@@ -198,6 +198,23 @@ export default function TenantPortal() {
 
               <div className="tenant-cuota__monto">
                 <span>{fila.monto}</span>
+                {fila.ajustes.length > 0 && (
+                  <dl className="tenant-cuota__desglose" aria-label={`Detalle del importe de ${fila.periodo}`}>
+                    <div>
+                      <dt>Importe del contrato</dt>
+                      <dd>{fila.importeBase}</dd>
+                    </div>
+                    {fila.ajustes.map((ajuste) => (
+                      <div key={ajuste.id}>
+                        <dt>
+                          {ajuste.nombre}
+                          {ajuste.detalle && <small> · {ajuste.detalle}</small>}
+                        </dt>
+                        <dd>{ajuste.efecto}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
                 {!fila.confirmada && (
                   <small className="tenant-cuota__aviso">
                     El propietario todavía no cerró este importe: puede cambiar.

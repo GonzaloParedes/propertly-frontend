@@ -232,6 +232,32 @@ describe("subir comprobante", () => {
     expect(mensaje.textContent).toBe("El propietario rechazó este comprobante");
   });
 
+  it("un ajuste muestra el motivo que cargó el propietario junto al monto", async () => {
+    mockInvoices.mockResolvedValueOnce([
+      cuota({
+        baseAmount: 478691,
+        total: 480022,
+        adjustments: [
+          { id: 7, name: "Reparación del calefón", kind: "SURCHARGE", valueType: "FIXED_AMOUNT", value: 1331 },
+        ],
+      }),
+    ]);
+    render(<TenantPortalPage />);
+
+    const desglose = await screen.findByLabelText(/Detalle del importe/);
+    const linea = within(desglose).getByText("Reparación del calefón").closest("div")!;
+    expect(linea).toHaveTextContent(/\+\s*\$\s*1\.331/);
+    expect(within(desglose).getByText("Importe del contrato")).toBeInTheDocument();
+  });
+
+  it("sin ajustes no muestra desglose", async () => {
+    mockInvoices.mockResolvedValueOnce([cuota()]);
+    render(<TenantPortalPage />);
+
+    await screen.findByText("Sus cuotas");
+    expect(screen.queryByLabelText(/Detalle del importe/)).not.toBeInTheDocument();
+  });
+
   it("si la subida falla, avisa y conserva el estado anterior", async () => {
     mockInvoices.mockResolvedValueOnce([cuota()]);
     mockCrearPago.mockRejectedValueOnce(new ApiError(400, "Boom"));

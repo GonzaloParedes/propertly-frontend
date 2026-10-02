@@ -662,7 +662,7 @@ describe("asistente de contrato · día de vencimiento", () => {
     await userEvent.click(screen.getByRole("button", { name: "Día 5" }));
     await userEvent.type(screen.getByLabelText("Alquiler mensual"), "400000");
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
-    await userEvent.type(screen.getByLabelText("Fecha de inicio"), "2026-09-01");
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-09-01" } });
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
     await userEvent.type(screen.getByLabelText(/Porcentaje/), "8");
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));

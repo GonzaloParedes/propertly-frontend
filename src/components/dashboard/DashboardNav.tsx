@@ -9,6 +9,9 @@ import { AlquiaBackendClient } from "@/lib/backend-client";
 import { contarCuotasPendientes } from "@/lib/cobranzas";
 
 type IconName = "home" | "building" | "file" | "card" | "users" | "settings" | "menu" | "close" | "logout";
+/** Tocar el ítem de la pantalla actual no remonta la página: el workspace escucha esto para volver al listado. */
+export const NAV_RESET_EVENT = "alquia:nav-reset";
+
 export type WorkspaceView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "configuracion";
 
 function Icon({ name, size = 21 }: Readonly<{ name: IconName; size?: number }>) {
@@ -92,7 +95,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
               <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
             </button>
           ) : (
-            <Link href={item.href} onClick={() => setOpen(false)} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
+            <Link href={item.href} onClick={() => { setOpen(false); window.dispatchEvent(new Event(NAV_RESET_EVENT)); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
               <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
             </Link>
           )}
