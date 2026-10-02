@@ -705,8 +705,14 @@ function CollectionsView({
   onViewReceipt,
   onRegisterPayment,
 }: CollectionsViewProps) {
-  const visibleCollections = collections ? filtrar(collections, filter) : [];
-  const counts = collections ? contarPorFiltro(collections) : { todas: 0, vencidas: 0, aVencer: 0, pagadas: 0 };
+  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const properties = collections ? [...new Set(collections.map((item) => item.direccion))].sort((a, b) => a.localeCompare(b, "es")) : [];
+  const activeProperties = selectedProperties.filter((direccion) => properties.includes(direccion));
+  const toggleProperty = (direccion: string) => setSelectedProperties(activeProperties.includes(direccion) ? activeProperties.filter((d) => d !== direccion) : [...activeProperties, direccion]);
+  const scoped = collections ? (activeProperties.length > 0 ? collections.filter((item) => activeProperties.includes(item.direccion)) : collections) : null;
+  const visibleCollections = scoped ? filtrar(scoped, filter) : [];
+  const counts = scoped ? contarPorFiltro(scoped) : { todas: 0, vencidas: 0, aVencer: 0, pagadas: 0 };
   const filters: [FiltroCobranza, string][] = [["todas", "Todas"], ["vencidas", "Vencidas"], ["aVencer", "A vencer"], ["pagadas", "Pagadas"]];
 
   return <>
@@ -1236,7 +1242,7 @@ function DemoContractDetail({ demoContract, demoLinkCopied, onBack, onCopyDemoLi
 }>) {
   const document = demoContract.document
     ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{demoContract.document}</b><small>PDF · 2,4 MB</small></div><Button tone="quiet" small><Icon name="download" size={16} />Descargar</Button></div>
-    : <div className="owner-empty-callout"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><Button small>Adjuntar</Button></div>;
+    : <div className="owner-empty-callout owner-empty-callout--outline"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><Button small>Adjuntar</Button></div>;
   const linkLabel = demoLinkCopied ? "Copiado" : "Copiar enlace";
   return <><ContractBreadcrumb name={demoContract.property.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoContract.property.address}</h1><p>Contrato con {demoContract.property.tenant} · vigente hasta el {demoContract.end}</p></div><div className="owner-page-head__action"><Button tone="danger">Finalizar contrato</Button></div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{demoContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{demoContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {demoContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{demoContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{demoContract.property.tenant}</b></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b></span></div><Button tone="secondary" small onClick={onCopyDemoLink}><Icon name="copy" size={16} />{linkLabel}</Button></div></div><div className="owner-card"><h2>Documento firmado</h2>{document}</div></section></>;
 }
@@ -1262,7 +1268,7 @@ function ContractAccessCard({ contract, paymentLink, onCopyPaymentLink, onResend
 }
 
 function ContractDocumentCard({ contract, errorMessage, isFinishing, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; errorMessage: string | null; isFinishing: boolean; onDownloadDocument: (contract: ContractResponse) => void; onRemoveDocument: (contractId: number) => void; onAttachDocument: (contractId: number, file: File) => void }>) {
-  const document = contract.documentFileName ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{contract.documentFileName}</b><small>{descripcionDocumento(contract)}</small></div><Button tone="quiet" small onClick={() => onDownloadDocument(contract)}><Icon name="download" size={16} />Descargar</Button><Button tone="quiet" small onClick={() => onRemoveDocument(contract.id)}>Quitar</Button></div> : <div className="owner-empty-callout"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><label className="owner-file-label"><input type="file" className="sr-only" aria-label="Adjuntar el documento firmado" onChange={(event) => { const file = event.target.files?.[0]; if (file) onAttachDocument(contract.id, file); }} /><span className="owner-button owner-button--primary owner-button--small">Adjuntar</span></label></div>;
+  const document = contract.documentFileName ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{contract.documentFileName}</b><small>{descripcionDocumento(contract)}</small></div><Button tone="quiet" small onClick={() => onDownloadDocument(contract)}><Icon name="download" size={16} />Descargar</Button><Button tone="quiet" small onClick={() => onRemoveDocument(contract.id)}>Quitar</Button></div> : <div className="owner-empty-callout owner-empty-callout--outline"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><label className="owner-file-label"><input type="file" className="sr-only" aria-label="Adjuntar el documento firmado" onChange={(event) => { const file = event.target.files?.[0]; if (file) onAttachDocument(contract.id, file); }} /><span className="owner-button owner-button--primary owner-button--small">Adjuntar</span></label></div>;
   const error = errorMessage && !isFinishing ? <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{errorMessage}</p> : null;
   return <div className="owner-card"><h2>Documento firmado</h2>{document}{error}</div>;
 }
@@ -1763,7 +1769,7 @@ function ContractConditionsDialog({ isOpen, contract, onClose, onProgrammed }: R
   onProgrammed: () => void;
 }>) {
   if (!isOpen || !contract) return null;
-  return <Dialog title="Cambiar condiciones desde el próximo período" onClose={onClose}>
+  return <Dialog title="Cambiar condiciones" onClose={onClose}>
     <CambioCondicionesForm contrato={contract} hoyISO={new Date().toISOString().slice(0, 10)} onCancelar={onClose} onProgramado={onProgrammed} />
   </Dialog>;
 }
