@@ -495,6 +495,6 @@
   }
 }
 
-/* Documento sin cargar: ya está dentro de una tarjeta blanca, así que la caja va en contorno y no en un segundo gris. */
-.owner-empty-callout--outline{background:transparent;box-shadow:inset 0 0 0 1.5px var(--borde)}
+/* Documento sin cargar: ya está dentro de una tarjeta blanca, así que va sin caja propia (ni gris ni contorno). */
+.owner-empty-callout--outline{padding:0;background:transparent}
 .owner-empty-callout--outline>svg{background:var(--indigo-suave)}
