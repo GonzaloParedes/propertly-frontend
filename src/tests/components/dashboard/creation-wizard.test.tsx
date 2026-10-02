@@ -745,3 +745,31 @@ describe("asistente de contrato · propiedad preseleccionada", () => {
     expect(await screen.findByRole("radio", { name: /Mitre 78/ })).toBeInTheDocument();
   });
 });
+
+describe("asistente de contrato · propiedad nueva sobre la marcha", () => {
+  it("la guarda, vuelve al paso 1 del contrato con la nueva elegida y lista la recién creada", async () => {
+    const NUEVA = { id: 55, street: "Lavalle", number: "950", city: "CABA",
+      province: "Ciudad Autónoma de Buenos Aires", category: "HOUSE" as const };
+    mockPropiedades.mockResolvedValueOnce([]);
+    mockCrearPropiedad.mockResolvedValue(NUEVA);
+    render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
+
+    expect(await screen.findByText("Todavía no cargó ninguna propiedad.")).toBeInTheDocument();
+    mockPropiedades.mockResolvedValue([NUEVA]);
+    await userEvent.click(screen.getByRole("button", { name: "Agregar una propiedad nueva" }));
+    expect(screen.getByText("Paso 1 de 4")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByText(/Lavalle 950/));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await userEvent.click(await screen.findByText("Casa"));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar propiedad" }));
+
+    expect(await screen.findByText("Paso 1 de 6")).toBeInTheDocument();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(await screen.findByText("Lavalle 950")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+});
