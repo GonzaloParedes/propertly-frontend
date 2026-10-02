@@ -84,6 +84,14 @@ describe("carga", () => {
     expect(await screen.findByText("Todavía no hay cuotas")).toBeInTheDocument();
   });
 
+  it("sin cuotas ofrece crear el contrato que las genera", async () => {
+    conCuotas([]);
+    await screen.findByText("Todavía no hay cuotas");
+
+    await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+  });
+
   it("nombra cada fila por su propiedad, inquilino y período", async () => {
     conCuotas([cuota()]);
     const propiedad = await screen.findByText("Av. Rivadavia 2340, 5.º A");

@@ -204,7 +204,7 @@ describe("cobranza del mes", () => {
     render(<OwnerWorkspace initialView="inicio" />);
 
     expect(
-      await screen.findByText("Todavía no hay cuotas emitidas este mes.")
+      await screen.findByText("Todavía no hay cuotas emitidas este mes")
     ).toBeInTheDocument();
   });
 });
@@ -334,5 +334,23 @@ describe("contratos vigentes", () => {
     render(<OwnerWorkspace initialView="inicio" />);
 
     expect(await screen.findByText("Todavía no tiene contratos vigentes")).toBeInTheDocument();
+  });
+
+  it("sin propiedades, el paso que ofrece es cargar la primera", async () => {
+    conDatos({ properties: [], contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = (await screen.findByText("Todavía no tiene contratos vigentes")).closest("section")!;
+    expect(within(seccion).getByText(/Empiece por cargar su primera propiedad/)).toBeInTheDocument();
+    expect(within(seccion).getByRole("button", { name: "Agregar propiedad" })).toBeInTheDocument();
+    expect(within(seccion).queryByRole("button", { name: "Nuevo contrato" })).not.toBeInTheDocument();
+  });
+
+  it("sin contratos no afirma que las cuotas están al día", async () => {
+    conDatos({ contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByText(/Cuando tenga contratos, acá le avisamos/)).toBeInTheDocument();
+    expect(screen.queryByText("Sus cuotas están al día.")).not.toBeInTheDocument();
   });
 });

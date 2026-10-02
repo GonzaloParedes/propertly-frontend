@@ -63,6 +63,9 @@ describe("carga", () => {
     render(<OwnerWorkspace initialView="contratos" />);
 
     expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
+    // después es el parpadeo que se veía al entrar a la pantalla.
+    expect(screen.queryByRole("button", { name: "Nuevo contrato" })).not.toBeInTheDocument();
   });
 
   it("avisa si no pudo cargarlos, en vez de mostrar una lista vacía", async () => {
@@ -75,6 +78,14 @@ describe("carga", () => {
   it("sin contratos ofrece el paso que falta en vez de una lista vacía", async () => {
     conContratos([]);
     expect(await screen.findByText("Todavía no tiene contratos")).toBeInTheDocument();
+  });
+
+  it("vacía, ofrece un solo «Nuevo contrato» y abre el asistente", async () => {
+    conContratos([]);
+    await screen.findByText("Todavía no tiene contratos");
+
+    await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
   });
 
   it("una sola llamada, no una por contrato", async () => {

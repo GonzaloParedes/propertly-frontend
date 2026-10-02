@@ -110,7 +110,7 @@ describe("editar recordatorios", () => {
   it("apagar los avisos esconde los días, que dejan de aplicar", async () => {
     const dialogo = await abrirDialogo();
 
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Recordatorios activos" }));
+    await userEvent.click(within(dialogo).getByRole("switch", { name: "Enviar recordatorios" }));
 
     expect(within(dialogo).queryByRole("button", { name: /Sumar días antes/ })).not.toBeInTheDocument();
   });

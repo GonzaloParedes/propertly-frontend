@@ -185,6 +185,30 @@
 .owner-empty b{font:700 18px var(--font-quicksand),sans-serif}
 .owner-empty span{color:var(--gris)}
 
+/* Estado vacío de un listado sin nada cargado (`EmptyState`): ilustración,
+   qué falta y el paso que sigue. El texto se corta en ~46ch para que no se
+   lea como un renglón de punta a punta. */
+.owner-empty__art{display:block;width:132px;height:auto;flex:none}
+.owner-empty--first{padding:var(--esp-44) var(--esp-26)}
+.owner-empty--first .owner-empty__text{display:flex;flex-direction:column;align-items:center;gap:var(--esp-6);max-width:46ch}
+.owner-empty--first .owner-button{margin-top:var(--esp-10)}
+/* Compacto: un bloque dentro de otra pantalla, en una sola franja. */
+.owner-empty--compact{flex-direction:row;padding:var(--esp-18) var(--esp-26);gap:var(--esp-18);text-align:left}
+.owner-empty--compact .owner-empty__art{width:76px}
+.owner-empty--compact .owner-empty__text{align-items:flex-start;max-width:none}
+.owner-empty--compact b{font-size:17px}
+/* Cobranza del mes sin cuotas: ocupa la tarjeta en vez de dejarla en blanco. */
+.owner-portfolio__empty{display:flex;align-items:center;gap:var(--esp-18);margin-top:var(--esp-20)}
+.owner-portfolio__empty .owner-empty__art{width:96px}
+.owner-portfolio__empty b{display:block;font:700 18px var(--font-quicksand),sans-serif}
+.owner-portfolio__empty span{display:block;margin-top:var(--esp-6);color:var(--gris)}
+@media (max-width:620px){
+  .owner-empty--first{padding:var(--esp-32) var(--esp-20)}
+  .owner-empty--first .owner-button{width:100%}
+  .owner-empty--compact{padding:var(--esp-16)}
+  .owner-empty--compact .owner-empty__art,.owner-portfolio__empty .owner-empty__art{width:64px}
+}
+
 .owner-search-bar :focus-visible,.owner-panel :focus-visible,.owner-applied :focus-visible{
   outline:3px solid var(--lila);outline-offset:3px}
 
@@ -528,3 +552,35 @@
 .owner-wizard:not(.owner-dialog) .owner-wizard-label{margin-bottom:var(--esp-16)!important}
 .owner-wizard-counters .owner-wizard-label{margin-bottom:var(--esp-10)!important}
 .owner-wizard:not(.owner-dialog) .owner-wizard-field--amount>span:first-child{margin-right:4px}
+
+/* Botón de una tarjeta: no pegado al texto de arriba. */
+.owner-card__copy + .owner-button{margin-top:var(--esp-20)}
+
+/* Editar recordatorios: bloques separados con aire parejo. */
+.owner-dialog__body--reminders{display:flex;flex-direction:column;gap:var(--esp-26)}
+.owner-dialog__body--reminders>p{margin:0}
+.owner-dialog__body--reminders .owner-wizard-chips{margin-top:0}
+.owner-dialog__body--reminders .owner-wizard-counter .owner-wizard-label{margin:0 0 var(--esp-12)!important}
+
+/* La regla de las tarjetas parejas anula el margen del botón: el aire va en el texto. */
+.owner-card__copy:has(+ .owner-button){margin-bottom:var(--esp-20)}
+.owner-dialog__body--reminders .owner-dialog-counters{margin-top:0}
+
+/* Interruptor: la fila entera se toca; el estado se lee en la perilla y el color. */
+.owner-switch{display:flex;width:100%;min-height:56px;align-items:center;justify-content:space-between;gap:var(--esp-16);padding:0 var(--esp-18);border:0;border-radius:12px;background:var(--superficie);color:var(--tinta);cursor:pointer;font:700 17px var(--font-nunito-sans),sans-serif;text-align:left}
+.owner-switch i{position:relative;flex:none;width:50px;height:30px;border-radius:15px;background:#8B8799;transition:background .15s}
+.owner-switch i::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.owner-switch[aria-checked="true"] i{background:var(--indigo)}
+.owner-switch[aria-checked="true"] i::after{transform:translateX(20px)}
+.owner-switch:focus-visible{outline:3px solid var(--indigo);outline-offset:2px}
+
+/* Recordatorios: una sola lista, rótulo a la izquierda y control a la derecha, como en la tarjeta. */
+.owner-reminder-rows{overflow:hidden;border-radius:12px;box-shadow:inset 0 0 0 1px var(--divisor)}
+.owner-reminder-rows>*{box-sizing:border-box;min-height:76px;padding:var(--esp-12) var(--esp-18)}
+.owner-reminder-rows>*+*{box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-reminder-rows .owner-wizard-counter{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-16)}
+.owner-reminder-rows .owner-wizard-counter .owner-wizard-label{margin:0!important;color:var(--tinta)!important;font-size:17px!important}
+.owner-reminder-rows .owner-wizard-counter>div{display:flex;align-items:center;gap:var(--esp-10)}
+.owner-reminder-rows .owner-wizard-counter strong{min-width:2ch;text-align:center}
+.owner-reminder-rows .owner-switch{border-radius:0;background:transparent}
+@media (max-width:620px){.owner-reminder-rows .owner-wizard-counter{flex-wrap:wrap}}

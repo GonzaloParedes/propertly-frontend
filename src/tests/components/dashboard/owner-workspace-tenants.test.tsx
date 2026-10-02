@@ -64,6 +64,9 @@ describe("carga", () => {
     render(<OwnerWorkspace initialView="inquilinos" />);
 
     expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
+    // después es el parpadeo que se veía al entrar a la pantalla.
+    expect(screen.queryByRole("button", { name: "Agregar inquilino" })).not.toBeInTheDocument();
   });
 
   it("pide las tres listas en paralelo, no una por inquilino", async () => {
@@ -174,6 +177,15 @@ describe("lista vacía y error", () => {
     render(<OwnerWorkspace initialView="inquilinos" />);
 
     expect(await screen.findByText("Todavía no cargó ningún inquilino")).toBeInTheDocument();
+  });
+
+  it("vacía, ofrece un solo «Agregar inquilino» y abre el asistente", async () => {
+    conDatos({ tenants: [], contracts: [] });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    await screen.findByText("Todavía no cargó ningún inquilino");
+    await userEvent.click(screen.getByRole("button", { name: "Agregar inquilino" }));
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo inquilino" })).toBeInTheDocument();
   });
 
   it("avisa si alguna de las llamadas falla", async () => {
