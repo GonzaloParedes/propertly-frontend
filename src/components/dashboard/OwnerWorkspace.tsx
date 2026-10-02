@@ -637,6 +637,7 @@ type TenantDetailProps = Readonly<{
   onCreateContract: () => void;
   onOpenContract: (contractId: number) => void;
   onCopyPaymentLink: (contractId: number) => void | Promise<unknown>;
+  onResendPaymentLink: (contractId: number) => void | Promise<unknown>;
 }>;
 
 function TenantDetail({
@@ -649,6 +650,7 @@ function TenantDetail({
   onCreateContract,
   onOpenContract,
   onCopyPaymentLink,
+  onResendPaymentLink,
 }: TenantDetailProps) {
   const tenant = tenants?.find((item) => String(item.id) === selectedId);
   const breadcrumb = <nav className="owner-crumb"><button type="button" onClick={onBack}>Inquilinos</button><span>/</span><span>{tenant?.nombre ?? "…"}</span></nav>;
@@ -687,12 +689,7 @@ function TenantDetail({
         <div className="owner-card">
           <h2>Acceso de pago</h2>
           <p className="owner-card__copy">El inquilino no necesita una cuenta. Comparte un enlace seguro para ver cuotas habilitadas y subir su comprobante.</p>
-          <div className="owner-link-box">
-            <div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>Se lo puede compartir por donde quiera.</small></span></div>
-            <Button tone="secondary" small onClick={() => onCopyPaymentLink(tenant.contratoId!)}>
-              <Icon name="copy" size={16} />Copiar enlace
-            </Button>
-          </div>
+          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
         </div>
       )}
     </section>
@@ -1394,8 +1391,12 @@ function ContractSummaryCard({ contract, nextUpdate, scheduledContract, onOpenCo
   return <div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{formatearImporte(contract.currentRent, contract.currency)}</strong><small>por mes · vence el día {contract.dueDay}</small></div><Status>{estadoDeContrato(contract, new Date().toISOString().slice(0, 10))}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>{formatearFecha(contract.startDate)}</small></p></div>{nextUpdateRow}<div><span><Icon name="calendar" /></span><p><b>{endLabel}</b><small>{formatearFecha(contract.actualEndDate ?? contract.endDate)}</small></p></div></div>{scheduledCallout}{successorCallout}</div>;
 }
 
+function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contractId: number; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
+  return <div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small onClick={() => onCopyPaymentLink(contractId)}><Icon name="copy" size={16} />Copiar enlace</Button><Button tone="secondary" small onClick={() => onResendPaymentLink(contractId)}>Reenviar por correo</Button></div></div>;
+}
+
 function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
-  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small onClick={() => onCopyPaymentLink(contract.id)}><Icon name="copy" size={16} />Copiar enlace</Button><Button tone="secondary" small onClick={() => onResendPaymentLink(contract.id)}>Reenviar por correo</Button></div></div></div>;
+  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} /></div>;
 }
 
 function ContractDocumentCard({ contract, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>; onRemoveDocument: (contractId: number) => void | Promise<unknown>; onAttachDocument: (contractId: number, file: File) => void | Promise<unknown> }>) {
@@ -2460,7 +2461,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const detailContent: Record<Exclude<Detail, null>, () => React.ReactNode> = {
     property: () => <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => beginCreation("contract", demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
     contract: () => <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} />,
-    tenant: () => <TenantDetail selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => beginCreation("contract")} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
+    tenant: () => <TenantDetail onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => beginCreation("contract")} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
   };
   const viewContent: Record<OwnerView, () => React.ReactNode> = {
     propiedades: () => <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => beginCreation("property")} onOpenProperty={(propertyId) => openDetail("property", propertyId)} />,
