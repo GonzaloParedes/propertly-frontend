@@ -718,7 +718,7 @@ type CollectionActionProps = Readonly<{
   isBusy: boolean;
   canAdjust: boolean;
   onReview: (item: FilaCobranza) => void;
-  onConfirm: (invoiceId: number) => void;
+  onConfirm: (item: FilaCobranza) => void;
   onAdjust: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void;
   onRegisterPayment: (item: FilaCobranza) => void;
@@ -737,8 +737,8 @@ function CollectionAction({
   if (item.accion === "revisar") return <Button tone="secondary" small onClick={() => onReview(item)}>Revisar pago</Button>;
   if (item.accion === "confirmar") {
     return <>
-      <Button tone="secondary" small disabled={isBusy} onClick={() => onConfirm(item.invoiceId)}>Confirmar cuota</Button>
       <Button tone="quiet" small disabled={isBusy || !canAdjust} onClick={() => onAdjust(item)}>Ajustar importe</Button>
+      <Button tone="secondary" small disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar importe</Button>
     </>;
   }
   if (item.accion === "comprobante") {
@@ -759,7 +759,7 @@ type CollectionsViewProps = Readonly<{
   isBusy: boolean;
   canAdjust: boolean;
   onReview: (item: FilaCobranza) => void;
-  onConfirm: (invoiceId: number) => void;
+  onConfirm: (item: FilaCobranza) => void;
   onAdjust: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void;
   onRegisterPayment: (item: FilaCobranza) => void;
@@ -804,7 +804,7 @@ function CollectionsView({
       </div>
       {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
         otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
-        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small></td><td data-cell="monto" className="owner-number owner-money">{item.monto}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className="owner-substatus">Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
+        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small></td><td data-cell="monto" className="owner-number owner-money">{item.monto}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className="owner-substatus">Importe sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
       </tbody></table></div>}
     </>}
   </>;
@@ -1588,6 +1588,16 @@ function PaymentReviewDialog({ row, error, isBusy, onClose, onViewReceipt, onRej
   return <Dialog title={`Revisar pago de ${row.inquilino}`} onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p><div className="owner-receipt"><Icon name="receipt" size={34} /><b>{receipt?.receiptFileName ?? "Comprobante"}</b><small>{descripcionArchivo(receipt)}</small><Button tone="secondary" small disabled={!receipt} onClick={viewReceipt}><Icon name="download" size={16} />Ver archivo</Button></div><p className="owner-dialog__hint">Al confirmar, la cuota queda marcada como pagada. Si el comprobante no corresponde, puede rechazarlo; el inquilino podrá cargar uno nuevo.</p>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="danger" disabled={isBusy || !receipt} onClick={reject}>Rechazar</Button><Button disabled={isBusy || !receipt} onClick={confirm}>{confirmLabel}</Button></div></div></Dialog>;
 }
 
+function InvoiceConfirmationDialog({ row, error, isBusy, onClose, onConfirm }: Readonly<{ row: FilaCobranza; error: string | null; isBusy: boolean; onClose: () => void; onConfirm: (invoiceId: number) => void }>) {
+  return <Dialog title={`Confirmar el importe de ${row.periodo}`} onClose={onClose}><div className="owner-dialog__body">
+    <p>{row.direccion} · {row.inquilino}</p>
+    <p className="owner-dialog__amount">{row.monto}</p>
+    <p className="owner-dialog__hint">Al confirmar, el importe queda cerrado y ya no se puede ajustar. Se le avisa al inquilino y recién entonces puede cargar su pago. Si hay algo que corregir, ajústelo antes.</p>
+    {error && <p className="owner-list-note" role="alert">{error}</p>}
+    <div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button disabled={isBusy} onClick={() => onConfirm(row.invoiceId)}>{isBusy ? "Guardando…" : "Confirmar importe"}</Button></div>
+  </div></Dialog>;
+}
+
 function PaymentRegistrationDialog({ row, file, error, isBusy, onClose, onFileChange, onRegister }: Readonly<{ row: FilaCobranza; file: File | null; error: string | null; isBusy: boolean; onClose: () => void; onFileChange: (file: File | null) => void; onRegister: (file: File) => void }>) {
   const buttonLabel = isBusy ? "Guardando…" : "Registrar pago";
   const register = () => { if (file) onRegister(file); };
@@ -1737,6 +1747,7 @@ type WorkspaceDialogState = {
   editingPropertyId: number | null;
   reviewingPayment: FilaCobranza | null;
   registeringPayment: FilaCobranza | null;
+  confirmingInvoice: FilaCobranza | null;
   paymentFile: File | null;
   conditionsOpen: boolean;
   adjustmentError: string | null;
@@ -1778,6 +1789,8 @@ type WorkspaceDialogActions = {
   setProperty: (property: PropertyRequest) => void;
   saveProperty: (id: number, property: PropertyRequest) => void;
   closePaymentReview: () => void;
+  closeInvoiceConfirmation: () => void;
+  confirmInvoice: (invoiceId: number) => void;
   viewReceipt: (paymentId: number) => void;
   rejectPayment: (paymentId: number) => void;
   confirmPayment: (paymentId: number) => void;
@@ -1816,6 +1829,7 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
     {state.editingProperty && state.editingPropertyId !== null && <PropertyEditDialog property={state.editingProperty} error={state.settingsError} isBusy={state.settingsBusy} isValid={propertyIsValid} onClose={actions.closePropertyEditor} onChange={actions.setProperty} onSave={() => actions.saveProperty(state.editingPropertyId!, state.editingProperty!)} />}
     {state.archivingProperty && <ArchivePropertyDialog property={state.archivingProperty} error={state.archiveError} isBusy={state.archiveBusy} onClose={actions.closePropertyArchive} onArchive={() => actions.archiveProperty(state.archivingProperty!)} />}
     {state.reviewingPayment && <PaymentReviewDialog row={state.reviewingPayment} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentReview} onViewReceipt={actions.viewReceipt} onRejectPayment={actions.rejectPayment} onConfirmPayment={actions.confirmPayment} />}
+    {state.confirmingInvoice && <InvoiceConfirmationDialog row={state.confirmingInvoice} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeInvoiceConfirmation} onConfirm={actions.confirmInvoice} />}
     {state.registeringPayment && <PaymentRegistrationDialog row={state.registeringPayment} file={state.paymentFile} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentRegistration} onFileChange={actions.setPaymentFile} onRegister={(file) => actions.registerPayment(state.registeringPayment!.invoiceId, file)} />}
     <ContractConditionsDialog isOpen={state.conditionsOpen} contract={state.contract} onClose={actions.closeConditions} onProgrammed={actions.conditionsProgrammed} />
   </>;
@@ -1915,6 +1929,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const [filtroContrato, setFiltroContrato] = useState<FiltroContrato>("vigentes");
   const [enRevision, setEnRevision] = useState<FilaCobranza | null>(null);
   const [aRegistrar, setARegistrar] = useState<FilaCobranza | null>(null);
+  const [confirmando, setConfirmando] = useState<FilaCobranza | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [accionEnCurso, setAccionEnCurso] = useState(false);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
@@ -2025,8 +2040,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     setErrorAccion(null);
     setEnRevision(fila);
   }
-  function confirmarCuota(invoiceId: number) {
-    void accionDeCuota(() => AlquiaBackendClient.invoices.confirm(invoiceId));
+  function pedirConfirmacion(fila: FilaCobranza) {
+    setErrorAccion(null);
+    setConfirmando(fila);
   }
   function prepararAjuste(fila: FilaCobranza) {
     setErrorAccion(null);
@@ -2333,7 +2349,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const viewContent: Record<OwnerView, () => React.ReactNode> = {
     propiedades: () => <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => beginCreation("property")} onOpenProperty={(propertyId) => openDetail("property", propertyId)} />,
     contratos: () => <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => beginCreation("contract")} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
-    cobranzas: () => <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} actionError={errorAccion} hasOpenAction={Boolean(enRevision || aRegistrar || ajustando)} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={confirmarCuota} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onRegisterPayment={registrarPago} />,
+    cobranzas: () => <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} actionError={errorAccion} hasOpenAction={Boolean(enRevision || aRegistrar || ajustando || confirmando)} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onRegisterPayment={registrarPago} />,
     inquilinos: () => <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => beginCreation("contract")} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
     configuracion: () => <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} savedNotice={avisoGuardado} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: () => <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} onCreateProperty={() => beginCreation("property")} onCreateContract={() => beginCreation("contract")} onOpenCollections={() => go("cobranzas")} />,
@@ -2375,6 +2391,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     editingPropertyId: propiedadEditadaId,
     reviewingPayment: enRevision,
     registeringPayment: aRegistrar,
+    confirmingInvoice: confirmando,
     paymentFile: archivo,
     conditionsOpen,
     adjustmentError: errorAccion,
@@ -2415,6 +2432,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     closePropertyArchive: () => setArchivando(null),
     archiveProperty: (property) => void archivarPropiedad(property),
     closePaymentReview: () => setEnRevision(null),
+    closeInvoiceConfirmation: () => setConfirmando(null),
+    confirmInvoice: (invoiceId) => void accionDeCuota(() => AlquiaBackendClient.invoices.confirm(invoiceId), () => setConfirmando(null)),
     viewReceipt: (paymentId) => void verComprobante(paymentId),
     rejectPayment: (paymentId) => void accionDeCuota(() => AlquiaBackendClient.payments.reject(paymentId), () => setEnRevision(null)),
     confirmPayment: (paymentId) => void accionDeCuota(() => AlquiaBackendClient.payments.confirm(paymentId), () => setEnRevision(null)),

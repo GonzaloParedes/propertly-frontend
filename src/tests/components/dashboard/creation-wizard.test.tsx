@@ -714,6 +714,22 @@ describe("asistente de propiedad · dirección que el buscador no encuentra", ()
   });
 });
 
+describe("asistente de propiedad · corregir la dirección elegida", () => {
+  it("deja editar la calle y el número sin volver a buscar", async () => {
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByText(/Lavalle 950/));
+
+    await userEvent.clear(screen.getByLabelText("Calle"));
+    await userEvent.type(screen.getByLabelText("Calle"), "Corrientes");
+    await userEvent.clear(screen.getByLabelText("Número"));
+    await userEvent.type(screen.getByLabelText("Número"), "1200");
+
+    expect(screen.getByText("Corrientes 1200")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+});
+
 describe("asistente de contrato · propiedad preseleccionada", () => {
   it("arranca en el paso del inquilino con la propiedad ya elegida", async () => {
     mockPropiedades.mockResolvedValue([MITRE, COLON]);

@@ -163,15 +163,29 @@ describe("acciones", () => {
     conCuotas([cuota({ confirmed: false })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.getByRole("button", { name: "Confirmar cuota" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar importe" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Registrar pago" })).not.toBeInTheDocument();
-    expect(screen.getByText("Sin confirmar")).toBeInTheDocument();
+    expect(screen.getByText("Importe sin confirmar")).toBeInTheDocument();
   });
 
-  it("confirmar la cuota la manda al backend y vuelve a pedir la lista", async () => {
+  it("confirmar el importe pide una confirmación antes de tocar el backend", async () => {
+    conCuotas([cuota({ confirmed: false })]);
+    await userEvent.click(await screen.findByRole("button", { name: "Confirmar importe" }));
+
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByText(/ya no se puede ajustar/)).toBeInTheDocument();
+    expect(mockConfirmarCuota).not.toHaveBeenCalled();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockConfirmarCuota).not.toHaveBeenCalled();
+  });
+
+  it("al aceptar, manda la confirmación al backend y vuelve a pedir la lista", async () => {
     conCuotas([cuota({ confirmed: false })]);
     mockConfirmarCuota.mockResolvedValueOnce(cuota({ confirmed: true }));
-    await userEvent.click(await screen.findByRole("button", { name: "Confirmar cuota" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Confirmar importe" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirmar importe" }));
 
     await waitFor(() => expect(mockConfirmarCuota).toHaveBeenCalledWith(1000));
     await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
@@ -276,7 +290,7 @@ describe("modo demo", () => {
     expect(mockInvoices).not.toHaveBeenCalled();
     expect(fila(/Av. Rivadavia 2340/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Revisar pago" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirmar cuota" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar importe" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Registrar pago" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Comprobante/ })).toBeInTheDocument();
   });
@@ -302,7 +316,7 @@ describe("ajustar importe", () => {
     conCuotas([sinConfirmar()]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.getByRole("button", { name: "Confirmar cuota" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar importe" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ajustar importe" })).toBeInTheDocument();
   });
 

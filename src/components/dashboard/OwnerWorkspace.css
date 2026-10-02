@@ -500,3 +500,25 @@
 .owner-empty-callout--outline>svg{background:var(--indigo-suave)}
 
 .owner-chip b{margin-left:7px;font-variant-numeric:tabular-nums}
+
+.owner-dialog__body>.owner-dialog__amount{margin:var(--esp-12) 0 0;color:var(--tinta);font:700 32px var(--font-quicksand),sans-serif;font-variant-numeric:tabular-nums}
+
+/* ── Asistente: alturas, labels y pie ────────────────────────────────
+   · Todos los campos de texto miden lo mismo que el buscador de direcciones.
+   · Los labels van en minúscula, como en los diálogos: antes se mezclaban
+     «Dormitorios» con «SUPERFICIE CUBIERTA».
+   · El pie queda fijo: con una lista larga (tipo de propiedad) «Seguir»
+     quedaba debajo del pliegue. */
+.owner-wizard-field:not(.owner-wizard-field--large):not(.owner-wizard-field--amount){box-sizing:border-box;min-height:64px;align-items:center}
+.owner-wizard:not(.owner-dialog) .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-10)!important;color:var(--gris)!important;font:700 15px/1.2 var(--font-nunito-sans),sans-serif!important;letter-spacing:0!important;text-transform:none}
+.owner-wizard-counters .owner-wizard-label{margin:0 0 var(--esp-10)!important}
+.owner-wizard__footer{position:sticky;bottom:0;z-index:2;background:#fff}
+.owner-wizard-skip{display:flex;width:100%;min-height:52px;align-items:center;justify-content:center;margin-top:var(--esp-32);border:0;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo);cursor:pointer;font:700 16.5px var(--font-nunito-sans),sans-serif}
+.owner-wizard-skip:hover{background:var(--indigo-suave)}
+.owner-wizard-skip:focus-visible{outline:3px solid var(--lila);outline-offset:3px}
+
+/* ── Asistente: el alquiler mide como el resto de los campos ─────────
+   El monto con 34 px era el doble de alto que la fecha del paso siguiente y
+   que los contadores de abajo. Ahora comparte alto y cuerpo con ellos; el
+   diálogo de cambio de condiciones conserva su propia medida. */
+.owner-wizard:not(.owner-dialog) .owner-wizard-field--amount{box-sizing:border-box;min-height:64px;align-items:center;padding:var(--esp-16) var(--esp-20);font-size:24px;letter-spacing:-.02em}

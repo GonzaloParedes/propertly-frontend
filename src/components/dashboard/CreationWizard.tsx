@@ -372,15 +372,15 @@ function ContractTenantStep({ lists, selected, onSelect, onNewTenant }: Readonly
 }
 
 function ContractRentStep({ rent, dueDay, onRentChange, onDueDayChange }: Readonly<{ rent: string; dueDay: number; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void }>) {
-  return <><h1>¿Cuánto sale el alquiler por mes?</h1><p>Es el valor con el que arranca el contrato. Después definimos cómo se actualiza.</p><label className="owner-wizard-field owner-wizard-field--amount"><span>$</span><input inputMode="numeric" aria-label="Alquiler mensual" value={montoConSeparadores(rent)} onChange={(event) => onRentChange(soloNumeros(event.target.value))} /><span>por mes</span></label><p className="owner-wizard-label">DÍA DE VENCIMIENTO</p><Counter value={dueDay} unit="del mes" min={1} max={28} onChange={onDueDayChange} /><div className="owner-wizard-chips">{[1, 5, 10].map((day) => <button key={day} type="button" aria-pressed={dueDay === day} onClick={() => onDueDayChange(day)}>Día {day}</button>)}</div><small className="owner-wizard-help">Se cobra por mes adelantado. El día se puede elegir del 1 al 28.</small></>;
+  return <><h1>¿Cuánto sale el alquiler por mes?</h1><p>Es el valor con el que arranca el contrato. Después definimos cómo se actualiza.</p><label className="owner-wizard-field owner-wizard-field--amount"><span>$</span><input inputMode="numeric" aria-label="Alquiler mensual" placeholder="Ej. 450.000" value={montoConSeparadores(rent)} onChange={(event) => onRentChange(soloNumeros(event.target.value))} /><span>por mes</span></label><p className="owner-wizard-label">Día de vencimiento</p><Counter value={dueDay} unit="del mes" min={1} max={28} onChange={onDueDayChange} /><div className="owner-wizard-chips">{[1, 5, 10].map((day) => <button key={day} type="button" aria-pressed={dueDay === day} onClick={() => onDueDayChange(day)}>Día {day}</button>)}</div><small className="owner-wizard-help">Se cobra por mes adelantado. El día se puede elegir del 1 al 28.</small></>;
 }
 
 function ContractTermStep({ startDate, term, isStartDateValid, onStartDateChange, onTermChange }: Readonly<{ startDate: string; term: number; isStartDateValid: boolean; onStartDateChange: (value: string) => void; onTermChange: (value: number) => void }>) {
-  return <><h1>¿Cuándo empieza y por cuánto tiempo?</h1><p>La fecha de fin se calcula sola a partir del plazo, no hace falta cargarla.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="sr-only">Fecha de inicio</span><input type="date" value={startDate} min={PISO_INICIO} aria-invalid={startDate !== "" && !isStartDateValid} onChange={(event) => onStartDateChange(event.target.value)} /></label>{startDate !== "" && !isStartDateValid && <p className="owner-wizard-error" role="alert">El contrato no puede empezar antes de diciembre de 2022.</p>}<p className="owner-wizard-label">PLAZO DEL CONTRATO</p><Counter value={term} unit="meses" min={1} onChange={onTermChange} /><div className="owner-wizard-chips">{[12, 24, 36].map((months) => <button key={months} type="button" aria-pressed={term === months} onClick={() => onTermChange(months)}>{months} meses</button>)}</div>{isStartDateValid && <small className="owner-wizard-help">Termina el {fechaDeFin(startDate, term)}.</small>}</>;
+  return <><h1>¿Cuándo empieza y por cuánto tiempo?</h1><p>La fecha de fin se calcula sola a partir del plazo, no hace falta cargarla.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="sr-only">Fecha de inicio</span><input type="date" value={startDate} min={PISO_INICIO} aria-invalid={startDate !== "" && !isStartDateValid} onChange={(event) => onStartDateChange(event.target.value)} /></label>{startDate !== "" && !isStartDateValid && <p className="owner-wizard-error" role="alert">El contrato no puede empezar antes de diciembre de 2022.</p>}<p className="owner-wizard-label">Plazo del contrato</p><Counter value={term} unit="meses" min={1} onChange={onTermChange} /><div className="owner-wizard-chips">{[12, 24, 36].map((months) => <button key={months} type="button" aria-pressed={term === months} onClick={() => onTermChange(months)}>{months} meses</button>)}</div>{isStartDateValid && <small className="owner-wizard-help">Termina el {fechaDeFin(startDate, term)}.</small>}</>;
 }
 
 function ContractIndexStep({ method, percentage, frequency, onMethodChange, onPercentageChange, onFrequencyChange }: Readonly<{ method: ContractMethod; percentage: string; frequency: number; onMethodChange: (method: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void }>) {
-  return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<p className="owner-wizard-label">CADA CUÁNTO SE ACTUALIZA</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div>{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
+  return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<p className="owner-wizard-label">Cada cuánto se actualiza</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div>{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
 }
 
 function ContractReviewStep({ lists, propertyId, tenantId, rent, dueDay, term, startDate, method, percentage, frequency, error }: Readonly<{ lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; error: string | null }>) {
@@ -528,7 +528,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
   }
   function propertyBloqueado(): boolean {
-    if (step === 1) return !direccion || !direccion.number.trim() || !direccion.city.trim() || !direccion.province.trim();
+    if (step === 1) return !direccion || !direccion.street.trim() || !direccion.number.trim() || !direccion.city.trim() || !direccion.province.trim();
     if (step === 2) return categoria === null;
     return false;
   }
@@ -583,7 +583,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     setGuardando(true);
     try {
       await AlquiaBackendClient.properties.create({
-        street: direccion.street,
+        street: direccion.street.trim(),
         number: direccion.number.trim(),
         // El piso y el departamento son un campo aparte del número de calle.
         floorUnit: unidad.trim() || undefined,
@@ -663,6 +663,11 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
         <AddressField demo={demo} value={direccion} onSelect={setDireccion} onClear={() => setDireccion(null)} />
         {direccion && (<>
           <label className="owner-wizard-field">
+            <span>Calle</span>
+            <input required placeholder="Ej: Lavalle" value={direccion.street}
+              onChange={(e) => setDireccion({ ...direccion, street: e.target.value })} />
+          </label>
+          <label className="owner-wizard-field">
             <span>Número</span>
             <input required inputMode="numeric" placeholder="Ej: 950" value={direccion.number}
               onChange={(e) => setDireccion({ ...direccion, number: e.target.value })} />
@@ -700,18 +705,18 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
           <Counter label="Dormitorios" value={bedrooms} onChange={setBedrooms} />
           <Counter label="Baños" value={bathrooms} onChange={setBathrooms} />
         </div>
-        <p className="owner-wizard-label">SUPERFICIE CUBIERTA</p>
+        <p className="owner-wizard-label">Superficie cubierta</p>
         <label className="owner-wizard-field owner-wizard-field--medium">
           <span className="sr-only">Superficie cubierta en metros cuadrados</span>
           <input value={superficie} inputMode="numeric" placeholder="—" onChange={(e) => setSuperficie(e.target.value.replace(/\D/g, ""))} />
           <span>m²</span>
         </label>
-        <p className="owner-wizard-label">ADEMÁS</p>
+        <p className="owner-wizard-label">Además</p>
         <div className="owner-wizard-chips">
           <button type="button" aria-pressed={mascotas} onClick={() => setMascotas(!mascotas)}>Acepta mascotas</button>
           <button type="button" aria-pressed={amoblada} onClick={() => setAmoblada(!amoblada)}>Se alquila amueblada</button>
         </div>
-        <button type="button" className="owner-wizard-quiet" onClick={() => setStep(total)}>Saltear este paso</button>
+        <button type="button" className="owner-wizard-skip" onClick={() => setStep(total)}>Saltear este paso</button>
       </>;
     }
     return <>
