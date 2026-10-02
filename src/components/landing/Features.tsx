@@ -1,31 +1,17 @@
+import { Bell, CreditCard, Folder } from "lucide-react";
 import Reveal from "./Reveal";
 import FeatureCard from "./FeatureCard";
 
 function PayIcon() {
-  return (
-    <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2.5" y="5.5" width="19" height="13" rx="2" />
-      <path d="M2.5 10h19" />
-      <path d="M6 14.5h4" />
-    </svg>
-  );
+  return <CreditCard className="size-6" color="var(--primary)" />;
 }
 
 function BellIcon() {
-  return (
-    <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 9a6 6 0 10-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9z" />
-      <path d="M10 20a2.2 2.2 0 004 0" />
-    </svg>
-  );
+  return <Bell className="size-6" color="var(--primary)" />;
 }
 
 function FolderIcon() {
-  return (
-    <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6.5A1.5 1.5 0 014.5 5h5l2 2.5H19.5A1.5 1.5 0 0121 9v9.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18.5z" />
-    </svg>
-  );
+  return <Folder className="size-6" color="var(--primary)" />;
 }
 
 const FEATURES = [

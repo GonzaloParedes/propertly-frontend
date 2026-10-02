@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Check, CircleCheck, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 
@@ -14,93 +15,23 @@ const TIPS = [
 ];
 
 function CheckIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--lila)"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
+  return <Check aria-hidden="true" className="size-5 shrink-0" color="var(--lila)" strokeWidth={3} />;
 }
 
 function ShieldIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-[18px] shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--success)"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2.5 20 5.5v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10v-6z" />
-      <path d="m8.5 12 2.5 2.5 4.5-4.5" />
-    </svg>
-  );
+  return <ShieldCheck aria-hidden="true" className="size-[18px] shrink-0" color="var(--success)" />;
 }
 
 function EyeIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
+  return <Eye aria-hidden="true" className="size-5" />;
 }
 
 function EyeOffIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-6.5 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94" />
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" />
-      <line x1="2" y1="2" x2="22" y2="22" />
-    </svg>
-  );
+  return <EyeOff aria-hidden="true" className="size-5" />;
 }
 
 function CheckCircleIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--primary)"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
+  return <CircleCheck aria-hidden="true" className="size-12" color="var(--primary)" strokeWidth={1.5} />;
 }
 
 function RestablecerContrasenaForm() {

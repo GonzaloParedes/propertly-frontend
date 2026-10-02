@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { Check, Mail, ShieldCheck } from "lucide-react";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 
 const BENEFITS = [
@@ -12,56 +13,15 @@ const BENEFITS = [
 ];
 
 function CheckIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--lila)"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
+  return <Check aria-hidden="true" className="size-5 shrink-0" color="var(--lila)" strokeWidth={3} />;
 }
 
 function ShieldIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-[18px] shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--success)"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2.5 20 5.5v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10v-6z" />
-      <path d="m8.5 12 2.5 2.5 4.5-4.5" />
-    </svg>
-  );
+  return <ShieldCheck aria-hidden="true" className="size-[18px] shrink-0" color="var(--success)" />;
 }
 
 function MailIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--primary)"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="2" y="4" width="20" height="16" rx="2" />
-      <path d="m2 7 10 7 10-7" />
-    </svg>
-  );
+  return <Mail aria-hidden="true" className="size-12" color="var(--primary)" strokeWidth={1.5} />;
 }
 
 export default function OlvidarContrasenaPage() {
