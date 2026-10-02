@@ -308,16 +308,33 @@ describe("modo demo", () => {
 
 describe("ajustar importe", () => {
   const mockSumar = vi.mocked(AlquiaBackendClient.invoices.addAdjustment);
+  const mockEditar = vi.mocked(AlquiaBackendClient.invoices.editAdjustment);
   const mockQuitar = vi.mocked(AlquiaBackendClient.invoices.removeAdjustment);
 
   const sinConfirmar = (over: Partial<InvoiceResponse> = {}) =>
     cuota({ status: "PENDING", confirmed: false, ...over });
+
+  const conAjuste = (over: Partial<InvoiceResponse> = {}) =>
+    sinConfirmar({
+      total: 428691,
+      adjustments: [
+        { id: 7, name: "Reparación", kind: "DISCOUNT", valueType: "FIXED_AMOUNT", value: 50000 },
+      ],
+      ...over,
+    });
 
   async function abrirAjuste(invoice = sinConfirmar()) {
     conCuotas([invoice]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
     await userEvent.click(screen.getByRole("button", { name: "Ajustar importe" }));
     return screen.getByRole("dialog");
+  }
+
+  async function cargarItem(dialogo: HTMLElement, nombre: string, monto: string) {
+    await userEvent.type(within(dialogo).getByPlaceholderText(/Ítem/), nombre);
+    const monto$ = within(dialogo).getByLabelText("Monto del ítem");
+    await userEvent.clear(monto$);
+    await userEvent.type(monto$, monto);
   }
 
   it("se ofrece junto a confirmar, no en vez de", async () => {
@@ -336,95 +353,117 @@ describe("ajustar importe", () => {
     expect(screen.queryByRole("button", { name: "Ajustar importe" })).not.toBeInTheDocument();
   });
 
-  it("muestra el importe base y el total de partida", async () => {
+  it("muestra el importe base y el total", async () => {
     const dialogo = await abrirAjuste();
 
     expect(within(dialogo).getByText("Importe base")).toBeInTheDocument();
-    expect(within(dialogo).getByText("Total actual")).toBeInTheDocument();
+    expect(within(dialogo).getByText("Total")).toBeInTheDocument();
   });
 
-  it("anuncia el descuento antes de guardarlo", async () => {
-    const dialogo = await abrirAjuste();
-
-    const importe = within(dialogo).getByLabelText("Importe final de la cuota");
-    await userEvent.clear(importe);
-    await userEvent.type(importe, "428691");
-
-    expect(within(dialogo).getByRole("status")).toHaveTextContent("descuento de $ 50.000");
-  });
-
-  it("anuncia el recargo", async () => {
-    const dialogo = await abrirAjuste();
-
-    const importe = within(dialogo).getByLabelText("Importe final de la cuota");
-    await userEvent.clear(importe);
-    await userEvent.type(importe, "508691");
-
-    expect(within(dialogo).getByRole("status")).toHaveTextContent("recargo de $ 30.000");
-  });
-
-  it("guarda la diferencia, no el importe escrito", async () => {
+  it("agrega un ítem con nombre, monto y signo", async () => {
     mockSumar.mockResolvedValueOnce(sinConfirmar());
     const dialogo = await abrirAjuste();
 
-    const importe = within(dialogo).getByLabelText("Importe final de la cuota");
-    await userEvent.clear(importe);
-    await userEvent.type(importe, "428691");
-    await userEvent.type(within(dialogo).getByPlaceholderText(/Motivo/), "Reparación acordada");
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar ajuste" }));
+    await cargarItem(dialogo, "Baño roto", "250000");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar ítem" }));
 
     await waitFor(() =>
       expect(mockSumar).toHaveBeenCalledWith(1000, {
-        name: "Reparación acordada",
-        kind: "DISCOUNT",
+        name: "Baño roto",
+        kind: "SURCHARGE",
         valueType: "FIXED_AMOUNT",
-        value: 50000,
+        value: 250000,
       })
     );
   });
 
-  it("sin motivo no deja guardar", async () => {
+  it("agrega un ítem como descuento porcentual sobre el base", async () => {
+    mockSumar.mockResolvedValueOnce(sinConfirmar());
     const dialogo = await abrirAjuste();
 
-    const importe = within(dialogo).getByLabelText("Importe final de la cuota");
-    await userEvent.clear(importe);
-    await userEvent.type(importe, "428691");
+    await userEvent.type(within(dialogo).getByPlaceholderText(/Ítem/), "Descuento del mes");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Resta (descuento)" }));
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Porcentaje" }));
+    await userEvent.type(within(dialogo).getByLabelText("Porcentaje del ítem"), "10");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar ítem" }));
 
-    expect(within(dialogo).getByRole("button", { name: "Guardar ajuste" })).toBeDisabled();
+    await waitFor(() =>
+      expect(mockSumar).toHaveBeenCalledWith(1000, {
+        name: "Descuento del mes",
+        kind: "DISCOUNT",
+        valueType: "PERCENTAGE",
+        value: 10,
+      })
+    );
   });
 
-  it("con el mismo importe no deja guardar y lo explica", async () => {
+  it("previsualiza el efecto del ítem antes de guardarlo", async () => {
     const dialogo = await abrirAjuste();
 
-    await userEvent.type(within(dialogo).getByPlaceholderText(/Motivo/), "Sin cambio");
+    await cargarItem(dialogo, "Baño roto", "250000");
 
-    expect(within(dialogo).getByRole("status")).toHaveTextContent("no cambia");
-    expect(within(dialogo).getByRole("button", { name: "Guardar ajuste" })).toBeDisabled();
+    expect(within(dialogo).getByRole("status")).toHaveTextContent("+ $ 250.000");
+  });
+
+  it("edita un ítem ya cargado", async () => {
+    mockEditar.mockResolvedValueOnce(conAjuste());
+    const dialogo = await abrirAjuste(conAjuste());
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Editar" }));
+    const monto$ = within(dialogo).getByLabelText("Monto del ítem");
+    await userEvent.clear(monto$);
+    await userEvent.type(monto$, "60000");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar ítem" }));
+
+    await waitFor(() =>
+      expect(mockEditar).toHaveBeenCalledWith(1000, 7, {
+        name: "Reparación",
+        kind: "DISCOUNT",
+        valueType: "FIXED_AMOUNT",
+        value: 60000,
+      })
+    );
+  });
+
+  it("sin nombre no deja agregar", async () => {
+    const dialogo = await abrirAjuste();
+
+    const monto$ = within(dialogo).getByLabelText("Monto del ítem");
+    await userEvent.clear(monto$);
+    await userEvent.type(monto$, "250000");
+
+    expect(within(dialogo).getByRole("button", { name: "Agregar ítem" })).toBeDisabled();
+  });
+
+  it("sin monto no deja agregar", async () => {
+    const dialogo = await abrirAjuste();
+
+    await userEvent.type(within(dialogo).getByPlaceholderText(/Ítem/), "Baño roto");
+
+    expect(within(dialogo).getByRole("button", { name: "Agregar ítem" })).toBeDisabled();
+  });
+
+  it("un descuento que deja el total negativo no se puede guardar", async () => {
+    const dialogo = await abrirAjuste();
+
+    await userEvent.type(within(dialogo).getByPlaceholderText(/Ítem/), "Descuento enorme");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Resta (descuento)" }));
+    const monto$ = within(dialogo).getByLabelText("Monto del ítem");
+    await userEvent.clear(monto$);
+    await userEvent.type(monto$, "999999999");
+
+    expect(within(dialogo).getByRole("button", { name: "Agregar ítem" })).toBeDisabled();
   });
 
   it("lista los ajustes ya cargados con su efecto", async () => {
-    const dialogo = await abrirAjuste(
-      sinConfirmar({
-        total: 428691,
-        adjustments: [
-          { id: 7, name: "Reparación", kind: "DISCOUNT", valueType: "FIXED_AMOUNT", value: 50000 },
-        ],
-      })
-    );
+    const dialogo = await abrirAjuste(conAjuste());
 
     expect(within(dialogo).getByText("Reparación")).toBeInTheDocument();
     expect(within(dialogo).getByText("− $ 50.000")).toBeInTheDocument();
   });
 
   it("quitar un ajuste pide confirmación antes", async () => {
-    const dialogo = await abrirAjuste(
-      sinConfirmar({
-        total: 428691,
-        adjustments: [
-          { id: 7, name: "Reparación", kind: "DISCOUNT", valueType: "FIXED_AMOUNT", value: 50000 },
-        ],
-      })
-    );
+    const dialogo = await abrirAjuste(conAjuste());
 
     await userEvent.click(within(dialogo).getByRole("button", { name: "Quitar" }));
 
@@ -438,11 +477,8 @@ describe("ajustar importe", () => {
     );
     const dialogo = await abrirAjuste();
 
-    const importe = within(dialogo).getByLabelText("Importe final de la cuota");
-    await userEvent.clear(importe);
-    await userEvent.type(importe, "428691");
-    await userEvent.type(within(dialogo).getByPlaceholderText(/Motivo/), "Algo");
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar ajuste" }));
+    await cargarItem(dialogo, "Algo", "100000");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Agregar ítem" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "La cuota quedó confirmada mientras editaba"
