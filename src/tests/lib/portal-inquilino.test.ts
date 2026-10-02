@@ -1,9 +1,12 @@
 import {
+  aniosDelCalendario,
   buildFilasInquilino,
+  buildImportesPendientesInquilino,
+  mesesDelCalendario,
   ordenarCuotas,
   puedeSubirComprobante,
 } from "@/lib/portal-inquilino";
-import type { InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
+import type { InvoiceResponse, PaymentResponse, TenantCalendarInvoiceResponse, TenantCalendarPreInvoiceResponse } from "@/lib/backend-types";
 
 function cuota(over: Partial<InvoiceResponse> = {}): InvoiceResponse {
   return {
@@ -93,6 +96,54 @@ describe("buildFilasInquilino", () => {
 
   it("una lista vacía da una lista vacía", () => {
     expect(buildFilasInquilino([])).toEqual([]);
+  });
+
+  it("usa canSubmitPayment del calendario en vez de derivar un permiso propio", () => {
+    const delCalendario: TenantCalendarInvoiceResponse = { ...cuota(), canSubmitPayment: false };
+    expect(buildFilasInquilino([delCalendario])[0].puedeSubirComprobante).toBe(false);
+  });
+});
+
+describe("mesesDelCalendario", () => {
+  const coverage = [
+    { startDate: "2025-06-15", effectiveEndDate: "2025-09-30" },
+    { startDate: "2025-10-01", effectiveEndDate: "2027-05-31" },
+  ];
+
+  it("distingue los meses antes, dentro y después de la cadena", () => {
+    const meses = mesesDelCalendario(2025, coverage, []);
+    expect(meses[0].estado).toBe("antes-del-contrato");
+    expect(meses[5].estado).toBe("sin-cuota-generada");
+    expect(meses[11].estado).toBe("sin-cuota-generada");
+    expect(mesesDelCalendario(2028, coverage, [])[0].estado).toBe("despues-del-contrato");
+  });
+
+  it("distingue un hueco entre tramos de una cadena de los meses con cobertura", () => {
+    const conHueco = [
+      { startDate: "2025-01-01", effectiveEndDate: "2025-03-31" },
+      { startDate: "2025-05-01", effectiveEndDate: "2025-12-31" },
+    ];
+    expect(mesesDelCalendario(2025, conHueco, [])[3].estado).toBe("sin-contrato-vigente");
+  });
+
+  it("marca el primer mes de cada sucesor y conserva una cuota histórica", () => {
+    const filas = buildFilasInquilino([cuota({ period: "2025-09-01", dueDate: "2025-10-10", status: "DUE" })]);
+    const meses = mesesDelCalendario(2025, coverage, filas);
+
+    expect(meses[8].estado).toBe("cuota");
+    expect(meses[9].cambioDeCondiciones).toBe(true);
+  });
+
+  it("muestra una pre-cuota como importe pendiente y prioriza la factura emitida", () => {
+    const preInvoices: TenantCalendarPreInvoiceResponse[] = [{ contractId: 2, period: "2025-10-01", amount: 450000 }];
+    const importes = buildImportesPendientesInquilino(preInvoices);
+    expect(mesesDelCalendario(2025, coverage, [], importes)[9].estado).toBe("importe-pendiente-confirmacion");
+    expect(mesesDelCalendario(2025, coverage, buildFilasInquilino([cuota({ period: "2025-10-01" })]), importes)[9].estado).toBe("cuota");
+  });
+
+  it("incluye años de cobertura y de una cuota histórica fuera del intervalo", () => {
+    const filas = buildFilasInquilino([cuota({ period: "2024-12-01" })]);
+    expect(aniosDelCalendario(coverage, filas)).toEqual([2024, 2025, 2026, 2027]);
   });
 });
 

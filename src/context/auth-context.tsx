@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError, onAuthExpired } from "@/lib/api";
 import { AlquiaBackendClient, type UserResponse } from "@/lib/backend-client";
 
 /**
@@ -37,12 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // si mientras tanto login()/logout() ya resolvieron un estado más nuevo.
   const authRequestId = useRef(0);
 
+  useEffect(() => onAuthExpired(() => {
+    authRequestId.current++;
+    setUser(null);
+  }), []);
+
   useEffect(() => {
     const id = ++authRequestId.current;
-    // retry:false a propósito: para un visitante anónimo este 401 es esperado,
-    // no queremos gastar un /auth/refresh en cada carga de página sin sesión.
+    // Un access token puede haber vencido mientras la pestaña estaba cerrada;
+    // la cookie de refresh todavía puede mantener la sesión vigente.
     AlquiaBackendClient.users
-      .getMe({ retry: false })
+      .getMe()
       .then((me) => {
         if (authRequestId.current === id) setUser(me);
       })

@@ -306,6 +306,38 @@ export interface InvoiceResponse {
   payments: PaymentResponse[];
 }
 
+/** Intervalo inclusivo de un contrato efectivo en la cadena del inquilino. */
+export interface TenantCalendarCoverage {
+  startDate: string;
+  effectiveEndDate: string;
+}
+
+/**
+ * La lectura unificada del portal: el backend decide si la cuota admite un
+ * comprobante aun cuando pertenezca a un contrato predecesor ya reemplazado.
+ */
+export interface TenantCalendarInvoiceResponse extends InvoiceResponse {
+  canSubmitPayment: boolean;
+}
+
+/** Importe proyectado, todavía no emitido ni confirmado como cuota. */
+export interface TenantCalendarPreInvoiceResponse {
+  contractId: number;
+  period: string;
+  amount: number;
+}
+
+export interface TenantCalendarResponse {
+  /** Identidad mínima, derivada de la sesión del enlace para el encabezado. */
+  tenant: {
+    firstName: string;
+    lastName: string;
+  };
+  coverage: TenantCalendarCoverage[];
+  invoices: TenantCalendarInvoiceResponse[];
+  preInvoices: TenantCalendarPreInvoiceResponse[];
+}
+
 export interface InvoiceAdjustmentRequest {
   name: string;
   kind: AdjustmentKind;

@@ -16,6 +16,7 @@ import type {
   ContractListParams,
   PaymentResponse,
   TenantSessionRequest,
+  TenantCalendarResponse,
   InvoiceResponse,
   InvoiceAdjustmentRequest,
   SchemaChangeRequest,
@@ -217,6 +218,10 @@ export const AlquiaBackendClient = {
     // cada InvoiceResponse.
     invoices: (): Promise<InvoiceResponse[]> =>
       apiGet<InvoiceResponse[]>("/tenant/invoices", { retry: false }),
+    // Un calendario de toda la cadena predecesor/sucesor del enlace. El backend
+    // resuelve el alcance: el cliente nunca manda ni elige un contractId.
+    calendar: (): Promise<TenantCalendarResponse> =>
+      apiGet<TenantCalendarResponse>("/tenant/calendar", { retry: false }),
     createPayment: (invoiceId: number, file: File): Promise<PaymentResponse> => {
       const form = new FormData();
       form.append("file", file);
@@ -249,6 +254,10 @@ export type {
   PaymentResponse,
   PaymentStatus,
   TenantSessionRequest,
+  TenantCalendarResponse,
+  TenantCalendarCoverage,
+  TenantCalendarInvoiceResponse,
+  TenantCalendarPreInvoiceResponse,
   ActiveContractSummary,
   Currency,
   DepositType,

@@ -316,10 +316,19 @@ describe("lógica de reintento en 401", () => {
     fetchMock.mockResolvedValueOnce(new Response("", { status: 200 })); // refresh: ok
     fetchMock.mockResolvedValueOnce(new Response("", { status: 401 })); // reintento: 401 de nuevo
 
+    const error = await apiGet("/test").catch((e) => e);
+    expect(error).toBeInstanceOf(AuthExpiredError);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("no cierra la sesión por un fallo temporal del servicio de renovación", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 401 }));
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
+
     const error = (await apiGet("/test").catch((e) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
-    expect(error.status).toBe(401);
-    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(error.status).toBe(500);
   });
 });
 

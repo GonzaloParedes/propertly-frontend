@@ -144,6 +144,40 @@ que es el vacío de un filtro o una búsqueda sobre datos que sí existen.
   (`aria-hidden`): el mensaje lo dice el texto. Viven en `EmptyArt`; una
   pantalla nueva suma ahí su dibujo en vez de traer uno de afuera.
 
+### 10 · Feedback de sistema: espera, éxito y error
+
+Cada situación tiene **un** canal. Mezclarlos es lo que dejaba a la app sin
+lenguaje común (un «Cargando…» gris acá, un éxito pintado de rojo allá).
+
+| Situación | Canal |
+|---|---|
+| Una pantalla o bloque espera datos | `Cargando` (`src/components/ui/Spinner.tsx`): anillo grande sobre una tarjeta blanca, **sin texto a la vista**; el rótulo va oculto para lector de pantalla. Aparece a los 300 ms (CSS), así una carga rápida no parpadea |
+| Una acción espera al servidor | Botón ocupado: `Spinner` + gerundio («Guardando…»), deshabilitado, `aria-busy`. Si `onClick` devuelve una promesa, el `Button` se ocupa solo |
+| Una acción modificó datos | Toast de éxito (`src/components/ui/Toast.tsx`, `useToast().exito`) |
+| Falla una acción **sin** diálogo abierto (descargar, copiar enlace, ver comprobante, documento) | Toast de error |
+| Falla una acción **dentro** de un diálogo o asistente | Error inline (`.owner-wizard-alert`), el contenedor sigue abierto con lo escrito. **Nunca** toast |
+| Falla la carga de una pantalla | Aviso inline en el lugar del contenido. Nunca toast |
+
+Reglas:
+
+- **Un botón ocupado lleva texto visible** («Guardando…»): el anillo solo no dice
+  qué se hace. La carga de pantalla va sin texto —se decidió así: la leyenda
+  molestaba— pero con rótulo oculto. El anillo toma el color del
+  texto (`currentColor`), así sirve blanco sobre el primario y rojo en `danger`.
+  Con movimiento reducido gira más lento, no se detiene.
+- **Un toast de éxito dura 6 s y se pausa con hover o foco; uno de error no se
+  cierra solo.** Más de 4 s porque el público incluye gente de 60+ (WCAG 2.2.1).
+- **El color vive en el ícono**, no en el texto (regla de contraste), y el tipo
+  se dice también en palabra para lector de pantalla («Listo:» / «Error:»).
+- Las dos regiones `aria-live` están siempre montadas y llevan sólo `aria-live`,
+  sin `role="status"/"alert"`: un rol permanente chocaría con los avisos inline.
+- Mensajes de usted, sin exclamaciones, que nombran lo hecho. Lo que el backend
+  no hace, el toast no lo afirma.
+- Las pantallas que ya muestran su propio éxito (registro, olvidé y restablecer
+  contraseña) no llevan toast. En `/prototipo` los éxitos sí lo muestran.
+- Se hizo a mano y no con una librería: habría que pisarle casi todo el estilo y
+  su comportamiento por defecto (error que se va solo) va contra esta regla.
+
 ---
 
 ## Comportamiento responsive

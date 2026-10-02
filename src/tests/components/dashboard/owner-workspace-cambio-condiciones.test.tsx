@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
@@ -134,6 +134,7 @@ describe("cambiar condiciones · programar", () => {
       incrementValue: 8,
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByText(/Cambio programado desde/)).toBeInTheDocument();
   });
 
   it("no manda nada si falta el porcentaje y lo dice en el campo", async () => {
