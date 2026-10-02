@@ -13,6 +13,8 @@
   color: var(--tinta);
 }
 
+.tenant-portal--calendar { max-width: 1000px; }
+
 .tenant-portal--centrado {
   display: flex;
   min-height: 100vh;
@@ -241,6 +243,153 @@
   background: var(--error-bg);
   color: var(--error);
   font-weight: 600;
+}
+
+/* Calendario: muestra un año entero sin convertir la lectura en una lista de
+   tarjetas. Los estados se escriben, además de usar color, porque el color no
+   puede ser la única diferencia entre una cuota pagada y una vencida. */
+.tenant-calendar {
+  padding: var(--esp-26);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(30, 27, 46, .03), 0 14px 34px -12px rgba(30, 27, 46, .13);
+}
+
+.tenant-calendar__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-20);
+  margin-bottom: var(--esp-26);
+}
+
+.tenant-calendar__bar h2,
+.tenant-calendar__detail h3 {
+  margin: 0;
+  font: 700 22px/1.3 var(--font-quicksand), sans-serif;
+}
+
+.tenant-calendar__bar p,
+.tenant-calendar__detail-head p {
+  margin: var(--esp-2) 0 0;
+  color: var(--gris);
+  font-size: 15px;
+}
+
+.tenant-calendar__years {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-10);
+}
+
+.tenant-calendar__years > button,
+.tenant-calendar__year-current,
+.tenant-calendar__close {
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--indigo);
+  box-shadow: inset 0 0 0 1.5px var(--borde);
+  cursor: pointer;
+  font: 700 24px var(--font-nunito-sans), sans-serif;
+}
+
+.tenant-calendar__years > button:hover:not(:disabled),
+.tenant-calendar__year-current:hover,
+.tenant-calendar__close:hover { background: var(--indigo-suave); }
+
+.tenant-calendar__years > button:disabled { color: var(--gris); opacity: .5; cursor: default; }
+.tenant-calendar__year-picker { position: relative; }
+.tenant-calendar__year-current { min-width: 96px; padding: 0 var(--esp-10); color: var(--tinta); font: 700 18px var(--font-quicksand), sans-serif; }
+.tenant-calendar__year-current span { color: var(--indigo); }
+.tenant-calendar__year-options {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  padding: var(--esp-6);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(30, 27, 46, .03), 0 14px 34px -12px rgba(30, 27, 46, .13);
+}
+.tenant-calendar__year-options button {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--tinta);
+  cursor: pointer;
+  font: 700 17px var(--font-nunito-sans), sans-serif;
+}
+.tenant-calendar__year-options button:hover,
+.tenant-calendar__year-options button[aria-current="date"] { background: var(--indigo-suave); color: var(--indigo); }
+
+.tenant-calendar__months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--esp-12); }
+.tenant-calendar__month {
+  display: flex;
+  min-width: 0;
+  min-height: 140px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--esp-16);
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--borde);
+  color: var(--tinta);
+  cursor: pointer;
+  text-align: left;
+  font: 400 15px var(--font-nunito-sans), sans-serif;
+}
+.tenant-calendar__month:hover:not(.tenant-calendar__month--empty) { background: #F1EFFA; box-shadow: inset 0 0 0 1.5px var(--borde-campo); }
+.tenant-calendar__month--selected,
+.tenant-calendar__month--selected:hover:not(.tenant-calendar__month--empty) { background: var(--indigo-suave); box-shadow: inset 0 0 0 2px var(--indigo); }
+.tenant-calendar__month-name { font: 700 19px var(--font-quicksand), sans-serif; }
+.tenant-calendar__status { display: inline-flex; align-items: center; gap: var(--esp-8); font-weight: 700; }
+.tenant-calendar__dot { width: 10px; height: 10px; flex: none; border-radius: 999px; background: currentColor; }
+.tenant-calendar__month--ok .tenant-calendar__status { color: var(--exito); }
+.tenant-calendar__month--bad .tenant-calendar__status { color: var(--error); }
+.tenant-calendar__month--warn .tenant-calendar__status { color: var(--adv); }
+.tenant-calendar__month--info .tenant-calendar__status { color: var(--indigo); }
+.tenant-calendar__detail-link { color: var(--indigo); font-weight: 700; }
+.tenant-calendar__change { color: var(--indigo); font-size: 13px; font-weight: 700; }
+.tenant-calendar__month--empty { justify-content: flex-start; gap: var(--esp-20); background: var(--superficie); color: var(--gris); cursor: default; }
+.tenant-calendar__month--empty .tenant-calendar__month-name { color: var(--tinta); }
+
+.tenant-calendar__detail {
+  margin-top: var(--esp-26);
+  padding: var(--esp-26);
+  border-radius: 14px;
+  background: var(--superficie);
+  box-shadow: inset 0 0 0 1.5px var(--borde);
+}
+.tenant-calendar__detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--esp-16); }
+.tenant-calendar__close { display: inline-flex; align-items: center; justify-content: center; gap: var(--esp-10); padding: 0 var(--esp-14); font-size: 15px; }
+.tenant-calendar__close span { font-size: 22px; }
+.tenant-calendar__invoices { display: grid; gap: var(--esp-14); margin-top: var(--esp-20); }
+.tenant-calendar__invoices .tenant-cuota { box-shadow: inset 0 0 0 1.5px var(--borde); }
+.tenant-calendar__note { margin: var(--esp-18) 0 0; color: var(--gris); font-size: 15px; }
+.tenant-calendar :focus-visible { outline: 3px solid var(--indigo); outline-offset: 3px; }
+
+@media (max-width: 900px) {
+  .tenant-calendar__months { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .tenant-portal--calendar { padding: var(--esp-20) var(--esp-16) var(--esp-44); }
+  .tenant-calendar { padding: var(--esp-16); }
+  .tenant-calendar__bar { align-items: flex-start; flex-direction: column; }
+  .tenant-calendar__years { align-self: stretch; justify-content: space-between; }
+  .tenant-calendar__months { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--esp-10); }
+  .tenant-calendar__month { min-height: 132px; padding: var(--esp-12); }
+  .tenant-calendar__month-name { font-size: 17px; }
+  .tenant-calendar__detail { padding: var(--esp-16); }
 }
 
 @media (max-width: 480px) {

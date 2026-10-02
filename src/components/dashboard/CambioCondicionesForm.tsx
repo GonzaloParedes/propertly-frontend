@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Counter from "@/components/ui/Counter";
+import { Spinner } from "@/components/ui/Spinner";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import type { ContractResponse } from "@/lib/backend-types";
@@ -51,7 +52,7 @@ export default function CambioCondicionesForm({
   contrato: ContractResponse;
   hoyISO: string;
   onCancelar: () => void;
-  onProgramado: () => void;
+  onProgramado: (mes: string) => void;
 }>) {
   const meses = mesesElegibles(contrato, hoyISO);
   const [c, setC] = useState<CondicionesNuevas>(() => condicionesIniciales(contrato, meses));
@@ -85,7 +86,7 @@ export default function CambioCondicionesForm({
     setGuardando(true);
     try {
       await AlquiaBackendClient.contracts.scheduleSchemaChange(contrato.id, armarPedido(c));
-      onProgramado();
+      onProgramado(c.mes);
     } catch (err) {
       setError(mensajeDeError(err));
       setRevisando(false);
@@ -108,7 +109,7 @@ export default function CambioCondicionesForm({
         <button type="button" className="owner-button owner-button--quiet" disabled={guardando}
           onClick={() => setRevisando(false)}>Volver</button>
         <button type="button" className="owner-button owner-button--primary" disabled={guardando}
-          onClick={() => void confirmar()}>{guardando ? "Programando…" : "Programar cambio"}</button>
+          aria-busy={guardando || undefined} onClick={() => void confirmar()}>{guardando ? <><Spinner />Programando…</> : "Programar cambio"}</button>
       </div>
     </>;
   }

@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "@/context/auth-context";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiGet } from "@/lib/api";
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
@@ -68,11 +68,26 @@ describe("carga inicial", () => {
     await waitFor(() => expect(screen.getByText(SESION)).toBeInTheDocument());
   });
 
-  it("no gasta un refresh verificando la sesión de un visitante anónimo", async () => {
+  it("verifica la sesión con la renovación habilitada al volver a abrir la app", async () => {
     mockGetMe.mockRejectedValueOnce(new Error("401"));
     renderAuth();
     await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
-    expect(mockGetMe).toHaveBeenCalledWith({ retry: false });
+    expect(mockGetMe).toHaveBeenCalledWith();
+  });
+
+  it("quita el contenido autenticado cuando ya no puede renovar la sesión", async () => {
+    mockGetMe.mockResolvedValueOnce(USUARIO);
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(new Response("", { status: 401 }))
+      .mockResolvedValueOnce(new Response("", { status: 401 })));
+    renderAuth();
+    await waitFor(() => expect(screen.getByText(SESION)).toBeInTheDocument());
+
+    await act(async () => {
+      await apiGet("/properties").catch(() => {});
+    });
+
+    await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
   });
 });
 

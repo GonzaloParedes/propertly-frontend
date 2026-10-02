@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
@@ -62,7 +62,7 @@ describe("carga", () => {
     mockContracts.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="contratos" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus contratos…")).toBeInTheDocument();
     // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
     // después es el parpadeo que se veía al entrar a la pantalla.
     expect(screen.queryByRole("button", { name: "Nuevo contrato" })).not.toBeInTheDocument();

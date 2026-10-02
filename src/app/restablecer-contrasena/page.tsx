@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
+import { Spinner } from "@/components/ui/Spinner";
 
 const TIPS = [
   "Use al menos 8 caracteres",
@@ -331,7 +332,7 @@ function RestablecerContrasenaForm() {
             (e.currentTarget.style.background = "var(--primary)")
           }
         >
-          {isPending ? "Guardando…" : "Guardar nueva contraseña"}
+          {isPending ? <span className="inline-flex items-center gap-2"><Spinner />Guardando…</span> : "Guardar nueva contraseña"}
         </button>
       </form>
     </>

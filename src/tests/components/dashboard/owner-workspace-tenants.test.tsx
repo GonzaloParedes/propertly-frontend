@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
@@ -64,7 +64,7 @@ describe("carga", () => {
     mockInvoices.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="inquilinos" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus inquilinos…")).toBeInTheDocument();
     // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
     // después es el parpadeo que se veía al entrar a la pantalla.
     expect(screen.queryByRole("button", { name: "Agregar inquilino" })).not.toBeInTheDocument();
@@ -105,7 +105,7 @@ describe("modo demo", () => {
     render(<OwnerWorkspace initialView="inquilinos" demo />);
 
     expect(screen.getByText("Jorge Paletta")).toBeInTheDocument();
-    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cargando sus inquilinos…")).not.toBeInTheDocument();
   });
 
   it("incluye un inquilino sin contrato, que también es parte del diseño", () => {
@@ -114,6 +114,24 @@ describe("modo demo", () => {
 
     expect(screen.getByText("Sin contrato")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Crear contrato" })).toBeInTheDocument();
+  });
+});
+
+describe("modo demo · avisos", () => {
+  it("al terminar el asistente de inquilino vuelve al listado y lo confirma", async () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" demo />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Agregar inquilino" }));
+    await userEvent.type(screen.getByLabelText("Nombre"), "Lucía");
+    await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), "27248910556");
+    await userEvent.type(screen.getByLabelText("Correo electrónico"), "lucia@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
+
+    expect(await screen.findByText(/Inquilino agregado/)).toBeInTheDocument();
+    expect(screen.getByText("Jorge Paletta")).toBeInTheDocument();
   });
 });
 
@@ -393,6 +411,7 @@ describe("detalle · archivar", () => {
 
     await waitFor(() => expect(mockArchive).toHaveBeenCalledWith(2));
     expect(await screen.findByText("Todavía no cargó ningún inquilino")).toBeInTheDocument();
+    expect(await screen.findByText(/Inquilino archivado/)).toBeInTheDocument();
   });
 
   it("explica el 409 y el inquilino sigue en la lista", async () => {

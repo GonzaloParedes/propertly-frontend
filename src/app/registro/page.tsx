@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { apiPost, ApiError } from "@/lib/api";
+import { Spinner } from "@/components/ui/Spinner";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 
@@ -265,7 +266,7 @@ export default function RegistroPage() {
   const taxIdError = errorDeCuit(taxId);
 
   const phoneOk = telefonoValido(phone);
-  const submitButtonLabel = isPending ? "Creando cuenta…" : "Crear cuenta";
+  const submitButtonLabel = isPending ? <span className="inline-flex items-center gap-2"><Spinner />Creando cuenta…</span> : "Crear cuenta";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

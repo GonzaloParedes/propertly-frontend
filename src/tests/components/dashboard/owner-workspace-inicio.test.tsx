@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@/tests/render";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import type {
   ContractResponse,
@@ -105,7 +105,7 @@ describe("carga", () => {
     mockPreInvoices.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="inicio" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando su panel…")).toBeInTheDocument();
   });
 
   it("acota las cuotas al mes corriente, como fecha completa", async () => {
@@ -140,7 +140,7 @@ describe("carga", () => {
     render(<OwnerWorkspace initialView="inicio" demo />);
 
     expect(mockInvoices).not.toHaveBeenCalled();
-    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cargando su panel…")).not.toBeInTheDocument();
   });
 });
 

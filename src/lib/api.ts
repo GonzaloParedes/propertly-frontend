@@ -21,10 +21,23 @@ export class AuthExpiredError extends Error {
   }
 }
 
+const authExpiredListeners = new Set<() => void>();
+
+export function onAuthExpired(listener: () => void): () => void {
+  authExpiredListeners.add(listener);
+  return () => authExpiredListeners.delete(listener);
+}
+
+function authExpired(): never {
+  authExpiredListeners.forEach((listener) => listener());
+  throw new AuthExpiredError();
+}
+
 async function fetchWithAuth(
   path: string,
   init: RequestInit = {},
-  retry = true
+  retry = true,
+  retried = false
 ): Promise<Response> {
   // Un body FormData no lleva Content-Type propio: fetch calcula el boundary
   // multipart solo cuando arma el header él mismo.
@@ -51,10 +64,13 @@ async function fetchWithAuth(
       headers: { ...CSRF_HEADER },
     });
     if (refreshRes.ok) {
-      return fetchWithAuth(path, init, false);
+      return fetchWithAuth(path, init, false, true);
     }
-    throw new AuthExpiredError();
+    if (refreshRes.status === 401 || refreshRes.status === 403) authExpired();
+    throw new ApiError(refreshRes.status, refreshRes.statusText);
   }
+
+  if (res.status === 401 && retried) authExpired();
 
   if (!res.ok) {
     let message = res.statusText;
