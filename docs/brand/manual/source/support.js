@@ -147,6 +147,19 @@
       return s;
     }
   }
+  function parentOrigin() {
+    if (window.parent === window || !document.referrer) return null;
+    try {
+      const origin = new URL(document.referrer).origin;
+      return origin === "null" ? null : origin;
+    } catch {
+      return null;
+    }
+  }
+  function postToParent(message) {
+    const origin = parentOrigin();
+    if (origin) window.parent.postMessage(message, origin);
+  }
   function boot(runtime, doc = document) {
     const parsed = parseDcDocument(doc);
     if (!parsed) return null;
@@ -155,7 +168,9 @@
     runtime.markFetched(rootName);
     runtime.setRootName(rootName);
     runtime.adoptParsed(rootName, parsed);
-    fetch(location.href).then((res) => res.ok ? res.text() : "").then((t) => {
+    // Sólo se vuelve a leer el documento que ya está abierto; una ruta relativa
+    // no permite que el valor de location redirija esta solicitud a otro origen.
+    fetch(location.pathname + location.search).then((res) => res.ok ? res.text() : "").then((t) => {
       const raw = t ? parseDcText(t) : null;
       if (raw?.template) runtime.updateHtml(rootName, raw.template);
     }).catch(() => {
@@ -368,13 +383,13 @@
     return o;
   }
   function compileAttr(raw) {
-    const whole = raw.match(/^\s*\{\{([\s\S]+?)\}\}\s*$/);
+    const whole = raw.match(/^\s*\{\{([^{}]*)\}\}\s*$/);
     if (whole) {
       const path = whole[1];
       return (vals) => resolve(vals, path);
     }
     if (raw.includes("{{")) {
-      const parts = raw.split(/\{\{([\s\S]+?)\}\}/g);
+      const parts = raw.split(/\{\{([^{}]*)\}\}/g);
       return (vals) => parts.map((s, i) => i & 1 ? resolve(vals, s) ?? "" : s).join("");
     }
     return () => raw;
@@ -477,7 +492,7 @@
       if (!txt.trim() && !txt.includes(" ")) return null;
       return () => txt;
     }
-    const parts = txt.split(/\{\{([\s\S]+?)\}\}/g);
+    const parts = txt.split(/\{\{([^{}]*)\}\}/g);
     return (vals, ctx, key) => h(
       getReact().Fragment,
       { key },
@@ -516,7 +531,7 @@
   function walkFor(el, host) {
     const listGet = compileAttr(el.getAttribute("list") || "");
     const asName = el.getAttribute("as") || "item";
-    const hintN = parseInt(el.getAttribute("hint-placeholder-count") || "0", 10);
+    const hintN = Number.parseInt(el.getAttribute("hint-placeholder-count") || "0", 10);
     const kids = walkChildren(el, host);
     const listSrc = el.getAttribute("list") || "";
     return (vals, ctx, key) => {
@@ -676,7 +691,7 @@
     }
     const s = clone.innerHTML;
     let h2 = 5381;
-    for (let i = 0; i < s.length; i++) h2 = (h2 << 5) + h2 + s.charCodeAt(i) | 0;
+    for (let i = 0; i < s.length; i++) h2 = Math.trunc(Math.imul(h2, 33) + s.charCodeAt(i));
     return s.length + "." + (h2 >>> 0).toString(36);
   }
   var NEVER_CONTENT_KEYED = new Set(
@@ -740,13 +755,13 @@
   };
   function evalDcLogic(src) {
     //! nosemgrep: eval-and-function-constructor
-    const fn = new Function(
+    const fn = new Function( // NOSONAR: source comes only from the checked-in data-dc-script in this same document.
       "DCLogic",
       "StreamableLogic",
       "React",
       src + '\n;return (typeof Component!=="undefined"&&Component)||undefined;'
     );
-    return fn(StreamableLogic, StreamableLogic, getReact());
+    return fn(StreamableLogic, StreamableLogic, getReact()); // NOSONAR: invokes the trusted compiled document logic above.
   }
 
   // src/component.ts
@@ -1049,6 +1064,13 @@
   var BABEL_SRI = "sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y";
   var GLOBAL_POLL_INTERVAL_MS = 50;
   var GLOBAL_POLL_TIMEOUT_MS = 3e4;
+  function sameOriginModuleUrl(url) {
+    const parsed = new URL(url, document.baseURI);
+    if (parsed.origin !== window.location.origin) {
+      throw new Error("x-import only accepts modules from this origin");
+    }
+    return parsed.href;
+  }
   function createExternalModules(onResolved) {
     const cache = /* @__PURE__ */ new Map();
     let babelLoading = null;
@@ -1073,12 +1095,13 @@
       const existing = pending.get(url);
       if (existing) return existing;
       cache.set(url, null);
+      const trustedUrl = sameOriginModuleUrl(url);
       console.info("[dc-runtime] x-import: loading", url, "(" + kind + ")");
       const ready = Promise.all([
         kind === "jsx" ? ensureBabel() : Promise.resolve(),
         after ?? Promise.resolve()
       ]);
-      const p = ready.then(() => fetch(url)).then((r) => {
+      const p = ready.then(() => fetch(trustedUrl)).then((r) => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.text();
       }).then((src) => {
@@ -1089,7 +1112,7 @@
         const module = { exports: {} };
         const before = new Set(Object.keys(window));
         //! nosemgrep: eval-and-function-constructor
-        new Function("React", "module", "exports", "require", code)(
+        new Function("React", "module", "exports", "require", code)( // NOSONAR: code is fetched only after sameOriginModuleUrl validation.
           getReact(),
           module,
           module.exports,
@@ -1258,7 +1281,7 @@
     function postDesignMode(mode) {
       if (window.parent === window) return;
       try {
-        window.parent.postMessage({ type: "__dc_design_mode", mode }, "*");
+        postToParent({ type: "__dc_design_mode", mode });
       } catch {
       }
     }
@@ -1279,6 +1302,8 @@
       }
     }
     window.addEventListener("message", (e) => {
+      const origin = parentOrigin();
+      if (!origin || e.origin !== origin || e.source !== window.parent) return;
       const type = e.data && e.data.type;
       if (type === "__dc_theme") {
         const t = e.data.theme;
@@ -1631,14 +1656,13 @@
       if (window.parent === window) return;
       const r = runtime.registry.entries[rootName];
       try {
-        window.parent.postMessage(
+        postToParent(
           {
             type: "__dc_booted",
             rootName,
             propsMeta: r && r.propsMeta || null,
             preview: r && r.preview || null
-          },
-          "*"
+          }
         );
       } catch {
       }
