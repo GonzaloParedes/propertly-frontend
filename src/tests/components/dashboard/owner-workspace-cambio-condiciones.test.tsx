@@ -86,7 +86,9 @@ describe("cambiar condiciones · acción", () => {
     mockList.mockResolvedValue([contrato({ status: "TERMINATED" })]);
     mockGet.mockResolvedValue(contrato({ status: "TERMINATED" }));
     render(<OwnerWorkspace initialView="contratos" />);
-    await userEvent.click(await screen.findByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     await userEvent.click(await screen.findByRole("button", { name: /Av\. Rivadavia/ }));
     await screen.findByText(/Contrato con Jorge Paletta/);
     expect(screen.queryByRole("button", { name: "Cambiar condiciones" })).not.toBeInTheDocument();
@@ -193,7 +195,8 @@ describe("lista de contratos", () => {
     ]);
     render(<OwnerWorkspace initialView="contratos" />);
 
-    expect(await screen.findByRole("button", { name: /Vigentes 1/ })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    expect(screen.getByRole("button", { name: /Vigentes 1/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Programados 1/ }));
     expect(screen.getByText("Programado")).toBeInTheDocument();
   });

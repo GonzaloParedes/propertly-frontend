@@ -16,6 +16,7 @@ import { buildTenantRows, resumenInquilinos, type TenantRow } from "@/lib/tenant
 import {
   buildFilasCobranza,
   contarPorFiltro,
+  buscarCobranzas,
   filtrar,
   resumenCobranzas,
   type FilaCobranza,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/cobranzas";
 import {
   buildFilasContrato,
+  buscarContratos,
   contarContratos,
   describirActualizacion,
   filtrarContratos,
@@ -452,6 +454,71 @@ function Button({ children, tone = "primary", onClick, disabled = false, small =
   return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
+function SearchField({ value, onChange, placeholder, label }: Readonly<{ value: string; onChange: (value: string) => void; placeholder: string; label: string }>) {
+  return <div className="owner-search">
+    <Icon name="search" size={19} />
+    <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={label} />
+    {value && <button type="button" className="owner-search__clear" onClick={() => onChange("")} aria-label="Borrar la búsqueda"><Icon name="x" size={16} /></button>}
+  </div>;
+}
+
+/**
+ * Una lista vacía tiene dos causas distintas y piden salidas distintas: la
+ * búsqueda no encontró nada (se borra), o encontró pero el estado elegido lo
+ * esconde (se cambia de estado).
+ */
+function EmptyResults({ noun, query, found, stateLabel, onClearSearch, otherState }: Readonly<{ noun: string; query: string; found: number; stateLabel: string; onClearSearch: () => void; otherState: { label: string; apply: () => void } | null }>) {
+  const text = query.trim();
+  if (found === 0) {
+    return <div className="owner-empty">
+      <b>{text ? `No encontramos ${noun} para «${text}»` : `No hay ${noun}`}</b>
+      {text && <span>Revise la dirección o el nombre del inquilino.</span>}
+      {text && <Button tone="secondary" small onClick={onClearSearch}>Quitar búsqueda</Button>}
+    </div>;
+  }
+  return <div className="owner-empty">
+    <b>No hay {noun} {stateLabel}</b>
+    <span>{text ? `Para «${text}» hay ${found} en otros estados.` : "Pruebe con otro estado."}</span>
+    {otherState && <Button tone="secondary" small onClick={otherState.apply}>Ver {otherState.label}</Button>}
+  </div>;
+}
+
+function FilterMenu({ active, open, onOpenChange, onClear, resultsLabel, children }: Readonly<{ active: number; open: boolean; onOpenChange: (open: boolean) => void; onClear: () => void; resultsLabel: string; children: React.ReactNode }>) {
+  return <div className="owner-filter-anchor">
+    <button type="button" className="owner-filter-toggle" aria-expanded={open} onClick={() => onOpenChange(!open)}>
+      <Icon name="sliders" size={18} />Filtros
+      {active > 0 && <span className="owner-filter-toggle__count">{active}</span>}
+    </button>
+    {open && <>
+      <button type="button" className="owner-panel__scrim" aria-label="Cerrar los filtros" onClick={() => onOpenChange(false)} />
+      <dialog open className="owner-panel" aria-label="Filtros">
+        <div className="owner-panel__head">
+          <b>Filtros</b>
+          <button type="button" className="owner-panel__close" onClick={() => onOpenChange(false)} aria-label="Cerrar"><Icon name="x" size={18} /></button>
+        </div>
+        <div className="owner-panel__body">{children}</div>
+        <div className="owner-panel__foot">
+          <Button tone="quiet" small onClick={onClear}>Limpiar</Button>
+          <Button small onClick={() => onOpenChange(false)}>{resultsLabel}</Button>
+        </div>
+      </dialog>
+    </>}
+  </div>;
+}
+
+function FilterChoices({ id, label, options, isOn, onToggle }: Readonly<{ id: string; label: string; options: readonly (readonly [string, string, number?])[]; isOn: (key: string) => boolean; onToggle: (key: string) => void }>) {
+  return <>
+    <p className="owner-panel__label" id={id}>{label}</p>
+    <section className="owner-chips" aria-labelledby={id}>
+      {options.map(([key, text, count]) => (
+        <button key={key} type="button" className="owner-chip" aria-pressed={isOn(key)} onClick={() => onToggle(key)}>
+          {text}{count !== undefined && <b>{count}</b>}
+        </button>
+      ))}
+    </section>
+  </>;
+}
+
 function Notice({ tone, title, children, action }: Readonly<{ tone: "info" | "warn" | "bad"; title: string; children: React.ReactNode; action: React.ReactNode }>) {
   const iconos = { info: "card", warn: "alert", bad: "x" } as const;
   const icon = iconos[tone];
@@ -607,8 +674,11 @@ function ContractsView({
   onCreateContract,
   onOpenContract,
 }: ContractsViewProps) {
-  const visibleContracts = contracts ? filtrarContratos(contracts, filter) : [];
-  const counts = contracts ? contarContratos(contracts) : { vigentes: 0, porTerminar: 0, programados: 0, finalizados: 0 };
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const found = contracts ? buscarContratos(contracts, query) : [];
+  const visibleContracts = filtrarContratos(found, filter);
+  const counts = contracts ? contarContratos(found) : { vigentes: 0, porTerminar: 0, programados: 0, finalizados: 0 };
   const filters: [FiltroContrato, string][] = [
     ["vigentes", "Vigentes"],
     ["porTerminar", "Por terminar"],
@@ -622,10 +692,15 @@ function ContractsView({
     {!hasError && contracts === null && <p className="owner-list-note">Cargando…</p>}
     {contracts?.length === 0 && <p className="owner-list-note"><b>Todavía no tiene contratos</b>Use «Nuevo contrato» para vincular una propiedad con su inquilino.</p>}
     {contracts && contracts.length > 0 && <>
-      <section className="owner-filter" aria-label="Estado del contrato">
-        {filters.map(([key, label]) => <button key={key} type="button" aria-pressed={filter === key} onClick={() => onFilterChange(key)}>{label} <b>{counts[key]}</b></button>)}
-      </section>
-      {visibleContracts.length === 0 ? <div className="owner-empty"><b>No hay contratos en este estado</b><span>Pruebe con otro filtro.</span></div> : <div className="owner-list">
+      <div className="owner-search-bar">
+        <SearchField value={query} onChange={setQuery} placeholder="Buscar por dirección o inquilino" label="Buscar contratos" />
+        <FilterMenu active={filter === "vigentes" ? 0 : 1} open={panelOpen} onOpenChange={setPanelOpen} onClear={() => onFilterChange("vigentes")}
+          resultsLabel={`Ver ${visibleContracts.length} ${visibleContracts.length === 1 ? "contrato" : "contratos"}`}>
+          <FilterChoices id="f-contrato" label="Estado" options={filters.map(([key, label]) => [key, label, counts[key]] as const)} isOn={(key) => filter === key} onToggle={(key) => onFilterChange(key as FiltroContrato)} />
+        </FilterMenu>
+      </div>
+      {visibleContracts.length === 0 ? <EmptyResults noun="contratos" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
+        otherState={(() => { const next = filters.find(([key]) => counts[key] > 0); return next ? { label: next[1].toLowerCase(), apply: () => onFilterChange(next[0]) } : null; })()} /> : <div className="owner-list">
         {visibleContracts.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract)}>
           <span className="owner-row__icon"><Icon name="file" /></span>
           <span className="owner-row__body"><b>{contract.direccion}</b><small>{contract.inquilino} · {contract.actualizacion} · termina {contract.fin}</small></span>
@@ -705,14 +780,11 @@ function CollectionsView({
   onViewReceipt,
   onRegisterPayment,
 }: CollectionsViewProps) {
-  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
-  const properties = collections ? [...new Set(collections.map((item) => item.direccion))].sort((a, b) => a.localeCompare(b, "es")) : [];
-  const activeProperties = selectedProperties.filter((direccion) => properties.includes(direccion));
-  const toggleProperty = (direccion: string) => setSelectedProperties(activeProperties.includes(direccion) ? activeProperties.filter((d) => d !== direccion) : [...activeProperties, direccion]);
-  const scoped = collections ? (activeProperties.length > 0 ? collections.filter((item) => activeProperties.includes(item.direccion)) : collections) : null;
-  const visibleCollections = scoped ? filtrar(scoped, filter) : [];
-  const counts = scoped ? contarPorFiltro(scoped) : { todas: 0, vencidas: 0, aVencer: 0, pagadas: 0 };
+  const [query, setQuery] = useState("");
+  const found = collections ? buscarCobranzas(collections, query) : [];
+  const visibleCollections = filtrar(found, filter);
+  const counts = contarPorFiltro(found);
   const filters: [FiltroCobranza, string][] = [["todas", "Todas"], ["vencidas", "Vencidas"], ["aVencer", "A vencer"], ["pagadas", "Pagadas"]];
 
   return <>
@@ -722,10 +794,16 @@ function CollectionsView({
     {actionError && !hasOpenAction && <p className="owner-list-note" role="alert">{actionError}</p>}
     {collections?.length === 0 && <p className="owner-list-note"><b>Todavía no hay cuotas</b>Se generan solas a partir de sus contratos activos.</p>}
     {collections && collections.length > 0 && <>
-      <section className="owner-filter" aria-label="Estado de la cuota">
-        {filters.map(([key, label]) => <button key={key} type="button" aria-pressed={filter === key} onClick={() => onFilterChange(key)}>{label} <b>{counts[key]}</b></button>)}
-      </section>
-      {visibleCollections.length === 0 ? <div className="owner-empty"><b>No hay cuotas en este estado</b><span>Pruebe con otro filtro.</span></div> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
+      <div className="owner-search-bar">
+        <SearchField value={query} onChange={setQuery} placeholder="Buscar por dirección o inquilino" label="Buscar cuotas" />
+        <FilterMenu active={filter === "todas" ? 0 : 1} open={panelOpen} onOpenChange={setPanelOpen}
+          onClear={() => onFilterChange("todas")}
+          resultsLabel={`Ver ${visibleCollections.length} ${visibleCollections.length === 1 ? "cuota" : "cuotas"}`}>
+          <FilterChoices id="f-cuota" label="Estado" options={filters.map(([key, label]) => [key, label, counts[key]] as const)} isOn={(key) => filter === key} onToggle={(key) => onFilterChange(key as FiltroCobranza)} />
+        </FilterMenu>
+      </div>
+      {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
+        otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
         {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small></td><td data-cell="monto" className="owner-number owner-money">{item.monto}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className="owner-substatus">Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
       </tbody></table></div>}
     </>}
@@ -1025,7 +1103,8 @@ function PropertiesView({
     // número del chip es el que vas a obtener si lo tocás.
     const cuenta = contarFacetas(filas, filtro);
     const ciudadesDisponibles = ciudadesDe(filas);
-    const activos = ciudades.length + dorms.length + extras.length;
+    const activos = ciudades.length + dorms.length + extras.length + (estado === "todas" ? 0 : 1);
+    const etiquetaEstado = { todas: "Todas", conContrato: "Con contrato", sinAlquilar: "Sin alquilar" } as const;
     const etiquetaExtra: Record<string, string> = { mascotas: "Acepta mascotas", amoblada: "Amueblada" };
     const etiquetaDorm = (d: string) => {
       if (d === "4+") return "4+ dormitorios";
@@ -1037,6 +1116,7 @@ function PropertiesView({
       ...ciudades.map((c) => ({ k: `c-${c}`, texto: c, quitar: () => alterna(ciudades, setCiudades, c) })),
       ...dorms.map((d) => ({ k: `d-${d}`, texto: etiquetaDorm(d), quitar: () => alterna(dorms, setDorms, d) })),
       ...extras.map((e) => ({ k: `e-${e}`, texto: etiquetaExtra[e], quitar: () => alterna(extras, setExtras, e) })),
+      ...(estado === "todas" ? [] : [{ k: "estado", texto: etiquetaEstado[estado], quitar: () => setEstado("todas") }]),
     ];
     const limpiar = () => { setCiudades([]); setDorms([]); setExtras([]); setQuery(""); setEstado("todas"); };
 
@@ -1071,77 +1151,23 @@ function PropertiesView({
         {pageHeader("Propiedades", resumenPropiedades(propiedades), accion)}
 
         <div className="owner-search-bar">
-          <div className="owner-search">
-            <Icon name="search" size={19} />
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por dirección, ciudad o inquilino" aria-label="Buscar propiedades" />
-            {query && (
-              <button type="button" className="owner-search__clear" onClick={() => setQuery("")} aria-label="Borrar la búsqueda">
-                <Icon name="x" size={16} />
-              </button>
-            )}
-          </div>
-          <div className="owner-filter-anchor">
-            <button type="button" className="owner-filter-toggle" aria-expanded={panelAbierto}
-              onClick={() => setPanelAbierto((v) => !v)}>
-              <Icon name="sliders" size={18} />Filtros
-              {activos > 0 && <span className="owner-filter-toggle__count">{activos}</span>}
-            </button>
-            {panelAbierto && (
-              <>
-                <button type="button" className="owner-panel__scrim" aria-label="Cerrar los filtros" onClick={() => setPanelAbierto(false)} />
-                <dialog open className="owner-panel" aria-label="Filtros">
-                  <div className="owner-panel__head">
-                    <b>Filtros</b>
-                    <button type="button" className="owner-panel__close" onClick={() => setPanelAbierto(false)} aria-label="Cerrar">
-                      <Icon name="x" size={18} />
-                    </button>
-                  </div>
-                  <div className="owner-panel__body">
-                    <p className="owner-panel__label" id="f-ciudad">Ciudad</p>
-                    <section className="owner-chips" aria-labelledby="f-ciudad">
-                      {ciudadesDisponibles.map((c) => (
-                        <button key={c} type="button" className="owner-chip" aria-pressed={ciudades.includes(c)}
-                          onClick={() => alterna(ciudades, setCiudades, c)}>{c}</button>
-                      ))}
-                    </section>
-                    <p className="owner-panel__label" id="f-dorm">Dormitorios</p>
-                    <section className="owner-chips" aria-labelledby="f-dorm">
-                      {["1", "2", "3", "4+"].map((d) => (
-                        <button key={d} type="button" className="owner-chip" aria-pressed={dorms.includes(d)}
-                          onClick={() => alterna(dorms, setDorms, d)}>{d}</button>
-                      ))}
-                    </section>
-                    <p className="owner-panel__label" id="f-extra">Características</p>
-                    <section className="owner-chips" aria-labelledby="f-extra">
-                      {Object.entries(etiquetaExtra).map(([k, v]) => (
-                        <button key={k} type="button" className="owner-chip" aria-pressed={extras.includes(k)}
-                          onClick={() => alterna(extras, setExtras, k)}>{v}</button>
-                      ))}
-                    </section>
-                  </div>
-                  <div className="owner-panel__foot">
-                    <Button tone="quiet" small onClick={() => { setCiudades([]); setDorms([]); setExtras([]); }}>Limpiar</Button>
-                    <Button small onClick={() => setPanelAbierto(false)}>Ver {visibles.length} propiedades</Button>
-                  </div>
-                </dialog>
-              </>
-            )}
-          </div>
+          <SearchField value={query} onChange={setQuery} placeholder="Buscar por dirección, ciudad o inquilino" label="Buscar propiedades" />
+          <FilterMenu active={activos} open={panelAbierto} onOpenChange={setPanelAbierto}
+            onClear={() => { setCiudades([]); setDorms([]); setExtras([]); setEstado("todas"); }}
+            resultsLabel={`Ver ${visibles.length} ${visibles.length === 1 ? "propiedad" : "propiedades"}`}>
+            {/* Sin el contrato en la respuesta, «Con contrato» y «Sin alquilar»
+                contarían todo como libre. El filtro se omite entero: es el mismo dato faltante. */}
+            {!sinDatoDeContrato && <FilterChoices id="f-estado" label="Estado"
+              options={([["todas", "Todas"], ["conContrato", "Con contrato"], ["sinAlquilar", "Sin alquilar"]] as const).map(([k, txt]) => [k, txt, cuenta[k]] as const)}
+              isOn={(k) => estado === k} onToggle={(k) => setEstado(k as typeof estado)} />}
+            <FilterChoices id="f-ciudad" label="Ciudad" options={ciudadesDisponibles.map((c) => [c, c] as const)}
+              isOn={(c) => ciudades.includes(c)} onToggle={(c) => alterna(ciudades, setCiudades, c)} />
+            <FilterChoices id="f-dorm" label="Dormitorios" options={["1", "2", "3", "4+"].map((d) => [d, d] as const)}
+              isOn={(d) => dorms.includes(d)} onToggle={(d) => alterna(dorms, setDorms, d)} />
+            <FilterChoices id="f-extra" label="Características" options={Object.entries(etiquetaExtra)}
+              isOn={(k) => extras.includes(k)} onToggle={(k) => alterna(extras, setExtras, k)} />
+          </FilterMenu>
         </div>
-
-        {/* Sin el contrato en la respuesta, «Con contrato» y «Sin alquilar»
-            contarían todo como libre. El filtro se omite entero, igual que los
-            chips: es el mismo dato faltante. */}
-        {!sinDatoDeContrato && (
-          <section className="owner-filter" aria-label="Estado de la propiedad">
-            {([["todas", "Todas"], ["conContrato", "Con contrato"], ["sinAlquilar", "Sin alquilar"]] as const).map(([k, txt]) => (
-              <button key={k} type="button" aria-pressed={estado === k} onClick={() => setEstado(k)}>
-                {txt} <b>{cuenta[k]}</b>
-              </button>
-            ))}
-          </section>
-        )}
 
         {chipsAplicados.length > 0 && (
           <div className="owner-applied">

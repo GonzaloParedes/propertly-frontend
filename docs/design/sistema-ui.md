@@ -135,7 +135,7 @@ vive en `OwnerWorkspace.css`; no hay CSS responsive en los `.tsx`.
 |---|---|
 | **1200 px** | `--col-monto` y `--col-estado` se achican (140/156 → 124/140). Solo números. |
 | **1080 px** | El contenido pierde padding; `.owner-detail-grid` pasa a una columna. |
-| **900 px** | **El corte grande.** `.owner-nav` desaparece y aparecen `.owner-mobile-header` + `.owner-drawer`. `.owner-row` se apila (ícono a la izquierda ocupando dos filas, y monto y estado bajan debajo del texto). Los chips de filtro envuelven. El asistente pierde la barra de progreso. |
+| **900 px** | **El corte grande.** `.owner-nav` desaparece y aparecen `.owner-mobile-header` + `.owner-drawer`. `.owner-row` se apila (ícono a la izquierda ocupando dos filas, y monto y estado bajan debajo del texto). Los filtros viven detrás del botón «Filtros» (panel; en celular, hoja desde abajo): ya no hay chips de estado sueltos. El asistente pierde la barra de progreso. |
 | **720 px** | `.owner-contract-summary` a una columna. |
 | **620 px** | **El corte de celular.** Se achican los padding de tarjeta; los avisos, el `.owner-document` y los botones de encabezado se apilan; el diálogo pone sus acciones en columna; la tabla de cobranzas se apila. |
 

@@ -1,3 +1,4 @@
+import { coincideTexto } from "@/lib/busqueda";
 import { formatearDireccion, formatearFecha, formatearMonto } from "@/lib/formato";
 import type { ContractResponse } from "@/lib/backend-types";
 
@@ -103,6 +104,11 @@ const COINCIDE: Record<FiltroContrato, (fila: FilaContrato) => boolean> = {
   // Un contrato reemplazado ya no rige, así que cuenta acá aunque se nombre distinto.
   finalizados: (f) => f.estado === "Finalizado" || f.estado === "Vencido" || f.estado === "Reemplazado",
 };
+
+/** Por dirección o inquilino. */
+export function buscarContratos(filas: FilaContrato[], texto: string): FilaContrato[] {
+  return filas.filter((f) => coincideTexto([f.direccion, f.inquilino], texto));
+}
 
 export function filtrarContratos(filas: FilaContrato[], filtro: FiltroContrato): FilaContrato[] {
   return filas.filter(COINCIDE[filtro]);

@@ -107,7 +107,8 @@ describe("filtros", () => {
 
   it("cuenta cada estado", async () => {
     conCuotas(cuatro);
-    const grupo = await screen.findByRole("region", { name: "Estado de la cuota" });
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    const grupo = screen.getByRole("region", { name: "Estado" });
 
     expect(within(grupo).getByRole("button", { name: /Todas/ })).toHaveTextContent("4");
     expect(within(grupo).getByRole("button", { name: /Vencidas/ })).toHaveTextContent("1");
@@ -117,9 +118,40 @@ describe("filtros", () => {
 
   it("al filtrar deja sólo las que corresponden", async () => {
     conCuotas(cuatro);
-    await userEvent.click(await screen.findByRole("button", { name: /Pagadas/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Pagadas/ }));
 
     // 1 encabezado + 1 fila
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+  });
+});
+
+describe("búsqueda", () => {
+  it("filtra por dirección y dice cuando nada coincide", async () => {
+    conCuotas([cuota()]);
+    const buscador = await screen.findByLabelText("Buscar cuotas");
+
+    await userEvent.type(buscador, "rivadavia");
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+
+    await userEvent.clear(buscador);
+    await userEvent.type(buscador, "zzzz");
+    expect(screen.getByText("No encontramos cuotas para «zzzz»")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Quitar búsqueda" }));
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+  });
+
+  it("si el estado esconde lo que se buscó, ofrece ver todas", async () => {
+    conCuotas([cuota({ status: "DUE" })]);
+    await userEvent.type(await screen.findByLabelText("Buscar cuotas"), "rivadavia");
+    await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Pagadas/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    expect(screen.getByText("No hay cuotas pagadas")).toBeInTheDocument();
+    expect(screen.getByText("Para «rivadavia» hay 1 en otros estados.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Ver todas" }));
     expect(screen.getAllByRole("row")).toHaveLength(2);
   });
 });

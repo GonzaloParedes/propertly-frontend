@@ -207,9 +207,9 @@ describe("filas", () => {
     render(<OwnerWorkspace initialView="propiedades" />);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(
-      screen.queryByRole("region", { name: "Estado de la propiedad" })
-    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    expect(screen.queryByRole("region", { name: "Estado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Sin alquilar/ })).not.toBeInTheDocument();
   });
 });
 
@@ -239,6 +239,7 @@ describe("bajada y filtros", () => {
     render(<OwnerWorkspace initialView="propiedades" />);
     await screen.findByText("Mitre 78");
 
+    await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
     await userEvent.click(screen.getByRole("button", { name: /Sin alquilar 1/ }));
 
     expect(screen.getByText("Mitre 78")).toBeInTheDocument();

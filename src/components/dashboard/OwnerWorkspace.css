@@ -498,3 +498,5 @@
 /* Documento sin cargar: ya está dentro de una tarjeta blanca, así que va sin caja propia (ni gris ni contorno). */
 .owner-empty-callout--outline{padding:0;background:transparent}
 .owner-empty-callout--outline>svg{background:var(--indigo-suave)}
+
+.owner-chip b{margin-left:7px;font-variant-numeric:tabular-nums}

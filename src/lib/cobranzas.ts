@@ -1,3 +1,4 @@
+import { coincideTexto } from "@/lib/busqueda";
 import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
 import type {
   AdjustmentResponse,
@@ -126,6 +127,11 @@ const COINCIDE: Record<FiltroCobranza, (fila: FilaCobranza) => boolean> = {
   aVencer: (fila) => fila.estado === "A vencer" || fila.estado === "Pago a confirmar",
   pagadas: (fila) => fila.estado === "Pagada",
 };
+
+/** Por dirección, inquilino o período («octubre»). */
+export function buscarCobranzas(filas: FilaCobranza[], texto: string): FilaCobranza[] {
+  return filas.filter((f) => coincideTexto([f.direccion, f.inquilino, f.periodo], texto));
+}
 
 export function filtrar(filas: FilaCobranza[], filtro: FiltroCobranza): FilaCobranza[] {
   return filas.filter(COINCIDE[filtro]);

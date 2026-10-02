@@ -86,7 +86,9 @@ async function abrir(c = contrato(), incrementos: RentIncrementResponse[] = []) 
   mockIncrements.mockResolvedValue(incrementos);
   render(<OwnerWorkspace initialView="contratos" />);
   if (c.status !== "ACTIVE") {
-    await userEvent.click(await screen.findByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
   }
   await userEvent.click(await screen.findByRole("button", { name: /Av\. Rivadavia/ }));
   await screen.findByText(/Contrato con Jorge Paletta/);
