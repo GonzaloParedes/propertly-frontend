@@ -54,15 +54,20 @@ type WizardKind = "property" | "contract" | "tenant";
 
 
 /** Los campos salen con los mismos nombres que `PropertyRequest`. */
-type Direccion = { street: string; number: string; city: string; province: string };
+// El código postal es opcional y se puede cargar a mano; las coordenadas sólo
+// vienen del buscador y viajan juntas o no viajan.
+type Direccion = {
+  street: string; number: string; city: string; province: string;
+  postalCode: string; latitude: number | null; longitude: number | null;
+};
 
 const etiquetaDireccion = (d: Direccion) => `${d.street} ${d.number}`;
 
 /** Sólo para /prototipo: sin sesión `/address-lookup` daría 401. */
 const DIRECCIONES_DEMO: (Direccion & AddressSuggestionResponse)[] = [
-  { reference: "demo-1", label: "Lavalle 950", street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires" },
-  { reference: "demo-2", label: "Av. Rivadavia 2340", street: "Av. Rivadavia", number: "2340", city: "CABA", province: "Ciudad Autónoma de Buenos Aires" },
-  { reference: "demo-3", label: "Mitre 78", street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires" },
+  { reference: "demo-1", label: "Lavalle 950", street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
+  { reference: "demo-2", label: "Av. Rivadavia 2340", street: "Av. Rivadavia", number: "2340", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
+  { reference: "demo-3", label: "Mitre 78", street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires", postalCode: "", latitude: null, longitude: null },
 ];
 
 /** El backend no busca por debajo de 3 caracteres (app.address-lookup.min-query-length). */
@@ -127,7 +132,12 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
       const r = demo
         ? DIRECCIONES_DEMO.find((d) => d.reference === sugerencia.reference)!
         : await AlquiaBackendClient.addressLookup.resolve(sugerencia.reference);
-      elegir({ street: r.street ?? "", number: r.number ?? "", city: r.city ?? "", province: r.province ?? "" });
+      const conCoordenadas = r.latitude != null && r.longitude != null;
+      elegir({
+        street: r.street ?? "", number: r.number ?? "", city: r.city ?? "", province: r.province ?? "",
+        postalCode: r.postalCode ?? "",
+        latitude: conCoordenadas ? r.latitude : null, longitude: conCoordenadas ? r.longitude : null,
+      });
     } catch {
       setFalloResolver(true);
     }
@@ -172,7 +182,7 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
       {q.length >= MIN_BUSQUEDA && !buscando && sugerencias.length === 0 && (
         <p className="owner-ac__empty">
           No encontramos esa dirección.{" "}
-          <button type="button" onClick={() => elegir({ street: query.trim(), number: "", city: "", province: "" })}>
+          <button type="button" onClick={() => elegir({ street: query.trim(), number: "", city: "", province: "", postalCode: "", latitude: null, longitude: null })}>
             Usarla igual
           </button>
         </p>
@@ -579,6 +589,9 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
         floorUnit: unidad.trim() || undefined,
         city: direccion.city.trim(),
         province: direccion.province.trim(),
+        postalCode: direccion.postalCode.trim() || undefined,
+        latitude: direccion.latitude ?? undefined,
+        longitude: direccion.longitude ?? undefined,
         category: categoria,
         // Lo que el propietario no cargó no se manda: el paso es opcional y un
         // cero o un false serían un dato que él nunca dio.
@@ -663,6 +676,11 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
             <span>Provincia</span>
             <input required placeholder="Ej: Buenos Aires" value={direccion.province}
               onChange={(e) => setDireccion({ ...direccion, province: e.target.value })} />
+          </label>
+          <label className="owner-wizard-field">
+            <span>Código postal</span>
+            <input placeholder="Ej: B1708 — si lo sabe" value={direccion.postalCode}
+              onChange={(e) => setDireccion({ ...direccion, postalCode: e.target.value })} />
           </label>
           <label className="owner-wizard-field">
             <span className="sr-only">Piso y departamento</span>

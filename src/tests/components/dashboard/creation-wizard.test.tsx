@@ -519,6 +519,9 @@ describe("asistente de propiedad · tipo y guardado", () => {
       floorUnit: undefined,
       city: "CABA",
       province: "Ciudad Autónoma de Buenos Aires",
+      postalCode: "C1047",
+      latitude: undefined,
+      longitude: undefined,
       category: "APARTMENT",
       bedrooms: undefined,
       bathrooms: undefined,
@@ -706,6 +709,8 @@ describe("asistente de propiedad · dirección que el buscador no encuentra", ()
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Provincia"), "Buenos Aires");
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+    // El código postal es opcional.
+    expect(screen.getByLabelText("Código postal")).not.toBeRequired();
   });
 });
 
