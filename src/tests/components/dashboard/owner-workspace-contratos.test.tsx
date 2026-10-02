@@ -63,6 +63,9 @@ describe("carga", () => {
     render(<OwnerWorkspace initialView="contratos" />);
 
     expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
+    // después es el parpadeo que se veía al entrar a la pantalla.
+    expect(screen.queryByRole("button", { name: "Nuevo contrato" })).not.toBeInTheDocument();
   });
 
   it("avisa si no pudo cargarlos, en vez de mostrar una lista vacía", async () => {
@@ -75,6 +78,14 @@ describe("carga", () => {
   it("sin contratos ofrece el paso que falta en vez de una lista vacía", async () => {
     conContratos([]);
     expect(await screen.findByText("Todavía no tiene contratos")).toBeInTheDocument();
+  });
+
+  it("vacía, ofrece un solo «Nuevo contrato» y abre el asistente", async () => {
+    conContratos([]);
+    await screen.findByText("Todavía no tiene contratos");
+
+    await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
   });
 
   it("una sola llamada, no una por contrato", async () => {
@@ -132,7 +143,8 @@ describe("estados y filtros", () => {
 
   it("un contrato cerca del fin se marca por terminar, y sigue contando como vigente", async () => {
     conContratos(cuatro);
-    const grupo = await screen.findByRole("region", { name: "Estado del contrato" });
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    const grupo = screen.getByRole("region", { name: "Estado" });
 
     expect(within(grupo).getByRole("button", { name: /Vigentes/ })).toHaveTextContent("2");
     expect(within(grupo).getByRole("button", { name: /Por terminar/ })).toHaveTextContent("1");
@@ -141,13 +153,12 @@ describe("estados y filtros", () => {
 
   it("arranca mostrando los vigentes, no todo el historial", async () => {
     conContratos(cuatro);
-    await screen.findByRole("region", { name: "Estado del contrato" });
+    await screen.findByRole("button", { name: "Filtros" });
 
-    // Los filtros dicen «Vigentes» y «Finalizados» en plural, así que el
-    // singular sólo puede venir de un chip de fila. «Por terminar» aparece dos
-    // veces porque el botón del filtro se llama igual que el estado.
+    // El panel está cerrado, así que «Vigente» y «Por terminar» sólo pueden
+    // venir de un chip de fila.
     expect(screen.getAllByText("Vigente")).toHaveLength(1);
-    expect(screen.getAllByText("Por terminar")).toHaveLength(2);
+    expect(screen.getAllByText("Por terminar")).toHaveLength(1);
     expect(screen.queryByText("Finalizado")).not.toBeInTheDocument();
   });
 
@@ -155,7 +166,9 @@ describe("estados y filtros", () => {
   // que terminó, aunque los dos dejen de regir.
   it("el reemplazado se nombra distinto del finalizado", async () => {
     conContratos(cuatro);
-    await userEvent.click(await screen.findByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
 
     expect(screen.getByText("Finalizado")).toBeInTheDocument();
     expect(screen.getByText("Reemplazado")).toBeInTheDocument();
@@ -168,9 +181,22 @@ describe("estados y filtros", () => {
 
   it("si el filtro deja la lista vacía lo dice", async () => {
     conContratos([contract()]);
-    await userEvent.click(await screen.findByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
 
-    expect(screen.getByText("No hay contratos en este estado")).toBeInTheDocument();
+    expect(screen.getByText("No hay contratos finalizados")).toBeInTheDocument();
+  });
+});
+
+describe("búsqueda", () => {
+  it("filtra por dirección y dice cuando nada coincide", async () => {
+    conContratos([contract()]);
+    const buscador = await screen.findByLabelText("Buscar contratos");
+
+    await userEvent.type(buscador, "zzzz");
+
+    expect(screen.getByText("No encontramos contratos para «zzzz»")).toBeInTheDocument();
   });
 });
 

@@ -178,12 +178,33 @@ describe("cobranza del mes", () => {
     ).toBeInTheDocument();
   });
 
+  it("un monto en cero no ocupa lugar en la barra", async () => {
+    conDatos({
+      invoices: [
+        cuota({ id: 1, status: "PAID", total: 500, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500 }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const barra = await screen.findByLabelText("50% cobrado, 0% por vencer y 50% vencido");
+    expect(barra.children).toHaveLength(2);
+  });
+
+  it("con cuotas pero todo en cero, la barra queda neutra", async () => {
+    conDatos({ invoices: [cuota({ id: 1, status: "PENDING", total: 0 })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const barra = await screen.findByLabelText("Sin montos emitidos");
+    expect(barra.children).toHaveLength(0);
+  });
+
   it("un mes sin cuotas lo dice en vez de mostrar ceros", async () => {
     conDatos({ invoices: [] });
     render(<OwnerWorkspace initialView="inicio" />);
 
     expect(
-      await screen.findByText("Todavía no hay cuotas emitidas este mes.")
+      await screen.findByText("Todavía no hay cuotas emitidas este mes")
     ).toBeInTheDocument();
   });
 });
@@ -313,5 +334,23 @@ describe("contratos vigentes", () => {
     render(<OwnerWorkspace initialView="inicio" />);
 
     expect(await screen.findByText("Todavía no tiene contratos vigentes")).toBeInTheDocument();
+  });
+
+  it("sin propiedades, el paso que ofrece es cargar la primera", async () => {
+    conDatos({ properties: [], contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = (await screen.findByText("Todavía no tiene contratos vigentes")).closest("section")!;
+    expect(within(seccion).getByText(/Empiece por cargar su primera propiedad/)).toBeInTheDocument();
+    expect(within(seccion).getByRole("button", { name: "Agregar propiedad" })).toBeInTheDocument();
+    expect(within(seccion).queryByRole("button", { name: "Nuevo contrato" })).not.toBeInTheDocument();
+  });
+
+  it("sin contratos no afirma que las cuotas están al día", async () => {
+    conDatos({ contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByText(/Cuando tenga contratos, acá le avisamos/)).toBeInTheDocument();
+    expect(screen.queryByText("Sus cuotas están al día.")).not.toBeInTheDocument();
   });
 });

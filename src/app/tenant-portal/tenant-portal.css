@@ -113,6 +113,30 @@
   font: 700 24px var(--font-quicksand), sans-serif;
 }
 
+/* Por qué el total no coincide con el contrato: cada ajuste con el motivo que
+   cargó el propietario. */
+.tenant-cuota__desglose {
+  margin: var(--esp-8) 0 0;
+  font-size: 14px;
+}
+
+.tenant-cuota__desglose > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--esp-16);
+  padding: var(--esp-2) 0;
+}
+
+.tenant-cuota__desglose dt {
+  color: var(--gris);
+}
+
+.tenant-cuota__desglose dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* La aclaración de que el importe puede cambiar: no es un detalle chico, es la
    diferencia entre saber cuánto va a pagar y creer que ya lo sabe. */
 .tenant-cuota__aviso {

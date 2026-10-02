@@ -1,3 +1,4 @@
+import { describirAjuste, type LineaAjuste } from "@/lib/ajustes";
 import { estadoDeCuota, type EstadoCuota } from "@/lib/cobranzas";
 import { formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
 import type { InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
@@ -14,6 +15,13 @@ export interface FilaCuotaInquilino {
   vencimiento: string;
   vencimientoISO: string;
   monto: string;
+  /** El importe antes de ajustes; sólo importa si hay ajustes que lo expliquen. */
+  importeBase: string;
+  /**
+   * Cada ajuste con el motivo que escribió el propietario (`name`). Sin esto el
+   * inquilino ve un total distinto al de su contrato y no sabe por qué.
+   */
+  ajustes: LineaAjuste[];
   estado: EstadoCuota;
   confirmada: boolean;
   /** El pago sobre el que el inquilino puede actuar o mirar, si hay alguno. */
@@ -49,6 +57,8 @@ export function buildFilasInquilino(invoices: InvoiceResponse[]): FilaCuotaInqui
     vencimiento: formatearFecha(invoice.dueDate),
     vencimientoISO: invoice.dueDate,
     monto: formatearMonto(invoice.total),
+    importeBase: formatearMonto(invoice.baseAmount),
+    ajustes: invoice.adjustments.map((a) => describirAjuste(a, invoice.baseAmount)),
     estado: estadoDeCuota(invoice),
     confirmada: invoice.confirmed,
     pago: pagoRelevante(invoice),

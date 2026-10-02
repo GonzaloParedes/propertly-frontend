@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "@/lib/api";
 import { AlquiaBackendClient, type UserResponse } from "@/lib/backend-client";
 
 /**
@@ -62,6 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authRequestId.current++;
     try {
       await AlquiaBackendClient.auth.logout();
+    } catch (err) {
+      // Un 401 es que la sesión ya había vencido: lo que se quería cerrar ya
+      // está cerrado. Sin esto el error sube hasta el botón —que lo llama con
+      // `void`— y queda como rechazo sin atrapar.
+      if (!(err instanceof ApiError && err.status === 401)) throw err;
     } finally {
       setUser(null);
     }

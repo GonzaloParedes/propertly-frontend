@@ -36,6 +36,26 @@ diverge de `src/lib/types.ts`. Cómo se resuelve esa divergencia ya está
 decidido y anotado: lo que el backend modela manda, y lo que le falta se le
 pide. Leer «Modelo de datos: qué manda y qué se pide» antes de tocar tipos.
 
+## Íconos
+
+Los íconos salen de **Lucide** (`lucide-react`). Antes de agregar o dibujar un
+SVG de ícono, **primero fijarse si la librería ya tiene uno que sirva** —
+buscar en https://lucide.dev o importarlo y probar. La idea es no caer en
+generar SVGs a mano/con IA de forma innecesaria (se nota: fue el bug ALQ-26).
+Generar un SVG propio **no está prohibido**, pero es el último recurso, sólo
+cuando ningún glifo de la librería encaja.
+
+- El set con nombres semánticos (`settings`, `users`, `check`, …) vive en el
+  componente compartido `src/components/ui/Icon.tsx`: para un ícono recurrente,
+  agregar el nombre al mapa ahí y usar `<Icon name="…" />`.
+- Para un ícono de un solo uso, importarlo directo: `import { Mail } from "lucide-react"`.
+- Mantener `aria-hidden` (los íconos son decorativos; el texto los acompaña) y
+  dejar que el color lo herede `currentColor`, como hace el CSS existente.
+
+Quedan fuera a propósito: los logos de marca (`public/logos/*.svg`) y las
+ilustraciones de estados vacíos (`owner-empty__art` en OwnerWorkspace) — esas
+son dibujos propios, no íconos de librería.
+
 ## Testing
 
 Framework: **Vitest + React Testing Library**. Los tests viven en `src/tests/`.

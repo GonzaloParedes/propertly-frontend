@@ -8,6 +8,7 @@ import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { AddressSuggestionResponse, PropertyCategory, PropertyResponse, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
 import Counter from "@/components/ui/Counter";
+import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
 import { correoValido } from "@/lib/correo";
 import { formatearDireccion } from "@/lib/tenant-rows";
 
@@ -54,15 +55,20 @@ type WizardKind = "property" | "contract" | "tenant";
 
 
 /** Los campos salen con los mismos nombres que `PropertyRequest`. */
-type Direccion = { street: string; number: string; city: string; province: string };
+// El código postal es opcional y se puede cargar a mano; las coordenadas sólo
+// vienen del buscador y viajan juntas o no viajan.
+type Direccion = {
+  street: string; number: string; city: string; province: string;
+  postalCode: string; latitude: number | null; longitude: number | null;
+};
 
 const etiquetaDireccion = (d: Direccion) => `${d.street} ${d.number}`;
 
 /** Sólo para /prototipo: sin sesión `/address-lookup` daría 401. */
 const DIRECCIONES_DEMO: (Direccion & AddressSuggestionResponse)[] = [
-  { reference: "demo-1", label: "Lavalle 950", street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires" },
-  { reference: "demo-2", label: "Av. Rivadavia 2340", street: "Av. Rivadavia", number: "2340", city: "CABA", province: "Ciudad Autónoma de Buenos Aires" },
-  { reference: "demo-3", label: "Mitre 78", street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires" },
+  { reference: "demo-1", label: "Lavalle 950", street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
+  { reference: "demo-2", label: "Av. Rivadavia 2340", street: "Av. Rivadavia", number: "2340", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
+  { reference: "demo-3", label: "Mitre 78", street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires", postalCode: "", latitude: null, longitude: null },
 ];
 
 /** El backend no busca por debajo de 3 caracteres (app.address-lookup.min-query-length). */
@@ -111,7 +117,7 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
       <div className="owner-ac-chosen">
         <span className="owner-ac-chosen__body">
           <b>{etiquetaDireccion(value)}</b>
-          <small>{value.city} · {value.province}</small>
+          <small>{[value.city, value.province].filter(Boolean).join(" · ") || "Falta la ciudad"}</small>
         </span>
         <button type="button" className="owner-ac-chosen__change" onClick={() => { onClear(); setQuery(""); }}>
           Cambiar
@@ -127,7 +133,12 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
       const r = demo
         ? DIRECCIONES_DEMO.find((d) => d.reference === sugerencia.reference)!
         : await AlquiaBackendClient.addressLookup.resolve(sugerencia.reference);
-      elegir({ street: r.street ?? "", number: r.number ?? "", city: r.city ?? "", province: r.province ?? "" });
+      const conCoordenadas = r.latitude != null && r.longitude != null;
+      elegir({
+        street: r.street ?? "", number: r.number ?? "", city: r.city ?? "", province: r.province ?? "",
+        postalCode: r.postalCode ?? "",
+        latitude: conCoordenadas ? r.latitude : null, longitude: conCoordenadas ? r.longitude : null,
+      });
     } catch {
       setFalloResolver(true);
     }
@@ -172,7 +183,7 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
       {q.length >= MIN_BUSQUEDA && !buscando && sugerencias.length === 0 && (
         <p className="owner-ac__empty">
           No encontramos esa dirección.{" "}
-          <button type="button" onClick={() => elegir({ street: query.trim(), number: "", city: "", province: "" })}>
+          <button type="button" onClick={() => elegir({ street: query.trim(), number: "", city: "", province: "", postalCode: "", latitude: null, longitude: null })}>
             Usarla igual
           </button>
         </p>
@@ -181,20 +192,9 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
   );
 }
 
-function Icon({ name, size = 22 }: Readonly<{ name: "x" | "arrow" | "check" | "building" | "users" | "plus" | "minus" | "trend" | "search" | "alert"; size?: number }>) {
-  const paths = {
-    search: <><circle cx="11" cy="11" r="7" /><path d="m20.5 20.5-4.5-4.5" /></>,
-    x: <path d="m6.5 6.5 11 11m0-11-11 11" />,
-    arrow: <><path d="M4 12h15" /><path d="m13.5 6 5.5 6-5.5 6" /></>,
-    check: <path strokeWidth="2.6" d="m20 6.5-10.5 10L4 11.5" />,
-    building: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 7.5h2M13 7.5h2M9 11.5h2M13 11.5h2M9 15.5h2M13 15.5h2" /></>,
-    users: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5.2a3.5 3.5 0 0 1 0 5.6M17.5 14.4a6.5 6.5 0 0 1 4 5.6" /></>,
-    plus: <path d="M12 5v14M5 12h14" />,
-    minus: <path d="M5 12h14" />,
-    trend: <path d="m3.5 17.5 5-5.5 4 3.5 7.5-8M15.5 7.5h5v5" />,
-    alert: <><path d="M12 3.5 2.5 20.5h19L12 3.5Z" /><path d="M12 10v4.5M12 17.8v.1" /></>,
-  };
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
+/** En el wizard los íconos van un pelín más grandes (22) que el resto de la app (21). */
+function Icon({ name, size = 22 }: Readonly<{ name: IconName; size?: number }>) {
+  return <AppIcon name={name} size={size} />;
 }
 
 function Option({ selected, icon, title, description, onClick }: Readonly<{ selected: boolean; icon: "building" | "users" | "trend"; title: string; description: string; onClick: () => void }>) {
@@ -221,6 +221,12 @@ function mensajeDeErrorContrato(err: unknown): string {
 
 /** El backend no acepta contratos que empiecen antes de diciembre de 2022. */
 const PISO_INICIO = "2022-12-01";
+
+/** Fecha de hoy (hora local) como yyyy-mm-dd: el inicio arranca ahí y se edita. */
+function hoyISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 /**
  * La fecha de fin que el backend va a guardar es startDate + termMonths, sin
@@ -362,15 +368,15 @@ function ContractTenantStep({ lists, selected, onSelect, onNewTenant }: Readonly
 }
 
 function ContractRentStep({ rent, dueDay, onRentChange, onDueDayChange }: Readonly<{ rent: string; dueDay: number; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void }>) {
-  return <><h1>¿Cuánto sale el alquiler por mes?</h1><p>Es el valor con el que arranca el contrato. Después definimos cómo se actualiza.</p><label className="owner-wizard-field owner-wizard-field--amount"><span>$</span><input inputMode="numeric" aria-label="Alquiler mensual" value={montoConSeparadores(rent)} onChange={(event) => onRentChange(soloNumeros(event.target.value))} /><span>por mes</span></label><p className="owner-wizard-label">DÍA DE VENCIMIENTO</p><Counter value={dueDay} unit="del mes" min={1} max={28} onChange={onDueDayChange} /><div className="owner-wizard-chips">{[1, 5, 10].map((day) => <button key={day} type="button" aria-pressed={dueDay === day} onClick={() => onDueDayChange(day)}>Día {day}</button>)}</div><small className="owner-wizard-help">Se cobra por mes adelantado. El día se puede elegir del 1 al 28.</small></>;
+  return <><h1>¿Cuánto sale el alquiler por mes?</h1><p>Es el valor con el que arranca el contrato. Después definimos cómo se actualiza.</p><label className="owner-wizard-field owner-wizard-field--amount"><span>$</span><input inputMode="numeric" aria-label="Alquiler mensual" placeholder="Ej. 450.000" value={montoConSeparadores(rent)} onChange={(event) => onRentChange(soloNumeros(event.target.value))} /><span>por mes</span></label><p className="owner-wizard-label">Día de vencimiento</p><Counter value={dueDay} unit="del mes" min={1} max={28} onChange={onDueDayChange} /><div className="owner-wizard-chips">{[1, 5, 10].map((day) => <button key={day} type="button" aria-pressed={dueDay === day} onClick={() => onDueDayChange(day)}>Día {day}</button>)}</div><small className="owner-wizard-help">Se cobra por mes adelantado. El día se puede elegir del 1 al 28.</small></>;
 }
 
 function ContractTermStep({ startDate, term, isStartDateValid, onStartDateChange, onTermChange }: Readonly<{ startDate: string; term: number; isStartDateValid: boolean; onStartDateChange: (value: string) => void; onTermChange: (value: number) => void }>) {
-  return <><h1>¿Cuándo empieza y por cuánto tiempo?</h1><p>La fecha de fin se calcula sola a partir del plazo, no hace falta cargarla.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="sr-only">Fecha de inicio</span><input type="date" value={startDate} min={PISO_INICIO} aria-invalid={startDate !== "" && !isStartDateValid} onChange={(event) => onStartDateChange(event.target.value)} /></label>{startDate !== "" && !isStartDateValid && <p className="owner-wizard-error" role="alert">El contrato no puede empezar antes de diciembre de 2022.</p>}<p className="owner-wizard-label">PLAZO DEL CONTRATO</p><Counter value={term} unit="meses" min={1} onChange={onTermChange} /><div className="owner-wizard-chips">{[12, 24, 36].map((months) => <button key={months} type="button" aria-pressed={term === months} onClick={() => onTermChange(months)}>{months} meses</button>)}</div>{isStartDateValid && <small className="owner-wizard-help">Termina el {fechaDeFin(startDate, term)}.</small>}</>;
+  return <><h1>¿Cuándo empieza y por cuánto tiempo?</h1><p>La fecha de fin se calcula sola a partir del plazo, no hace falta cargarla.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="sr-only">Fecha de inicio</span><input type="date" value={startDate} min={PISO_INICIO} aria-invalid={startDate !== "" && !isStartDateValid} onChange={(event) => onStartDateChange(event.target.value)} /></label>{startDate !== "" && !isStartDateValid && <p className="owner-wizard-error" role="alert">El contrato no puede empezar antes de diciembre de 2022.</p>}<p className="owner-wizard-label">Plazo del contrato</p><Counter value={term} unit="meses" min={1} onChange={onTermChange} /><div className="owner-wizard-chips">{[12, 24, 36].map((months) => <button key={months} type="button" aria-pressed={term === months} onClick={() => onTermChange(months)}>{months} meses</button>)}</div>{isStartDateValid && <small className="owner-wizard-help">Termina el {fechaDeFin(startDate, term)}.</small>}</>;
 }
 
 function ContractIndexStep({ method, percentage, frequency, onMethodChange, onPercentageChange, onFrequencyChange }: Readonly<{ method: ContractMethod; percentage: string; frequency: number; onMethodChange: (method: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void }>) {
-  return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<p className="owner-wizard-label">CADA CUÁNTO SE ACTUALIZA</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div>{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
+  return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" placeholder="Ej. 8" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<p className="owner-wizard-label">Cada cuánto se actualiza</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div>{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
 }
 
 function ContractReviewStep({ lists, propertyId, tenantId, rent, dueDay, term, startDate, method, percentage, frequency, error }: Readonly<{ lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; error: string | null }>) {
@@ -395,15 +401,18 @@ function ContractWizardStep(props: Readonly<{
   return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propertyId={stepProps.propertyId} tenantId={stepProps.tenantId} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} error={stepProps.error} />;
 }
 
-export default function CreationWizard({ kind, onClose, onComplete, onNewTenant, demo = false }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; onNewTenant?: () => void; demo?: boolean }>) {
+export default function CreationWizard({ kind, onClose, onComplete, onNewTenant, demo = false, initialPropertyId }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; onNewTenant?: () => void; demo?: boolean; initialPropertyId?: number }>) {
   const total = cantidadPasos(kind);
-  const [step, setStep] = useState(1);
-  const [propiedadId, setPropiedadId] = useState<number | null>(null);
+  // Si el contrato se abre desde una propiedad, ya se sabe cuál es: arranca en
+  // el paso del inquilino (se puede volver al 1 para cambiarla).
+  const preseleccionada = kind === "contract" && initialPropertyId !== undefined;
+  const [step, setStep] = useState(preseleccionada ? 2 : 1);
+  const [propiedadId, setPropiedadId] = useState<number | null>(preseleccionada ? initialPropertyId : null);
   const [inquilinoId, setInquilinoId] = useState<number | null>(null);
   const [method, setMethod] = useState<"FIXED_PERCENTAGE" | "ICL" | "IPC">("FIXED_PERCENTAGE");
   const [term, setTerm] = useState(36);
   const [alquiler, setAlquiler] = useState("");
-  const [inicio, setInicio] = useState("");
+  const [inicio, setInicio] = useState(hoyISO);
   const [diaVencimiento, setDiaVencimiento] = useState(1);
   const [porcentaje, setPorcentaje] = useState("");
   const [frecuencia, setFrecuencia] = useState(6);
@@ -515,7 +524,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
   }
   function propertyBloqueado(): boolean {
-    if (step === 1) return !direccion;
+    if (step === 1) return !direccion || !direccion.street.trim() || !direccion.number.trim() || !direccion.city.trim() || !direccion.province.trim();
     if (step === 2) return categoria === null;
     return false;
   }
@@ -570,12 +579,15 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     setGuardando(true);
     try {
       await AlquiaBackendClient.properties.create({
-        street: direccion.street,
-        number: direccion.number,
+        street: direccion.street.trim(),
+        number: direccion.number.trim(),
         // El piso y el departamento son un campo aparte del número de calle.
         floorUnit: unidad.trim() || undefined,
-        city: direccion.city,
-        province: direccion.province,
+        city: direccion.city.trim(),
+        province: direccion.province.trim(),
+        postalCode: direccion.postalCode.trim() || undefined,
+        latitude: direccion.latitude ?? undefined,
+        longitude: direccion.longitude ?? undefined,
         category: categoria,
         // Lo que el propietario no cargó no se manda: el paso es opcional y un
         // cero o un false serían un dato que él nunca dio.
@@ -642,16 +654,41 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     if (step === 1) {
       return <>
       <h1>¿Dónde queda la propiedad?</h1>
-      <p>Busque la dirección y completamos la ciudad y la provincia solas.</p>
+      <p>Busque la dirección. Si el número, la ciudad o la provincia no aparecen, complételos a mano.</p>
       <div className="owner-wizard-stack">
         <AddressField demo={demo} value={direccion} onSelect={setDireccion} onClear={() => setDireccion(null)} />
-        {direccion && (
+        {direccion && (<>
+          <label className="owner-wizard-field">
+            <span>Calle</span>
+            <input required placeholder="Ej: Lavalle" value={direccion.street}
+              onChange={(e) => setDireccion({ ...direccion, street: e.target.value })} />
+          </label>
+          <label className="owner-wizard-field">
+            <span>Número</span>
+            <input required inputMode="numeric" placeholder="Ej: 950" value={direccion.number}
+              onChange={(e) => setDireccion({ ...direccion, number: e.target.value })} />
+          </label>
+          <label className="owner-wizard-field">
+            <span>Ciudad</span>
+            <input required placeholder="Ej: Morón" value={direccion.city}
+              onChange={(e) => setDireccion({ ...direccion, city: e.target.value })} />
+          </label>
+          <label className="owner-wizard-field">
+            <span>Provincia</span>
+            <input required placeholder="Ej: Buenos Aires" value={direccion.province}
+              onChange={(e) => setDireccion({ ...direccion, province: e.target.value })} />
+          </label>
+          <label className="owner-wizard-field">
+            <span>Código postal</span>
+            <input placeholder="Ej: B1708 — si lo sabe" value={direccion.postalCode}
+              onChange={(e) => setDireccion({ ...direccion, postalCode: e.target.value })} />
+          </label>
           <label className="owner-wizard-field">
             <span className="sr-only">Piso y departamento</span>
             <input placeholder="Piso y depto. — si corresponde" value={unidad}
               onChange={(e) => setUnidad(e.target.value)} />
           </label>
-        )}
+        </>)}
       </div>
       </>;
     }
@@ -664,18 +701,18 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
           <Counter label="Dormitorios" value={bedrooms} onChange={setBedrooms} />
           <Counter label="Baños" value={bathrooms} onChange={setBathrooms} />
         </div>
-        <p className="owner-wizard-label">SUPERFICIE CUBIERTA</p>
+        <p className="owner-wizard-label">Superficie cubierta</p>
         <label className="owner-wizard-field owner-wizard-field--medium">
           <span className="sr-only">Superficie cubierta en metros cuadrados</span>
           <input value={superficie} inputMode="numeric" placeholder="—" onChange={(e) => setSuperficie(e.target.value.replace(/\D/g, ""))} />
           <span>m²</span>
         </label>
-        <p className="owner-wizard-label">ADEMÁS</p>
+        <p className="owner-wizard-label">Además</p>
         <div className="owner-wizard-chips">
           <button type="button" aria-pressed={mascotas} onClick={() => setMascotas(!mascotas)}>Acepta mascotas</button>
           <button type="button" aria-pressed={amoblada} onClick={() => setAmoblada(!amoblada)}>Se alquila amueblada</button>
         </div>
-        <button type="button" className="owner-wizard-quiet" onClick={() => setStep(total)}>Saltear este paso</button>
+        <button type="button" className="owner-wizard-skip" onClick={() => setStep(total)}>Saltear este paso</button>
       </>;
     }
     return <>
@@ -683,7 +720,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
       <p>Va a quedar sin alquilar hasta que le cree un contrato.</p>
       <Summary rows={[
         ["Dirección", direccionCompleta],
-        ["Ciudad", direccion ? `${direccion.city} · ${direccion.province}` : "Sin cargar"],
+        ["Ciudad", direccion ? [direccion.city, direccion.province].filter(Boolean).join(" · ") : "Sin cargar"],
         ["Tipo", CATEGORIAS.find((categoriaItem) => categoriaItem.valor === categoria)?.etiqueta ?? "Sin cargar"],
         ["Características", caracteristicas],
         ["Estado", "Sin alquilar"],

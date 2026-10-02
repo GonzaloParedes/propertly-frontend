@@ -21,7 +21,7 @@
 .owner-portfolio__money, .owner-portfolio__summary { padding:var(--esp-32) 34px; }
 .owner-portfolio__money > strong { display:block; margin-top:15px; font:700 38px/1.05 var(--font-quicksand),sans-serif; letter-spacing:-.03em; }
 .owner-portfolio__money > p:not(.owner-eyebrow), .owner-portfolio__summary small { color:var(--gris); }
-.owner-meter { display:flex; gap:var(--esp-2); height:13px; margin:var(--esp-26) 0 var(--esp-20); overflow:hidden; border-radius:999px; background:var(--superficie); }.owner-meter i { display:block; }.owner-meter__ok{width:22%;background:var(--exito)}.owner-meter__warn{width:26%;background:var(--adv)}.owner-meter__bad{width:52%;background:var(--error)}
+.owner-meter { display:flex; gap:var(--esp-2); height:13px; margin:var(--esp-26) 0 var(--esp-20); overflow:hidden; border-radius:999px; background:var(--superficie); }.owner-meter i { display:block; flex-basis:0; }.owner-meter__ok{background:var(--exito)}.owner-meter__warn{background:var(--adv)}.owner-meter__bad{background:var(--error)}
 .owner-key { display:flex; flex-wrap:wrap; gap:var(--esp-12) 27px; }.owner-key span { display:inline-flex; align-items:center; gap:var(--esp-8); font-size:15.5px; }.owner-key span:nth-child(1) svg{color:var(--exito)}.owner-key span:nth-child(2) svg{color:var(--adv)}.owner-key span:nth-child(3) svg{color:var(--error)}
 .owner-portfolio__summary { display:flex; flex-direction:column; justify-content:center; gap:27px; box-shadow:inset 1px 0 0 var(--divisor); }.owner-portfolio__summary b { display:block; margin-top:var(--esp-6); font:700 25px/1.1 var(--font-quicksand),sans-serif; }.owner-portfolio__summary small { display:block; margin-top:var(--esp-6); font-size:14.5px; }
 
@@ -36,9 +36,9 @@
 
 .owner-crumb{display:flex;align-items:center;gap:7px;margin:0 0 11px;color:var(--gris);font-size:15px}.owner-crumb button{padding:0;border:0;background:none;color:var(--indigo);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif}.owner-crumb button:hover{text-decoration:underline;text-underline-offset:3px}.owner-detail-grid{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(310px,.82fr);gap:var(--esp-18);align-items:start}.owner-card{padding:var(--esp-26) 28px;border-radius:20px;background:#fff;box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-card+.owner-card{margin-top:var(--esp-18)}.owner-detail-grid>.owner-card:nth-child(3){grid-column:1/-1}.owner-card__top{display:flex;justify-content:space-between;gap:var(--esp-16)}.owner-current-rent{text-align:right}.owner-current-rent b,.owner-detail-money{display:block;margin-top:var(--esp-6);font:700 28px/1.1 var(--font-quicksand),sans-serif}.owner-current-rent small,.owner-card__top small{display:block;margin-top:5px;color:var(--gris)}
 .owner-contract-callout,.owner-empty-callout,.owner-document{display:flex;align-items:center;gap:var(--esp-14);margin-top:22px;padding:17px;border:0;border-radius:14px;background:var(--superficie);color:var(--tinta);text-align:left}.owner-contract-callout{width:100%;cursor:pointer}.owner-contract-callout:hover{background:var(--indigo-suave)}.owner-contract-callout>span,.owner-empty-callout>svg{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:#fff;color:var(--indigo)}.owner-contract-callout div,.owner-empty-callout div,.owner-document>div{flex:1}.owner-contract-callout b,.owner-contract-callout small,.owner-empty-callout b,.owner-empty-callout small,.owner-document b,.owner-document small{display:block}.owner-contract-callout small,.owner-empty-callout small,.owner-document small,.owner-card__copy{margin-top:3px;color:var(--gris);font-size:14.5px}.owner-empty-callout{align-items:flex-start}.owner-empty-callout .owner-button{align-self:center}.owner-definition{display:grid;margin:var(--esp-18) 0 0;grid-template-columns:minmax(0,auto) minmax(0,1fr)}.owner-definition>div{display:grid;grid-column:1/-1;grid-template-columns:subgrid;gap:var(--esp-18);align-items:baseline;padding:13px 0;box-shadow:inset 0 -1px 0 var(--divisor)}.owner-definition>div:last-child{box-shadow:none}.owner-definition dt{color:var(--gris)}.owner-definition dd{margin:0;font-weight:600}
-.owner-timeline{margin:24px 0 0}.owner-timeline>div{position:relative;display:flex;gap:13px;padding-bottom:var(--esp-20)}.owner-timeline>div:not(:last-child)::before{position:absolute;top:40px;bottom:0;left:18px;width:2px;background:var(--divisor);content:""}.owner-timeline span{position:relative;z-index:1;display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:999px;background:var(--indigo-suave);color:var(--indigo)}.owner-timeline p{margin:3px 0 0}.owner-timeline b,.owner-timeline small{display:block}.owner-timeline small{margin-top:3px;color:var(--gris)}.owner-tenant-card{display:flex;align-items:center;gap:13px;margin-top:17px}.owner-tenant-card b,.owner-tenant-card small{display:block}.owner-tenant-card small{color:var(--gris);font-size:14.5px}.owner-link-box{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-14);margin-top:22px;padding-top:var(--esp-18);box-shadow:inset 0 1px 0 var(--divisor)}.owner-link-box>div{display:flex;align-items:center;gap:11px;color:var(--indigo)}.owner-link-box span{color:var(--tinta)}.owner-link-box b,.owner-link-box small{display:block}.owner-link-box small{margin-top:var(--esp-2);color:var(--gris);font-size:13.5px}
+.owner-timeline{margin:24px 0 0}.owner-timeline>div{position:relative;display:flex;gap:13px;padding-bottom:var(--esp-20)}.owner-timeline>div:not(:last-child)::before{position:absolute;top:40px;bottom:0;left:18px;width:2px;background:var(--divisor);content:""}.owner-timeline span{position:relative;z-index:1;display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:999px;background:var(--indigo-suave);color:var(--indigo)}.owner-timeline p{margin:3px 0 0}.owner-timeline b,.owner-timeline small{display:block}.owner-timeline small{margin-top:3px;color:var(--gris)}.owner-tenant-card{display:flex;align-items:center;gap:13px;margin-top:17px}.owner-tenant-card b,.owner-tenant-card small{display:block}.owner-tenant-card small{color:var(--gris);font-size:14.5px}.owner-link-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--esp-14);margin-top:22px;padding-top:var(--esp-18);box-shadow:inset 0 1px 0 var(--divisor)}.owner-link-box>div{display:flex;align-items:center;gap:11px;color:var(--indigo)}.owner-link-actions{display:flex;flex-wrap:wrap;gap:var(--esp-10);width:100%}.owner-link-box span{color:var(--tinta)}.owner-link-box b,.owner-link-box small{display:block}.owner-link-box small{margin-top:var(--esp-2);color:var(--gris);font-size:13.5px}
 
-.owner-dialog{position:fixed;inset:0;z-index:100;display:grid;place-items:center;margin:0;padding:var(--esp-20);border:0;background:transparent}.owner-dialog__backdrop{position:absolute;inset:0;border:0;background:rgba(30,27,46,.55)}.owner-dialog__panel{position:relative;width:min(100%,580px);max-height:calc(100vh - 40px);overflow:auto;border-radius:20px;background:#fff;box-shadow:0 24px 60px -12px rgba(30,27,46,.34)}.owner-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-14);padding:23px var(--esp-26);box-shadow:inset 0 -1px 0 var(--divisor)}.owner-dialog__head h2{margin:0;font:700 22px var(--font-quicksand),sans-serif}.owner-icon-button{display:grid;width:40px;height:40px;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer}.owner-icon-button:hover{background:var(--superficie);color:var(--tinta)}.owner-dialog__body{padding:var(--esp-26)}.owner-dialog__body>p{margin:0;color:var(--gris)}.owner-receipt{display:flex;flex-direction:column;align-items:center;gap:var(--esp-8);margin:22px 0;padding:28px var(--esp-20);border-radius:14px;background:var(--superficie);text-align:center}.owner-receipt>svg{color:var(--indigo)}.owner-receipt small{color:var(--gris)}.owner-dialog__hint{margin-top:var(--esp-16)!important;font-size:15px}.owner-dialog__actions{justify-content:flex-end;margin-top:24px}.owner-mode{display:grid;gap:11px;margin:var(--esp-20) 0}.owner-mode button{display:flex;align-items:center;gap:13px;padding:15px;border:0;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--tinta);cursor:pointer;text-align:left}.owner-mode button[aria-pressed="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-mode button>span{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:var(--superficie);color:var(--indigo)}.owner-mode b,.owner-mode small{display:block}.owner-mode small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}.owner-form-preview{display:grid;gap:15px}.owner-form-preview label{display:grid;gap:7px;font-weight:700}.owner-form-preview input{min-height:52px;padding:0 var(--esp-14);border:0;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--borde-campo);color:var(--tinta);font:400 17px var(--font-nunito-sans),sans-serif}.owner-input-static{display:flex;min-height:52px;align-items:center;padding:0 var(--esp-14);border-radius:10px;background:var(--superficie);color:var(--gris);font-weight:400}
+.owner-dialog{position:fixed;inset:0;z-index:100;display:grid;width:100%;height:100%;max-width:none;max-height:none;place-items:center;margin:0;padding:var(--esp-20);border:0;background:transparent}.owner-dialog__backdrop{position:absolute;inset:0;border:0;background:rgba(30,27,46,.55)}.owner-dialog__panel{position:relative;width:min(100%,580px);max-height:calc(100vh - 40px);overflow:auto;border-radius:20px;background:#fff;box-shadow:0 24px 60px -12px rgba(30,27,46,.34)}.owner-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-14);padding:23px var(--esp-26);box-shadow:inset 0 -1px 0 var(--divisor)}.owner-dialog__head h2{margin:0;font:700 22px var(--font-quicksand),sans-serif}.owner-icon-button{display:grid;width:40px;height:40px;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer}.owner-icon-button:hover{background:var(--superficie);color:var(--tinta)}.owner-dialog__body{padding:var(--esp-26)}.owner-dialog__body>p{margin:0;color:var(--gris)}.owner-receipt{display:flex;flex-direction:column;align-items:center;gap:var(--esp-8);margin:22px 0;padding:28px var(--esp-20);border-radius:14px;background:var(--superficie);text-align:center}.owner-receipt>svg{color:var(--indigo)}.owner-receipt small{color:var(--gris)}.owner-dialog__hint{margin-top:var(--esp-16)!important;font-size:15px}.owner-dialog__actions{justify-content:flex-end;margin-top:24px}.owner-mode{display:grid;gap:11px;margin:var(--esp-20) 0}.owner-mode button{display:flex;align-items:center;gap:13px;padding:15px;border:0;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--tinta);cursor:pointer;text-align:left}.owner-mode button[aria-pressed="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-mode button>span{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:var(--superficie);color:var(--indigo)}.owner-mode b,.owner-mode small{display:block}.owner-mode small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}.owner-form-preview{display:grid;gap:15px}.owner-form-preview label{display:grid;gap:7px;font-weight:700}.owner-form-preview input{min-height:52px;padding:0 var(--esp-14);border:0;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--borde-campo);color:var(--tinta);font:400 17px var(--font-nunito-sans),sans-serif}.owner-input-static{display:flex;min-height:52px;align-items:center;padding:0 var(--esp-14);border-radius:10px;background:var(--superficie);color:var(--gris);font-weight:400}
 
 .owner-nav{position:fixed;inset:0 auto 0 0;z-index:40;display:flex;width:238px;flex-direction:column;padding:var(--esp-26) var(--esp-14);background:#fff;box-shadow:inset -1px 0 0 var(--divisor)}.owner-nav__brand{display:block;margin:0 var(--esp-10) 30px}.owner-nav__brand img{display:block;width:auto;height:29px}.owner-nav__group{margin:0 var(--esp-10) 9px;color:var(--gris);font:700 11px/1 var(--font-nunito-sans),sans-serif;letter-spacing:.12em}.owner-nav__links{display:flex;flex-direction:column;gap:var(--esp-2);margin:0;padding:0;list-style:none}.owner-nav__link,.owner-nav__logout{display:flex;min-height:40px;width:100%;align-items:center;gap:var(--esp-12);padding:var(--esp-10) var(--esp-12);border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer;font:600 16px var(--font-nunito-sans),sans-serif;text-align:left;text-decoration:none}.owner-nav__link:hover,.owner-nav__logout:hover{background:var(--superficie);color:var(--tinta)}.owner-nav__link[aria-current="page"]{background:var(--indigo-suave);color:var(--indigo-osc);font-weight:700}.owner-nav__link[aria-current="page"] svg{color:var(--indigo)}.owner-nav__badge{display:grid;width:24px;height:24px;margin-left:auto;place-items:center;border-radius:999px;background:var(--error);color:#fff;font-size:12.5px}.owner-nav__profile{display:flex;align-items:center;gap:11px;margin-top:auto;padding:var(--esp-14) var(--esp-10) 0;box-shadow:inset 0 1px 0 var(--divisor)}.owner-avatar{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:999px;background:var(--indigo);color:#fff;font-size:14px;font-weight:700}.owner-nav__profile strong,.owner-nav__profile small{display:block}.owner-nav__profile small{max-width:130px;overflow:hidden;color:var(--gris);font-size:12.5px;text-overflow:ellipsis;white-space:nowrap}.owner-nav__logout{margin-top:var(--esp-12)}.owner-mobile-header,.owner-drawer,.owner-drawer-backdrop{display:none}
 
@@ -147,7 +147,7 @@
   border-radius:999px;background:var(--indigo);color:#fff;font-size:12.5px;font-variant-numeric:tabular-nums}
 
 .owner-panel__scrim{position:fixed;inset:0;z-index:40;border:0;background:transparent;cursor:default}
-.owner-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:50;width:340px;margin:0;padding:0;
+.owner-panel{position:absolute;top:calc(100% + 10px);right:0;left:auto;max-width:calc(100vw - 32px);z-index:50;width:340px;margin:0;padding:0;
   border:0;border-radius:18px;background:#fff;box-shadow:0 1px 3px rgba(30,27,46,.05),0 22px 48px -14px rgba(30,27,46,.28)}
 .owner-panel__head{display:flex;align-items:center;justify-content:space-between;padding:var(--esp-18) var(--esp-20) 0}
 .owner-panel__head b{font:700 17px var(--font-quicksand),sans-serif}
@@ -185,6 +185,30 @@
 .owner-empty b{font:700 18px var(--font-quicksand),sans-serif}
 .owner-empty span{color:var(--gris)}
 
+/* Estado vacío de un listado sin nada cargado (`EmptyState`): ilustración,
+   qué falta y el paso que sigue. El texto se corta en ~46ch para que no se
+   lea como un renglón de punta a punta. */
+.owner-empty__art{display:block;width:132px;height:auto;flex:none}
+.owner-empty--first{padding:var(--esp-44) var(--esp-26)}
+.owner-empty--first .owner-empty__text{display:flex;flex-direction:column;align-items:center;gap:var(--esp-6);max-width:46ch}
+.owner-empty--first .owner-button{margin-top:var(--esp-10)}
+/* Compacto: un bloque dentro de otra pantalla, en una sola franja. */
+.owner-empty--compact{flex-direction:row;padding:var(--esp-18) var(--esp-26);gap:var(--esp-18);text-align:left}
+.owner-empty--compact .owner-empty__art{width:76px}
+.owner-empty--compact .owner-empty__text{align-items:flex-start;max-width:none}
+.owner-empty--compact b{font-size:17px}
+/* Cobranza del mes sin cuotas: ocupa la tarjeta en vez de dejarla en blanco. */
+.owner-portfolio__empty{display:flex;align-items:center;gap:var(--esp-18);margin-top:var(--esp-20)}
+.owner-portfolio__empty .owner-empty__art{width:96px}
+.owner-portfolio__empty b{display:block;font:700 18px var(--font-quicksand),sans-serif}
+.owner-portfolio__empty span{display:block;margin-top:var(--esp-6);color:var(--gris)}
+@media (max-width:620px){
+  .owner-empty--first{padding:var(--esp-32) var(--esp-20)}
+  .owner-empty--first .owner-button{width:100%}
+  .owner-empty--compact{padding:var(--esp-16)}
+  .owner-empty--compact .owner-empty__art,.owner-portfolio__empty .owner-empty__art{width:64px}
+}
+
 .owner-search-bar :focus-visible,.owner-panel :focus-visible,.owner-applied :focus-visible{
   outline:3px solid var(--lila);outline-offset:3px}
 
@@ -193,7 +217,7 @@
   .owner-filter-anchor{flex:1}
   .owner-filter-toggle{width:100%;justify-content:center}
   /* En pantalla chica el panel es una hoja anclada abajo: nada de popover diminuto */
-  .owner-panel{position:fixed;inset:auto 0 0 0;width:auto;max-height:82vh;overflow-y:auto;
+  .owner-panel{position:fixed;inset:auto 0 0 0;width:auto;max-width:none;max-height:82vh;overflow-y:auto;
     border-radius:20px 20px 0 0}
   .owner-panel__scrim{background:rgba(30,27,46,.45)}
 }
@@ -247,7 +271,7 @@
 /* Error de validación en el asistente: el mensaje dice qué corregir, no sólo que está mal. */
 .owner-wizard-error{display:flex;align-items:center;gap:var(--esp-8);margin:var(--esp-10) var(--esp-2) 0;
   color:var(--error);font:600 15px var(--font-nunito-sans),sans-serif}
-.owner-wizard-field input[aria-invalid="true"]{box-shadow:inset 0 0 0 2px var(--error)}
+.owner-wizard-field select{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--tinta);cursor:pointer;font:inherit}
 .owner-wizard-next[disabled]{background:var(--indigo-suave);color:#9B95B5;cursor:not-allowed}
 
 /* Guardando: el botón dice qué está pasando y el anillo lo acompaña. El texto
@@ -409,3 +433,170 @@
   .owner-document>div{flex:1 1 calc(100% - 35px);min-width:0}
   .owner-document .owner-button{width:100%;min-height:46px;justify-content:center}
 }
+
+/* Diálogos: cabecera y pie fijos, el cuerpo scrollea. El pie existía en el
+   markup pero sin estilos, y los campos usaban la escala grande del wizard. */
+.owner-dialog__panel{display:flex;flex-direction:column;overflow:hidden;max-height:calc(100dvh - 40px)}
+.owner-dialog__head{flex:none}
+.owner-dialog__body{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain}
+.owner-dialog__foot{display:flex;flex:none;align-items:center;justify-content:flex-end;gap:var(--esp-10);padding:var(--esp-14) var(--esp-26);box-shadow:inset 0 1px 0 var(--divisor);background:#fff}
+.owner-dialog__foot .owner-button{min-height:48px}
+.owner-dialog__body>p+.owner-wizard-field,.owner-dialog__body>p+.owner-wizard-stack{margin-top:var(--esp-16)}
+.owner-dialog .owner-wizard-stack{gap:var(--esp-12)}
+.owner-dialog .owner-wizard-duo{grid-template-columns:repeat(2,minmax(0,1fr))}
+.owner-dialog .owner-wizard-duo>*,.owner-dialog .owner-wizard-field{min-width:0}
+.owner-dialog .owner-wizard-field{padding:12px var(--esp-16);border-radius:12px;font-size:17px}
+.owner-dialog .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){flex-direction:column;align-items:stretch;gap:2px}
+.owner-dialog .owner-wizard-field>span:not(.sr-only){font-size:13px;font-weight:700}
+.owner-dialog .owner-wizard-field--medium{margin-bottom:var(--esp-20);font-size:20px}
+.owner-dialog .owner-wizard-field--amount{padding:12px var(--esp-16);font-size:26px}
+.owner-dialog .owner-wizard-field--amount>span{font-size:15px}
+.owner-dialog .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-12)!important}
+.owner-dialog .owner-wizard-chips{margin-top:var(--esp-6)}
+.owner-wizard-actions{display:flex;gap:var(--esp-10);margin-top:var(--esp-16);justify-content:flex-end}
+
+/* Ítems del ajuste de cuota: cada línea del desglose lleva sus acciones
+   (Editar / Quitar) como botones compactos CON cuerpo —no texto suelto—,
+   siempre visibles (regla 5), con el anillo inset de la familia (regla 6) y
+   Quitar en tono danger con cuerpo (regla 7). Las acciones cuelgan debajo del
+   importe, alineadas a la derecha, para no apretar el monto en la misma línea. */
+.owner-ajuste-item{row-gap:var(--esp-8)}
+.owner-ajuste-item__acciones{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--esp-8);justify-content:flex-end;margin-top:var(--esp-2)}
+.owner-ajuste-accion{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 var(--esp-14);border:0;border-radius:999px;background:#fff;color:var(--indigo);box-shadow:inset 0 0 0 1.5px var(--borde-campo);cursor:pointer;font:600 14px var(--font-nunito-sans),sans-serif;transition:background .15s,box-shadow .15s}
+.owner-ajuste-accion:hover{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-ajuste-accion--quitar{color:var(--error);box-shadow:inset 0 0 0 1.5px rgba(206,63,83,.42)}
+.owner-ajuste-accion--quitar:hover{background:var(--error-bg);box-shadow:inset 0 0 0 2px var(--error)}
+.owner-ajuste-accion:focus-visible{outline:3px solid var(--lila);outline-offset:2px}
+.owner-ajuste-accion[disabled]{background:#fff;color:var(--gris);box-shadow:inset 0 0 0 1.5px var(--borde);opacity:.55;cursor:not-allowed}
+@media (max-width:620px){.owner-ajuste-item__acciones{justify-content:flex-start}}
+.owner-dialog .owner-wizard-counter button{width:44px;height:44px;border-radius:12px}
+.owner-dialog .owner-wizard-counter strong{font-size:26px}
+@media (max-width:620px){
+  .owner-dialog{place-items:end center;padding:0}
+  .owner-dialog__panel{width:100%;max-height:92dvh;border-radius:20px 20px 0 0}
+  .owner-dialog__head{padding:var(--esp-16) var(--esp-20)}
+  .owner-dialog__head h2{font-size:19px;line-height:1.25}
+  .owner-dialog__body{padding:var(--esp-20)}
+  .owner-dialog__foot{flex-direction:column-reverse;align-items:stretch;padding:var(--esp-12) var(--esp-20) max(var(--esp-16),env(safe-area-inset-bottom))}
+  .owner-dialog__foot .owner-button{width:100%}
+  .owner-dialog .owner-wizard-field{font-size:16px}
+}
+
+/* Todos los campos de un diálogo miden lo mismo, con o sin rótulo. */
+.owner-dialog .owner-wizard-field:not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){box-sizing:border-box;min-height:60px;align-items:center;justify-content:center;padding-block:8px}
+.owner-dialog .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){align-items:stretch;gap:0}
+.owner-dialog .owner-wizard-field>span:not(.sr-only){font-size:12px;line-height:1.2}
+.owner-dialog .owner-wizard-field input,.owner-dialog .owner-wizard-field select{line-height:1.3}
+
+/* Cambiar condiciones: campos con rótulo arriba, contadores lado a lado. */
+.owner-dialog__lead{margin-bottom:var(--esp-20)!important}
+.owner-dialog-money{display:flex;align-items:baseline;gap:var(--esp-6);font:600 17px/1.3 var(--font-quicksand),sans-serif;color:var(--tinta)}
+.owner-dialog-money i{color:var(--gris);font-style:normal}
+.owner-dialog-money input{min-width:0;flex:1}
+.owner-dialog-percent{margin-top:var(--esp-12)}
+.owner-dialog-counters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--esp-20);margin-top:var(--esp-20)}
+.owner-dialog-counters .owner-wizard-label{margin:0 0 var(--esp-8)!important}
+.owner-dialog-counters .owner-wizard-counter>div{gap:var(--esp-10)}
+.owner-dialog-counters .owner-wizard-counter span{font-size:15px}
+@media (max-width:620px){.owner-dialog-counters{grid-template-columns:1fr}}
+
+/* Más aire en los campos y rótulos en minúscula, iguales en todo el diálogo. */
+.owner-dialog .owner-wizard-stack{gap:var(--esp-14)}
+.owner-dialog .owner-wizard-field:not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){min-height:68px;padding:10px var(--esp-18);font-size:18px}
+.owner-dialog .owner-wizard-field>span:not(.sr-only){font-size:13px}
+.owner-dialog .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){gap:3px}
+.owner-dialog-money{font-size:18px}
+.owner-dialog .owner-wizard-label{color:var(--gris)!important;font:700 13px/1.2 var(--font-nunito-sans),sans-serif!important;letter-spacing:0!important;text-transform:none}
+.owner-dialog .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-10)!important}
+.owner-dialog-counters{gap:var(--esp-26);margin-top:var(--esp-26)}
+.owner-dialog-counters .owner-wizard-label{margin:0 0 var(--esp-10)!important}
+.owner-dialog-percent{margin-top:var(--esp-14)}
+.owner-dialog .owner-wizard-chips{gap:var(--esp-10)}
+.owner-dialog__body{padding-block:var(--esp-26)}
+
+/* ── Cobranzas en escritorio ───────────────────────────────────────────
+   Filtro por propiedad junto a los chips de estado; filas de igual altura
+   (las dos acciones van lado a lado, no apiladas); monto sin cortes;
+   «Sin confirmar» como píldora neutra junto a la de estado.
+   Todo bajo 621px+: en celular la tabla apilada queda como estaba.
+   ------------------------------------------------------------------ */
+@media (min-width:621px){
+  .owner-table{min-width:980px}
+  .owner-table th,.owner-table td{padding-inline:var(--esp-20)}
+  .owner-table td[data-cell="monto"]{white-space:nowrap}
+  .owner-table td[data-cell="propiedad"]{min-width:230px}
+  .owner-table td[data-cell="accion"]{white-space:nowrap}
+  .owner-table td[data-cell="accion"] .owner-button{vertical-align:middle}
+  .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:var(--esp-8)}
+  .owner-table tbody tr{height:84px}
+  .owner-table td .owner-status + .owner-substatus{
+    padding:var(--esp-6) var(--esp-12);border-radius:999px;background:var(--superficie);
+    box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);font-size:13.5px;font-weight:600;line-height:1.3;
+  }
+}
+
+/* Documento sin cargar: ya está dentro de una tarjeta blanca, así que va sin caja propia (ni gris ni contorno). */
+.owner-empty-callout--outline{padding:0;background:transparent}
+.owner-empty-callout--outline>svg{background:var(--indigo-suave)}
+
+.owner-chip b{margin-left:7px;font-variant-numeric:tabular-nums}
+
+.owner-dialog__body>.owner-dialog__amount{margin:var(--esp-12) 0 0;color:var(--tinta);font:700 32px var(--font-quicksand),sans-serif;font-variant-numeric:tabular-nums}
+
+/* ── Asistente: alturas, labels y pie ────────────────────────────────
+   · Todos los campos de texto miden lo mismo que el buscador de direcciones.
+   · Los labels van en minúscula, como en los diálogos: antes se mezclaban
+     «Dormitorios» con «SUPERFICIE CUBIERTA».
+   · El pie queda fijo: con una lista larga (tipo de propiedad) «Seguir»
+     quedaba debajo del pliegue. */
+.owner-wizard-field:not(.owner-wizard-field--large):not(.owner-wizard-field--amount){box-sizing:border-box;min-height:64px;align-items:center}
+.owner-wizard:not(.owner-dialog) .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-10)!important;color:var(--gris)!important;font:700 15px/1.2 var(--font-nunito-sans),sans-serif!important;letter-spacing:0!important;text-transform:none}
+.owner-wizard-counters .owner-wizard-label{margin:0 0 var(--esp-10)!important}
+.owner-wizard__footer{position:sticky;bottom:0;z-index:2;background:#fff}
+.owner-wizard-skip{display:flex;width:100%;min-height:52px;align-items:center;justify-content:center;margin-top:var(--esp-32);border:0;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo);cursor:pointer;font:700 16.5px var(--font-nunito-sans),sans-serif}
+.owner-wizard-skip:hover{background:var(--indigo-suave)}
+.owner-wizard-skip:focus-visible{outline:3px solid var(--lila);outline-offset:3px}
+
+/* ── Asistente: el alquiler mide como el resto de los campos ─────────
+   El monto con 34 px era el doble de alto que la fecha del paso siguiente y
+   que los contadores de abajo. Ahora comparte alto y cuerpo con ellos; el
+   diálogo de cambio de condiciones conserva su propia medida. */
+.owner-wizard:not(.owner-dialog) .owner-wizard-field--amount{box-sizing:border-box;min-height:64px;align-items:center;padding:var(--esp-16) var(--esp-20);font-size:24px;letter-spacing:-.02em}
+
+/* El label quedaba a 10 px de su contador, mucho más cerca que de lo que
+   tiene arriba y abajo: se leía como pegado. */
+.owner-wizard:not(.owner-dialog) .owner-wizard-label{margin-bottom:var(--esp-16)!important}
+.owner-wizard-counters .owner-wizard-label{margin-bottom:var(--esp-10)!important}
+.owner-wizard:not(.owner-dialog) .owner-wizard-field--amount>span:first-child{margin-right:4px}
+
+/* Botón de una tarjeta: no pegado al texto de arriba. */
+.owner-card__copy + .owner-button{margin-top:var(--esp-20)}
+
+/* Editar recordatorios: bloques separados con aire parejo. */
+.owner-dialog__body--reminders{display:flex;flex-direction:column;gap:var(--esp-26)}
+.owner-dialog__body--reminders>p{margin:0}
+.owner-dialog__body--reminders .owner-wizard-chips{margin-top:0}
+.owner-dialog__body--reminders .owner-wizard-counter .owner-wizard-label{margin:0 0 var(--esp-12)!important}
+
+/* La regla de las tarjetas parejas anula el margen del botón: el aire va en el texto. */
+.owner-card__copy:has(+ .owner-button){margin-bottom:var(--esp-20)}
+.owner-dialog__body--reminders .owner-dialog-counters{margin-top:0}
+
+/* Interruptor: la fila entera se toca; el estado se lee en la perilla y el color. */
+.owner-switch{display:flex;width:100%;min-height:56px;align-items:center;justify-content:space-between;gap:var(--esp-16);padding:0 var(--esp-18);border:0;border-radius:12px;background:var(--superficie);color:var(--tinta);cursor:pointer;font:700 17px var(--font-nunito-sans),sans-serif;text-align:left}
+.owner-switch i{position:relative;flex:none;width:50px;height:30px;border-radius:15px;background:#8B8799;transition:background .15s}
+.owner-switch i::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.owner-switch[aria-checked="true"] i{background:var(--indigo)}
+.owner-switch[aria-checked="true"] i::after{transform:translateX(20px)}
+.owner-switch:focus-visible{outline:3px solid var(--indigo);outline-offset:2px}
+
+/* Recordatorios: una sola lista, rótulo a la izquierda y control a la derecha, como en la tarjeta. */
+.owner-reminder-rows{overflow:hidden;border-radius:12px;box-shadow:inset 0 0 0 1px var(--divisor)}
+.owner-reminder-rows>*{box-sizing:border-box;min-height:76px;padding:var(--esp-12) var(--esp-18)}
+.owner-reminder-rows>*+*{box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-reminder-rows .owner-wizard-counter{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-16)}
+.owner-reminder-rows .owner-wizard-counter .owner-wizard-label{margin:0!important;color:var(--tinta)!important;font-size:17px!important}
+.owner-reminder-rows .owner-wizard-counter>div{display:flex;align-items:center;gap:var(--esp-10)}
+.owner-reminder-rows .owner-wizard-counter strong{min-width:2ch;text-align:center}
+.owner-reminder-rows .owner-switch{border-radius:0;background:transparent}
+@media (max-width:620px){.owner-reminder-rows .owner-wizard-counter{flex-wrap:wrap}}

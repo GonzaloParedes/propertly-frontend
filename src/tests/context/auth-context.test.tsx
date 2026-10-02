@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "@/context/auth-context";
+import { ApiError } from "@/lib/api";
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
@@ -118,6 +119,22 @@ describe("logout()", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Logout" }));
 
+    await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
+  });
+
+  it("con la sesión ya vencida cierra igual, sin dejar el 401 sin atrapar", async () => {
+    mockGetMe.mockResolvedValueOnce(USUARIO);
+    mockLogout.mockRejectedValueOnce(new ApiError(401, "Authentication required"));
+    // Como lo llama la barra lateral: con `void` y sin catch. Si el 401 se
+    // escapara, Vitest falla la corrida por rechazo sin atrapar.
+    function BotonDeLaBarra() {
+      const { logout } = useAuth();
+      return <button onClick={() => void logout()}>Cerrar sesión</button>;
+    }
+    render(<AuthProvider><TestConsumer /><BotonDeLaBarra /></AuthProvider>);
+    await waitFor(() => screen.getByText(SESION));
+
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
     await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
   });
 });

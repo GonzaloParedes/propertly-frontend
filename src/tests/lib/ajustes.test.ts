@@ -1,4 +1,12 @@
-import { calcularDelta, describirAjuste, describirDelta, efectoDeAjuste } from "@/lib/ajustes";
+import {
+  describirAjuste,
+  efectoDeAjuste,
+  efectoDeFormulario,
+  itemARequest,
+  itemValido,
+  totalPrevisualizado,
+  type FormularioItem,
+} from "@/lib/ajustes";
 import type { AdjustmentResponse } from "@/lib/backend-types";
 
 const descuento: AdjustmentResponse = {
@@ -9,40 +17,12 @@ const descuento: AdjustmentResponse = {
   value: 50000,
 };
 
-describe("calcularDelta", () => {
-  it("cobrar menos guarda un descuento por la diferencia", () => {
-    expect(calcularDelta(450000, 500000)).toEqual({
-      kind: "DISCOUNT",
-      valueType: "FIXED_AMOUNT",
-      value: 50000,
-    });
-  });
-
-  it("cobrar más guarda un recargo", () => {
-    expect(calcularDelta(530000, 500000)).toEqual({
-      kind: "SURCHARGE",
-      valueType: "FIXED_AMOUNT",
-      value: 30000,
-    });
-  });
-
-  // Guardar un ajuste de cero ensucia la cuota con una línea que no hace nada.
-  it("el mismo importe no genera ajuste", () => {
-    expect(calcularDelta(500000, 500000)).toBeNull();
-  });
-
-  it("se calcula contra el total vigente, no contra el base", () => {
-    // La cuota ya tenía un descuento: el total vigente es 450.000.
-    expect(calcularDelta(500000, 450000)).toEqual({
-      kind: "SURCHARGE",
-      valueType: "FIXED_AMOUNT",
-      value: 50000,
-    });
-  });
-
-  it("no arrastra basura de coma flotante", () => {
-    expect(calcularDelta(100.1, 100.2)?.value).toBe(0.1);
-  });
+const form = (over: Partial<FormularioItem> = {}): FormularioItem => ({
+  nombre: "Baño roto",
+  kind: "SURCHARGE",
+  valueType: "FIXED_AMOUNT",
+  value: 250000,
+  ...over,
 });
 
 describe("efectoDeAjuste", () => {
@@ -91,16 +71,65 @@ describe("describirAjuste", () => {
   });
 });
 
-describe("describirDelta", () => {
-  it("anuncia el descuento antes de guardarlo", () => {
-    expect(describirDelta(calcularDelta(450000, 500000))).toContain("descuento de $ 50.000");
+describe("itemARequest", () => {
+  it("arma el request y recorta el nombre", () => {
+    expect(itemARequest(form({ nombre: "  Baño roto  " }))).toEqual({
+      name: "Baño roto",
+      kind: "SURCHARGE",
+      valueType: "FIXED_AMOUNT",
+      value: 250000,
+    });
+  });
+});
+
+describe("efectoDeFormulario", () => {
+  it("un recargo fijo suma su monto", () => {
+    expect(efectoDeFormulario(form({ value: 250000 }), 1500000)).toBe(250000);
   });
 
-  it("anuncia el recargo", () => {
-    expect(describirDelta(calcularDelta(530000, 500000))).toContain("recargo de $ 30.000");
+  it("un descuento porcentual resta sobre el base", () => {
+    expect(
+      efectoDeFormulario(form({ kind: "DISCOUNT", valueType: "PERCENTAGE", value: 10 }), 1500000)
+    ).toBe(-150000);
+  });
+});
+
+describe("totalPrevisualizado", () => {
+  it("suma base + ajustes existentes + el ítem en edición", () => {
+    const existentes: AdjustmentResponse[] = [
+      { id: 7, name: "Ducha", kind: "SURCHARGE", valueType: "FIXED_AMOUNT", value: 150000 },
+    ];
+    // 1.500.000 + 150.000 (ducha) + 250.000 (baño nuevo) = 1.900.000
+    expect(totalPrevisualizado(1500000, existentes, form({ value: 250000 }), null)).toBe(1900000);
   });
 
-  it("sin diferencia lo dice en vez de prometer un guardado", () => {
-    expect(describirDelta(null)).toContain("no cambia");
+  it("excluye el ajuste que se está editando para no contarlo dos veces", () => {
+    const existentes: AdjustmentResponse[] = [
+      { id: 7, name: "Ducha", kind: "SURCHARGE", valueType: "FIXED_AMOUNT", value: 150000 },
+    ];
+    // Editando el id 7: no se suma el viejo 150.000, sólo el nuevo valor del form.
+    expect(
+      totalPrevisualizado(1500000, existentes, form({ value: 200000 }), 7)
+    ).toBe(1700000);
+  });
+});
+
+describe("itemValido", () => {
+  it("rechaza un ítem sin nombre", () => {
+    expect(itemValido(form({ nombre: "  " }), 1500000, [], null)).toBe(false);
+  });
+
+  it("rechaza un valor que no es mayor a cero", () => {
+    expect(itemValido(form({ value: 0 }), 1500000, [], null)).toBe(false);
+  });
+
+  it("rechaza un descuento que deja el total negativo", () => {
+    expect(
+      itemValido(form({ kind: "DISCOUNT", value: 1600000 }), 1500000, [], null)
+    ).toBe(false);
+  });
+
+  it("acepta un ítem válido", () => {
+    expect(itemValido(form({ value: 250000 }), 1500000, [], null)).toBe(true);
   });
 });

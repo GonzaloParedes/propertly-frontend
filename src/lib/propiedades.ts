@@ -1,3 +1,4 @@
+import { normalizar } from "@/lib/busqueda";
 import { formatearDireccion, formatearMonto } from "@/lib/formato";
 import { detallePropiedad } from "@/lib/propiedad";
 import type { InvoiceResponse, PropertyResponse } from "@/lib/backend-types";
@@ -50,10 +51,6 @@ export function desdeDeLaVentana(hoyISO: string): string {
   const [anio, mes] = hoyISO.split("-").map(Number);
   const desde = new Date(Date.UTC(anio, mes - 1 - MESES_DE_VENTANA, 1));
   return desde.toISOString().slice(0, 10);
-}
-
-function normalizar(texto: string): string {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 export function estadoDePropiedad(

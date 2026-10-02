@@ -121,6 +121,29 @@ campos con foco.
 *Por qué:* antes los chips usaban índigo sólido con texto blanco y las tarjetas
 anillo con fondo suave. Eran dos idiomas distintos para decir lo mismo.
 
+### 9 · Un listado vacío ofrece el paso que sigue
+
+Todo listado sin nada cargado usa `EmptyState`: ilustración, qué falta, para qué
+sirve y **un** botón a la acción que lo llena. No confundir con `EmptyResults`,
+que es el vacío de un filtro o una búsqueda sobre datos que sí existen.
+
+- **Un solo primario.** Mientras la lista está vacía, el botón de crear del
+  encabezado se esconde y baja al centro. Dos primarios iguales en la misma
+  pantalla no dicen cuál tocar. Dentro de Inicio el botón va `secondary`,
+  porque el primario de la página ya está en el encabezado (regla 7).
+- **El botón es el paso que de verdad sigue.** En Inicio, sin propiedades, el
+  vacío de «Contratos activos» ofrece «Agregar propiedad», no «Nuevo
+  contrato»: el asistente de contrato no tendría nada para elegir.
+- **No afirmar lo que no se sabe.** Sin contratos, «Requieren su acción» no dice
+  «sus cuotas están al día»: explica qué va a aparecer ahí.
+- **`compact`** para un bloque dentro de otra pantalla (avisos de Inicio): una
+  franja con la ilustración chica, sin botón si la acción ya está al lado.
+- **Las ilustraciones hablan el idioma del logo**: trazo índigo redondeado sobre
+  un círculo `--indigo-suave`, y el rosa en **un solo detalle** por dibujo (el
+  techito, un día marcado), por el tope de 10 % del manual. Son decorativas
+  (`aria-hidden`): el mensaje lo dice el texto. Viven en `EmptyArt`; una
+  pantalla nueva suma ahí su dibujo en vez de traer uno de afuera.
+
 ---
 
 ## Comportamiento responsive
@@ -135,7 +158,7 @@ vive en `OwnerWorkspace.css`; no hay CSS responsive en los `.tsx`.
 |---|---|
 | **1200 px** | `--col-monto` y `--col-estado` se achican (140/156 → 124/140). Solo números. |
 | **1080 px** | El contenido pierde padding; `.owner-detail-grid` pasa a una columna. |
-| **900 px** | **El corte grande.** `.owner-nav` desaparece y aparecen `.owner-mobile-header` + `.owner-drawer`. `.owner-row` se apila (ícono a la izquierda ocupando dos filas, y monto y estado bajan debajo del texto). Los chips de filtro envuelven. El asistente pierde la barra de progreso. |
+| **900 px** | **El corte grande.** `.owner-nav` desaparece y aparecen `.owner-mobile-header` + `.owner-drawer`. `.owner-row` se apila (ícono a la izquierda ocupando dos filas, y monto y estado bajan debajo del texto). Los filtros viven detrás del botón «Filtros» (panel; en celular, hoja desde abajo): ya no hay chips de estado sueltos. El asistente pierde la barra de progreso. |
 | **720 px** | `.owner-contract-summary` a una columna. |
 | **620 px** | **El corte de celular.** Se achican los padding de tarjeta; los avisos, el `.owner-document` y los botones de encabezado se apilan; el diálogo pone sus acciones en columna; la tabla de cobranzas se apila. |
 

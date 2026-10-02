@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 interface ModalProps {
   open: boolean;
@@ -80,7 +81,7 @@ export default function Modal({ open, onClose, title, description, children }: M
         open={open}
         aria-modal="true"
         aria-labelledby={titleId}
-        className="fixed inset-y-0 right-0 z-50 m-0 flex w-full max-w-2xl border-0 p-0 flex-col bg-white transition-transform duration-300"
+        className="fixed inset-y-0 right-0 z-50 m-0 flex h-full max-h-none w-full max-w-2xl border-0 p-0 flex-col bg-white transition-transform duration-300"
         style={{
           transform: open ? "translateX(0)" : "translateX(100%)",
           boxShadow: "-8px 0 30px rgba(30,27,46,0.15), -2px 0 8px rgba(30,27,46,0.08)",
@@ -107,19 +108,7 @@ export default function Modal({ open, onClose, title, description, children }: M
             className="-mr-1 flex shrink-0 cursor-pointer items-center justify-center rounded-[10px] p-2 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
             style={{ color: "var(--text-2)" }}
           >
-            <svg
-              aria-hidden="true"
-              className="size-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="6" y1="6" x2="18" y2="18" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
+            <X aria-hidden="true" className="size-5" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8">{children}</div>

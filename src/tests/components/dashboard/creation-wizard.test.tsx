@@ -519,6 +519,9 @@ describe("asistente de propiedad · tipo y guardado", () => {
       floorUnit: undefined,
       city: "CABA",
       province: "Ciudad Autónoma de Buenos Aires",
+      postalCode: "C1047",
+      latitude: undefined,
+      longitude: undefined,
       category: "APARTMENT",
       bedrooms: undefined,
       bathrooms: undefined,
@@ -659,7 +662,7 @@ describe("asistente de contrato · día de vencimiento", () => {
     await userEvent.click(screen.getByRole("button", { name: "Día 5" }));
     await userEvent.type(screen.getByLabelText("Alquiler mensual"), "400000");
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
-    await userEvent.type(screen.getByLabelText("Fecha de inicio"), "2026-09-01");
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-09-01" } });
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
     await userEvent.type(screen.getByLabelText(/Porcentaje/), "8");
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
@@ -667,5 +670,78 @@ describe("asistente de contrato · día de vencimiento", () => {
 
     await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
     expect(mockCrearContrato).toHaveBeenCalledWith(expect.objectContaining({ dueDay: 5 }));
+  });
+});
+
+describe("asistente de propiedad · ciudad y provincia", () => {
+  async function elegirDireccion() {
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByText(/Lavalle 950/));
+  }
+
+  it("no deja seguir si Pelias no trajo ciudad ni provincia hasta completarlas", async () => {
+    mockResolver.mockResolvedValue({
+      street: "Lavalle", number: "950", city: null, province: null,
+      postalCode: null, latitude: null, longitude: null,
+    });
+    await elegirDireccion();
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Ciudad"), "Chivilcoy");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Provincia"), "Buenos Aires");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+});
+
+describe("asistente de propiedad · dirección que el buscador no encuentra", () => {
+  it("con «Usarla igual» pide número, ciudad y provincia antes de dejar seguir", async () => {
+    mockAutocompletar.mockResolvedValue([]);
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Calle Inexistente");
+    await userEvent.click(await screen.findByRole("button", { name: "Usarla igual" }));
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Número"), "123");
+    await userEvent.type(screen.getByLabelText("Ciudad"), "Chivilcoy");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Provincia"), "Buenos Aires");
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+    // El código postal es opcional.
+    expect(screen.getByLabelText("Código postal")).not.toBeRequired();
+  });
+});
+
+describe("asistente de propiedad · corregir la dirección elegida", () => {
+  it("deja editar la calle y el número sin volver a buscar", async () => {
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByText(/Lavalle 950/));
+
+    await userEvent.clear(screen.getByLabelText("Calle"));
+    await userEvent.type(screen.getByLabelText("Calle"), "Corrientes");
+    await userEvent.clear(screen.getByLabelText("Número"));
+    await userEvent.type(screen.getByLabelText("Número"), "1200");
+
+    expect(screen.getByText("Corrientes 1200")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+});
+
+describe("asistente de contrato · propiedad preseleccionada", () => {
+  it("arranca en el paso del inquilino con la propiedad ya elegida", async () => {
+    mockPropiedades.mockResolvedValue([MITRE, COLON]);
+    render(<CreationWizard kind="contract" initialPropertyId={MITRE.id} onClose={onClose} onComplete={onComplete} />);
+
+    expect(await screen.findByRole("radio", { name: /Diego Ferrari/ })).toBeInTheDocument();
+    expect(screen.getByText("Paso 2 de 6")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Mitre 78/ })).not.toBeInTheDocument();
+  });
+
+  it("sin propiedad preseleccionada arranca pidiéndola", async () => {
+    render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
+    expect(await screen.findByRole("radio", { name: /Mitre 78/ })).toBeInTheDocument();
   });
 });

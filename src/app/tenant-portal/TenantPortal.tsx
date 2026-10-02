@@ -10,6 +10,7 @@ import {
   type FilaCuotaInquilino,
 } from "@/lib/portal-inquilino";
 import type { InvoiceResponse } from "@/lib/backend-types";
+import { Icon } from "@/components/ui/Icon";
 import "./tenant-portal.css";
 
 /**
@@ -24,18 +25,6 @@ type Estado =
   | { fase: "error" }
   | { fase: "listo"; invoices: InvoiceResponse[] };
 
-function Icon({ name, size = 20 }: Readonly<{ name: "check" | "clock" | "alert" | "file" | "download" | "x"; size?: number }>) {
-  const common = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  const paths: Record<string, React.ReactNode> = {
-    check: <path d="M20 6 9 17l-5-5" />,
-    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></>,
-    alert: <><path d="M12 9v4M12 16.5h.01" /><path d="M10.3 3.9 1.8 18a1.7 1.7 0 0 0 1.5 2.6h17.4a1.7 1.7 0 0 0 1.5-2.6L13.7 3.9a1.7 1.7 0 0 0-3.4 0Z" /></>,
-    file: <><path d="M6 2.5h8l4 4V21.5H6z" /><path d="M14 2.5v4h4" /></>,
-    download: <><path d="M12 4v11m0 0-4-4m4 4 4-4" /><path d="M4 19.5h16" /></>,
-    x: <path d="M18 6 6 18M6 6l12 12" />,
-  };
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" {...common}>{paths[name]}</svg>;
-}
 
 function EstadoBadge({ children }: Readonly<{ children: FilaCuotaInquilino["estado"] }>) {
   const config: Record<FilaCuotaInquilino["estado"], ["ok" | "warn" | "bad" | "info", Parameters<typeof Icon>[0]["name"]]> = {
@@ -198,6 +187,23 @@ export default function TenantPortal() {
 
               <div className="tenant-cuota__monto">
                 <span>{fila.monto}</span>
+                {fila.ajustes.length > 0 && (
+                  <dl className="tenant-cuota__desglose" aria-label={`Detalle del importe de ${fila.periodo}`}>
+                    <div>
+                      <dt>Importe del contrato</dt>
+                      <dd>{fila.importeBase}</dd>
+                    </div>
+                    {fila.ajustes.map((ajuste) => (
+                      <div key={ajuste.id}>
+                        <dt>
+                          {ajuste.nombre}
+                          {ajuste.detalle && <small> · {ajuste.detalle}</small>}
+                        </dt>
+                        <dd>{ajuste.efecto}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
                 {!fila.confirmada && (
                   <small className="tenant-cuota__aviso">
                     El propietario todavía no cerró este importe: puede cambiar.
