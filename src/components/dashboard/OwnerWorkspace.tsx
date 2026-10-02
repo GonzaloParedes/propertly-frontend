@@ -2086,7 +2086,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   const necesitaContratos = cargas.contracts;
 
-  useLoadedResource({ enabled: necesitaContratos, refreshKey: 0, load: loadContractRows, setResult: setCargaContratos });
+  useLoadedResource({ enabled: necesitaContratos, refreshKey: recargaContrato, load: loadContractRows, setResult: setCargaContratos });
 
   // Contra un build viejo la clave `activeContract` no viene y todas se verían
   // «Sin alquilar». Se omiten los chips en vez de afirmar algo falso.
@@ -2163,6 +2163,12 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   function openDetail(kind: Detail, id: string) { setSelected(id); setDetail(kind); }
   function go(next: OwnerView) {
+    // Volver a la misma pantalla no cambia `enabled` en el efecto de carga.
+    // Cada alta invalida su listado para que el registro recién creado aparezca
+    // de inmediato, incluso si el asistente se abrió desde esa lista.
+    if (wizard === "tenant") setRecargaInquilinos((n) => n + 1);
+    if (wizard === "property") setRecargaPropiedades((n) => n + 1);
+    if (wizard === "contract") setRecargaContrato((n) => n + 1);
     onNavigate?.(next);
     if (!onNavigate) {
       setLocalView(next);

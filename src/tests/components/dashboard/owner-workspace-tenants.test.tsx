@@ -11,7 +11,7 @@ vi.mock("@/context/auth-context", () => ({
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
-    tenants: { list: vi.fn(), update: vi.fn(), archive: vi.fn() },
+    tenants: { list: vi.fn(), create: vi.fn(), update: vi.fn(), archive: vi.fn() },
     contracts: { list: vi.fn(), getTenantAccess: vi.fn() },
     properties: { list: vi.fn(), archive: vi.fn() },
     users: { getReminderSettings: vi.fn() },
@@ -21,6 +21,7 @@ vi.mock("@/lib/backend-client", () => ({
 
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockTenants = vi.mocked(AlquiaBackendClient.tenants.list);
+const mockCreateTenant = vi.mocked(AlquiaBackendClient.tenants.create);
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
 
@@ -113,6 +114,28 @@ describe("modo demo", () => {
 
     expect(screen.getByText("Sin contrato")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Crear contrato" })).toBeInTheDocument();
+  });
+});
+
+describe("alta de inquilino", () => {
+  it("vuelve a pedir el listado y muestra al inquilino recién creado", async () => {
+    mockTenants.mockResolvedValueOnce([]).mockResolvedValueOnce([JORGE]);
+    mockContracts.mockResolvedValue([]);
+    mockInvoices.mockResolvedValue([]);
+    mockCreateTenant.mockResolvedValue(JORGE);
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    await screen.findByText("Todavía no cargó ningún inquilino");
+    await userEvent.click(screen.getByRole("button", { name: "Agregar inquilino" }));
+    await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
+    await userEvent.type(screen.getByLabelText("Apellido"), "Paletta");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), "20224567899");
+    await userEvent.type(screen.getByLabelText("Correo electrónico"), "jorge@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
+
+    expect(await screen.findByText("Jorge Paletta")).toBeInTheDocument();
+    expect(mockTenants).toHaveBeenCalledTimes(2);
   });
 });
 
