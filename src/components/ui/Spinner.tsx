@@ -10,9 +10,9 @@ export function Spinner({ size = "sm" }: Readonly<{ size?: "sm" | "md" }>) {
  */
 export function Cargando({ children, centered = false }: Readonly<{ children: React.ReactNode; centered?: boolean }>) {
   return (
-    <div role="status" className={`alquia-cargando${centered ? " alquia-cargando--centrado" : ""}`}>
+    <output className={`alquia-cargando${centered ? " alquia-cargando--centrado" : ""}`}>
       <Spinner size="md" />
       <span className="sr-only">{children}</span>
-    </div>
+    </output>
   );
 }

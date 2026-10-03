@@ -73,3 +73,24 @@ accesibilidad, semántica HTML, calidad estática o configuración de CI.
 - `npm run lint` y `npm run typecheck` exitosos.
 - `npm test` exitoso: 39 archivos y 701 pruebas. React informó dos advertencias preexistentes de `act(...)`, sin fallos.
 - `npm run build` se inició correctamente, pero quedó inactivo durante la optimización local de Next y se detuvo para liberar su lock. Debe repetirse en CI o en un entorno sin ese bloqueo; no hubo diagnóstico de compilación asociado a estos cambios.
+
+## Actualización: reporte de calendario y workspace
+
+Fuente: `pasted-text-1.txt` provisto el 2026-10-02 (segunda exportación).
+Los 19 hallazgos de esta tanda se corrigieron o se verificaron como ya resueltos
+en el árbol actual. Se preservaron los mismos flujos y resultados visibles.
+
+| Reporte | Resolución |
+| --- | --- |
+| `src/app/tenant-portal/TenantPortal.tsx:59` — `reduce` sin valor inicial | `anioInicial` usa el primer año como acumulador explícito y mantiene una salida segura si no hay años. |
+| `src/app/prototipo/inquilino/CalendarioInquilino.tsx:159` — complejidad cognitiva | La decisión de renderizar cada mes se extrajo a componentes pequeños (`MesDelCalendario`, `MesEstimado`, `MesSinCuota` y `MesConCuota`). |
+| `CalendarioInquilino.tsx:163` (2 hallazgos) — ternarios anidados | Las etiquetas de meses sin cuota ahora están en un mapa tipado por estado. |
+| `CalendarioInquilino.tsx:171` (2 hallazgos) — ternarios anidados | El tono de una cuota ahora se obtiene de un mapa tipado por estado. |
+| `TenantPortal.tsx:136` — bloque `catch` ambiguo | El `return` se separó del `if`; sigue cortando la inicialización únicamente después de invalidar el enlace. |
+| `TenantPortal.tsx:209` (2 hallazgos) — ternarios anidados | `tonoDeCuotas` expresa la misma prioridad de estados con retornos explícitos. |
+| `src/components/dashboard/OwnerWorkspace.css:647` — selector de subestado duplicado | Se eliminó la regla anterior que ya quedaba sobrescrita por la variante de aviso vigente. |
+| `OwnerWorkspace.css:674` — selector de acción duplicado | Se consolidaron posición, margen y disposición móvil en una única regla. |
+| `OwnerWorkspace.css:685` — selector de acción de aviso duplicado | La alineación vertical se integró en la declaración original del botón. |
+| `src/components/dashboard/OwnerWorkspace.tsx:2472,2473,2478,2480,2481` — componentes definidos dentro del padre | `WorkspaceContent` recibe nodos de React, no funciones que definen componentes; se conservan las mismas props, acciones y vista seleccionada. |
+| `src/components/ui/Spinner.tsx:13` — `role="status"` | `Cargando` usa el elemento semántico `output`, que conserva la misma clase, spinner y texto para lectores de pantalla. |
+| `src/components/dashboard/CreationWizard.tsx` — unión sin alias | El estado de método de actualización ahora referencia el alias existente `ContractMethod`, en vez de repetir la unión literal. |

@@ -26,7 +26,7 @@
 .owner-portfolio__summary { display:flex; flex-direction:column; justify-content:center; gap:27px; box-shadow:inset 1px 0 0 var(--divisor); }.owner-portfolio__summary b { display:block; margin-top:var(--esp-6); font:700 25px/1.1 var(--font-quicksand),sans-serif; }.owner-portfolio__summary small { display:block; margin-top:var(--esp-6); font-size:14.5px; }
 
 .owner-section { margin-top:var(--esp-44); }.owner-section__head { align-items:center; justify-content:space-between; margin-bottom:var(--esp-16); }.owner-section__head h2, .owner-card h2 { margin:0; font:700 20px var(--font-quicksand),sans-serif; }
-.owner-notices { display:flex; flex-direction:column; gap:11px; }.owner-notice { display:flex; align-items:flex-start; gap:15px; padding:var(--esp-20) 24px; border-left:4px solid var(--indigo); border-radius:14px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-notice--warn{border-left-color:var(--adv)}.owner-notice--bad{border-left-color:var(--error)}.owner-notice__icon{color:var(--indigo);margin-top:var(--esp-2)}.owner-notice--warn .owner-notice__icon{color:var(--adv)}.owner-notice--bad .owner-notice__icon{color:var(--error)}.owner-notice strong{display:block;font-size:17px}.owner-notice p{margin:3px 0 0;color:var(--gris);font-size:16px}.owner-notice__action{margin-left:auto;padding-left:var(--esp-8);flex:none}
+.owner-notices { display:flex; flex-direction:column; gap:11px; }.owner-notice { display:flex; align-items:flex-start; gap:15px; padding:var(--esp-20) 24px; border-left:4px solid var(--indigo); border-radius:14px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-notice--warn{border-left-color:var(--adv)}.owner-notice--bad{border-left-color:var(--error)}.owner-notice__icon{color:var(--indigo);margin-top:var(--esp-2)}.owner-notice--warn .owner-notice__icon{color:var(--adv)}.owner-notice--bad .owner-notice__icon{color:var(--error)}.owner-notice strong{display:block;font-size:17px}.owner-notice p{margin:3px 0 0;color:var(--gris);font-size:16px}.owner-notice__action{align-self:center;margin-left:auto;padding-left:var(--esp-8);flex:none}
 
 .owner-list, .owner-table-wrap { overflow:hidden; border-radius:20px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-row { display:grid; grid-template-columns:44px minmax(0,1fr) var(--col-monto) var(--col-estado) auto; width:100%; align-items:center; gap:var(--esp-18); padding:var(--esp-18) 24px; color:var(--tinta); text-align:left; }.owner-row+.owner-row{box-shadow:inset 0 1px 0 var(--divisor)}.owner-row--button{border:0;background:transparent;cursor:pointer}.owner-row--button:hover{background:var(--superficie)}.owner-row__icon{display:grid;width:44px;height:44px;place-items:center;flex:none;border-radius:14px;background:var(--superficie);color:var(--gris)}.owner-row--button:hover .owner-row__icon{background:var(--indigo-suave);color:var(--indigo)}.owner-row__body{min-width:0;flex:1}.owner-row__body b,.owner-row__body small,.owner-row__body em{display:block}.owner-row__body b{font-size:17px}.owner-row__body small,.owner-row__body em{margin-top:3px;overflow:hidden;color:var(--gris);font-size:14.5px;font-style:normal;text-overflow:ellipsis;white-space:nowrap}.owner-row__body em{color:var(--tinta);font-weight:600}.owner-row__amount{grid-column:3;text-align:right}.owner-row__amount b{display:block;font:700 19px var(--font-quicksand),sans-serif}.owner-row__amount small{display:block;margin-top:1px;color:var(--gris);font-size:12.5px;line-height:1.3}.owner-row__arrow{grid-column:5;color:var(--gris)}.owner-row>.owner-status{grid-column:4;justify-self:end}
 .owner-status { display:inline-flex; flex:none; align-items:center; gap:7px; padding:var(--esp-6) var(--esp-12); border-radius:999px; color:var(--tinta); font-size:14px; font-weight:700; white-space:nowrap; }.owner-status--ok{background:var(--exito-bg)}.owner-status--ok svg{color:var(--exito)}.owner-status--warn{background:var(--warn-bg)}.owner-status--warn svg{color:var(--adv)}.owner-status--bad{background:var(--error-bg)}.owner-status--bad svg{color:var(--error)}.owner-status--info{background:var(--indigo-suave)}.owner-status--info svg{color:var(--indigo)}.owner-status--none{background:var(--superficie);color:var(--gris)}
@@ -329,21 +329,6 @@
    pensado para separar items entre sí, no una sección de la anterior. */
 .owner-nav__links > .owner-nav__group{margin-top:24px}
 
-/* ── Altura pareja de filas ────────────────────────────────────────────
-   Una fila más alta rompe el ritmo de lectura de la tabla. En vez de
-   forzar una altura fija (que recortaría contenido), se evita que algo
-   ocupe una línea extra: el sub-estado va al lado de la píldora, no
-   debajo, y los textos secundarios no envuelven.
-   ------------------------------------------------------------------ */
-.owner-table td .owner-status + .owner-substatus{
-  display:inline-block;
-  margin-top:0 !important;
-  margin-left:var(--esp-10);
-  color:var(--gris);
-  font-size:14px;
-  white-space:nowrap;
-  vertical-align:middle;
-}
 .owner-table td small{
   overflow:hidden;
   text-overflow:ellipsis;
@@ -655,7 +640,7 @@
 @media (max-width:620px){
   /* Dos botones apilados no pueden tocarse: la acción principal queda
      separada de la secundaria por el mismo aire que el resto de la tarjeta. */
-  .owner-table td[data-cell="accion"]{display:flex;flex-direction:column;gap:var(--esp-10)}
+  .owner-table td[data-cell="accion"]{display:flex;grid-area:4/1/5/3;flex-direction:column;gap:var(--esp-10);margin-top:var(--esp-16)}
   .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:0}
   /* Tarjeta de cuota en celular, de arriba abajo:
        1 · propiedad (con inquilino y período)  |  estado
@@ -671,7 +656,6 @@
   .owner-table td[data-cell="vencimiento"]{grid-area:2/2/3/3;align-self:end;margin-top:var(--esp-14);text-align:right;font-size:15px}
   .owner-table td[data-cell="estado"] .owner-status+.owner-substatus{display:flex;grid-area:3/1/4/3;justify-self:stretch;width:auto;
     margin:var(--esp-14) 0 0!important;padding:var(--esp-10) var(--esp-14);border-radius:12px;font-size:14.5px}
-  .owner-table td[data-cell="accion"]{grid-area:4/1/5/3;margin-top:var(--esp-16)}
 }
 
 /* Las dos píldoras de la celda de estado (estado y «Sin confirmar») apiladas
@@ -680,6 +664,3 @@
 @media (min-width:621px){
   .owner-table td .owner-status,.owner-table td .owner-status + .owner-substatus{box-sizing:border-box;height:34px;padding-top:0;padding-bottom:0;line-height:1}
 }
-
-/* El botón de un aviso se centra contra todo el aviso, no contra la primera línea. */
-.owner-notice__action{align-self:center}
