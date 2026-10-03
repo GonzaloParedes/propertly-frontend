@@ -5,6 +5,7 @@ import Counter from "@/components/ui/Counter";
 import { Spinner } from "@/components/ui/Spinner";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse } from "@/lib/backend-types";
 import {
   armarPedido,
@@ -18,21 +19,29 @@ import {
 import { formatearPeriodo } from "@/lib/formato";
 
 /**
- * El backend rechaza con 400 y un mensaje en inglés que no le sirve al
- * propietario. Los que el formulario no puede prevenir —una cuota ya paga, un
- * cambio que otra pestaña programó antes— se dicen acá; el resto es un caso que
- * el selector de meses ya evita y cae en el mensaje general.
+ * El backend distingue cada rechazo con un `type` estable (RFC 9457). Los que el
+ * formulario no puede prevenir —una cuota ya paga, un cambio que otra pestaña
+ * programó antes— llegan como 409 y se dicen acá; las validaciones de fecha (400)
+ * y cualquier otro 400 son casos que el selector de meses ya evita y caen en el
+ * mensaje general.
  */
 function mensajeDeError(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.status === 400) {
-    if (/paid/i.test(err.message)) {
+  if (err instanceof ApiError) {
+    if (err.type === ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE) {
       return "Hay una cuota ya paga desde ese mes. Elija un mes posterior a la última cuota cobrada.";
     }
-    if (/already has a scheduled/i.test(err.message)) {
+    if (err.type === ERROR.CONTRACT_ALREADY_HAS_SUCCESSOR) {
       return "Este contrato ya tiene un cambio programado.";
     }
-    return "El cambio no se pudo programar con esos datos. Revise el mes y las condiciones.";
+    if (
+      err.type === ERROR.EFFECTIVE_FROM_NOT_FIRST_OF_MONTH ||
+      err.type === ERROR.EFFECTIVE_FROM_NOT_FUTURE ||
+      err.type === ERROR.EFFECTIVE_FROM_OUTSIDE_TERM ||
+      err.status === 400
+    ) {
+      return "El cambio no se pudo programar con esos datos. Revise el mes y las condiciones.";
+    }
   }
   return "No pudimos programar el cambio. Inténtelo de nuevo más tarde.";
 }

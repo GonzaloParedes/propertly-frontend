@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse, InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
 
 // OwnerWorkspace nombra la cuenta desde la sesión; estas vistas no la usan.
@@ -226,7 +227,11 @@ describe("acciones", () => {
   it("traduce el 400 de la cuota sin confirmar en vez de mostrar el texto del backend", async () => {
     conCuotas([cuota()]);
     mockCrearPago.mockRejectedValueOnce(
-      new ApiError(400, "Cannot submit a payment for an unconfirmed invoice")
+      new ApiError(
+        409,
+        "Cannot submit a payment for an unconfirmed invoice",
+        ERROR.PAYMENT_ON_UNCONFIRMED_INVOICE
+      )
     );
     await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
     await userEvent.upload(
@@ -486,7 +491,11 @@ describe("ajustar importe", () => {
 
   it("explica el rechazo cuando la cuota quedó confirmada mientras editaba", async () => {
     mockSumar.mockRejectedValueOnce(
-      new ApiError(400, "Cannot modify adjustments on a confirmed invoice")
+      new ApiError(
+        409,
+        "Cannot modify adjustments on a confirmed invoice",
+        ERROR.ADJUSTMENT_ON_CONFIRMED_INVOICE
+      )
     );
     const dialogo = await abrirAjuste();
 

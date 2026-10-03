@@ -87,6 +87,7 @@ import { describirRecordatorios, resumenRecordatorios, DIAS_MAX, DIAS_MIN } from
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import CambioCondicionesForm from "@/components/dashboard/CambioCondicionesForm";
 import { useAuth } from "@/context/auth-context";
 
@@ -344,7 +345,7 @@ function mensajeDeErrorArchivar(err: unknown): string {
 /** Los pocos 400 de cobranzas que el propietario puede resolver solo. */
 function mensajeDeErrorCobranza(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.message === "Cannot submit a payment for an unconfirmed invoice") {
+  if (err instanceof ApiError && err.type === ERROR.PAYMENT_ON_UNCONFIRMED_INVOICE) {
     return "Primero hay que confirmar la cuota. Después se le puede registrar el pago.";
   }
   if (err instanceof ApiError && err.status === 400) return "No se pudo completar la acción. Revise los datos.";
@@ -378,8 +379,8 @@ function mensajeErrorDeCuenta(err: unknown): string {
 
 function mensajeErrorDeInquilino(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.message === "Tax ID already registered") return "Ese documento ya figura en otro inquilino suyo.";
-  if (err instanceof ApiError && err.message === "Phone number already registered") return "Ese teléfono ya figura en otro inquilino suyo.";
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_TAX_ID) return "Ese documento ya figura en otro inquilino suyo.";
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_PHONE_NUMBER) return "Ese teléfono ya figura en otro inquilino suyo.";
   if (err instanceof ApiError && err.status === 400) return "Verifique los datos ingresados e inténtelo de nuevo.";
   return "No pudimos guardar los datos. Inténtelo de nuevo más tarde.";
 }
@@ -2354,10 +2355,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       setRefresco((n) => n + 1);
     } catch (err) {
       let mensaje = mensajeDeErrorCobranza(err);
-      if (err instanceof ApiError && err.message === "Cannot modify adjustments on a confirmed invoice") {
+      if (err instanceof ApiError && err.type === ERROR.ADJUSTMENT_ON_CONFIRMED_INVOICE) {
         mensaje = "La cuota quedó confirmada mientras editaba, así que su importe ya está cerrado.";
       }
-      if (err instanceof ApiError && err.message === "Invoice total cannot be negative") {
+      if (err instanceof ApiError && err.type === ERROR.INVOICE_TOTAL_NEGATIVE) {
         mensaje = "El total de la cuota no puede quedar negativo.";
       }
       setErrorAccion(mensaje);

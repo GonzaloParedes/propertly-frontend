@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { AddressSuggestionResponse, PropertyCategory, PropertyResponse, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
@@ -14,21 +15,19 @@ import { correoValido } from "@/lib/correo";
 import { formatearDireccion } from "@/lib/tenant-rows";
 
 /**
- * El backend devuelve 400 tanto para los duplicados como para cualquier otra
- * validación, y sólo se distinguen por el texto: TenantService.create chequea
- * dos unicidades y tira IllegalArgumentException("Tax ID already registered") o
- * ("Phone number already registered"); el resto llega como "Validation failed"
- * desde el handler de bean validation. Los dos duplicados son por propietario,
- * no globales — de ahí el «en otro inquilino suyo».
+ * El backend distingue cada condición con un `type` estable (RFC 9457): los dos
+ * duplicados de TenantService.create llegan como DUPLICATE_TAX_ID / DUPLICATE_PHONE_NUMBER,
+ * y el resto de validaciones sin `type` propio cae al genérico. Los dos duplicados
+ * son por propietario, no globales — de ahí el «en otro inquilino suyo».
  */
 function mensajeDeError(err: unknown): string {
   if (err instanceof AuthExpiredError) {
     return "Su sesión expiró. Vuelva a iniciar sesión para guardar el inquilino.";
   }
-  if (err instanceof ApiError && err.message === "Tax ID already registered") {
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_TAX_ID) {
     return "Ese CUIT ya figura en otro inquilino suyo.";
   }
-  if (err instanceof ApiError && err.message === "Phone number already registered") {
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_PHONE_NUMBER) {
     return "Ese teléfono ya figura en otro inquilino suyo.";
   }
   if (err instanceof ApiError && err.status === 400) {
@@ -211,7 +210,7 @@ function mensajeDeErrorContrato(err: unknown): string {
   if (err instanceof AuthExpiredError) {
     return "Su sesión expiró. Vuelva a iniciar sesión para crear el contrato.";
   }
-  if (err instanceof ApiError && err.message === "Property already has an active contract") {
+  if (err instanceof ApiError && err.type === ERROR.PROPERTY_HAS_ACTIVE_CONTRACT) {
     return "Esa propiedad ya tiene un contrato vigente. Finalícelo antes de crear otro.";
   }
   if (err instanceof ApiError && err.status === 400) {

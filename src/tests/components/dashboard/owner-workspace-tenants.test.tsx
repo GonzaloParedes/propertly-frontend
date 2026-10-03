@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse, InvoiceResponse, TenantResponse } from "@/lib/backend-types";
 
 // OwnerWorkspace nombra la cuenta desde la sesión; estas vistas no la usan.
@@ -327,7 +328,9 @@ describe("detalle · editar datos", () => {
   });
 
   it("explica el documento duplicado, que es lo que el propietario puede resolver", async () => {
-    mockUpdate.mockRejectedValueOnce(new ApiError(400, "Tax ID already registered"));
+    mockUpdate.mockRejectedValueOnce(
+      new ApiError(409, "Tax ID already registered", ERROR.DUPLICATE_TAX_ID)
+    );
     const dialogo = await abrirEdicion();
 
     await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));

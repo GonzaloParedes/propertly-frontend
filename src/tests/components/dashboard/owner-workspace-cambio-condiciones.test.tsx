@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse } from "@/lib/backend-types";
 
 vi.mock("@/context/auth-context", () => ({
@@ -149,7 +150,11 @@ describe("cambiar condiciones · programar", () => {
 
   it("si el backend rechaza por una cuota paga, dice el motivo y conserva lo escrito", async () => {
     mockSchedule.mockRejectedValue(
-      new ApiError(400, "Cannot schedule a schema change over a paid predecessor invoice")
+      new ApiError(
+        409,
+        "Cannot schedule a schema change over a paid predecessor invoice",
+        ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE
+      )
     );
     await hastaLaRevision();
     await userEvent.click(screen.getByRole("button", { name: "Programar cambio" }));
