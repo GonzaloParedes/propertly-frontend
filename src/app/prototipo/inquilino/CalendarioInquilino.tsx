@@ -2,7 +2,14 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { aniosDelCalendario, buildFilasInquilino, buildImportesPendientesInquilino, mesesDelCalendario } from "@/lib/portal-inquilino";
+import {
+  aniosDelCalendario,
+  buildFilasInquilino,
+  buildImportesPendientesInquilino,
+  mesesDelCalendario,
+  type FilaCuotaInquilino,
+  type MesCalendarioInquilino,
+} from "@/lib/portal-inquilino";
 import type { TenantCalendarCoverage, TenantCalendarInvoiceResponse, TenantCalendarPreInvoiceResponse } from "@/lib/backend-types";
 import "./calendario-inquilino.css";
 
@@ -102,6 +109,84 @@ const PRECUOTAS: TenantCalendarPreInvoiceResponse[] = [
 const IMPORTES_PENDIENTES = buildImportesPendientesInquilino(PRECUOTAS);
 const ANIOS = aniosDelCalendario(COBERTURA, FILAS, IMPORTES_PENDIENTES);
 
+const ETIQUETAS_MESES_SIN_CUOTA: Record<MesCalendarioInquilino["estado"], string> = {
+  cuota: "",
+  "importe-pendiente-confirmacion": "",
+  "antes-del-contrato": "Antes del contrato",
+  "despues-del-contrato": "Después del contrato",
+  "sin-contrato-vigente": "Sin contrato vigente",
+  "sin-cuota-generada": "Sin cuota",
+};
+
+const TONOS_DE_CUOTA: Record<FilaCuotaInquilino["estado"], "ok" | "bad" | "info" | "warn"> = {
+  Pagada: "ok",
+  Vencida: "bad",
+  "Pago a confirmar": "info",
+  "A vencer": "warn",
+};
+
+function MesEstimado({ mes }: Readonly<{ mes: MesCalendarioInquilino }>) {
+  return (
+    <div className="calinquilino__mes calinquilino__mes--estimado">
+      <span className="calinquilino__mes-nombre">{mes.nombre}</span>
+      <span className="calinquilino__estimado-montos">{mes.importesPendientes.map((importe) => <span key={`${importe.contractId}-${importe.periodoISO}`}>{importe.monto}</span>)}</span>
+      <span className="calinquilino__estimado-estado">Importe a confirmar</span>
+    </div>
+  );
+}
+
+function MesSinCuota({ mes }: Readonly<{ mes: MesCalendarioInquilino }>) {
+  return (
+    <div className="calinquilino__mes calinquilino__mes--vacio">
+      <span className="calinquilino__mes-nombre">{mes.nombre}</span>
+      <span className="calinquilino__vacio-estado">{ETIQUETAS_MESES_SIN_CUOTA[mes.estado]}</span>
+    </div>
+  );
+}
+
+function MesConCuota({ anio, fila, indice, mes, periodoSeleccionado, onAbrir, onButtonRef }: Readonly<{
+  anio: number;
+  fila: FilaCuotaInquilino;
+  indice: number;
+  mes: MesCalendarioInquilino;
+  periodoSeleccionado: string | null;
+  onAbrir: (periodo: string) => void;
+  onButtonRef: (indice: number, elemento: HTMLButtonElement | null) => void;
+}>) {
+  const tono = TONOS_DE_CUOTA[fila.estado];
+  const seleccionada = periodoSeleccionado === mes.periodoISO;
+  const claseSeleccionada = seleccionada ? " calinquilino__mes--elegido" : "";
+  return (
+    <button
+      ref={(elemento) => onButtonRef(indice, elemento)}
+      type="button"
+      className={`calinquilino__mes calinquilino__mes--${tono}${claseSeleccionada}`}
+      onClick={() => onAbrir(mes.periodoISO)}
+      aria-pressed={seleccionada}
+      aria-label={`${mes.nombre} ${anio}: ${fila.estado}. Ver detalle`}
+    >
+      <span className="calinquilino__mes-nombre">{mes.nombre}</span>
+      {mes.cambioDeCondiciones && <span className="calinquilino__cambio">Cambiaron las condiciones</span>}
+      <span className="calinquilino__estado"><span className="calinquilino__punto" />{fila.estado}</span>
+      <span className="calinquilino__ver">Ver detalle <span aria-hidden="true">→</span></span>
+    </button>
+  );
+}
+
+function MesDelCalendario({ anio, indice, mes, periodoSeleccionado, onAbrir, onButtonRef }: Readonly<{
+  anio: number;
+  indice: number;
+  mes: MesCalendarioInquilino;
+  periodoSeleccionado: string | null;
+  onAbrir: (periodo: string) => void;
+  onButtonRef: (indice: number, elemento: HTMLButtonElement | null) => void;
+}>) {
+  if (mes.estado === "importe-pendiente-confirmacion") return <MesEstimado mes={mes} />;
+  const fila = mes.cuotas[0];
+  if (!fila) return <MesSinCuota mes={mes} />;
+  return <MesConCuota anio={anio} fila={fila} indice={indice} mes={mes} periodoSeleccionado={periodoSeleccionado} onAbrir={onAbrir} onButtonRef={onButtonRef} />;
+}
+
 export default function CalendarioInquilino() {
   const [anio, setAnio] = useState(2026);
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string | null>(null);
@@ -156,36 +241,15 @@ export default function CalendarioInquilino() {
         </div>
 
         <div className="calinquilino__meses">
-          {meses.map((mes, indice) => {
-            const fila = mes.cuotas[0];
-            if (mes.estado === "importe-pendiente-confirmacion") return <div className="calinquilino__mes calinquilino__mes--estimado" key={mes.nombre}><span className="calinquilino__mes-nombre">{mes.nombre}</span><span className="calinquilino__estimado-montos">{mes.importesPendientes.map((importe) => <span key={`${importe.contractId}-${importe.periodoISO}`}>{importe.monto}</span>)}</span><span className="calinquilino__estimado-estado">Importe a confirmar</span></div>;
-            if (!fila) {
-              const etiquetaVacia = mes.estado === "antes-del-contrato" ? "Antes del contrato" : mes.estado === "despues-del-contrato" ? "Después del contrato" : mes.estado === "sin-contrato-vigente" ? "Sin contrato vigente" : "Sin cuota";
-              return (
-                <div className="calinquilino__mes calinquilino__mes--vacio" key={mes.nombre}>
-                  <span className="calinquilino__mes-nombre">{mes.nombre}</span>
-                  <span className="calinquilino__vacio-estado">{etiquetaVacia}</span>
-                </div>
-              );
-            }
-            const tono = fila.estado === "Pagada" ? "ok" : fila.estado === "Vencida" ? "bad" : fila.estado === "Pago a confirmar" ? "info" : "warn";
-            return (
-              <button
-                ref={(elemento) => { botonesRef.current[indice] = elemento; }}
-                type="button"
-                className={`calinquilino__mes calinquilino__mes--${tono}${periodoSeleccionado === mes.periodoISO ? " calinquilino__mes--elegido" : ""}`}
-                key={mes.nombre}
-                onClick={() => abrirMes(mes.periodoISO)}
-                aria-pressed={periodoSeleccionado === mes.periodoISO}
-                aria-label={`${mes.nombre} ${anio}: ${fila.estado}. Ver detalle`}
-              >
-                <span className="calinquilino__mes-nombre">{mes.nombre}</span>
-                {mes.cambioDeCondiciones && <span className="calinquilino__cambio">Cambiaron las condiciones</span>}
-                <span className="calinquilino__estado"><span className="calinquilino__punto" />{fila.estado}</span>
-                <span className="calinquilino__ver">Ver detalle <span aria-hidden="true">→</span></span>
-              </button>
-            );
-          })}
+          {meses.map((mes, indice) => <MesDelCalendario
+            anio={anio}
+            indice={indice}
+            key={mes.periodoISO}
+            mes={mes}
+            periodoSeleccionado={periodoSeleccionado}
+            onAbrir={abrirMes}
+            onButtonRef={(indiceDeMes, elemento) => { botonesRef.current[indiceDeMes] = elemento; }}
+          />)}
         </div>
 
         {filaSeleccionada && (

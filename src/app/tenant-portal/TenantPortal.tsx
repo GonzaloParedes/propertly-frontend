@@ -56,7 +56,16 @@ function etiquetaMesVacio(mes: MesCalendarioInquilino): string {
 function anioInicial(anios: number[]): number {
   const actual = new Date().getFullYear();
   if (anios.includes(actual)) return actual;
-  return anios.reduce((masCercano, anio) => Math.abs(anio - actual) < Math.abs(masCercano - actual) ? anio : masCercano);
+  const primerAnio = anios[0];
+  if (primerAnio === undefined) return actual;
+  return anios.reduce((masCercano, anio) => Math.abs(anio - actual) < Math.abs(masCercano - actual) ? anio : masCercano, primerAnio);
+}
+
+function tonoDeCuotas(estados: FilaCuotaInquilino["estado"][]): "bad" | "info" | "warn" | "ok" {
+  if (estados.includes("Vencida")) return "bad";
+  if (estados.includes("Pago a confirmar")) return "info";
+  if (estados.includes("A vencer")) return "warn";
+  return "ok";
 }
 
 function CuotaDetalle({ fila, perteneceACondicionesAnteriores, subiendo, viendoComprobante, inputsRef, subirComprobante, verComprobante }: Readonly<{
@@ -133,7 +142,10 @@ export default function TenantPortal() {
     async function iniciar() {
       if (tokenDeLaUrl) {
         try { await AlquiaBackendClient.tenantAuth.session({ token: tokenDeLaUrl }); }
-        catch { if (!cancelado) setEstado({ fase: "invalido" }); return; }
+        catch {
+          if (!cancelado) setEstado({ fase: "invalido" });
+          return;
+        }
       }
       if (!cancelado) await cargarCalendario();
     }
@@ -206,7 +218,7 @@ export default function TenantPortal() {
           if (mes.estado !== "cuota") return <div className={`tenant-calendar__month tenant-calendar__month--empty tenant-calendar__month--${mes.estado}`} key={mes.periodoISO}><span className="tenant-calendar__month-name">{mes.nombre}</span><span className="tenant-calendar__empty-status">{etiquetaMesVacio(mes)}</span></div>;
           const estados = [...new Set(mes.cuotas.map((fila) => fila.estado))];
           const etiqueta = mes.cuotas.length === 1 ? estados[0] : `${mes.cuotas.length} cuotas`;
-          const tono = estados.includes("Vencida") ? "bad" : estados.includes("Pago a confirmar") ? "info" : estados.includes("A vencer") ? "warn" : "ok";
+          const tono = tonoDeCuotas(estados);
           return <button ref={(elemento) => { botonesMesRef.current[mes.periodoISO] = elemento; }} type="button" className={`tenant-calendar__month tenant-calendar__month--${tono}${periodoSeleccionado === mes.periodoISO ? " tenant-calendar__month--selected" : ""}`} key={mes.periodoISO} onClick={() => seleccionarMes(mes)} aria-pressed={periodoSeleccionado === mes.periodoISO} aria-label={`${mes.nombre} ${anio}: ${etiqueta}. Ver detalle`}>
             <span className="tenant-calendar__month-name">{mes.nombre}</span>{mes.cambioDeCondiciones && <span className="tenant-calendar__change">Cambiaron las condiciones</span>}<span className="tenant-calendar__status"><span className="tenant-calendar__dot" />{etiqueta}</span><span className="tenant-calendar__detail-link">Ver detalle <span aria-hidden="true">→</span></span>
           </button>;
