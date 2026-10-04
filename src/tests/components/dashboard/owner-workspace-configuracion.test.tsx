@@ -63,6 +63,9 @@ describe("recordatorios", () => {
   it("apagados lo dice en vez de listar días que no se envían", async () => {
     abrir({ ...AJUSTES, enabled: false });
     expect(await screen.findByText(/están desactivados/)).toBeInTheDocument();
+    expect(screen.queryByText("7 días")).not.toBeInTheDocument();
+    expect(screen.queryByText("Se avisa")).not.toBeInTheDocument();
+    expect(screen.queryByText("3 días")).not.toBeInTheDocument();
   });
 
   // No depende del interruptor: sale igual. Por eso se nombra aparte.
