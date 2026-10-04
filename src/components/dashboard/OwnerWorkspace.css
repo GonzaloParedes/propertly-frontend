@@ -122,7 +122,10 @@
    Lo aplicado SIEMPRE se muestra afuera: un filtro activo e invisible es
    la causa número uno de "¿por qué no aparece mi propiedad?".
    ------------------------------------------------------------------ */
-.owner-search-bar{display:flex;gap:var(--esp-12);align-items:center;margin:0 0 var(--esp-16)}
+/* z-index propio: .owner-content anima a sus hijos con transform, y cada uno
+   queda como contexto de apilado. Sin esto el listado, que va después en el
+   DOM, tapa el panel de Filtros. */
+.owner-search-bar{position:relative;z-index:10;display:flex;gap:var(--esp-12);align-items:center;margin:0 0 var(--esp-16)}
 .owner-search{position:relative;display:flex;align-items:center;gap:var(--esp-10);flex:1;min-width:0;
   min-height:48px;padding:0 var(--esp-14);border-radius:14px;background:#fff;
   box-shadow:inset 0 0 0 1.5px var(--borde);transition:box-shadow .15s}
@@ -178,7 +181,6 @@
   font:600 14.5px var(--font-nunito-sans),sans-serif;text-decoration:underline;text-underline-offset:3px}
 .owner-applied__clear:hover{color:var(--indigo)}
 
-.owner-result-count{display:block;margin:0 0 var(--esp-12);color:var(--gris);font-size:14.5px}
 .owner-empty{display:flex;flex-direction:column;align-items:center;gap:var(--esp-10);padding:56px 24px;
   border-radius:20px;background:#fff;text-align:center;
   box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}

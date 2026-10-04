@@ -408,12 +408,6 @@ function mensajeErrorAlFinalizarContrato(err: unknown): string {
   return "No pudimos finalizar el contrato. Inténtelo de nuevo más tarde.";
 }
 
-function descripcionResultadosDePropiedades(visible: number, total: number): string {
-  if (visible !== total) return `${visible} de ${total} propiedades`;
-  if (visible === 1) return "1 propiedad";
-  return `${visible} propiedades`;
-}
-
 const ESTADOS: Record<string, readonly [string, IconName]> = {
   "Al día": ["ok", "check"],
   Pagada: ["ok", "check"],
@@ -1271,8 +1265,6 @@ function PropertiesView({
             <button type="button" className="owner-applied__clear" onClick={limpiar}>Limpiar todo</button>
           </div>
         )}
-
-        <output className="owner-result-count">{descripcionResultadosDePropiedades(visibles.length, filas.length)}</output>
 
         {visibles.length === 0 ? (
           <div className="owner-empty">
