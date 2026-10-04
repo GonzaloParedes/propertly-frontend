@@ -500,7 +500,7 @@ type EmptyArtName = "propiedades" | "contratos" | "inquilinos" | "cobranzas" | "
  */
 function EmptyArt({ name }: Readonly<{ name: EmptyArtName }>) {
   const line = { fill: "none", stroke: "var(--indigo)", strokeWidth: 2.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  const sheet = { ...line, fill: "#fff" };
+  const sheet = { ...line, fill: "var(--elev)" };
   const roof = { ...line, stroke: "var(--rosa)", strokeWidth: 5 };
   const drawings: Record<EmptyArtName, React.ReactNode> = {
     propiedades: <>

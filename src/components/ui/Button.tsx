@@ -33,12 +33,12 @@ export default function Button({ variant = "primary", className = "", style, chi
         type="button"
         disabled={disabled}
         className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 px-5 text-[16px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)] ${className}`}
-        style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "white", ...style }}
+        style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "var(--elev)", ...style }}
         onMouseEnter={(e) => {
           if (!disabled) e.currentTarget.style.background = "var(--primary-soft)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = "white";
+          e.currentTarget.style.background = "var(--elev)";
         }}
         {...rest}
       >

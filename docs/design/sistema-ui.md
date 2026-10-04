@@ -421,8 +421,19 @@ por la forma, que sobrevive al daltonismo y a la impresión en blanco y negro.
 
 - Foco visible en todo: anillo lila de 3px con separación de 2px (spec del manual).
 - Se respeta `prefers-reduced-motion`.
-- Un solo mundo visual: la app es clara por diseño, sin modo oscuro. Todos los
-  colores se pintan explícitamente para que la página no herede el fondo del host.
+- Landing, login y auth son claras por diseño. Todos los colores se pintan
+  explícitamente para que la página no herede el fondo del host.
+- Modo oscuro: **opcional y sólo en el panel** (ALQ-38). El propietario lo activa
+  con el botón sol/luna del navbar (`DashboardNav`) y la preferencia se recuerda
+  en el dispositivo (localStorage, sin backend). Lo aplica el `ThemeProvider`
+  (`src/context/theme-context.tsx`) seteando `data-theme="dark"` en `<html>`
+  mientras está en el dashboard/prototipo; al salir vuelve a claro, así landing y
+  login nunca se oscurecen. Esto **reemplaza** la decisión previa de «un solo
+  mundo visual claro, sin modo oscuro». El tema vive en tokens: el bloque
+  `html[data-theme="dark"]` de `globals.css` redefine la paleta y las superficies
+  blancas del panel se migraron a `var(--elev)` para que acompañen el tema. Al
+  agregar UI nueva, usar tokens (no literales claros) para que el modo oscuro
+  siga funcionando.
 
 ---
 
