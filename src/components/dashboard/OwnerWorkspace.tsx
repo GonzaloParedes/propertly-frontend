@@ -1120,7 +1120,7 @@ function SettingsView({
   } else {
     reminders = <>
       <p className="owner-card__copy">{resumenRecordatorios(reminderSettings)}</p>
-      <dl className="owner-definition">{describirRecordatorios(reminderSettings).map((line) => <div key={line.etiqueta}><dt>{line.etiqueta}</dt><dd>{line.valor}</dd></div>)}</dl>
+      {reminderSettings.enabled && <dl className="owner-definition">{describirRecordatorios(reminderSettings).map((line) => <div key={line.etiqueta}><dt>{line.etiqueta}</dt><dd>{line.valor}</dd></div>)}</dl>}
       <p className="owner-card__copy">Además, al inquilino se le avisa cuando usted confirma una cuota y ya la puede pagar.</p>
       <Button tone="secondary" small onClick={() => onEditReminders(reminderSettings)}>Editar recordatorios</Button>
     </>;
@@ -1128,7 +1128,7 @@ function SettingsView({
 
   return <>
     <header className="owner-page-head"><div><h1>Configuración</h1><p>Preferencias de su cuenta y recordatorios.</p></div></header>
-    <section className="owner-detail-grid owner-detail-grid--even">
+    <section className="owner-detail-grid">
       <div className="owner-card"><h2>Recordatorios de pago</h2>{reminders}</div>
       <div className="owner-card"><h2>Cuenta</h2><dl className="owner-definition"><div><dt>Nombre</dt><dd>{account ? `${account.firstName} ${account.lastName}` : "—"}</dd></div><div><dt>Correo</dt><dd>{account?.email ?? "—"}</dd></div>{account?.taxId && <div><dt>CUIT</dt><dd>{formatearCuit(account.taxId)}</dd></div>}{account?.phoneNumber && <div><dt>Teléfono</dt><dd>{account.phoneNumber}</dd></div>}</dl><Button tone="secondary" small disabled={!canEditAccount} onClick={onEditAccount}>Editar datos</Button></div>
     </section>
