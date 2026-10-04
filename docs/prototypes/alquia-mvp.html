@@ -1175,12 +1175,22 @@ tr.hoy:hover td{ background:var(--indigo-suave); }
 
   /* ── utilidades ── */
   var MESC = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  function miles(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
-  function soloNum(s){ return parseInt(String(s).replace(/\D/g,''),10) || 0; }
+  function miles(n){
+    var rounded = Math.round(n);
+    if (!Number.isFinite(rounded)) return String(rounded);
+    var text = String(rounded);
+    var sign = text.charAt(0) === '-' ? '-' : '';
+    var digits = sign ? text.slice(1) : text;
+    var first = digits.length % 3 || 3;
+    var grouped = digits.slice(0, first);
+    for (var i = first; i < digits.length; i += 3) grouped += '.' + digits.slice(i, i + 3);
+    return sign + grouped;
+  }
+  function soloNum(s){ return Number.parseInt(String(s).replace(/\D/g,''),10) || 0; }
   function pesos(n){ return '$ ' + miles(n); }
   function leerFecha(s){
     var p = String(s).split('/');
-    var d = parseInt(p[0],10), m = parseInt(p[1],10), a = parseInt(p[2],10);
+    var d = Number.parseInt(p[0],10), m = Number.parseInt(p[1],10), a = Number.parseInt(p[2],10);
     if (!d || !m || !a) return null;
     return { d:d, m:m, a:a };
   }
@@ -1372,7 +1382,7 @@ tr.hoy:hover td{ background:var(--indigo-suave); }
   }
   elValor.addEventListener('input', function(){
     if (C.metodo === 'porcentaje'){
-      C.valor = parseFloat(elValor.value.replace(',','.')) || 0;
+      C.valor = Number.parseFloat(elValor.value.replace(',','.')) || 0;
     } else {
       var n = soloNum(elValor.value); C.valor = n;
       elValor.value = n ? miles(n) : '';

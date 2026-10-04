@@ -26,7 +26,7 @@
 .owner-portfolio__summary { display:flex; flex-direction:column; justify-content:center; gap:27px; box-shadow:inset 1px 0 0 var(--divisor); }.owner-portfolio__summary b { display:block; margin-top:var(--esp-6); font:700 25px/1.1 var(--font-quicksand),sans-serif; }.owner-portfolio__summary small { display:block; margin-top:var(--esp-6); font-size:14.5px; }
 
 .owner-section { margin-top:var(--esp-44); }.owner-section__head { align-items:center; justify-content:space-between; margin-bottom:var(--esp-16); }.owner-section__head h2, .owner-card h2 { margin:0; font:700 20px var(--font-quicksand),sans-serif; }
-.owner-notices { display:flex; flex-direction:column; gap:11px; }.owner-notice { display:flex; align-items:flex-start; gap:15px; padding:var(--esp-20) 24px; border-left:4px solid var(--indigo); border-radius:14px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-notice--warn{border-left-color:var(--adv)}.owner-notice--bad{border-left-color:var(--error)}.owner-notice__icon{color:var(--indigo);margin-top:var(--esp-2)}.owner-notice--warn .owner-notice__icon{color:var(--adv)}.owner-notice--bad .owner-notice__icon{color:var(--error)}.owner-notice strong{display:block;font-size:17px}.owner-notice p{margin:3px 0 0;color:var(--gris);font-size:16px}.owner-notice__action{margin-left:auto;padding-left:var(--esp-8);flex:none}
+.owner-notices { display:flex; flex-direction:column; gap:11px; }.owner-notice { display:flex; align-items:flex-start; gap:15px; padding:var(--esp-20) 24px; border-left:4px solid var(--indigo); border-radius:14px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-notice--warn{border-left-color:var(--adv)}.owner-notice--bad{border-left-color:var(--error)}.owner-notice__icon{color:var(--indigo);margin-top:var(--esp-2)}.owner-notice--warn .owner-notice__icon{color:var(--adv)}.owner-notice--bad .owner-notice__icon{color:var(--error)}.owner-notice strong{display:block;font-size:17px}.owner-notice p{margin:3px 0 0;color:var(--gris);font-size:16px}.owner-notice__action{align-self:center;margin-left:auto;padding-left:var(--esp-8);flex:none}
 
 .owner-list, .owner-table-wrap { overflow:hidden; border-radius:20px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-row { display:grid; grid-template-columns:44px minmax(0,1fr) var(--col-monto) var(--col-estado) auto; width:100%; align-items:center; gap:var(--esp-18); padding:var(--esp-18) 24px; color:var(--tinta); text-align:left; }.owner-row+.owner-row{box-shadow:inset 0 1px 0 var(--divisor)}.owner-row--button{border:0;background:transparent;cursor:pointer}.owner-row--button:hover{background:var(--superficie)}.owner-row__icon{display:grid;width:44px;height:44px;place-items:center;flex:none;border-radius:14px;background:var(--superficie);color:var(--gris)}.owner-row--button:hover .owner-row__icon{background:var(--indigo-suave);color:var(--indigo)}.owner-row__body{min-width:0;flex:1}.owner-row__body b,.owner-row__body small,.owner-row__body em{display:block}.owner-row__body b{font-size:17px}.owner-row__body small,.owner-row__body em{margin-top:3px;overflow:hidden;color:var(--gris);font-size:14.5px;font-style:normal;text-overflow:ellipsis;white-space:nowrap}.owner-row__body em{color:var(--tinta);font-weight:600}.owner-row__amount{grid-column:3;text-align:right}.owner-row__amount b{display:block;font:700 19px var(--font-quicksand),sans-serif}.owner-row__amount small{display:block;margin-top:1px;color:var(--gris);font-size:12.5px;line-height:1.3}.owner-row__arrow{grid-column:5;color:var(--gris)}.owner-row>.owner-status{grid-column:4;justify-self:end}
 .owner-status { display:inline-flex; flex:none; align-items:center; gap:7px; padding:var(--esp-6) var(--esp-12); border-radius:999px; color:var(--tinta); font-size:14px; font-weight:700; white-space:nowrap; }.owner-status--ok{background:var(--exito-bg)}.owner-status--ok svg{color:var(--exito)}.owner-status--warn{background:var(--warn-bg)}.owner-status--warn svg{color:var(--adv)}.owner-status--bad{background:var(--error-bg)}.owner-status--bad svg{color:var(--error)}.owner-status--info{background:var(--indigo-suave)}.owner-status--info svg{color:var(--indigo)}.owner-status--none{background:var(--superficie);color:var(--gris)}
@@ -274,16 +274,6 @@
 .owner-wizard-field select{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--tinta);cursor:pointer;font:inherit}
 .owner-wizard-next[disabled]{background:var(--indigo-suave);color:#9B95B5;cursor:not-allowed}
 
-/* Guardando: el botón dice qué está pasando y el anillo lo acompaña. El texto
-   es el que informa — el anillo solo, sin rótulo, no dice qué se está haciendo. */
-.owner-wizard-spinner{display:inline-block;width:18px;height:18px;flex:none;border-radius:50%;
-  border:2.5px solid rgba(155,149,181,.35);border-top-color:#9B95B5;
-  animation:owner-wizard-spin .7s linear infinite}
-@keyframes owner-wizard-spin{to{transform:rotate(360deg)}}
-/* Con movimiento reducido no se apaga del todo: gira lento, porque es el único
-   indicio de que la app sigue trabajando. El rótulo "Guardando…" ya está. */
-@media(prefers-reduced-motion:reduce){.owner-wizard-spinner{animation-duration:2.4s}}
-
 /* Error al guardar, distinto del error de un campo: no se corrige tipeando en
    un input, así que va sobre fondo propio y no colgando de una etiqueta. */
 .owner-wizard-alert{display:flex;align-items:center;gap:var(--esp-8);margin-top:var(--esp-20);
@@ -339,21 +329,6 @@
    pensado para separar items entre sí, no una sección de la anterior. */
 .owner-nav__links > .owner-nav__group{margin-top:24px}
 
-/* ── Altura pareja de filas ────────────────────────────────────────────
-   Una fila más alta rompe el ritmo de lectura de la tabla. En vez de
-   forzar una altura fija (que recortaría contenido), se evita que algo
-   ocupe una línea extra: el sub-estado va al lado de la píldora, no
-   debajo, y los textos secundarios no envuelven.
-   ------------------------------------------------------------------ */
-.owner-table td .owner-status + .owner-substatus{
-  display:inline-block;
-  margin-top:0 !important;
-  margin-left:var(--esp-10);
-  color:var(--gris);
-  font-size:14px;
-  white-space:nowrap;
-  vertical-align:middle;
-}
 .owner-table td small{
   overflow:hidden;
   text-overflow:ellipsis;
@@ -600,3 +575,92 @@
 .owner-reminder-rows .owner-wizard-counter strong{min-width:2ch;text-align:center}
 .owner-reminder-rows .owner-switch{border-radius:0;background:transparent}
 @media (max-width:620px){.owner-reminder-rows .owner-wizard-counter{flex-wrap:wrap}}
+
+/* Asistente en celu: pasos 3 y 4 con ritmo vertical más parejo. Solo mobile. */
+@media (max-width:560px){
+  .owner-wizard:not(.owner-dialog){background:var(--superficie)}
+  .owner-wizard__top,.owner-wizard__footer{background:#fff}
+  .owner-wizard:not(.owner-dialog) .owner-wizard__body{box-sizing:border-box;width:calc(100% - var(--esp-24, 24px));margin:var(--esp-12) auto;padding:var(--esp-20);border-radius:20px;background:#fff;box-shadow:0 0 0 1px var(--divisor),0 6px 20px rgba(30,27,46,.06)}
+  .owner-wizard__body>p{margin-bottom:var(--esp-20)}
+  .owner-wizard-counters{grid-template-columns:1fr 1fr;gap:var(--esp-16)}
+  .owner-wizard-counter>div{gap:var(--esp-8)}
+  .owner-wizard-counter button{width:44px;height:44px;border-radius:12px}
+  .owner-wizard-counter strong{min-width:1.6ch;font-size:26px}
+  .owner-wizard-counter + .owner-wizard-chips{margin-top:var(--esp-16)}
+  .owner-wizard:not(.owner-dialog) .owner-wizard-label{margin:var(--esp-20) 0 var(--esp-10)!important}
+  .owner-wizard-counters .owner-wizard-label{margin:0 0 var(--esp-10)!important}
+  .owner-wizard-skip{margin-top:var(--esp-20);min-height:46px;box-shadow:none;color:var(--indigo);font-size:15.5px}
+  .owner-wizard-summary{margin-bottom:var(--esp-20)}
+  .owner-wizard-summary>div{padding:var(--esp-10) 0}
+  .owner-wizard-summary span{min-width:0;font-size:14px}
+  .owner-wizard-summary b{font-size:16px}
+  .owner-wizard-note{padding:var(--esp-14)}
+}
+
+/* El nombre del campo siempre visible arriba a la izquierda. Con rótulo visible
+   se apila sobre el valor; con rótulo solo para lectores de pantalla (el campo
+   usa placeholder) aparece en cuanto el campo tiene datos, para no olvidar qué
+   se completó. */
+.owner-wizard:not(.owner-dialog) .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){flex-direction:column;align-items:stretch;justify-content:center;gap:2px}
+.owner-wizard:not(.owner-dialog) .owner-wizard-field>span:not(.sr-only):first-child:not(:last-child){font-size:13px;font-weight:700;line-height:1.2}
+.owner-wizard-field:has(>.sr-only):has(>input:not(:placeholder-shown)):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){flex-direction:column;align-items:stretch;justify-content:center;gap:2px}
+.owner-wizard-field:has(>input:not(:placeholder-shown))>.sr-only{position:static;width:auto;height:auto;margin:0;padding:0;overflow:visible;clip:auto;clip-path:none;white-space:nowrap;color:var(--gris);font:700 13px/1.2 var(--font-nunito-sans),sans-serif}
+
+/* Transición de la carga al contenido: todo lo que aparece debajo del
+   encabezado entra con un fundido corto, así la tarjeta del spinner no se
+   reemplaza de golpe por la lista o por el «todavía no tiene…». Se anima al
+   montarse el nodo, por eso no se repite al filtrar ni al escribir. Sólo
+   opacidad y 6 px de desplazamiento: el final es `transform:none`, que no
+   crea un bloque contenedor para los hijos con `position:fixed`. */
+@keyframes owner-aparece{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.owner-content>:not(.owner-page-head):not(.owner-crumb):not(.owner-wizard){animation:owner-aparece .32s ease-out both}
+@media (prefers-reduced-motion:reduce){.owner-content>:not(.owner-page-head):not(.owner-crumb):not(.owner-wizard){animation:none}}
+
+/* Error al cargar una pantalla o bloque. El color vive en el ícono; el texto
+   va en tinta y gris (regla de contraste de sistema-ui.md). */
+.owner-load-error{display:flex;flex-direction:column;align-items:center;gap:var(--esp-10);
+  padding:clamp(40px,8vh,96px) var(--esp-20);text-align:center}
+.owner-load-error__icon{display:grid;width:56px;height:56px;place-items:center;border-radius:50%;
+  background:var(--error-bg);color:var(--error)}
+.owner-load-error b{color:var(--tinta);font:700 18px var(--font-nunito-sans),sans-serif}
+.owner-load-error>span:last-child{color:var(--gris);font:400 16px var(--font-nunito-sans),sans-serif}
+
+/* «Importe sin confirmar» es lo que el propietario tiene que resolver en esa
+   cuota, así que no puede leerse como una nota al pie: va como aviso de
+   advertencia (fondo --warn-bg, ícono en --adv) y el texto en tinta, por la
+   regla de contraste de los semánticos. */
+.owner-table td .owner-status + .owner-substatus{
+  display:flex;align-items:center;gap:7px;width:fit-content;margin:var(--esp-8) 0 0!important;
+  padding:var(--esp-6) var(--esp-12);
+  border-radius:999px;background:var(--warn-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--adv) 35%,transparent);
+  color:var(--tinta);font-size:14px;font-weight:700;white-space:nowrap;
+}
+.owner-substatus svg{flex:none;color:var(--adv)}
+
+@media (max-width:620px){
+  /* Dos botones apilados no pueden tocarse: la acción principal queda
+     separada de la secundaria por el mismo aire que el resto de la tarjeta. */
+  .owner-table td[data-cell="accion"]{display:flex;grid-area:4/1/5/3;flex-direction:column;gap:var(--esp-10);margin-top:var(--esp-16)}
+  .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:0}
+  /* Tarjeta de cuota en celular, de arriba abajo:
+       1 · propiedad (con inquilino y período)  |  estado
+       2 · monto                                |  vencimiento
+       3 · franja «Sin confirmar» a todo el ancho (sólo si corresponde)
+       4 · acciones
+     La celda de estado deja de ser caja para que su píldora y la franja se
+     ubiquen cada una en su renglón. */
+  .owner-table td[data-cell="propiedad"]{grid-area:1/1/2/2}
+  .owner-table td[data-cell="estado"]{display:contents}
+  .owner-table td[data-cell="estado"] .owner-status{grid-area:1/2/2/3;align-self:start;justify-self:end;margin:0}
+  .owner-table td[data-cell="monto"]{grid-area:2/1/3/2;align-self:end;margin-top:var(--esp-14);font-size:22px}
+  .owner-table td[data-cell="vencimiento"]{grid-area:2/2/3/3;align-self:end;margin-top:var(--esp-14);text-align:right;font-size:15px}
+  .owner-table td[data-cell="estado"] .owner-status+.owner-substatus{display:flex;grid-area:3/1/4/3;justify-self:stretch;width:auto;
+    margin:var(--esp-14) 0 0!important;padding:var(--esp-10) var(--esp-14);border-radius:12px;font-size:14.5px}
+}
+
+/* Las dos píldoras de la celda de estado (estado y «Sin confirmar») apiladas
+   en escritorio tienen que medir lo mismo: una toma la altura del interlineado
+   heredado y la otra no. Altura fija en las dos, con el texto centrado. */
+@media (min-width:621px){
+  .owner-table td .owner-status,.owner-table td .owner-status + .owner-substatus{box-sizing:border-box;height:34px;padding-top:0;padding-bottom:0;line-height:1}
+}

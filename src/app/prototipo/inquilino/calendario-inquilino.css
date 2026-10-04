@@ -1,0 +1,153 @@
+.calinquilino {
+  width: min(100%, 1000px);
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: var(--esp-32) var(--esp-20) 68px;
+  color: var(--tinta);
+  font: 400 17px/1.5 var(--font-nunito-sans), sans-serif;
+}
+
+.calinquilino__marca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-20);
+  margin-bottom: var(--esp-44);
+}
+
+.calinquilino__marca span {
+  color: var(--gris);
+  font-size: 15px;
+}
+
+.calinquilino__encabezado { margin-bottom: var(--esp-26); }
+.calinquilino__eyebrow {
+  margin: 0 0 var(--esp-6);
+  color: var(--indigo);
+  font-weight: 700;
+}
+.calinquilino h1 {
+  margin: 0 0 var(--esp-8);
+  font: 700 32px/1.25 var(--font-quicksand), sans-serif;
+}
+.calinquilino__encabezado p:last-child,
+.calinquilino__barra p { margin: 0; color: var(--gris); }
+.calinquilino__encabezado .calinquilino__contrato { margin-top: var(--esp-8); color: var(--gris); font-size: 15px; }
+
+.calinquilino__panel {
+  padding: var(--esp-26);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(30, 27, 46, .03), 0 14px 34px -12px rgba(30, 27, 46, .13);
+}
+
+.calinquilino__barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-20);
+  margin-bottom: var(--esp-20);
+}
+.calinquilino__barra h2 {
+  margin: 0 0 var(--esp-2);
+  font: 700 22px/1.3 var(--font-quicksand), sans-serif;
+}
+.calinquilino__anios { display: flex; align-items: center; max-width: 100%; gap: var(--esp-8); margin: calc(var(--esp-2) * -1); padding: var(--esp-2); overflow-x: auto; scrollbar-width: none; }
+.calinquilino__anios::-webkit-scrollbar { display: none; }
+.calinquilino__anio-tab {
+  min-width: 64px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--gris);
+  box-shadow: inset 0 0 0 1.5px var(--borde);
+  cursor: pointer;
+  font: 700 17px var(--font-quicksand), sans-serif;
+}
+.calinquilino__anio-tab:hover { background: var(--indigo-suave); }
+.calinquilino__anio-tab--elegido { background: var(--indigo-suave); color: var(--indigo); box-shadow: inset 0 0 0 2px var(--indigo); }
+
+.calinquilino__meses { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--esp-14); padding-top: var(--esp-20); box-shadow: inset 0 1.5px 0 var(--divisor); }
+.calinquilino__mes {
+  display: flex;
+  min-width: 0;
+  min-height: 132px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--esp-18);
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--borde);
+  color: var(--tinta);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.calinquilino__mes:hover:not(.calinquilino__mes--vacio):not(.calinquilino__mes--estimado) { box-shadow: inset 0 0 0 2px var(--borde-campo); background: var(--hover, #F1EFFA); }
+.calinquilino__mes--elegido,
+.calinquilino__mes--elegido:hover:not(.calinquilino__mes--vacio) { box-shadow: inset 0 0 0 2px var(--indigo); background: var(--indigo-suave); }
+.calinquilino__mes-nombre { font: 700 19px var(--font-quicksand), sans-serif; }
+.calinquilino__estado { display: inline-flex; align-items: center; gap: var(--esp-8); font-size: 15px; font-weight: 700; }
+.calinquilino__punto { width: 10px; height: 10px; flex: none; border-radius: 999px; background: currentColor; }
+.calinquilino__mes--ok .calinquilino__estado { color: var(--exito); }
+.calinquilino__mes--bad .calinquilino__estado { color: var(--error); }
+.calinquilino__mes--warn .calinquilino__estado { color: var(--adv); }
+.calinquilino__mes--info .calinquilino__estado { color: var(--indigo); }
+.calinquilino__cambio { color: var(--indigo); font-size: 13px; font-weight: 700; }
+.calinquilino__ver { color: var(--indigo); font-size: 15px; font-weight: 700; }
+.calinquilino__mes--vacio { min-height: 112px; justify-content: space-between; background: linear-gradient(135deg, #FBFAFE, var(--superficie)); color: var(--gris); cursor: default; }
+.calinquilino__mes--vacio .calinquilino__mes-nombre { color: var(--tinta); }
+.calinquilino__vacio-estado { display: inline-flex; align-items: center; min-height: 28px; padding: 0 var(--esp-10); border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); font-size: 14px; font-weight: 700; }
+.calinquilino__mes--estimado { min-height: 112px; background: var(--indigo-suave); box-shadow: inset 0 0 0 1.5px var(--borde-campo); cursor: default; }
+.calinquilino__estimado-montos { display: grid; gap: var(--esp-2); color: var(--tinta); font: 700 20px var(--font-quicksand), sans-serif; }
+.calinquilino__estimado-estado { color: var(--indigo); font-size: 14px; font-weight: 700; }
+
+.calinquilino__detalle {
+  margin-top: var(--esp-26);
+  padding: var(--esp-26);
+  border-radius: 14px;
+  background: var(--superficie);
+  box-shadow: inset 0 0 0 1.5px var(--borde);
+}
+.calinquilino__detalle-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--esp-16); }
+.calinquilino__detalle-cabecera p { margin: 0 0 var(--esp-2); color: var(--gris); font-size: 15px; }
+.calinquilino__detalle h3 { margin: 0; font: 700 22px/1.3 var(--font-quicksand), sans-serif; text-transform: capitalize; }
+.calinquilino__cerrar { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; gap: var(--esp-10); padding: 0 var(--esp-14); border: 0; border-radius: 12px; background: #fff; color: var(--indigo); box-shadow: inset 0 0 0 1.5px var(--borde); cursor: pointer; font: 700 15px var(--font-nunito-sans), sans-serif; }
+.calinquilino__cerrar span { font-size: 22px; }
+.calinquilino__datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--esp-14); margin-top: var(--esp-26); }
+.calinquilino__datos div { display: flex; flex-direction: column; gap: var(--esp-2); }
+.calinquilino__datos span { color: var(--gris); font-size: 15px; }
+.calinquilino__datos strong { font-size: 18px; }
+.calinquilino__ajustes { margin: var(--esp-20) 0 0; padding-top: var(--esp-16); box-shadow: inset 0 1px 0 var(--borde); }
+.calinquilino__ajustes div { display: flex; justify-content: space-between; gap: var(--esp-14); padding: var(--esp-2) 0; }
+.calinquilino__ajustes dt { color: var(--gris); }
+.calinquilino__ajustes dd { margin: 0; white-space: nowrap; }
+.calinquilino__aviso, .calinquilino__info { margin: var(--esp-18) 0 0; font-weight: 600; }
+.calinquilino__aviso { color: var(--adv); }
+.calinquilino__info { color: var(--indigo); }
+.calinquilino__nota { margin: var(--esp-18) 0 0; color: var(--gris); font-size: 15px; }
+.calinquilino :focus-visible { outline: 3px solid var(--indigo); outline-offset: 3px; }
+
+@media (max-width: 900px) {
+  .calinquilino__meses { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .calinquilino { padding: var(--esp-20) var(--esp-16) var(--esp-44); }
+  .calinquilino__marca { margin-bottom: var(--esp-32); }
+  .calinquilino__marca span { max-width: 140px; text-align: right; }
+  .calinquilino__panel { padding: var(--esp-16); }
+  .calinquilino__barra { align-items: flex-start; flex-direction: column; }
+  .calinquilino__anios { align-self: flex-start; }
+  .calinquilino__meses { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--esp-10); }
+  .calinquilino__mes { min-height: 126px; padding: var(--esp-14); }
+  .calinquilino__mes--vacio { min-height: 104px; }
+  .calinquilino__mes--estimado { min-height: 104px; }
+  .calinquilino__mes-nombre { font-size: 17px; }
+  .calinquilino__estado, .calinquilino__ver { font-size: 15px; }
+  .calinquilino__detalle { padding: var(--esp-16); }
+  .calinquilino__datos { grid-template-columns: 1fr; gap: var(--esp-12); }
+  .calinquilino__datos div { flex-direction: row; justify-content: space-between; gap: var(--esp-12); }
+}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Check, Mail, ShieldCheck } from "lucide-react";
 import { AlquiaBackendClient } from "@/lib/backend-client";
+import { Spinner } from "@/components/ui/Spinner";
 
 const BENEFITS = [
   "Le enviamos un enlace seguro a su correo electrónico",
@@ -197,7 +198,7 @@ export default function OlvidarContrasenaPage() {
                       (e.currentTarget.style.background = "var(--primary)")
                     }
                   >
-                    {isPending ? "Enviando…" : "Enviar enlace"}
+                    {isPending ? <span className="inline-flex items-center gap-2"><Spinner />Enviando…</span> : "Enviar enlace"}
                   </button>
                 </form>
 

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { Spinner } from "@/components/ui/Spinner";
 import { ApiError, AuthExpiredError } from "@/lib/api";
 
 const BENEFITS = [
@@ -213,6 +214,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isPending}
+                aria-busy={isPending || undefined}
                 className="mt-4 flex min-h-12 w-full cursor-pointer items-center justify-center rounded-[10px] border-2 border-transparent px-6 text-[17px] font-bold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-[3px] focus-visible:outline-offset-2"
                 style={{
                   background: "var(--primary)",
@@ -225,7 +227,7 @@ export default function LoginPage() {
                   (e.currentTarget.style.background = "var(--primary)")
                 }
               >
-                {isPending ? "Ingresando…" : "Ingresar"}
+                {isPending ? <span className="inline-flex items-center gap-2"><Spinner />Ingresando…</span> : "Ingresar"}
               </button>
             </form>
 

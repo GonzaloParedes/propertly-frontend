@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import type { InvoiceResponse, PropertyResponse } from "@/lib/backend-types";
@@ -75,7 +75,7 @@ describe("carga", () => {
     mockInvoices.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="propiedades" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus propiedades…")).toBeInTheDocument();
     // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
     // después es el parpadeo que se veía al entrar a la pantalla.
     expect(screen.queryByRole("button", { name: "Agregar propiedad" })).not.toBeInTheDocument();
@@ -279,7 +279,7 @@ describe("modo demo", () => {
 
     expect(mockProperties).not.toHaveBeenCalled();
     expect(screen.getByText("Av. Rivadavia 2340, 5.º A")).toBeInTheDocument();
-    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cargando sus propiedades…")).not.toBeInTheDocument();
   });
 });
 
@@ -358,6 +358,7 @@ describe("archivar", () => {
 
     await screen.findByText("Todavía no cargó ninguna propiedad");
     expect(mockArchive).toHaveBeenCalledWith(2);
+    expect(await screen.findByText(/Propiedad archivada/)).toBeInTheDocument();
   });
 
   it("explica el 409 y deja la propiedad donde estaba", async () => {
@@ -372,6 +373,8 @@ describe("archivar", () => {
       "No se puede archivar: la propiedad tiene datos asociados"
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // El error de un diálogo abierto va adentro, no a un toast.
+    expect(document.querySelector('[data-toasts="error"]')).toBeEmptyDOMElement();
   });
 
   it("se puede cancelar sin archivar nada", async () => {
@@ -402,8 +405,8 @@ describe("editar", () => {
     await abrirDialogo();
 
     const dialogo = screen.getByRole("dialog");
-    expect(within(dialogo).getByPlaceholderText("Calle")).toHaveValue("Mitre");
-    expect(within(dialogo).getByPlaceholderText("Ciudad")).toHaveValue("San Isidro");
+    expect(within(dialogo).getByLabelText("Calle")).toHaveValue("Mitre");
+    expect(within(dialogo).getByLabelText("Ciudad")).toHaveValue("San Isidro");
     expect(within(dialogo).getByLabelText("Tipo")).toHaveValue("COMMERCIAL_PREMISES");
   });
 
@@ -412,19 +415,20 @@ describe("editar", () => {
     mockUpdate.mockResolvedValueOnce({} as never);
     const dialogo = screen.getByRole("dialog");
 
-    await userEvent.clear(within(dialogo).getByPlaceholderText("Número"));
-    await userEvent.type(within(dialogo).getByPlaceholderText("Número"), "80");
+    await userEvent.clear(within(dialogo).getByLabelText("Número"));
+    await userEvent.type(within(dialogo).getByLabelText("Número"), "80");
     await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
 
     expect(mockUpdate).toHaveBeenCalledWith(2, expect.objectContaining({ street: "Mitre", number: "80", city: "San Isidro", province: "Buenos Aires", category: "COMMERCIAL_PREMISES", coveredArea: 52 }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByText(/Propiedad actualizada/)).toBeInTheDocument();
   });
 
   it("no deja guardar sin ciudad", async () => {
     await abrirDialogo();
     const dialogo = screen.getByRole("dialog");
 
-    await userEvent.clear(within(dialogo).getByPlaceholderText("Ciudad"));
+    await userEvent.clear(within(dialogo).getByLabelText("Ciudad"));
 
     expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeDisabled();
   });

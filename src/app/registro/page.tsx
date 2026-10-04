@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Check, Eye, EyeOff, Mail, ShieldCheck } from "lucide-react";
 import { apiPost, ApiError } from "@/lib/api";
+import { ERROR, copyDeError } from "@/lib/error-codes";
+import { Spinner } from "@/components/ui/Spinner";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 
@@ -20,17 +22,41 @@ function errorDeCuit(cuit: string): string {
   return "El número no es válido. Revise que no haya un dígito cambiado.";
 }
 
+// Copy propio del registro para los duplicados (override del copy por defecto del
+// catálogo): acá un CUIT/teléfono duplicado significa «ya hay una cuenta».
+const COPY_REGISTRO: Record<string, string> = {
+  [ERROR.DUPLICATE_TAX_ID]: "Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.",
+  [ERROR.DUPLICATE_PHONE_NUMBER]: "Ese teléfono ya tiene una cuenta. Inicie sesión o use otro.",
+};
+
 function mensajeDeErrorDeRegistro(err: unknown): string {
-  if (err instanceof ApiError && err.message === "Tax ID already registered") {
-    return "Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.";
-  }
-  if (err instanceof ApiError && err.message === "Phone number already registered") {
-    return "Ese teléfono ya tiene una cuenta. Inicie sesión o use otro.";
-  }
-  if (err instanceof ApiError && err.status === 400) {
-    return "Verifique los datos ingresados e inténtelo de nuevo.";
-  }
-  return "No pudimos crear su cuenta. Inténtelo de nuevo más tarde.";
+  return copyDeError(err, {
+    overrides: COPY_REGISTRO,
+    fallback:
+      err instanceof ApiError && err.status === 400
+        ? "Verifique los datos ingresados e inténtelo de nuevo."
+        : "No pudimos crear su cuenta. Inténtelo de nuevo más tarde.",
+  });
+}
+
+// El backend asocia los duplicados a un campo (extensión `errors` de RFC 9457):
+// se muestran junto al campo, con el copy en español del `type` —nunca el texto en
+// inglés que viene en el mapa—. Devuelve {} si el error no es por-campo conocido,
+// y entonces se muestra el banner general.
+function erroresDeCampoDeRegistro(err: unknown): Record<string, string> {
+  if (!(err instanceof ApiError) || !err.fieldErrors) return {};
+  const copy = copyDeError(err, { overrides: COPY_REGISTRO, fallback: "" });
+  if (!copy) return {};
+  return Object.fromEntries(Object.keys(err.fieldErrors).map((campo) => [campo, copy]));
+}
+
+// Devuelve el mapa sin un campo, sin mutar el original (para limpiar el error de
+// un campo cuando el usuario lo vuelve a tocar).
+function sinCampo(errores: Record<string, string>, campo: string): Record<string, string> {
+  if (!(campo in errores)) return errores;
+  const resto = { ...errores };
+  delete resto[campo];
+  return resto;
 }
 
 function CheckIcon() {
@@ -58,6 +84,7 @@ function TaxIdField({
   touched,
   valid,
   error,
+  backendError,
   disabled,
   onChange,
   onBlur,
@@ -66,11 +93,15 @@ function TaxIdField({
   touched: boolean;
   valid: boolean;
   error: string;
+  backendError?: string;
   disabled: boolean;
   onChange: (value: string) => void;
   onBlur: () => void;
 }>) {
-  const invalid = touched && !valid;
+  // El backend marca el campo con su `type` (p. ej. CUIT ya registrado); ese
+  // mensaje tiene prioridad sobre la validación de formato del lado del cliente.
+  const invalid = Boolean(backendError) || (touched && !valid);
+  const mensaje = backendError ?? error;
   return (
     <div className="mb-4 flex flex-col gap-1.5">
       <label htmlFor="rg-tax-id" className="font-bold">CUIT o CUIL</label>
@@ -92,7 +123,7 @@ function TaxIdField({
       />
       {invalid && (
         <p id="rg-tax-id-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
-          {error}
+          {mensaje}
         </p>
       )}
     </div>
@@ -103,6 +134,7 @@ function PhoneField({
   value,
   touched,
   valid,
+  backendError,
   disabled,
   onChange,
   onBlur,
@@ -110,11 +142,13 @@ function PhoneField({
   value: string;
   touched: boolean;
   valid: boolean;
+  backendError?: string;
   disabled: boolean;
   onChange: (value: string) => void;
   onBlur: () => void;
 }>) {
-  const invalid = touched && !valid;
+  const invalid = Boolean(backendError) || (touched && !valid);
+  const mensaje = backendError ?? errorDeTelefono(value);
   return (
     <div className="mb-4 flex flex-col gap-1.5">
       <label htmlFor="rg-phone" className="font-bold">Teléfono</label>
@@ -137,7 +171,7 @@ function PhoneField({
       />
       {invalid && (
         <p id="rg-phone-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
-          {errorDeTelefono(value)}
+          {mensaje}
         </p>
       )}
     </div>
@@ -184,6 +218,7 @@ function PasswordField({ showPassword, disabled, onToggle }: Readonly<{
 export default function RegistroPage() {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [erroresDeCampo, setErroresDeCampo] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -196,11 +231,12 @@ export default function RegistroPage() {
   const taxIdError = errorDeCuit(taxId);
 
   const phoneOk = telefonoValido(phone);
-  const submitButtonLabel = isPending ? "Creando cuenta…" : "Crear cuenta";
+  const submitButtonLabel = isPending ? <span className="inline-flex items-center gap-2"><Spinner />Creando cuenta…</span> : "Crear cuenta";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setErroresDeCampo({});
     // El CUIT se valida acá y no con `required` porque el navegador no sabe
     // calcular el dígito verificador: sin esto el error llegaría como un 400
     // del backend que no dice qué campo está mal.
@@ -236,7 +272,12 @@ export default function RegistroPage() {
       );
       setSubmitted(true);
     } catch (err) {
-      setError(mensajeDeErrorDeRegistro(err));
+      const porCampo = erroresDeCampoDeRegistro(err);
+      if (Object.keys(porCampo).length > 0) {
+        setErroresDeCampo(porCampo);
+      } else {
+        setError(mensajeDeErrorDeRegistro(err));
+      }
       setIsPending(false);
     }
   }
@@ -395,8 +436,12 @@ export default function RegistroPage() {
                     touched={taxIdTouched}
                     valid={taxIdOk}
                     error={taxIdError}
+                    backendError={erroresDeCampo.taxId}
                     disabled={isPending}
-                    onChange={(value) => setTaxId(formatearCuit(value))}
+                    onChange={(value) => {
+                      setTaxId(formatearCuit(value));
+                      setErroresDeCampo((prev) => sinCampo(prev, "taxId"));
+                    }}
                     onBlur={() => setTaxIdTouched(true)}
                   />
 
@@ -404,8 +449,12 @@ export default function RegistroPage() {
                     value={phone}
                     touched={phoneTouched}
                     valid={phoneOk}
+                    backendError={erroresDeCampo.phoneNumber}
                     disabled={isPending}
-                    onChange={setPhone}
+                    onChange={(value) => {
+                      setPhone(value);
+                      setErroresDeCampo((prev) => sinCampo(prev, "phoneNumber"));
+                    }}
                     onBlur={() => setPhoneTouched(true)}
                   />
 
@@ -423,10 +472,20 @@ export default function RegistroPage() {
                       disabled={isPending}
                       placeholder="ejemplo@ejemplo.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      aria-invalid={Boolean(erroresDeCampo.email)}
+                      aria-describedby={erroresDeCampo.email ? "rg-mail-error" : undefined}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setErroresDeCampo((prev) => sinCampo(prev, "email"));
+                      }}
                       className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                      style={{ borderColor: erroresDeCampo.email ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
                     />
+                    {erroresDeCampo.email && (
+                      <p id="rg-mail-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+                        {erroresDeCampo.email}
+                      </p>
+                    )}
                   </div>
 
                   <PasswordField

@@ -375,6 +375,11 @@ describe("AlquiaBackendClient.tenantAuth", () => {
 });
 
 describe("AlquiaBackendClient.tenantPortal", () => {
+  it("calendar pega a GET /tenant/calendar sin reintento", async () => {
+    await AlquiaBackendClient.tenantPortal.calendar();
+    expect(mockGet).toHaveBeenCalledWith("/tenant/calendar", { retry: false });
+  });
+
   it("invoices pega a GET /tenant/invoices sin reintento", async () => {
     await AlquiaBackendClient.tenantPortal.invoices();
     expect(mockGet).toHaveBeenCalledWith("/tenant/invoices", { retry: false });

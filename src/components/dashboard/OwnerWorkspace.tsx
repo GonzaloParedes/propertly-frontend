@@ -71,6 +71,8 @@ import {
   vigenciaEnFechas,
 } from "@/lib/contrato-detalle";
 import Counter from "@/components/ui/Counter";
+import { Cargando, Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 import { correoValido } from "@/lib/correo";
 import {
   describirAjuste,
@@ -85,6 +87,7 @@ import { describirRecordatorios, resumenRecordatorios, DIAS_MAX, DIAS_MIN } from
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import CambioCondicionesForm from "@/components/dashboard/CambioCondicionesForm";
 import { useAuth } from "@/context/auth-context";
 
@@ -342,7 +345,7 @@ function mensajeDeErrorArchivar(err: unknown): string {
 /** Los pocos 400 de cobranzas que el propietario puede resolver solo. */
 function mensajeDeErrorCobranza(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.message === "Cannot submit a payment for an unconfirmed invoice") {
+  if (err instanceof ApiError && err.type === ERROR.PAYMENT_ON_UNCONFIRMED_INVOICE) {
     return "Primero hay que confirmar la cuota. Después se le puede registrar el pago.";
   }
   if (err instanceof ApiError && err.status === 400) return "No se pudo completar la acción. Revise los datos.";
@@ -376,8 +379,8 @@ function mensajeErrorDeCuenta(err: unknown): string {
 
 function mensajeErrorDeInquilino(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.message === "Tax ID already registered") return "Ese documento ya figura en otro inquilino suyo.";
-  if (err instanceof ApiError && err.message === "Phone number already registered") return "Ese teléfono ya figura en otro inquilino suyo.";
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_TAX_ID) return "Ese documento ya figura en otro inquilino suyo.";
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_PHONE_NUMBER) return "Ese teléfono ya figura en otro inquilino suyo.";
   if (err instanceof ApiError && err.status === 400) return "Verifique los datos ingresados e inténtelo de nuevo.";
   return "No pudimos guardar los datos. Inténtelo de nuevo más tarde.";
 }
@@ -431,8 +434,31 @@ function Status({ children }: Readonly<{ children: string }>) {
   return <span className={`owner-status owner-status--${tono}`}><Icon name={icono} size={15} />{children}</span>;
 }
 
-function Button({ children, tone = "primary", onClick, disabled = false, small = false }: Readonly<{ children: React.ReactNode; tone?: "primary" | "secondary" | "quiet" | "danger"; onClick?: () => void; disabled?: boolean; small?: boolean }>) {
-  return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={onClick} disabled={disabled}>{children}</button>;
+/** Error al cargar una pantalla o bloque: ícono + qué falló, centrado. `card={false}` dentro de un contenedor que ya es una tarjeta. */
+function LoadError({ title, card = true }: Readonly<{ title: string; card?: boolean }>) {
+  const body = <div role="alert" className="owner-load-error"><span className="owner-load-error__icon"><Icon name="alert" size={26} /></span><b>{title}</b><span>Inténtelo de nuevo más tarde.</span></div>;
+  return card ? <div className="owner-card">{body}</div> : body;
+}
+
+type ButtonAction = () => void | Promise<unknown>;
+
+/**
+ * `busy` lo fija quien tiene el estado (un diálogo que guarda). Si `onClick`
+ * devuelve una promesa, el botón además se ocupa solo mientras esté pendiente:
+ * así las acciones sin estado propio —copiar el enlace, descargar— no necesitan
+ * un flag cada una.
+ */
+function Button({ children, tone = "primary", onClick, disabled = false, busy = false, small = false }: Readonly<{ children: React.ReactNode; tone?: "primary" | "secondary" | "quiet" | "danger"; onClick?: ButtonAction; disabled?: boolean; busy?: boolean; small?: boolean }>) {
+  const [pending, setPending] = useState(false);
+  const isBusy = busy || pending;
+  function handleClick() {
+    const result = onClick?.();
+    if (result instanceof Promise) {
+      setPending(true);
+      void result.finally(() => setPending(false));
+    }
+  }
+  return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={handleClick} disabled={disabled || isBusy} aria-busy={isBusy || undefined}>{isBusy && <Spinner />}{children}</button>;
 }
 
 function SwitchRow({ label, checked, onChange }: Readonly<{ label: string; checked: boolean; onChange: (checked: boolean) => void }>) {
@@ -586,32 +612,32 @@ type TenantDetailProps = Readonly<{
   selectedId: string;
   tenants: readonly TenantRow[] | null;
   hasError: boolean;
-  paymentLink: "copiado" | "error" | "pidiendo" | null;
   onBack: () => void;
   onEdit: (tenant: TenantRow) => void;
   onArchive: (tenant: TenantRow) => void;
   onCreateContract: () => void;
   onOpenContract: (contractId: number) => void;
-  onCopyPaymentLink: (contractId: number) => void;
+  onCopyPaymentLink: (contractId: number) => void | Promise<unknown>;
+  onResendPaymentLink: (contractId: number) => void | Promise<unknown>;
 }>;
 
 function TenantDetail({
   selectedId,
   tenants,
   hasError,
-  paymentLink,
   onBack,
   onEdit,
   onArchive,
   onCreateContract,
   onOpenContract,
   onCopyPaymentLink,
+  onResendPaymentLink,
 }: TenantDetailProps) {
   const tenant = tenants?.find((item) => String(item.id) === selectedId);
   const breadcrumb = <nav className="owner-crumb"><button type="button" onClick={onBack}>Inquilinos</button><span>/</span><span>{tenant?.nombre ?? "…"}</span></nav>;
 
   if (!tenant) {
-    return <>{breadcrumb}<div className="owner-card"><p className="owner-list-note">{hasError ? "No pudimos cargar este inquilino." : "Cargando…"}</p></div></>;
+    return <>{breadcrumb}<div className="owner-card">{hasError ? <LoadError title="No pudimos cargar este inquilino" card={false} /> : <Cargando>Cargando el inquilino…</Cargando>}</div></>;
   }
 
   const description = [tenant.cuit, tenant.email, tenant.telefono].filter(Boolean).join(" · ");
@@ -644,13 +670,7 @@ function TenantDetail({
         <div className="owner-card">
           <h2>Acceso de pago</h2>
           <p className="owner-card__copy">El inquilino no necesita una cuenta. Comparte un enlace seguro para ver cuotas habilitadas y subir su comprobante.</p>
-          <div className="owner-link-box">
-            <div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>Se lo puede compartir por donde quiera.</small></span></div>
-            <Button tone="secondary" small disabled={paymentLink === "pidiendo"} onClick={() => onCopyPaymentLink(tenant.contratoId!)}>
-              <Icon name="copy" size={16} />{paymentLink === "copiado" ? "Copiado" : "Copiar enlace"}
-            </Button>
-          </div>
-          {paymentLink === "error" && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />No pudimos obtener el enlace. Inténtelo de nuevo.</p>}
+          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
         </div>
       )}
     </section>
@@ -708,8 +728,8 @@ function TenantsView({ tenants, hasError, onCreateTenant, onCreateContract, onOp
   return <>
     <header className="owner-page-head"><div><h1>Inquilinos</h1><p>{description}</p></div>{showHeaderAction && <div className="owner-page-head__action">{createButton}</div>}</header>
     {isEmpty ? <EmptyState art="inquilinos" title="Todavía no cargó ningún inquilino" action={createButton}>Cargue sus datos una sola vez y úselos en cada contrato. A su correo le llegan los avisos de vencimiento.</EmptyState> : <div className="owner-list">
-      {hasError && <p className="owner-list-note" role="alert"><b>No pudimos cargar sus inquilinos</b>Inténtelo de nuevo más tarde.</p>}
-      {!hasError && tenants === null && <p className="owner-list-note">Cargando…</p>}
+      {hasError && <LoadError title="No pudimos cargar sus inquilinos" card={false} />}
+      {!hasError && tenants === null && <Cargando>Cargando sus inquilinos…</Cargando>}
       {tenants?.map((tenant) => <TenantListRow key={tenant.id} tenant={tenant} onOpenTenant={onOpenTenant} onCreateContract={onCreateContract} />)}
     </div>}
   </>;
@@ -751,8 +771,8 @@ function ContractsView({
 
   return <>
     <header className="owner-page-head"><div><h1>Contratos</h1><p>{contracts ? resumenContratos(contracts) : "Sus contratos y sus condiciones."}</p></div>{showHeaderAction && <div className="owner-page-head__action">{createButton}</div>}</header>
-    {hasError && <p className="owner-list-note" role="alert"><b>No pudimos cargar sus contratos</b>Inténtelo de nuevo más tarde.</p>}
-    {!hasError && contracts === null && <p className="owner-list-note">Cargando…</p>}
+    {hasError && <LoadError title="No pudimos cargar sus contratos" />}
+    {!hasError && contracts === null && <div className="owner-card"><Cargando>Cargando sus contratos…</Cargando></div>}
     {isEmpty && <EmptyState art="contratos" title="Todavía no tiene contratos" action={createButton}>Un contrato vincula una propiedad con su inquilino y define el alquiler. A partir de él se emiten las cuotas de cada mes.</EmptyState>}
     {contracts && contracts.length > 0 && <>
       <div className="owner-search-bar">
@@ -783,7 +803,7 @@ type CollectionActionProps = Readonly<{
   onReview: (item: FilaCobranza) => void;
   onConfirm: (item: FilaCobranza) => void;
   onAdjust: (item: FilaCobranza) => void;
-  onViewReceipt: (paymentId: number) => void;
+  onViewReceipt: (paymentId: number) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
 }>;
 
@@ -806,7 +826,7 @@ function CollectionAction({
   }
   if (item.accion === "comprobante") {
     return <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
-      if (item.pagoConfirmado) onViewReceipt(item.pagoConfirmado.id);
+      return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
     }}><Icon name="download" size={16} />Comprobante</Button>;
   }
   return <Button tone="secondary" small onClick={() => onRegisterPayment(item)}>Registrar pago</Button>;
@@ -817,14 +837,12 @@ type CollectionsViewProps = Readonly<{
   hasError: boolean;
   filter: FiltroCobranza;
   onFilterChange: (filter: FiltroCobranza) => void;
-  actionError: string | null;
-  hasOpenAction: boolean;
   isBusy: boolean;
   canAdjust: boolean;
   onReview: (item: FilaCobranza) => void;
   onConfirm: (item: FilaCobranza) => void;
   onAdjust: (item: FilaCobranza) => void;
-  onViewReceipt: (paymentId: number) => void;
+  onViewReceipt: (paymentId: number) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
   onCreateContract: () => void;
 }>;
@@ -834,8 +852,6 @@ function CollectionsView({
   hasError,
   filter,
   onFilterChange,
-  actionError,
-  hasOpenAction,
   isBusy,
   canAdjust,
   onReview,
@@ -854,9 +870,8 @@ function CollectionsView({
 
   return <>
     <header className="owner-page-head"><div><h1>Cobranzas</h1><p>{collections ? resumenCobranzas(collections) : "Cuotas, pagos y vencimientos."}</p></div></header>
-    {hasError && <p className="owner-list-note" role="alert"><b>No pudimos cargar sus cobranzas</b>Inténtelo de nuevo más tarde.</p>}
-    {!hasError && collections === null && <p className="owner-list-note">Cargando…</p>}
-    {actionError && !hasOpenAction && <p className="owner-list-note" role="alert">{actionError}</p>}
+    {hasError && <LoadError title="No pudimos cargar sus cobranzas" />}
+    {!hasError && collections === null && <div className="owner-card"><Cargando>Cargando sus cobranzas…</Cargando></div>}
     {collections?.length === 0 && <EmptyState art="cobranzas" title="Todavía no hay cuotas" action={<Button onClick={onCreateContract}><Icon name="plus" size={18} />Nuevo contrato</Button>}>Las cuotas se emiten solas a partir de sus contratos activos. Acá va a ver qué se pagó y qué está por vencer.</EmptyState>}
     {collections && collections.length > 0 && <>
       <div className="owner-search-bar">
@@ -869,7 +884,7 @@ function CollectionsView({
       </div>
       {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
         otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
-        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small></td><td data-cell="monto" className="owner-number owner-money">{item.monto}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className="owner-substatus">Importe sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
+        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small></td><td data-cell="monto" className="owner-number owner-money">{item.monto}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className="owner-substatus"><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
       </tbody></table></div>}
     </>}
   </>;
@@ -893,6 +908,7 @@ type OverviewProps = Readonly<{
   onCreateProperty: () => void;
   onCreateContract: () => void;
   onOpenCollections: () => void;
+  onOpenContract: (contractId: number) => void;
 }>;
 
 function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: Proyeccion | "error" | null; nextMonth: string }>) {
@@ -938,6 +954,7 @@ function Overview({
   onCreateProperty,
   onCreateContract,
   onOpenCollections,
+  onOpenContract,
 }: OverviewProps) {
   const actions = <>
     <Button tone="secondary" onClick={onCreateProperty}><Icon name="plus" size={18} />Agregar propiedad</Button>
@@ -945,8 +962,8 @@ function Overview({
   </>;
   const header = <header className="owner-page-head"><div><h1>{greeting}</h1><p>{subtitle}</p></div><div className="owner-page-head__action">{actions}</div></header>;
 
-  if (hasError) return <>{header}<p className="owner-list-note" role="alert"><b>No pudimos cargar su panel</b>Inténtelo de nuevo más tarde.</p></>;
-  if (data === null) return <>{header}<p className="owner-list-note">Cargando…</p></>;
+  if (hasError) return <>{header}<LoadError title="No pudimos cargar su panel" /></>;
+  if (data === null) return <>{header}<div className="owner-card"><Cargando>Cargando su panel…</Cargando></div></>;
 
   const { cobranza, cartera, avisos, contratos } = data;
   const percent = proporciones(cobranza);
@@ -969,7 +986,7 @@ function Overview({
       </div>
     </section>
     <section className="owner-section"><div className="owner-section__head"><h2>Requieren su acción</h2>{avisos.length > 0 && <Button tone="secondary" small onClick={onOpenCollections}>Ir a cobranzas</Button>}</div>{avisos.length === 0 ? <EmptyState compact art="alDia" title="Nada pendiente por ahora">{contratos.length > 0 ? "Sus cuotas están al día." : "Cuando tenga contratos, acá le avisamos qué cuotas vencen o esperan su confirmación."}</EmptyState> : <div className="owner-notices">{avisos.map((notice) => <Notice key={notice.id} tone={notice.tono} title={notice.titulo} action={<Button tone="secondary" small onClick={onOpenCollections}>{notice.accion}</Button>}>{notice.cuerpo}</Notice>)}</div>}</section>
-    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasProperties={cartera.total > 0} onCreateProperty={onCreateProperty} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <div className="owner-row" key={contract.id}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent)}</b><small>por mes</small></span></div>)}</div>}</section>
+    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasProperties={cartera.total > 0} onCreateProperty={onCreateProperty} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
 
@@ -1052,8 +1069,8 @@ function PropertyDetail({
   const rawProperty = rawProperties.find((property) => String(property.id) === selectedId);
   const property = properties?.find((item) => String(item.id) === selectedId);
   if (!rawProperty || !property) {
-    const message = hasError ? "No pudimos cargar esta propiedad." : "Cargando…";
-    return <><PropertyBreadcrumb name="…" onBack={onBack} /><div className="owner-card"><p className="owner-list-note">{message}</p></div></>;
+    const body = hasError ? <LoadError title="No pudimos cargar esta propiedad" card={false} /> : <Cargando>Cargando la propiedad…</Cargando>;
+    return <><PropertyBreadcrumb name="…" onBack={onBack} /><div className="owner-card">{body}</div></>;
   }
 
   const { details, preferences } = propertyCharacteristics(rawProperty);
@@ -1085,7 +1102,6 @@ type AccountSummary = Readonly<{
 type SettingsViewProps = Readonly<{
   reminderSettings: ReminderSettingsResponse | null;
   hasReminderError: boolean;
-  savedNotice: string | null;
   account: AccountSummary | null;
   canEditAccount: boolean;
   onEditReminders: (settings: ReminderSettingsResponse) => void;
@@ -1095,7 +1111,6 @@ type SettingsViewProps = Readonly<{
 function SettingsView({
   reminderSettings,
   hasReminderError,
-  savedNotice,
   account,
   canEditAccount,
   onEditReminders,
@@ -1103,9 +1118,9 @@ function SettingsView({
 }: SettingsViewProps) {
   let reminders: React.ReactNode;
   if (hasReminderError) {
-    reminders = <p className="owner-list-note" role="alert"><b>No pudimos cargar los recordatorios</b>Inténtelo de nuevo más tarde.</p>;
+    reminders = <LoadError title="No pudimos cargar los recordatorios" card={false} />;
   } else if (reminderSettings === null) {
-    reminders = <p className="owner-list-note">Cargando…</p>;
+    reminders = <Cargando>Cargando los recordatorios…</Cargando>;
   } else {
     reminders = <>
       <p className="owner-card__copy">{resumenRecordatorios(reminderSettings)}</p>
@@ -1117,7 +1132,6 @@ function SettingsView({
 
   return <>
     <header className="owner-page-head"><div><h1>Configuración</h1><p>Preferencias de su cuenta y recordatorios.</p></div></header>
-    {savedNotice && <output className="owner-list-note">{savedNotice}</output>}
     <section className="owner-detail-grid owner-detail-grid--even">
       <div className="owner-card"><h2>Recordatorios de pago</h2>{reminders}</div>
       <div className="owner-card"><h2>Cuenta</h2><dl className="owner-definition"><div><dt>Nombre</dt><dd>{account ? `${account.firstName} ${account.lastName}` : "—"}</dd></div><div><dt>Correo</dt><dd>{account?.email ?? "—"}</dd></div>{account?.taxId && <div><dt>CUIT</dt><dd>{formatearCuit(account.taxId)}</dd></div>}{account?.phoneNumber && <div><dt>Teléfono</dt><dd>{account.phoneNumber}</dd></div>}</dl><Button tone="secondary" small disabled={!canEditAccount} onClick={onEditAccount}>Editar datos</Button></div>
@@ -1202,16 +1216,14 @@ function PropertiesView({
     if (propiedadesError) {
       return <>
         {pageHeader("Propiedades", "", accion)}
-        <p className="owner-list-note" role="alert">
-          <b>No pudimos cargar sus propiedades</b>Inténtelo de nuevo más tarde.
-        </p>
+        <LoadError title="No pudimos cargar sus propiedades" />
       </>;
     }
 
     if (propiedades === null) {
       // Sin el botón: si la lista llega vacía baja al centro, y mostrarlo acá
       // para sacarlo un instante después es un parpadeo.
-      return <>{pageHeader("Propiedades", "")}<p className="owner-list-note">Cargando…</p></>;
+      return <>{pageHeader("Propiedades", "")}<div className="owner-card"><Cargando>Cargando sus propiedades…</Cargando></div></>;
     }
 
     // Sin ninguna propiedad no hay nada que filtrar: la pantalla ofrece el paso
@@ -1304,7 +1316,7 @@ function ContractAdjustmentHistory({
 }>) {
   if (increments === "error") return null;
   if (increments === null) {
-    return <div className="owner-card"><h2>Historial de aumentos</h2><p className="owner-list-note">Cargando…</p></div>;
+    return <div className="owner-card"><h2>Historial de aumentos</h2><Cargando>Cargando el historial…</Cargando></div>;
   }
   if (lines.length === 0) {
     return <div className="owner-card"><h2>Historial de aumentos</h2><p className="owner-list-note">Todavía no se aplicó ningún aumento. {comoSeActualiza(contract)}.</p></div>;
@@ -1319,37 +1331,31 @@ type ContractDetailProps = Readonly<{
   increments: RentIncrementResponse[] | "error" | null;
   scheduledContract: ContractResponse | null;
   successorId: number | null;
-  paymentLink: "copiado" | "error" | "pidiendo" | null;
-  demoLinkCopied: boolean;
-  errorMessage: string | null;
-  isFinishing: boolean;
   onBack: () => void;
   onOpenContract: (contractId: number) => void;
   onOpenConditions: () => void;
   onBeginTermination: () => void;
   onCopyDemoLink: () => void;
-  onCopyPaymentLink: (contractId: number) => void;
-  onResendPaymentLink: (contractId: number) => void;
-  onDownloadDocument: (contract: ContractResponse) => void;
-  onRemoveDocument: (contractId: number) => void;
-  onAttachDocument: (contractId: number, file: File) => void;
+  onCopyPaymentLink: (contractId: number) => void | Promise<unknown>;
+  onResendPaymentLink: (contractId: number) => void | Promise<unknown>;
+  onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>;
+  onRemoveDocument: (contractId: number) => void | Promise<unknown>;
+  onAttachDocument: (contractId: number, file: File) => void | Promise<unknown>;
 }>;
 
 function ContractBreadcrumb({ name, onBack }: Readonly<{ name: string; onBack: () => void }>) {
   return <nav className="owner-crumb"><button type="button" onClick={onBack}>Contratos</button><span>/</span><span>{name}</span></nav>;
 }
 
-function DemoContractDetail({ demoContract, demoLinkCopied, onBack, onCopyDemoLink }: Readonly<{
+function DemoContractDetail({ demoContract, onBack, onCopyDemoLink }: Readonly<{
   demoContract: ContractDetailProps["demoContract"];
-  demoLinkCopied: boolean;
   onBack: () => void;
   onCopyDemoLink: () => void;
 }>) {
   const document = demoContract.document
     ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{demoContract.document}</b><small>PDF · 2,4 MB</small></div><Button tone="quiet" small><Icon name="download" size={16} />Descargar</Button></div>
     : <div className="owner-empty-callout owner-empty-callout--outline"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><Button small>Adjuntar</Button></div>;
-  const linkLabel = demoLinkCopied ? "Copiado" : "Copiar enlace";
-  return <><ContractBreadcrumb name={demoContract.property.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoContract.property.address}</h1><p>Contrato con {demoContract.property.tenant} · vigente hasta el {demoContract.end}</p></div><div className="owner-page-head__action"><Button tone="danger">Finalizar contrato</Button></div></header><section className="owner-detail-grid owner-detail-grid--even"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{demoContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{demoContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {demoContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{demoContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{demoContract.property.tenant}</b></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b></span></div><Button tone="secondary" small onClick={onCopyDemoLink}><Icon name="copy" size={16} />{linkLabel}</Button></div></div><div className="owner-card"><h2>Documento firmado</h2>{document}</div></section></>;
+  return <><ContractBreadcrumb name={demoContract.property.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoContract.property.address}</h1><p>Contrato con {demoContract.property.tenant} · vigente hasta el {demoContract.end}</p></div><div className="owner-page-head__action"><Button tone="danger">Finalizar contrato</Button></div></header><section className="owner-detail-grid owner-detail-grid--even"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{demoContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{demoContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {demoContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{demoContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{demoContract.property.tenant}</b></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b></span></div><Button tone="secondary" small onClick={onCopyDemoLink}><Icon name="copy" size={16} />Copiar enlace</Button></div></div><div className="owner-card"><h2>Documento firmado</h2>{document}</div></section></>;
 }
 
 function ContractHeaderActions({ isActive, scheduledContract, successorId, onOpenConditions, onBeginTermination }: Readonly<{ isActive: boolean; scheduledContract: ContractResponse | null; successorId: number | null; onOpenConditions: () => void; onBeginTermination: () => void }>) {
@@ -1366,16 +1372,22 @@ function ContractSummaryCard({ contract, nextUpdate, scheduledContract, onOpenCo
   return <div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{formatearImporte(contract.currentRent, contract.currency)}</strong><small>por mes · vence el día {contract.dueDay}</small></div><Status>{estadoDeContrato(contract, new Date().toISOString().slice(0, 10))}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>{formatearFecha(contract.startDate)}</small></p></div>{nextUpdateRow}<div><span><Icon name="calendar" /></span><p><b>{endLabel}</b><small>{formatearFecha(contract.actualEndDate ?? contract.endDate)}</small></p></div></div>{scheduledCallout}{successorCallout}</div>;
 }
 
-function ContractAccessCard({ contract, paymentLink, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contract: ContractResponse; paymentLink: "copiado" | "error" | "pidiendo" | null; onCopyPaymentLink: (contractId: number) => void; onResendPaymentLink: (contractId: number) => void }>) {
-  const copyLabel = paymentLink === "copiado" ? "Copiado" : "Copiar enlace";
-  const error = paymentLink === "error" ? <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />No pudimos obtener el enlace. Inténtelo de nuevo.</p> : null;
-  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small disabled={paymentLink === "pidiendo"} onClick={() => onCopyPaymentLink(contract.id)}><Icon name="copy" size={16} />{copyLabel}</Button><Button tone="secondary" small onClick={() => onResendPaymentLink(contract.id)}>Reenviar por correo</Button></div></div>{error}</div>;
+function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contractId: number; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
+  return <div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small onClick={() => onCopyPaymentLink(contractId)}><Icon name="copy" size={16} />Copiar enlace</Button><Button tone="secondary" small onClick={() => onResendPaymentLink(contractId)}>Reenviar por correo</Button></div></div>;
 }
 
-function ContractDocumentCard({ contract, errorMessage, isFinishing, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; errorMessage: string | null; isFinishing: boolean; onDownloadDocument: (contract: ContractResponse) => void; onRemoveDocument: (contractId: number) => void; onAttachDocument: (contractId: number, file: File) => void }>) {
-  const document = contract.documentFileName ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{contract.documentFileName}</b><small>{descripcionDocumento(contract)}</small></div><Button tone="quiet" small onClick={() => onDownloadDocument(contract)}><Icon name="download" size={16} />Descargar</Button><Button tone="quiet" small onClick={() => onRemoveDocument(contract.id)}>Quitar</Button></div> : <div className="owner-empty-callout owner-empty-callout--outline"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><label className="owner-file-label"><input type="file" className="sr-only" aria-label="Adjuntar el documento firmado" onChange={(event) => { const file = event.target.files?.[0]; if (file) onAttachDocument(contract.id, file); }} /><span className="owner-button owner-button--primary owner-button--small">Adjuntar</span></label></div>;
-  const error = errorMessage && !isFinishing ? <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{errorMessage}</p> : null;
-  return <div className="owner-card"><h2>Documento firmado</h2>{document}{error}</div>;
+function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
+  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} /></div>;
+}
+
+function ContractDocumentCard({ contract, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>; onRemoveDocument: (contractId: number) => void | Promise<unknown>; onAttachDocument: (contractId: number, file: File) => void | Promise<unknown> }>) {
+  const [attaching, setAttaching] = useState(false);
+  function attach(file: File) {
+    setAttaching(true);
+    void Promise.resolve(onAttachDocument(contract.id, file)).finally(() => setAttaching(false));
+  }
+  const document = contract.documentFileName ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{contract.documentFileName}</b><small>{descripcionDocumento(contract)}</small></div><Button tone="quiet" small onClick={() => onDownloadDocument(contract)}><Icon name="download" size={16} />Descargar</Button><Button tone="quiet" small onClick={() => onRemoveDocument(contract.id)}>Quitar</Button></div> : <div className="owner-empty-callout owner-empty-callout--outline"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><label className="owner-file-label"><input type="file" className="sr-only" aria-label="Adjuntar el documento firmado" disabled={attaching} onChange={(event) => { const file = event.target.files?.[0]; if (file) attach(file); }} /><span className="owner-button owner-button--primary owner-button--small" aria-busy={attaching || undefined}>{attaching && <Spinner />}{attaching ? "Adjuntando…" : "Adjuntar"}</span></label></div>;
+  return <div className="owner-card"><h2>Documento firmado</h2>{document}</div>;
 }
 
 function ContractDetail({
@@ -1385,10 +1397,6 @@ function ContractDetail({
   increments,
   scheduledContract,
   successorId,
-  paymentLink,
-  demoLinkCopied,
-  errorMessage,
-  isFinishing,
   onBack,
   onOpenContract,
   onOpenConditions,
@@ -1401,14 +1409,14 @@ function ContractDetail({
   onAttachDocument,
 }: ContractDetailProps) {
   if (demo) {
-    return <DemoContractDetail demoContract={demoContract} demoLinkCopied={demoLinkCopied} onBack={onBack} onCopyDemoLink={onCopyDemoLink} />;
+    return <DemoContractDetail demoContract={demoContract} onBack={onBack} onCopyDemoLink={onCopyDemoLink} />;
   }
 
   if (contractLoad !== null && "error" in contractLoad) {
-    return <><ContractBreadcrumb name="…" onBack={onBack} /><div className="owner-card"><p className="owner-list-note" role="alert"><b>No pudimos cargar este contrato</b>Inténtelo de nuevo más tarde.</p></div></>;
+    return <><ContractBreadcrumb name="…" onBack={onBack} /><LoadError title="No pudimos cargar este contrato" /></>;
   }
   if (contractLoad === null) {
-    return <><ContractBreadcrumb name="…" onBack={onBack} /><div className="owner-card"><p className="owner-list-note">Cargando…</p></div></>;
+    return <><ContractBreadcrumb name="…" onBack={onBack} /><div className="owner-card"><Cargando>Cargando el contrato…</Cargando></div></>;
   }
 
   const contract = contractLoad.ok;
@@ -1424,8 +1432,8 @@ function ContractDetail({
     <header className="owner-page-head"><div><h1>{address}</h1><p>Contrato con {tenantName} · {vigenciaEnFechas(contract)}</p></div><ContractHeaderActions isActive={isActive} scheduledContract={scheduledContract} successorId={successorId} onOpenConditions={onOpenConditions} onBeginTermination={onBeginTermination} /></header>
     <section className="owner-detail-grid">
       <ContractSummaryCard contract={contract} nextUpdate={nextUpdate} scheduledContract={scheduledContract} onOpenContract={onOpenContract} />
-      <ContractAccessCard contract={contract} paymentLink={paymentLink} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
-      <ContractDocumentCard contract={contract} errorMessage={errorMessage} isFinishing={isFinishing} onDownloadDocument={onDownloadDocument} onRemoveDocument={onRemoveDocument} onAttachDocument={onAttachDocument} />
+      <ContractAccessCard contract={contract} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
+      <ContractDocumentCard contract={contract} onDownloadDocument={onDownloadDocument} onRemoveDocument={onRemoveDocument} onAttachDocument={onAttachDocument} />
       {conditions.length > 0 && <div className="owner-card"><h2>Condiciones pactadas</h2><dl className="owner-definition">{conditions.map((condition) => <div key={condition.etiqueta}><dt>{condition.etiqueta}</dt><dd>{condition.valor}</dd></div>)}</dl></div>}
       <ContractAdjustmentHistory increments={increments} lines={adjustmentLines} contract={contract} />
     </section>
@@ -1616,12 +1624,12 @@ function InvoiceAdjustmentDialog({
 
 function RemoveInvoiceAdjustmentDialog({ error, isBusy, onClose, onRemove }: Readonly<{ error: string | null; isBusy: boolean; onClose: () => void; onRemove: () => void }>) {
   const buttonLabel = isBusy ? "Quitando…" : "Quitar";
-  return <Dialog title="Quitar este ajuste" onClose={onClose}><div className="owner-dialog__body"><p>El total de la cuota vuelve a calcularse sin él.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" disabled={isBusy} onClick={onRemove}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Quitar este ajuste" onClose={onClose}><div className="owner-dialog__body"><p>El total de la cuota vuelve a calcularse sin él.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onRemove}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function ArchiveTenantDialog({ tenant, error, isBusy, onClose, onArchive }: Readonly<{ tenant: TenantRow; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
   const buttonLabel = isBusy ? "Archivando…" : "Archivar";
-  return <Dialog title="Archivar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> sale de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarlo cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" disabled={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Archivar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> sale de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarlo cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function isPropertyValid(property: PropertyRequest | null): boolean {
@@ -1637,13 +1645,13 @@ function PropertyEditDialog({ property, error, isBusy, isValid, onClose, onChang
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
   return <Dialog title="Editar propiedad" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack">
     <div className="owner-wizard-duo">
-      <label className="owner-wizard-field"><span className="sr-only">Calle</span><input placeholder="Calle" value={property.street} onChange={(event) => onChange({ ...property, street: event.target.value })} /></label>
-      <label className="owner-wizard-field"><span className="sr-only">Número</span><input placeholder="Número" value={property.number} onChange={(event) => onChange({ ...property, number: event.target.value })} /></label>
+      <label className="owner-wizard-field"><span>Calle</span><input placeholder="Ej: Lavalle" value={property.street} onChange={(event) => onChange({ ...property, street: event.target.value })} /></label>
+      <label className="owner-wizard-field"><span>Número</span><input placeholder="Ej: 950" value={property.number} onChange={(event) => onChange({ ...property, number: event.target.value })} /></label>
     </div>
-    <label className="owner-wizard-field"><span className="sr-only">Piso y departamento</span><input placeholder="Piso y depto. — si corresponde" value={property.floorUnit ?? ""} onChange={(event) => onChange({ ...property, floorUnit: event.target.value || undefined })} /></label>
+    <label className="owner-wizard-field"><span>Piso y depto.</span><input placeholder="Ej: 2B — si corresponde" value={property.floorUnit ?? ""} onChange={(event) => onChange({ ...property, floorUnit: event.target.value || undefined })} /></label>
     <div className="owner-wizard-duo">
-      <label className="owner-wizard-field"><span className="sr-only">Ciudad</span><input placeholder="Ciudad" value={property.city} onChange={(event) => onChange({ ...property, city: event.target.value })} /></label>
-      <label className="owner-wizard-field"><span className="sr-only">Provincia</span><input placeholder="Provincia" value={property.province} onChange={(event) => onChange({ ...property, province: event.target.value })} /></label>
+      <label className="owner-wizard-field"><span>Ciudad</span><input placeholder="Ej: Morón" value={property.city} onChange={(event) => onChange({ ...property, city: event.target.value })} /></label>
+      <label className="owner-wizard-field"><span>Provincia</span><input placeholder="Ej: Buenos Aires" value={property.province} onChange={(event) => onChange({ ...property, province: event.target.value })} /></label>
     </div>
     <label className="owner-wizard-field"><span>Tipo</span><select value={property.category} onChange={(event) => onChange({ ...property, category: event.target.value as PropertyRequest["category"] })}>{CATEGORIAS.map((categoria) => <option key={categoria.valor} value={categoria.valor}>{categoria.etiqueta}</option>)}</select></label>
     <div className="owner-wizard-duo">
@@ -1655,25 +1663,25 @@ function PropertyEditDialog({ property, error, isBusy, isValid, onClose, onChang
       <button type="button" aria-pressed={Boolean(property.petsAllowed)} onClick={() => onChange({ ...property, petsAllowed: !property.petsAllowed })}>Acepta mascotas</button>
       <button type="button" aria-pressed={Boolean(property.furnished)} onClick={() => onChange({ ...property, furnished: !property.furnished })}>Amoblado</button>
     </div>
-  </div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button disabled={isBusy || !isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  </div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function ArchivePropertyDialog({ property, error, isBusy, onClose, onArchive }: Readonly<{ property: FilaPropiedad; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
   const buttonLabel = isBusy ? "Archivando…" : "Archivar";
-  return <Dialog title="Archivar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> sale de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarla cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" disabled={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Archivar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> sale de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarla cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function TerminateContractDialog({ endDate, error, isBusy, onClose, onEndDateChange, onTerminate }: Readonly<{ endDate: string; error: string | null; isBusy: boolean; onClose: () => void; onEndDateChange: (date: string) => void; onTerminate: () => void }>) {
   const buttonLabel = isBusy ? "Finalizando…" : "Finalizar contrato";
-  return <Dialog title="Finalizar este contrato" onClose={onClose}><div className="owner-dialog__body"><p>El contrato queda terminado desde la fecha que indique. <b>Las cuotas posteriores que todavía no estén pagas se eliminan</b>; las ya cobradas y su historial se conservan.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="owner-wizard-label">FECHA DE TERMINACIÓN</span><input type="date" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} /></label>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" disabled={isBusy || !endDate} onClick={onTerminate}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Finalizar este contrato" onClose={onClose}><div className="owner-dialog__body"><p>El contrato queda terminado desde la fecha que indique. <b>Las cuotas posteriores que todavía no estén pagas se eliminan</b>; las ya cobradas y su historial se conservan.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="owner-wizard-label">FECHA DE TERMINACIÓN</span><input type="date" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} /></label>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} disabled={!endDate} onClick={onTerminate}>{buttonLabel}</Button></div></Dialog>;
 }
 
-function PaymentReviewDialog({ row, error, isBusy, onClose, onViewReceipt, onRejectPayment, onConfirmPayment }: Readonly<{ row: FilaCobranza; error: string | null; isBusy: boolean; onClose: () => void; onViewReceipt: (paymentId: number) => void; onRejectPayment: (paymentId: number) => void; onConfirmPayment: (paymentId: number) => void }>) {
+function PaymentReviewDialog({ row, error, isBusy, onClose, onViewReceipt, onRejectPayment, onConfirmPayment }: Readonly<{ row: FilaCobranza; error: string | null; isBusy: boolean; onClose: () => void; onViewReceipt: (paymentId: number) => void | Promise<unknown>; onRejectPayment: (paymentId: number) => Promise<void>; onConfirmPayment: (paymentId: number) => Promise<void> }>) {
   const receipt = row.pagoPendiente;
   const confirmLabel = isBusy ? "Guardando…" : "Confirmar pago";
-  const viewReceipt = () => { if (receipt) onViewReceipt(receipt.id); };
-  const reject = () => { if (receipt) onRejectPayment(receipt.id); };
-  const confirm = () => { if (receipt) onConfirmPayment(receipt.id); };
+  const viewReceipt = () => receipt ? onViewReceipt(receipt.id) : undefined;
+  const reject = () => receipt ? onRejectPayment(receipt.id) : undefined;
+  const confirm = () => receipt ? onConfirmPayment(receipt.id) : undefined;
   return <Dialog title={`Revisar pago de ${row.inquilino}`} onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p><div className="owner-receipt"><Icon name="receipt" size={34} /><b>{receipt?.receiptFileName ?? "Comprobante"}</b><small>{descripcionArchivo(receipt)}</small><Button tone="secondary" small disabled={!receipt} onClick={viewReceipt}><Icon name="download" size={16} />Ver archivo</Button></div><p className="owner-dialog__hint">Al confirmar, la cuota queda marcada como pagada. Si el comprobante no corresponde, puede rechazarlo; el inquilino podrá cargar uno nuevo.</p>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="danger" disabled={isBusy || !receipt} onClick={reject}>Rechazar</Button><Button disabled={isBusy || !receipt} onClick={confirm}>{confirmLabel}</Button></div></div></Dialog>;
 }
 
@@ -1683,14 +1691,14 @@ function InvoiceConfirmationDialog({ row, error, isBusy, onClose, onConfirm }: R
     <p className="owner-dialog__amount">{row.monto}</p>
     <p className="owner-dialog__hint">Al confirmar, el importe queda cerrado y ya no se puede ajustar. Se le avisa al inquilino y recién entonces puede cargar su pago. Si hay algo que corregir, ajústelo antes.</p>
     {error && <p className="owner-list-note" role="alert">{error}</p>}
-    <div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button disabled={isBusy} onClick={() => onConfirm(row.invoiceId)}>{isBusy ? "Guardando…" : "Confirmar importe"}</Button></div>
+    <div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} onClick={() => onConfirm(row.invoiceId)}>{isBusy ? "Guardando…" : "Confirmar importe"}</Button></div>
   </div></Dialog>;
 }
 
 function PaymentRegistrationDialog({ row, file, error, isBusy, onClose, onFileChange, onRegister }: Readonly<{ row: FilaCobranza; file: File | null; error: string | null; isBusy: boolean; onClose: () => void; onFileChange: (file: File | null) => void; onRegister: (file: File) => void }>) {
   const buttonLabel = isBusy ? "Guardando…" : "Registrar pago";
   const register = () => { if (file) onRegister(file); };
-  return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p><label className="owner-file"><span>Comprobante del pago</span><input type="file" accept="image/*,application/pdf" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} /></label><p className="owner-dialog__hint">Adjunte la transferencia, el recibo firmado o la boleta de depósito. Queda guardada junto a la cuota.</p>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button disabled={!file || isBusy} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
+  return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p><label className="owner-file"><span>Comprobante del pago</span><input type="file" accept="image/*,application/pdf" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} /></label><p className="owner-dialog__hint">Adjunte la transferencia, el recibo firmado o la boleta de depósito. Queda guardada junto a la cuota.</p>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} disabled={!file} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
 }
 
 function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ tenant: TenantRequest; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (tenant: TenantRequest) => void; onSave: () => void }>) {
@@ -1698,7 +1706,7 @@ function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, o
   const invalidPhone = tenant.phoneNumber.length > 0 && !telefonoValido(tenant.phoneNumber);
   const taxIdError = soloDigitos(tenant.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Nombre" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Apellido" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="CUIT o CUIL — 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico</span><input type="email" placeholder="Correo electrónico" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Teléfono — 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button disabled={isBusy || !isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ account: UserUpdateRequest; email: string | undefined; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (account: UserUpdateRequest) => void; onSave: () => void }>) {
@@ -1706,13 +1714,13 @@ function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, on
   const invalidPhone = account.phoneNumber.length > 0 && !telefonoValido(account.phoneNumber);
   const taxIdError = soloDigitos(account.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Nombre" value={account.firstName} onChange={(event) => onChange({ ...account, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Apellido" value={account.lastName} onChange={(event) => onChange({ ...account, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="CUIT o CUIL — 20-12345678-9" value={account.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...account, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Teléfono — 11 4455 2210" value={account.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...account, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(account.phoneNumber)}</p>}<p className="owner-card__copy">Su correo es <b>{email}</b> y no se puede cambiar desde acá.</p></div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button disabled={isBusy || !isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={account.firstName} onChange={(event) => onChange({ ...account, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={account.lastName} onChange={(event) => onChange({ ...account, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={account.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...account, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={account.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...account, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(account.phoneNumber)}</p>}<p className="owner-card__copy">Su correo es <b>{email}</b> y no se puede cambiar desde acá.</p></div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function ReminderSettingsDialog({ settings, error, isBusy, onClose, onChange, onSave }: Readonly<{ settings: ReminderSettingsResponse; error: string | null; isBusy: boolean; onClose: () => void; onChange: (settings: ReminderSettingsResponse) => void; onSave: () => void }>) {
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
   const schedule = settings.enabled ? <div className="owner-reminder-rows"><Counter label="Días antes del vencimiento" value={settings.daysBeforeDue} unit="días" min={DIAS_MIN} max={DIAS_MAX} onChange={(value) => onChange({ ...settings, daysBeforeDue: value })} /><SwitchRow label="Avisar el día del vencimiento" checked={settings.dueDateReminderEnabled} onChange={(value) => onChange({ ...settings, dueDateReminderEnabled: value })} /><Counter label="Días después del vencimiento" value={settings.daysAfterDue} unit="días" min={DIAS_MIN} max={DIAS_MAX} onChange={(value) => onChange({ ...settings, daysAfterDue: value })} /></div> : null;
-  return <Dialog title="Editar recordatorios" onClose={onClose}><div className="owner-dialog__body owner-dialog__body--reminders"><p>Estos avisos le llegan al inquilino por correo. El aviso de cuota confirmada se envía siempre, aunque los recordatorios estén apagados.</p><SwitchRow label="Enviar recordatorios" checked={settings.enabled} onChange={(value) => onChange({ ...settings, enabled: value })} />{schedule}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button disabled={isBusy} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar recordatorios" onClose={onClose}><div className="owner-dialog__body owner-dialog__body--reminders"><p>Estos avisos le llegan al inquilino por correo. El aviso de cuota confirmada se envía siempre, aunque los recordatorios estén apagados.</p><SwitchRow label="Enviar recordatorios" checked={settings.enabled} onChange={(value) => onChange({ ...settings, enabled: value })} />{schedule}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function isAccountValid(account: UserUpdateRequest | null): boolean {
@@ -1756,17 +1764,17 @@ function overviewWorkspaceData(demo: boolean, loadState: OverviewData | LoadFail
   return { data: loadState, hasError: false };
 }
 
-function WorkspaceContent({ wizard, detail, view, renderWizard, detailContent, viewContent }: Readonly<{
+function WorkspaceContent({ wizard, detail, view, wizardContent, detailContent, viewContent }: Readonly<{
   wizard: Creation;
   detail: Detail;
   view: OwnerView;
-  renderWizard: () => React.ReactNode;
-  detailContent: Record<Exclude<Detail, null>, () => React.ReactNode>;
-  viewContent: Record<OwnerView, () => React.ReactNode>;
+  wizardContent: React.ReactNode;
+  detailContent: Record<Exclude<Detail, null>, React.ReactNode>;
+  viewContent: Record<OwnerView, React.ReactNode>;
 }>) {
-  if (wizard) return renderWizard();
-  if (detail) return detailContent[detail]();
-  return viewContent[view]();
+  if (wizard) return wizardContent;
+  if (detail) return detailContent[detail];
+  return viewContent[view];
 }
 
 function greetingFor(account: { firstName: string } | null): string {
@@ -1875,21 +1883,21 @@ type WorkspaceDialogActions = {
   closePaymentReview: () => void;
   closeInvoiceConfirmation: () => void;
   confirmInvoice: (invoiceId: number) => void;
-  viewReceipt: (paymentId: number) => void;
-  rejectPayment: (paymentId: number) => void;
-  confirmPayment: (paymentId: number) => void;
+  viewReceipt: (paymentId: number) => void | Promise<unknown>;
+  rejectPayment: (paymentId: number) => Promise<void>;
+  confirmPayment: (paymentId: number) => Promise<void>;
   closePaymentRegistration: () => void;
   setPaymentFile: (file: File | null) => void;
   registerPayment: (invoiceId: number, file: File) => void;
   closeConditions: () => void;
-  conditionsProgrammed: () => void;
+  conditionsProgrammed: (month: string) => void;
 };
 
 function ContractConditionsDialog({ isOpen, contract, onClose, onProgrammed }: Readonly<{
   isOpen: boolean;
   contract: ContractResponse | null;
   onClose: () => void;
-  onProgrammed: () => void;
+  onProgrammed: (month: string) => void;
 }>) {
   if (!isOpen || !contract) return null;
   return <Dialog title="Cambiar condiciones" onClose={onClose}>
@@ -1920,6 +1928,7 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
 
 export default function OwnerWorkspace({ initialView, activeView, onNavigate, demo = false }: { initialView: OwnerView; activeView?: OwnerView; onNavigate?: (view: OwnerView) => void; demo?: boolean }) {
   const { user, actualizarUsuario } = useAuth();
+  const toast = useToast();
   // La demo conserva su titular de ejemplo: sin sesión, Inicio y Configuración
   // quedarían a medio nombrar justo en la ruta que existe para mostrarlas.
   const cuenta = workspaceAccount(user, demo);
@@ -1932,7 +1941,6 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const [conditionsOpen, setConditionsOpen] = useState(false);
   // El cambio programado del contrato abierto: el sucesor en SCHEDULED, o null.
   const [cargaProgramado, setCargaProgramado] = useState<{ de: number; contrato: ContractResponse } | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
   const [query, setQuery] = useState("");
   const [estado, setEstado] = useState<"todas" | "conContrato" | "sinAlquilar">("todas");
   const [ciudades, setCiudades] = useState<string[]>([]);
@@ -1970,7 +1978,6 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const [recargaInquilinos, setRecargaInquilinos] = useState(0);
   const [errorAjustes, setErrorAjustes] = useState<string | null>(null);
   const [guardandoAjustes, setGuardandoAjustes] = useState(false);
-  const [avisoGuardado, setAvisoGuardado] = useState<string | null>(null);
   const [cargaContrato, setCargaContrato] = useState<
     { ok: ContractResponse } | { error: true } | null
   >(null);
@@ -1978,7 +1985,6 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   // tapar el alquiler vigente ni el documento.
   const [aumentos, setAumentos] = useState<RentIncrementResponse[] | "error" | null>(null);
   const [recargaContrato, setRecargaContrato] = useState(0);
-  const [enlace, setEnlace] = useState<"copiado" | "error" | "pidiendo" | null>(null);
   const [finalizando, setFinalizando] = useState(false);
   const [fechaFin, setFechaFin] = useState("");
   const [errorContrato, setErrorContrato] = useState<string | null>(null);
@@ -2070,7 +2076,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   const necesitaContratos = cargas.contracts;
 
-  useLoadedResource({ enabled: necesitaContratos, refreshKey: 0, load: loadContractRows, setResult: setCargaContratos });
+  useLoadedResource({ enabled: necesitaContratos, refreshKey: recargaContrato, load: loadContractRows, setResult: setCargaContratos });
 
   // Contra un build viejo la clave `activeContract` no viene y todas se verían
   // «Sin alquilar». Se omiten los chips en vez de afirmar algo falso.
@@ -2090,10 +2096,11 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const contratosError = loadHasError(demo, cargaContratos);
 
   /** Envuelve las acciones de cuota: en demo no se llama al backend. */
-  async function accionDeCuota(hacer: () => Promise<unknown>, cerrar?: () => void) {
+  async function accionDeCuota(hacer: () => Promise<unknown>, cerrar: (() => void) | undefined, exito: string) {
     setErrorAccion(null);
     if (demo) {
       cerrar?.();
+      toast.exito(exito);
       return;
     }
     setAccionEnCurso(true);
@@ -2101,6 +2108,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       await hacer();
       cerrar?.();
       setRefresco((n) => n + 1);
+      toast.exito(exito);
     } catch (err) {
       setErrorAccion(mensajeDeErrorCobranza(err));
     } finally {
@@ -2118,7 +2126,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       window.open(url, "_blank", "noopener");
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
-      setErrorAccion(mensajeDeErrorCobranza(err));
+      toast.error(mensajeDeErrorCobranza(err));
     }
   }
 
@@ -2170,6 +2178,12 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   function openDetail(kind: Detail, id: string) { setSelected(id); setDetail(kind); }
   function go(next: OwnerView) {
+    // Volver a la misma pantalla no cambia `enabled` en el efecto de carga.
+    // Cada alta invalida su listado para que el registro recién creado aparezca
+    // de inmediato, incluso si el asistente se abrió desde esa lista.
+    if (wizard === "tenant") setRecargaInquilinos((n) => n + 1);
+    if (wizard === "property") setRecargaPropiedades((n) => n + 1);
+    if (wizard === "contract") setRecargaContrato((n) => n + 1);
     onNavigate?.(next);
     if (!onNavigate) {
       setLocalView(next);
@@ -2180,7 +2194,6 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   function beginCreation(kind: Creation, propertyId?: number) { setDetail(null); setWizardPropertyId(propertyId); setWizard(kind); }
   function editarInquilino(tenant: TenantRow) {
     setErrorAjustes(null);
-    setAvisoGuardado(null);
     setInquilinoEditadoId(tenant.id);
     setEditandoInquilino({
       firstName: tenant.nombrePila,
@@ -2226,6 +2239,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       });
       setEditandoPropiedad(null);
       setRecargaPropiedades((n) => n + 1);
+      toast.exito("Propiedad actualizada.");
     } catch (err) {
       setErrorAjustes(mensajeErrorDePropiedad(err));
     } finally {
@@ -2238,13 +2252,11 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
   function editarRecordatorios(settings: ReminderSettingsResponse) {
     setErrorAjustes(null);
-    setAvisoGuardado(null);
     setEditandoAvisos(settings);
   }
   function editarCuenta() {
     if (!user) return;
     setErrorAjustes(null);
-    setAvisoGuardado(null);
     setEditandoCuenta({
       firstName: user.firstName,
       lastName: user.lastName,
@@ -2254,14 +2266,14 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function guardarAvisos(ajustes: ReminderSettingsResponse) {
-    if (demo) return setEditandoAvisos(null);
+    if (demo) { setEditandoAvisos(null); toast.exito("Recordatorios guardados."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);
     try {
       const guardado = await AlquiaBackendClient.users.updateReminderSettings(ajustes);
       setCargaAjustes({ ok: guardado });
       setEditandoAvisos(null);
-      setAvisoGuardado("Recordatorios guardados.");
+      toast.exito("Recordatorios guardados.");
     } catch (err) {
       setErrorAjustes(mensajeErrorDeRecordatorios(err));
     } finally {
@@ -2270,7 +2282,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function guardarCuenta(datos: UserUpdateRequest) {
-    if (demo) return setEditandoCuenta(null);
+    if (demo) { setEditandoCuenta(null); toast.exito("Sus datos quedaron guardados."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);
     try {
@@ -2284,7 +2296,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       });
       actualizarUsuario(actualizado);
       setEditandoCuenta(null);
-      setAvisoGuardado("Datos guardados.");
+      toast.exito("Sus datos quedaron guardados.");
     } catch (err) {
       setErrorAjustes(mensajeErrorDeCuenta(err));
     } finally {
@@ -2293,7 +2305,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function guardarInquilinoEditado(id: number, datos: TenantRequest) {
-    if (demo) return setEditandoInquilino(null);
+    if (demo) { setEditandoInquilino(null); toast.exito("Datos del inquilino guardados."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);
     try {
@@ -2306,7 +2318,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       });
       setEditandoInquilino(null);
       setRecargaInquilinos((n) => n + 1);
-      setAvisoGuardado("Datos del inquilino guardados.");
+      toast.exito("Datos del inquilino guardados.");
     } catch (err) {
       // Los dos duplicados son por propietario, no globales: de ahí «suyo».
       setErrorAjustes(mensajeErrorDeInquilino(err));
@@ -2316,7 +2328,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function archivarInquilino(fila: TenantRow) {
-    if (demo) return setArchivandoInquilino(null);
+    if (demo) { setArchivandoInquilino(null); toast.exito("Inquilino archivado."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);
     try {
@@ -2324,6 +2336,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       setArchivandoInquilino(null);
       setDetail(null);
       setRecargaInquilinos((n) => n + 1);
+      toast.exito("Inquilino archivado.");
     } catch (err) {
       setErrorAjustes(mensajeErrorAlArchivarInquilino(err));
     } finally {
@@ -2342,10 +2355,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       setRefresco((n) => n + 1);
     } catch (err) {
       let mensaje = mensajeDeErrorCobranza(err);
-      if (err instanceof ApiError && err.message === "Cannot modify adjustments on a confirmed invoice") {
+      if (err instanceof ApiError && err.type === ERROR.ADJUSTMENT_ON_CONFIRMED_INVOICE) {
         mensaje = "La cuota quedó confirmada mientras editaba, así que su importe ya está cerrado.";
       }
-      if (err instanceof ApiError && err.message === "Invoice total cannot be negative") {
+      if (err instanceof ApiError && err.type === ERROR.INVOICE_TOTAL_NEGATIVE) {
         mensaje = "El total de la cuota no puede quedar negativo.";
       }
       setErrorAccion(mensaje);
@@ -2355,7 +2368,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function archivarPropiedad(fila: FilaPropiedad) {
-    if (demo) return setArchivando(null);
+    if (demo) { setArchivando(null); toast.exito("Propiedad archivada."); return; }
     setErrorArchivar(null);
     setGuardandoArchivado(true);
     try {
@@ -2366,6 +2379,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       // pantalla es «lo que el backend tiene», y filtrarla acá la escondería
       // aunque el archivado no hubiera quedado firme.
       setRecargaPropiedades((n) => n + 1);
+      toast.exito("Propiedad archivada.");
     } catch (err) {
       setErrorArchivar(mensajeDeErrorArchivar(err));
     } finally {
@@ -2374,28 +2388,25 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function copiarEnlace(contratoId: number) {
-    setEnlace("pidiendo");
     try {
       const { url } = await AlquiaBackendClient.contracts.getTenantAccess(contratoId);
       await navigator.clipboard.writeText(url);
-      setEnlace("copiado");
+      toast.exito("Enlace copiado.");
     } catch {
-      setEnlace("error");
+      toast.error("No pudimos obtener el enlace. Inténtelo de nuevo.");
     }
   }
 
   async function reenviarEnlace(contratoId: number) {
-    setErrorContrato(null);
     try {
       await AlquiaBackendClient.contracts.resendTenantAccess(contratoId);
-      setErrorContrato("Le reenviamos el enlace por correo al inquilino.");
+      toast.exito("Le reenviamos el enlace por correo al inquilino.");
     } catch {
-      setErrorContrato("No pudimos reenviar el correo. Inténtelo de nuevo más tarde.");
+      toast.error("No pudimos reenviar el correo. Inténtelo de nuevo más tarde.");
     }
   }
 
   async function descargarDocumento(contrato: ContractResponse) {
-    setErrorContrato(null);
     try {
       const blob = await AlquiaBackendClient.contracts.getDocument(contrato.id);
       const url = URL.createObjectURL(blob);
@@ -2405,27 +2416,27 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       enlace.click();
       URL.revokeObjectURL(url);
     } catch {
-      setErrorContrato("No pudimos descargar el documento. Inténtelo de nuevo más tarde.");
+      toast.error("No pudimos descargar el documento. Inténtelo de nuevo más tarde.");
     }
   }
 
   async function adjuntarDocumento(contratoId: number, archivo: File) {
-    setErrorContrato(null);
     try {
       await AlquiaBackendClient.contracts.attachDocument(contratoId, archivo);
       setRecargaContrato((n) => n + 1);
+      toast.exito("Documento adjuntado.");
     } catch (err) {
-      setErrorContrato(mensajeErrorAlAdjuntarDocumento(err));
+      toast.error(mensajeErrorAlAdjuntarDocumento(err));
     }
   }
 
   async function quitarDocumento(contratoId: number) {
-    setErrorContrato(null);
     try {
       await AlquiaBackendClient.contracts.removeDocument(contratoId);
       setRecargaContrato((n) => n + 1);
+      toast.exito("Documento quitado.");
     } catch {
-      setErrorContrato("No pudimos quitar el documento. Inténtelo de nuevo más tarde.");
+      toast.error("No pudimos quitar el documento. Inténtelo de nuevo más tarde.");
     }
   }
 
@@ -2436,6 +2447,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       await AlquiaBackendClient.contracts.terminate(contratoId, { terminationDate: fechaFin });
       setFinalizando(false);
       setRecargaContrato((n) => n + 1);
+      toast.exito("Contrato finalizado.");
     } catch (err) {
       setErrorContrato(mensajeErrorAlFinalizarContrato(err));
     } finally {
@@ -2452,23 +2464,24 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const recordatorios = loadedData(demo, AVISOS_DEMO, cargaAjustes);
   const recordatoriosConError = loadHasError(demo, cargaAjustes);
 
+  const WIZARD_SUCCESS: Record<Exclude<Creation, null>, string> = { property: "Propiedad agregada.", tenant: "Inquilino agregado.", contract: "Contrato creado. Le enviamos al inquilino su enlace por correo." };
   const wizardDestinations: Record<Exclude<Creation, null>, OwnerView> = { property: "propiedades", tenant: "inquilinos", contract: "contratos" };
   const wizardKind = wizard ?? "contract";
-  const renderWizard = () => <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} onClose={() => setWizard(null)} onNewTenant={() => beginCreation("tenant")} onComplete={() => go(wizardDestinations[wizardKind])} />;
-  const detailContent: Record<Exclude<Detail, null>, () => React.ReactNode> = {
-    property: () => <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => beginCreation("contract", demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
-    contract: () => <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} paymentLink={enlace} demoLinkCopied={linkCopied} errorMessage={errorContrato} isFinishing={finalizando} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => setLinkCopied(true)} onCopyPaymentLink={(contractId) => void copiarEnlace(contractId)} onResendPaymentLink={(contractId) => void reenviarEnlace(contractId)} onDownloadDocument={(contract) => void descargarDocumento(contract)} onRemoveDocument={(contractId) => void quitarDocumento(contractId)} onAttachDocument={(contractId, file) => void adjuntarDocumento(contractId, file)} />,
-    tenant: () => <TenantDetail selectedId={selected} tenants={inquilinos} hasError={inquilinosError} paymentLink={enlace} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => beginCreation("contract")} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => void copiarEnlace(contractId)} />,
+  const wizardContent = <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} onClose={() => setWizard(null)} onComplete={() => { go(wizardDestinations[wizardKind]); toast.exito(WIZARD_SUCCESS[wizardKind]); }} />;
+  const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
+    property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => beginCreation("contract", demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
+    contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} />,
+    tenant: <TenantDetail onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => beginCreation("contract")} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
   };
-  const viewContent: Record<OwnerView, () => React.ReactNode> = {
-    propiedades: () => <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => beginCreation("property")} onOpenProperty={(propertyId) => openDetail("property", propertyId)} />,
-    contratos: () => <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => beginCreation("contract")} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
-    cobranzas: () => <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} actionError={errorAccion} hasOpenAction={Boolean(enRevision || aRegistrar || ajustando || confirmando)} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onRegisterPayment={registrarPago} onCreateContract={() => beginCreation("contract")} />,
-    inquilinos: () => <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => beginCreation("contract")} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
-    configuracion: () => <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} savedNotice={avisoGuardado} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
-    inicio: () => <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} onCreateProperty={() => beginCreation("property")} onCreateContract={() => beginCreation("contract")} onOpenCollections={() => go("cobranzas")} />,
+  const viewContent: Record<OwnerView, React.ReactNode> = {
+    propiedades: <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => beginCreation("property")} onOpenProperty={(propertyId) => openDetail("property", propertyId)} />,
+    contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => beginCreation("contract")} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
+    cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onRegisterPayment={registrarPago} onCreateContract={() => beginCreation("contract")} />,
+    inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => beginCreation("contract")} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
+    configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
+    inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} onCreateProperty={() => beginCreation("property")} onCreateContract={() => beginCreation("contract")} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };
-  const content = <WorkspaceContent wizard={wizard} detail={detail} view={view} renderWizard={renderWizard} detailContent={detailContent} viewContent={viewContent} />;
+  const content = <WorkspaceContent wizard={wizard} detail={detail} view={view} wizardContent={wizardContent} detailContent={detailContent} viewContent={viewContent} />;
   const guardarAjuste = () => {
     if (!ajustando) return;
     const cuerpo = itemARequest(formItem);
@@ -2548,15 +2561,15 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     archiveProperty: (property) => void archivarPropiedad(property),
     closePaymentReview: () => setEnRevision(null),
     closeInvoiceConfirmation: () => setConfirmando(null),
-    confirmInvoice: (invoiceId) => void accionDeCuota(() => AlquiaBackendClient.invoices.confirm(invoiceId), () => setConfirmando(null)),
-    viewReceipt: (paymentId) => void verComprobante(paymentId),
-    rejectPayment: (paymentId) => void accionDeCuota(() => AlquiaBackendClient.payments.reject(paymentId), () => setEnRevision(null)),
-    confirmPayment: (paymentId) => void accionDeCuota(() => AlquiaBackendClient.payments.confirm(paymentId), () => setEnRevision(null)),
+    confirmInvoice: (invoiceId) => void accionDeCuota(() => AlquiaBackendClient.invoices.confirm(invoiceId), () => setConfirmando(null), "Importe confirmado. Le avisamos al inquilino que ya puede pagar."),
+    viewReceipt: (paymentId) => verComprobante(paymentId),
+    rejectPayment: (paymentId) => accionDeCuota(() => AlquiaBackendClient.payments.reject(paymentId), () => setEnRevision(null), "Pago rechazado. El inquilino puede cargar un comprobante nuevo."),
+    confirmPayment: (paymentId) => accionDeCuota(() => AlquiaBackendClient.payments.confirm(paymentId), () => setEnRevision(null), `Pago confirmado. La cuota de ${enRevision?.periodo} quedó pagada.`),
     closePaymentRegistration: () => setARegistrar(null),
     setPaymentFile: setArchivo,
-    registerPayment: (invoiceId, file) => void accionDeCuota(() => AlquiaBackendClient.payments.create(invoiceId, file), () => { setARegistrar(null); setArchivo(null); }),
+    registerPayment: (invoiceId, file) => void accionDeCuota(() => AlquiaBackendClient.payments.create(invoiceId, file), () => { setARegistrar(null); setArchivo(null); }, `Pago registrado. La cuota de ${aRegistrar?.periodo} quedó pagada.`),
     closeConditions: () => setConditionsOpen(false),
-    conditionsProgrammed: () => { setConditionsOpen(false); setRecargaContrato((n) => n + 1); },
+    conditionsProgrammed: (month) => { setConditionsOpen(false); setRecargaContrato((n) => n + 1); toast.exito(`Cambio programado desde ${formatearPeriodo(month)}.`); },
   };
 
   return <div className="owner-workspace"><main className="owner-content">{content}</main><WorkspaceDialogs state={dialogState} actions={dialogActions} /></div>;

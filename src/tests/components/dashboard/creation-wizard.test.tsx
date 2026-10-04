@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CreationWizard from "@/components/dashboard/CreationWizard";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
@@ -152,7 +153,9 @@ describe("mientras guarda", () => {
 
 describe("errores al guardar", () => {
   it("avisa cuando el CUIT ya está cargado", async () => {
-    mockCreate.mockRejectedValueOnce(new ApiError(400, "Tax ID already registered"));
+    mockCreate.mockRejectedValueOnce(
+      new ApiError(409, "Tax ID already registered", ERROR.DUPLICATE_TAX_ID)
+    );
     renderWizard();
     await fillAndSave();
 
@@ -400,7 +403,7 @@ describe("asistente de contrato", () => {
 
   it("traduce el 400 de la propiedad ya alquilada", async () => {
     mockCrearContrato.mockRejectedValueOnce(
-      new ApiError(400, "Property already has an active contract")
+      new ApiError(409, "Property already has an active contract", ERROR.PROPERTY_HAS_ACTIVE_CONTRACT)
     );
     await avanzarHasta(6);
     await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
@@ -743,5 +746,33 @@ describe("asistente de contrato · propiedad preseleccionada", () => {
   it("sin propiedad preseleccionada arranca pidiéndola", async () => {
     render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
     expect(await screen.findByRole("radio", { name: /Mitre 78/ })).toBeInTheDocument();
+  });
+});
+
+describe("asistente de contrato · propiedad nueva sobre la marcha", () => {
+  it("la guarda, vuelve al paso 1 del contrato con la nueva elegida y lista la recién creada", async () => {
+    const NUEVA = { id: 55, street: "Lavalle", number: "950", city: "CABA",
+      province: "Ciudad Autónoma de Buenos Aires", category: "HOUSE" as const };
+    mockPropiedades.mockResolvedValueOnce([]);
+    mockCrearPropiedad.mockResolvedValue(NUEVA);
+    render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
+
+    expect(await screen.findByText("Todavía no cargó ninguna propiedad.")).toBeInTheDocument();
+    mockPropiedades.mockResolvedValue([NUEVA]);
+    await userEvent.click(screen.getByRole("button", { name: "Agregar una propiedad nueva" }));
+    expect(screen.getByText("Paso 1 de 4")).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByText(/Lavalle 950/));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await userEvent.click(await screen.findByText("Casa"));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar propiedad" }));
+
+    expect(await screen.findByText("Paso 1 de 6")).toBeInTheDocument();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(await screen.findByText("Lavalle 950")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
   });
 });

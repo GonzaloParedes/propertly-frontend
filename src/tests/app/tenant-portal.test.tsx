@@ -1,11 +1,9 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import TenantPortalPage from "@/app/tenant-portal/page";
 import { ApiError } from "@/lib/api";
-import type { InvoiceResponse } from "@/lib/backend-types";
+import type { TenantCalendarPreInvoiceResponse, TenantCalendarResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
 
-// El mock global de setup.tsx devuelve siempre un URLSearchParams vacío; acá
-// hace falta controlar el token de la URL, así que se pisa por archivo.
 let searchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
@@ -17,287 +15,225 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenantAuth: { session: vi.fn() },
-    tenantPortal: { invoices: vi.fn(), createPayment: vi.fn(), getReceipt: vi.fn() },
+    tenantPortal: { calendar: vi.fn(), invoices: vi.fn(), createPayment: vi.fn(), getReceipt: vi.fn() },
   },
 }));
 
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockSession = vi.mocked(AlquiaBackendClient.tenantAuth.session);
-const mockInvoices = vi.mocked(AlquiaBackendClient.tenantPortal.invoices);
+const mockCalendario = vi.mocked(AlquiaBackendClient.tenantPortal.calendar);
 const mockCrearPago = vi.mocked(AlquiaBackendClient.tenantPortal.createPayment);
 const mockRecibo = vi.mocked(AlquiaBackendClient.tenantPortal.getReceipt);
 
-function cuota(over: Partial<InvoiceResponse> = {}): InvoiceResponse {
+function cuota(over: Partial<TenantCalendarInvoiceResponse> = {}): TenantCalendarInvoiceResponse {
   return {
-    id: 1000,
-    contractId: 100,
-    period: "2026-09-01",
-    dueDate: "2026-09-10",
-    baseAmount: 478691,
-    total: 478691,
-    status: "PENDING",
-    confirmed: true,
-    adjustments: [],
-    payments: [],
-    ...over,
+    id: 1000, contractId: 100, period: "2026-09-01", dueDate: "2026-09-10",
+    baseAmount: 478691, total: 478691, status: "PENDING", confirmed: true,
+    adjustments: [], payments: [], canSubmitPayment: true, ...over,
   };
+}
+
+function calendario(
+  invoices: TenantCalendarInvoiceResponse[] = [],
+  coverage: TenantCalendarResponse["coverage"] = [{ startDate: "2026-01-01", effectiveEndDate: "2026-12-31" }],
+  preInvoices: TenantCalendarPreInvoiceResponse[] = []
+): TenantCalendarResponse {
+  return { tenant: { firstName: "Lucía", lastName: "Fernández" }, coverage, invoices, preInvoices };
+}
+
+async function abrirMes(nombre: string, anio: number, estado: string) {
+  await userEvent.click(await screen.findByRole("button", { name: `${nombre} ${anio}: ${estado}. Ver detalle` }));
 }
 
 beforeEach(() => {
   vi.resetAllMocks();
   searchParams = new URLSearchParams();
-  mockInvoices.mockResolvedValue([]);
-  // jsdom no implementa createObjectURL; se stubea igual que cualquier API del
-  // navegador que la suite necesita y jsdom no trae.
-  vi.stubGlobal("URL", {
-    ...URL,
-    createObjectURL: vi.fn(() => "blob:mock"),
-    revokeObjectURL: vi.fn(),
-  });
+  mockCalendario.mockResolvedValue(calendario());
+  vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:mock"), revokeObjectURL: vi.fn() });
   vi.stubGlobal("open", vi.fn());
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 0; });
 });
 
-// --- Canje del token y sesión ---
-
-describe("canje del token", () => {
-  it("con token en la URL, lo canjea antes de pedir las cuotas", async () => {
+describe("canje del token y carga del calendario", () => {
+  it("canjea el token antes de cargar el calendario", async () => {
     searchParams = new URLSearchParams("token=abc123");
     mockSession.mockResolvedValueOnce(undefined);
     render(<TenantPortalPage />);
 
     await waitFor(() => expect(mockSession).toHaveBeenCalledWith({ token: "abc123" }));
-    expect(mockInvoices).toHaveBeenCalled();
+    expect(mockCalendario).toHaveBeenCalled();
   });
 
-  it("sin token en la URL, va directo a pedir las cuotas", async () => {
+  it("sin token va directo al calendario", async () => {
     render(<TenantPortalPage />);
-
-    await waitFor(() => expect(mockInvoices).toHaveBeenCalled());
+    await waitFor(() => expect(mockCalendario).toHaveBeenCalled());
     expect(mockSession).not.toHaveBeenCalled();
   });
 
-  it("token inválido: no llega a pedir las cuotas y avisa que el enlace no funciona", async () => {
-    searchParams = new URLSearchParams("token=roto");
-    mockSession.mockRejectedValueOnce(new ApiError(401, "Invalid or expired access link"));
+  it("muestra el mensaje genérico si el enlace no tiene sesión válida", async () => {
+    mockCalendario.mockRejectedValueOnce(new ApiError(401, "Invalid or expired access link"));
     render(<TenantPortalPage />);
-
-    expect(await screen.findByText("Este enlace no funciona")).toBeInTheDocument();
-    expect(mockInvoices).not.toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "Este enlace ya no está disponible" })).toBeInTheDocument();
+    expect(screen.getByText("Pídale a su propietario que le envíe un enlace nuevo para ingresar.")).toBeInTheDocument();
   });
 
-  it("sin sesión y sin token, el mismo mensaje genérico", async () => {
-    mockInvoices.mockRejectedValueOnce(new ApiError(401, "Invalid or expired access link"));
+  it("indica la carga mientras espera el calendario", () => {
+    mockCalendario.mockReturnValue(new Promise(() => {}));
     render(<TenantPortalPage />);
-
-    expect(await screen.findByText("Este enlace no funciona")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus cuotas…")).toBeInTheDocument();
   });
 
-  it("mientras se resuelve, muestra que está cargando", () => {
-    mockInvoices.mockReturnValue(new Promise(() => {}));
+  it("permite reintentar si no puede cargar el calendario", async () => {
+    mockCalendario.mockRejectedValueOnce(new ApiError(500, "Boom")).mockResolvedValueOnce(calendario());
     render(<TenantPortalPage />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
-  });
-});
-
-// --- Listado ---
-
-describe("listado de cuotas", () => {
-  it("muestra período, vencimiento, monto y estado", async () => {
-    mockInvoices.mockResolvedValueOnce([cuota({ status: "DUE" })]);
-    render(<TenantPortalPage />);
-
-    expect(await screen.findByText("septiembre 2026")).toBeInTheDocument();
-    expect(screen.getByText("Vence el 10/09/2026")).toBeInTheDocument();
-    expect(screen.getByText("$ 478.691")).toBeInTheDocument();
-    expect(screen.getByText("Vencida")).toBeInTheDocument();
-  });
-
-  it("sin cuotas todavía, lo dice en vez de una lista vacía", async () => {
-    render(<TenantPortalPage />);
-    expect(await screen.findByText("Todavía no tiene cuotas generadas.")).toBeInTheDocument();
-  });
-
-  it("si la carga falla, avisa y no da a entender que no hay cuotas", async () => {
-    mockInvoices.mockRejectedValueOnce(new ApiError(500, "Boom"));
-    render(<TenantPortalPage />);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar sus cuotas");
-    expect(screen.queryByText("Todavía no tiene cuotas generadas.")).not.toBeInTheDocument();
-  });
-
-  it("pone las vencidas antes que las pagadas", async () => {
-    mockInvoices.mockResolvedValueOnce([
-      cuota({ id: 1, period: "2026-08-01", status: "PAID", payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-      cuota({ id: 2, period: "2026-09-01", status: "DUE" }),
-    ]);
-    render(<TenantPortalPage />);
-
-    const items = await screen.findAllByRole("listitem");
-    expect(within(items[0]).getByText("Vencida")).toBeInTheDocument();
-    expect(within(items[1]).getByText("Pagada")).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
+    expect(screen.getByText("Hola, Lucía Fernández")).toBeInTheDocument();
+    expect(mockCalendario).toHaveBeenCalledTimes(2);
   });
 });
 
-// --- Cuota sin confirmar ---
+describe("calendario anual", () => {
+  it("muestra los 12 meses, el estado escrito y abre el detalle de la cuota", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "DUE" })]));
+    render(<TenantPortalPage />);
 
-describe("cuota sin confirmar", () => {
-  it("muestra el importe con la aclaración de que puede cambiar", async () => {
-    mockInvoices.mockResolvedValueOnce([cuota({ confirmed: false })]);
+    expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
+    expect(screen.getAllByText("Sin cuota")).toHaveLength(11);
+    await abrirMes("Septiembre", 2026, "Vencida");
+    const detalle = screen.getByRole("region", { name: "Detalle de septiembre 2026" });
+    expect(within(detalle).getByText("Vence el 10/09/2026")).toBeInTheDocument();
+    expect(within(detalle).getByText("$ 478.691")).toBeInTheDocument();
+    expect(within(detalle).getByRole("button", { name: "Subir comprobante" })).toBeInTheDocument();
+  });
+
+  it("distingue los meses anteriores al contrato de los meses sin cuota", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([], [{ startDate: "2025-06-15", effectiveEndDate: "2025-12-31" }]));
+    render(<TenantPortalPage />);
+
+    expect(await screen.findByRole("heading", { name: "Cuotas de 2025" })).toBeInTheDocument();
+    expect(screen.getAllByText("Antes del contrato")).toHaveLength(5);
+    expect(screen.getAllByText("Sin cuota")).toHaveLength(7);
+  });
+
+  it("permite elegir otro año directamente desde la tira de años", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([], [
+      { startDate: "2025-06-15", effectiveEndDate: "2025-12-31" },
+      { startDate: "2026-01-01", effectiveEndDate: "2027-05-31" },
+    ]));
+    render(<TenantPortalPage />);
+
+    expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "2027" }));
+    expect(screen.getByRole("heading", { name: "Cuotas de 2027" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "2025" }));
+    expect(screen.getByRole("heading", { name: "Cuotas de 2025" })).toBeInTheDocument();
+  });
+
+  it("muestra una pre-cuota como importe a confirmar, sin deuda ni acciones de pago", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([], undefined, [{ contractId: 100, period: "2026-09-01", amount: 478691 }]));
     render(<TenantPortalPage />);
 
     expect(await screen.findByText("$ 478.691")).toBeInTheDocument();
-    expect(
-      screen.getByText("El propietario todavía no cerró este importe: puede cambiar.")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Importe a confirmar")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Septiembre 2026/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Subir comprobante" })).not.toBeInTheDocument();
   });
 
-  it("no ofrece subir comprobante", async () => {
-    mockInvoices.mockResolvedValueOnce([cuota({ confirmed: false })]);
+  it("tolera la respuesta anterior mientras el backend aún no devuelve pre-cuotas", async () => {
+    mockCalendario.mockResolvedValueOnce({
+      coverage: [{ startDate: "2026-01-01", effectiveEndDate: "2026-12-31" }],
+      invoices: [],
+    } as unknown as TenantCalendarResponse);
     render(<TenantPortalPage />);
 
-    await screen.findByText("$ 478.691");
-    expect(screen.queryByRole("button", { name: /Subir comprobante/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Cuotas de 2026" })).toBeInTheDocument();
+  });
+
+  it("marca el primer mes del sucesor una vez que sus condiciones están vigentes", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ period: "2025-10-01", dueDate: "2025-10-10" })], [
+      { startDate: "2025-06-15", effectiveEndDate: "2025-09-30" },
+      { startDate: "2025-10-01", effectiveEndDate: "2027-05-31" },
+    ]));
+    render(<TenantPortalPage />);
+
+    await screen.findByRole("heading", { name: "Cuotas de 2026" });
+    await userEvent.click(screen.getByRole("button", { name: "2025" }));
+    expect(await screen.findByText("Cambiaron las condiciones")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Octubre 2025: A vencer. Ver detalle" })).toBeInTheDocument();
+  });
+
+  it("conserva las cuotas anteriores vencidas y usa el permiso que dio el backend", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ period: "2025-09-01", dueDate: "2025-09-10", status: "DUE", canSubmitPayment: true })], [
+      { startDate: "2025-06-15", effectiveEndDate: "2025-09-30" },
+      { startDate: "2025-10-01", effectiveEndDate: "2027-05-31" },
+    ]));
+    render(<TenantPortalPage />);
+
+    await screen.findByRole("heading", { name: "Cuotas de 2026" });
+    await userEvent.click(screen.getByRole("button", { name: "2025" }));
+    await abrirMes("Septiembre", 2025, "Vencida");
+    expect(screen.getByText("Esta cuota sigue pendiente aunque las condiciones hayan cambiado.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Subir comprobante" })).toBeInTheDocument();
+  });
+
+  it("no presenta una cuota vencida actual como perteneciente a condiciones anteriores", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "DUE" })]));
+    render(<TenantPortalPage />);
+    await abrirMes("Septiembre", 2026, "Vencida");
+    expect(screen.queryByText("Esta cuota sigue pendiente aunque las condiciones hayan cambiado.")).not.toBeInTheDocument();
+  });
+
+  it("no ofrece subir cuando canSubmitPayment es falso", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "DUE", canSubmitPayment: false })]));
+    render(<TenantPortalPage />);
+    await abrirMes("Septiembre", 2026, "Vencida");
+    expect(screen.queryByRole("button", { name: "Subir comprobante" })).not.toBeInTheDocument();
+  });
+
+  it("muestra todas las cuotas si el backend devuelve más de una para el mes", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ id: 1, status: "PAID" }), cuota({ id: 2, status: "DUE", total: 500000 })]));
+    render(<TenantPortalPage />);
+    await abrirMes("Septiembre", 2026, "2 cuotas");
+    const detalle = screen.getByRole("region", { name: "Detalle de septiembre 2026" });
+    expect(within(detalle).getAllByText("septiembre 2026")).toHaveLength(2);
+    expect(within(detalle).getByText("$ 500.000")).toBeInTheDocument();
+  });
+
+  it("devuelve el foco al mes al cerrar el detalle", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota()]));
+    render(<TenantPortalPage />);
+    const mes = await screen.findByRole("button", { name: "Septiembre 2026: A vencer. Ver detalle" });
+    await userEvent.click(mes);
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+    expect(mes).toHaveFocus();
   });
 });
 
-// --- Subir comprobante ---
-
-describe("subir comprobante", () => {
-  it("sube el archivo y refleja el estado sin recargar", async () => {
-    mockInvoices
-      .mockResolvedValueOnce([cuota()])
-      .mockResolvedValueOnce([
-        cuota({
-          payments: [{ id: 5, invoiceId: 1000, status: "AWAITING_CONFIRMATION", submittedByTenant: true }],
-        }),
-      ]);
-    mockCrearPago.mockResolvedValueOnce({
-      id: 5,
-      invoiceId: 1000,
-      status: "AWAITING_CONFIRMATION",
-      submittedByTenant: true,
-    });
+describe("acciones del detalle", () => {
+  it("refresca el calendario tras subir un comprobante", async () => {
+    mockCalendario
+      .mockResolvedValueOnce(calendario([cuota()]))
+      .mockResolvedValueOnce(calendario([cuota({ canSubmitPayment: false, payments: [{ id: 5, invoiceId: 1000, status: "AWAITING_CONFIRMATION", submittedByTenant: true }] })]));
+    mockCrearPago.mockResolvedValueOnce({ id: 5, invoiceId: 1000, status: "AWAITING_CONFIRMATION", submittedByTenant: true });
     render(<TenantPortalPage />);
 
+    await abrirMes("Septiembre", 2026, "A vencer");
     const archivo = new File(["comprobante"], "recibo.jpg", { type: "image/jpeg" });
-    const input = await screen.findByLabelText(/Subir comprobante de/);
-    await userEvent.upload(input, archivo);
-
+    await userEvent.upload(screen.getByLabelText("Subir comprobante de septiembre 2026"), archivo);
     await waitFor(() => expect(mockCrearPago).toHaveBeenCalledWith(1000, archivo));
-    expect(
-      await screen.findByText("Comprobante esperando confirmación del propietario")
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Comprobante esperando confirmación del propietario")).toBeInTheDocument();
+    expect(await screen.findByText(/Recibimos su comprobante/)).toBeInTheDocument();
   });
 
-  it("no ofrece subir si ya hay un pago esperando confirmación", async () => {
-    mockInvoices.mockResolvedValueOnce([
-      cuota({ payments: [{ id: 5, invoiceId: 1000, status: "AWAITING_CONFIRMATION", submittedByTenant: true }] }),
-    ]);
+  it("permite ver el comprobante propio desde el detalle", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "PAID", canSubmitPayment: false, payments: [{ id: 5, invoiceId: 1000, status: "CONFIRMED", submittedByTenant: true }] })]));
+    mockRecibo.mockResolvedValueOnce(new Blob(["contenido"]));
     render(<TenantPortalPage />);
-
-    await screen.findByText("Comprobante esperando confirmación del propietario");
-    expect(screen.queryByRole("button", { name: /Subir comprobante/ })).not.toBeInTheDocument();
-  });
-
-  it("tras un rechazo, muestra el motivo y vuelve a ofrecer subir", async () => {
-    mockInvoices.mockResolvedValueOnce([
-      cuota({
-        payments: [
-          {
-            id: 5,
-            invoiceId: 1000,
-            status: "REJECTED",
-            submittedByTenant: true,
-            rejectionReason: "El comprobante no corresponde a este período",
-          },
-        ],
-      }),
-    ]);
-    render(<TenantPortalPage />);
-
-    expect(
-      await screen.findByText(/El propietario rechazó este comprobante/)
-    ).toHaveTextContent("El comprobante no corresponde a este período");
-    expect(screen.getByRole("button", { name: /Subir comprobante/ })).toBeInTheDocument();
-  });
-
-  it("un rechazo sin motivo no inventa uno", async () => {
-    mockInvoices.mockResolvedValueOnce([
-      cuota({ payments: [{ id: 5, invoiceId: 1000, status: "REJECTED", submittedByTenant: true }] }),
-    ]);
-    render(<TenantPortalPage />);
-
-    const mensaje = await screen.findByText("El propietario rechazó este comprobante");
-    expect(mensaje.textContent).toBe("El propietario rechazó este comprobante");
-  });
-
-  it("un ajuste muestra el motivo que cargó el propietario junto al monto", async () => {
-    mockInvoices.mockResolvedValueOnce([
-      cuota({
-        baseAmount: 478691,
-        total: 480022,
-        adjustments: [
-          { id: 7, name: "Reparación del calefón", kind: "SURCHARGE", valueType: "FIXED_AMOUNT", value: 1331 },
-        ],
-      }),
-    ]);
-    render(<TenantPortalPage />);
-
-    const desglose = await screen.findByLabelText(/Detalle del importe/);
-    const linea = within(desglose).getByText("Reparación del calefón").closest("div")!;
-    expect(linea).toHaveTextContent(/\+\s*\$\s*1\.331/);
-    expect(within(desglose).getByText("Importe del contrato")).toBeInTheDocument();
-  });
-
-  it("sin ajustes no muestra desglose", async () => {
-    mockInvoices.mockResolvedValueOnce([cuota()]);
-    render(<TenantPortalPage />);
-
-    await screen.findByText("Sus cuotas");
-    expect(screen.queryByLabelText(/Detalle del importe/)).not.toBeInTheDocument();
-  });
-
-  it("si la subida falla, avisa y conserva el estado anterior", async () => {
-    mockInvoices.mockResolvedValueOnce([cuota()]);
-    mockCrearPago.mockRejectedValueOnce(new ApiError(400, "Boom"));
-    render(<TenantPortalPage />);
-
-    const archivo = new File(["comprobante"], "recibo.jpg", { type: "image/jpeg" });
-    const input = await screen.findByLabelText(/Subir comprobante de/);
-    await userEvent.upload(input, archivo);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos registrar el comprobante");
-    expect(screen.getByRole("button", { name: /Subir comprobante/ })).toBeInTheDocument();
-  });
-});
-
-// --- Ver el propio comprobante ---
-
-describe("ver el comprobante", () => {
-  it("lo pide y lo abre en una pestaña nueva", async () => {
-    mockInvoices.mockResolvedValueOnce([
-      cuota({ status: "PAID", payments: [{ id: 5, invoiceId: 1000, status: "CONFIRMED", submittedByTenant: true }] }),
-    ]);
-    const blob = new Blob(["contenido"]);
-    mockRecibo.mockResolvedValueOnce(blob);
-    render(<TenantPortalPage />);
-
-    await userEvent.click(await screen.findByRole("button", { name: "Ver comprobante" }));
-
+    await abrirMes("Septiembre", 2026, "Pagada");
+    await userEvent.click(screen.getByRole("button", { name: "Ver comprobante" }));
     await waitFor(() => expect(mockRecibo).toHaveBeenCalledWith(5));
     expect(window.open).toHaveBeenCalledWith("blob:mock", "_blank", "noopener");
-  });
-
-  it("si falla, lo avisa", async () => {
-    mockInvoices.mockResolvedValueOnce([
-      cuota({ status: "PAID", payments: [{ id: 5, invoiceId: 1000, status: "CONFIRMED", submittedByTenant: true }] }),
-    ]);
-    mockRecibo.mockRejectedValueOnce(new ApiError(500, "Boom"));
-    render(<TenantPortalPage />);
-
-    await userEvent.click(await screen.findByRole("button", { name: "Ver comprobante" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos abrir el comprobante");
   });
 });

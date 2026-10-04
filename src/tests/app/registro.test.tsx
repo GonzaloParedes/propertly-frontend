@@ -8,6 +8,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
 });
 
 import { apiPost, ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 const mockApiPost = vi.mocked(apiPost);
 
 beforeEach(() => {
@@ -256,5 +257,55 @@ describe("estados de error", () => {
 
     await screen.findByRole("alert");
     expect(screen.getByRole("button", { name: "Crear cuenta" })).not.toBeDisabled();
+  });
+});
+
+// --- Validación inline por campo (extensión `errors` de RFC 9457) ---
+
+describe("errores por campo del backend", () => {
+  it("muestra el CUIT duplicado junto al campo, en español, sin banner ni texto en inglés", async () => {
+    mockApiPost.mockRejectedValueOnce(
+      new ApiError(409, "Tax ID already registered", ERROR.DUPLICATE_TAX_ID, {
+        taxId: "Tax ID already registered",
+      })
+    );
+    render(<RegistroPage />);
+    await fillAndSubmit();
+
+    const campo = await screen.findByLabelText("CUIT o CUIL");
+    await waitFor(() => expect(campo).toHaveAttribute("aria-invalid", "true"));
+    expect(screen.getByText("Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.")).toBeInTheDocument();
+    expect(screen.queryByText(/Tax ID already registered/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("muestra el teléfono duplicado junto a su campo", async () => {
+    mockApiPost.mockRejectedValueOnce(
+      new ApiError(409, "Phone number already registered", ERROR.DUPLICATE_PHONE_NUMBER, {
+        phoneNumber: "Phone number already registered",
+      })
+    );
+    render(<RegistroPage />);
+    await fillAndSubmit();
+
+    const campo = await screen.findByLabelText("Teléfono");
+    await waitFor(() => expect(campo).toHaveAttribute("aria-invalid", "true"));
+    expect(screen.getByText("Ese teléfono ya tiene una cuenta. Inicie sesión o use otro.")).toBeInTheDocument();
+  });
+
+  it("limpia el error del campo cuando el usuario vuelve a escribirlo", async () => {
+    mockApiPost.mockRejectedValueOnce(
+      new ApiError(409, "Tax ID already registered", ERROR.DUPLICATE_TAX_ID, {
+        taxId: "Tax ID already registered",
+      })
+    );
+    render(<RegistroPage />);
+    await fillAndSubmit();
+
+    await screen.findByText("Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), "0");
+    expect(
+      screen.queryByText("Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.")
+    ).not.toBeInTheDocument();
   });
 });

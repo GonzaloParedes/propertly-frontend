@@ -7,11 +7,37 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 // que cambian estado, pero mandarlo siempre evita tener que decidirlo acá.
 const CSRF_HEADER = { "X-Requested-With": "XMLHttpRequest" } as const;
 
+// El backend responde los errores en formato RFC 9457 (application/problem+json):
+// `type` es un identificador estable (URN) por condición, `detail` el texto de la
+// ocurrencia, y `errors` (extensión) un mapa campo → mensaje para validación inline.
+// El front decide por `type`, no por el texto: ver src/lib/error-codes.ts.
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+    public type: string | null = null,
+    public fieldErrors: Record<string, string> | null = null
+  ) {
     super(message);
     this.name = "ApiError";
   }
+}
+
+// El cuerpo trae `detail`/`title` en inglés: se guardan en `message` sólo como
+// respaldo técnico (logs), nunca para mostrar crudo. La UI resuelve por `type`.
+async function apiErrorFromResponse(res: Response): Promise<ApiError> {
+  let message = res.statusText;
+  let type: string | null = null;
+  let fieldErrors: Record<string, string> | null = null;
+  try {
+    const body = await res.json();
+    message = body.detail ?? body.title ?? message;
+    type = body.type ?? null;
+    fieldErrors = body.errors ?? null;
+  } catch {
+    // use statusText as fallback
+  }
+  return new ApiError(res.status, message, type, fieldErrors);
 }
 
 export class AuthExpiredError extends Error {
@@ -21,10 +47,23 @@ export class AuthExpiredError extends Error {
   }
 }
 
+const authExpiredListeners = new Set<() => void>();
+
+export function onAuthExpired(listener: () => void): () => void {
+  authExpiredListeners.add(listener);
+  return () => authExpiredListeners.delete(listener);
+}
+
+function authExpired(): never {
+  authExpiredListeners.forEach((listener) => listener());
+  throw new AuthExpiredError();
+}
+
 async function fetchWithAuth(
   path: string,
   init: RequestInit = {},
-  retry = true
+  retry = true,
+  retried = false
 ): Promise<Response> {
   // Un body FormData no lleva Content-Type propio: fetch calcula el boundary
   // multipart solo cuando arma el header él mismo.
@@ -51,20 +90,16 @@ async function fetchWithAuth(
       headers: { ...CSRF_HEADER },
     });
     if (refreshRes.ok) {
-      return fetchWithAuth(path, init, false);
+      return fetchWithAuth(path, init, false, true);
     }
-    throw new AuthExpiredError();
+    if (refreshRes.status === 401 || refreshRes.status === 403) authExpired();
+    throw await apiErrorFromResponse(refreshRes);
   }
 
+  if (res.status === 401 && retried) authExpired();
+
   if (!res.ok) {
-    let message = res.statusText;
-    try {
-      const body = await res.json();
-      message = body.message ?? message;
-    } catch {
-      // use statusText as fallback
-    }
-    throw new ApiError(res.status, message);
+    throw await apiErrorFromResponse(res);
   }
 
   return res;

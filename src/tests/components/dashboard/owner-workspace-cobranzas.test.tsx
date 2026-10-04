@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse, InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
 
 // OwnerWorkspace nombra la cuenta desde la sesión; estas vistas no la usan.
@@ -68,7 +69,7 @@ describe("carga", () => {
     mockContracts.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="cobranzas" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus cobranzas…")).toBeInTheDocument();
   });
 
   it("avisa si no pudo cargarlas, en vez de mostrar una tabla vacía", async () => {
@@ -173,7 +174,7 @@ describe("acciones", () => {
 
     expect(screen.getByRole("button", { name: "Confirmar importe" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Registrar pago" })).not.toBeInTheDocument();
-    expect(screen.getByText("Importe sin confirmar")).toBeInTheDocument();
+    expect(screen.getByText("Sin confirmar")).toBeInTheDocument();
   });
 
   it("confirmar el importe pide una confirmación antes de tocar el backend", async () => {
@@ -197,6 +198,7 @@ describe("acciones", () => {
 
     await waitFor(() => expect(mockConfirmarCuota).toHaveBeenCalledWith(1000));
     await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/Importe confirmado/)).toBeInTheDocument();
   });
 
   it("una cuota pagada sólo ofrece el comprobante", async () => {
@@ -225,7 +227,11 @@ describe("acciones", () => {
   it("traduce el 400 de la cuota sin confirmar en vez de mostrar el texto del backend", async () => {
     conCuotas([cuota()]);
     mockCrearPago.mockRejectedValueOnce(
-      new ApiError(400, "Cannot submit a payment for an unconfirmed invoice")
+      new ApiError(
+        409,
+        "Cannot submit a payment for an unconfirmed invoice",
+        ERROR.PAYMENT_ON_UNCONFIRMED_INVOICE
+      )
     );
     await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
     await userEvent.upload(
@@ -277,6 +283,7 @@ describe("revisar el pago que cargó el inquilino", () => {
     await userEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
 
     await waitFor(() => expect(mockConfirmarPago).toHaveBeenCalledWith(90));
+    expect(await screen.findByText(/Pago confirmado\. La cuota de .* quedó pagada/)).toBeInTheDocument();
   });
 
   it("rechazar también resuelve el pago", async () => {
@@ -286,12 +293,23 @@ describe("revisar el pago que cargó el inquilino", () => {
     await userEvent.click(screen.getByRole("button", { name: "Rechazar" }));
 
     await waitFor(() => expect(mockRechazarPago).toHaveBeenCalledWith(90));
+    expect(await screen.findByText(/Pago rechazado/)).toBeInTheDocument();
   });
 });
 
 // --- el prototipo no puede dejar de andar ---
 
 describe("modo demo", () => {
+  it("confirmar un pago no llama al backend y lo confirma con un aviso", async () => {
+    render(<OwnerWorkspace initialView="cobranzas" demo />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Revisar pago" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+
+    expect(mockConfirmarPago).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Pago confirmado\. La cuota de .* quedó pagada/)).toBeInTheDocument();
+  });
+
   it("no llama al backend y muestra las cuatro cuotas de ejemplo", async () => {
     render(<OwnerWorkspace initialView="cobranzas" demo />);
 
@@ -473,7 +491,11 @@ describe("ajustar importe", () => {
 
   it("explica el rechazo cuando la cuota quedó confirmada mientras editaba", async () => {
     mockSumar.mockRejectedValueOnce(
-      new ApiError(400, "Cannot modify adjustments on a confirmed invoice")
+      new ApiError(
+        409,
+        "Cannot modify adjustments on a confirmed invoice",
+        ERROR.ADJUSTMENT_ON_CONFIRMED_INVOICE
+      )
     );
     const dialogo = await abrirAjuste();
 

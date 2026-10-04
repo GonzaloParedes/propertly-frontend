@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
@@ -11,9 +11,9 @@ vi.mock("@/context/auth-context", () => ({
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
-    tenants: { list: vi.fn() },
+    tenants: { list: vi.fn(), create: vi.fn() },
     contracts: { list: vi.fn() },
-    properties: { list: vi.fn(), archive: vi.fn() },
+    properties: { list: vi.fn(), create: vi.fn(), archive: vi.fn() },
     invoices: { list: vi.fn(), confirm: vi.fn() },
     payments: { create: vi.fn(), confirm: vi.fn(), reject: vi.fn(), getReceipt: vi.fn() },
   },
@@ -62,7 +62,7 @@ describe("carga", () => {
     mockContracts.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="contratos" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus contratos…")).toBeInTheDocument();
     // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
     // después es el parpadeo que se veía al entrar a la pantalla.
     expect(screen.queryByRole("button", { name: "Nuevo contrato" })).not.toBeInTheDocument();
@@ -216,5 +216,105 @@ describe("modo demo", () => {
     await userEvent.click(screen.getByRole("button", { name: /Belgrano 445/ }));
 
     expect(screen.getByRole("heading", { level: 1, name: "Belgrano 445, PB" })).toBeInTheDocument();
+  });
+});
+
+// --- inquilino nuevo desde el asistente de contrato ---
+
+describe("propiedad del asistente de contrato", () => {
+  it("sin ninguna propiedad cargada, no dice que todas tienen contrato", async () => {
+    vi.mocked(AlquiaBackendClient.properties.list).mockResolvedValue([]);
+    vi.mocked(AlquiaBackendClient.tenants.list).mockResolvedValue([]);
+    conContratos([]);
+    await screen.findByText("Todavía no tiene contratos");
+
+    await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+
+    expect(await screen.findByText(/Todavía no cargó ninguna propiedad/)).toBeInTheDocument();
+    expect(screen.queryByText(/ya tienen un contrato vigente/)).not.toBeInTheDocument();
+  });
+
+  it("con todas alquiladas, lo dice", async () => {
+    vi.mocked(AlquiaBackendClient.properties.list).mockResolvedValue([contract().property]);
+    vi.mocked(AlquiaBackendClient.tenants.list).mockResolvedValue([]);
+    conContratos([contract()]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Nuevo contrato" })[0]);
+
+    expect(await screen.findByText(/ya tienen un contrato vigente/)).toBeInTheDocument();
+  });
+});
+
+describe("propiedad nueva desde el asistente de contrato", () => {
+  async function hastaAgregarPropiedad() {
+    vi.mocked(AlquiaBackendClient.properties.list).mockResolvedValue([]);
+    vi.mocked(AlquiaBackendClient.tenants.list).mockResolvedValue([]);
+    conContratos([]);
+    await screen.findByText("Todavía no tiene contratos");
+    await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Agregar una propiedad nueva" }));
+    return screen.findByRole("region", { name: "Asistente de nueva propiedad" });
+  }
+
+  it("abre el asistente de propiedad desde el paso 1 y «Atrás» vuelve al contrato", async () => {
+    const asistente = await hastaAgregarPropiedad();
+    expect(within(asistente).getByText("Paso 1 de 4")).toBeInTheDocument();
+
+    await userEvent.click(within(asistente).getByRole("button", { name: "Atrás" }));
+
+    const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
+    expect(within(contrato).getByText("Paso 1 de 6")).toBeInTheDocument();
+  });
+});
+
+describe("inquilino nuevo desde el asistente de contrato", () => {
+  async function hastaAgregarInquilino() {
+    vi.mocked(AlquiaBackendClient.properties.list).mockResolvedValue([contract().property]);
+    vi.mocked(AlquiaBackendClient.tenants.list).mockResolvedValue([]);
+    conContratos([]);
+    await screen.findByText("Todavía no tiene contratos");
+
+    await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+    await userEvent.click(await screen.findByText("Av. Rivadavia 2340, 5.º A"));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Agregar un inquilino nuevo" }));
+    return screen.findByRole("region", { name: "Asistente de nuevo inquilino" });
+  }
+
+  it("abre el formulario de inquilino en un solo paso, con «Guardar inquilino» y no «Seguir»", async () => {
+    const asistente = await hastaAgregarInquilino();
+
+    // Antes quedaba en el paso 2 de un asistente de 1 paso: «Seguir» sumaba pasos y nunca guardaba.
+    expect(within(asistente).getByRole("button", { name: "Guardar inquilino" })).toBeInTheDocument();
+    expect(within(asistente).queryByRole("button", { name: /Seguir/ })).not.toBeInTheDocument();
+  });
+
+  it("al guardarlo vuelve al contrato en el paso del inquilino, con el nuevo elegido", async () => {
+    const asistente = await hastaAgregarInquilino();
+    const nuevo = { id: 7, firstName: "Ana", lastName: "Gómez", taxId: "20224567899",
+      email: "ana@ejemplo.com", phoneNumber: "1144552210" };
+    vi.mocked(AlquiaBackendClient.tenants.create).mockResolvedValue(nuevo);
+    vi.mocked(AlquiaBackendClient.tenants.list).mockResolvedValue([nuevo]);
+
+    await userEvent.type(within(asistente).getByLabelText("Nombre"), "Ana");
+    await userEvent.type(within(asistente).getByLabelText("Apellido"), "Gómez");
+    await userEvent.type(within(asistente).getByLabelText("CUIT o CUIL"), "20224567899");
+    await userEvent.type(within(asistente).getByLabelText("Correo electrónico"), "ana@ejemplo.com");
+    await userEvent.type(within(asistente).getByLabelText("Teléfono"), "1144552210");
+    await userEvent.click(within(asistente).getByRole("button", { name: "Guardar inquilino" }));
+
+    const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
+    expect(await within(contrato).findByText("Paso 2 de 6")).toBeInTheDocument();
+    expect(within(contrato).getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+
+  it("«Atrás» descarta el formulario y vuelve al contrato sin perder la propiedad", async () => {
+    const asistente = await hastaAgregarInquilino();
+
+    await userEvent.click(within(asistente).getByRole("button", { name: "Atrás" }));
+
+    const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
+    expect(within(contrato).getByText("Paso 2 de 6")).toBeInTheDocument();
   });
 });

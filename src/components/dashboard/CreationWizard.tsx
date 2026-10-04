@@ -4,30 +4,30 @@ import { useEffect, useState } from "react";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { AddressSuggestionResponse, PropertyCategory, PropertyResponse, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
 import Counter from "@/components/ui/Counter";
+import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
 import { correoValido } from "@/lib/correo";
 import { formatearDireccion } from "@/lib/tenant-rows";
 
 /**
- * El backend devuelve 400 tanto para los duplicados como para cualquier otra
- * validación, y sólo se distinguen por el texto: TenantService.create chequea
- * dos unicidades y tira IllegalArgumentException("Tax ID already registered") o
- * ("Phone number already registered"); el resto llega como "Validation failed"
- * desde el handler de bean validation. Los dos duplicados son por propietario,
- * no globales — de ahí el «en otro inquilino suyo».
+ * El backend distingue cada condición con un `type` estable (RFC 9457): los dos
+ * duplicados de TenantService.create llegan como DUPLICATE_TAX_ID / DUPLICATE_PHONE_NUMBER,
+ * y el resto de validaciones sin `type` propio cae al genérico. Los dos duplicados
+ * son por propietario, no globales — de ahí el «en otro inquilino suyo».
  */
 function mensajeDeError(err: unknown): string {
   if (err instanceof AuthExpiredError) {
     return "Su sesión expiró. Vuelva a iniciar sesión para guardar el inquilino.";
   }
-  if (err instanceof ApiError && err.message === "Tax ID already registered") {
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_TAX_ID) {
     return "Ese CUIT ya figura en otro inquilino suyo.";
   }
-  if (err instanceof ApiError && err.message === "Phone number already registered") {
+  if (err instanceof ApiError && err.type === ERROR.DUPLICATE_PHONE_NUMBER) {
     return "Ese teléfono ya figura en otro inquilino suyo.";
   }
   if (err instanceof ApiError && err.status === 400) {
@@ -210,7 +210,7 @@ function mensajeDeErrorContrato(err: unknown): string {
   if (err instanceof AuthExpiredError) {
     return "Su sesión expiró. Vuelva a iniciar sesión para crear el contrato.";
   }
-  if (err instanceof ApiError && err.message === "Property already has an active contract") {
+  if (err instanceof ApiError && err.type === ERROR.PROPERTY_HAS_ACTIVE_CONTRACT) {
     return "Esa propiedad ya tiene un contrato vigente. Finalícelo antes de crear otro.";
   }
   if (err instanceof ApiError && err.status === 400) {
@@ -279,7 +279,8 @@ function datosDeActualizacion(
   return { incrementMethod: "INDEX" as const, incrementIndexName: method };
 }
 
-type ContractLists = { propiedades: Opcion[]; inquilinos: Opcion[] };
+// `sinPropiedades`: no tiene ninguna cargada (distinto de tenerlas todas alquiladas).
+type ContractLists = { propiedades: Opcion[]; inquilinos: Opcion[]; sinPropiedades?: boolean };
 type ContractMethod = "FIXED_PERCENTAGE" | "ICL" | "IPC";
 
 function listasDisponibles(demo: boolean, loadState: ContractLists | "error" | null): ContractLists | null {
@@ -328,7 +329,7 @@ function TenantWizardStep({
   const taxIdError = soloDigitos(taxId).length < 11
     ? "Faltan dígitos: son 11 en total."
     : "El número no es válido. Revise que no haya un dígito cambiado.";
-  return <><h1>¿Quién es el inquilino?</h1><p>Estos son los datos que van a figurar en el contrato. Al correo le llegan los avisos de vencimiento y el enlace para subir comprobantes.</p><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span className="sr-only">Nombre</span><input placeholder="Nombre" value={firstName} onChange={(event) => onFirstNameChange(event.target.value)} /></label><label className="owner-wizard-field"><span className="sr-only">Apellido</span><input placeholder="Apellido" value={lastName} onChange={(event) => onLastNameChange(event.target.value)} /></label></div><label className="owner-wizard-field"><span className="sr-only">CUIT o CUIL</span><input inputMode="numeric" placeholder="CUIT o CUIL — 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span className="sr-only">Correo electrónico</span><input type="email" placeholder="Correo electrónico" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}<label className="owner-wizard-field"><span className="sr-only">Teléfono</span><input type="tel" inputMode="tel" placeholder="Teléfono — 11 44552210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div></>;
+  return <><h1>¿Quién es el inquilino?</h1><p>Estos son los datos que van a figurar en el contrato. Al correo le llegan los avisos de vencimiento y el enlace para subir comprobantes.</p><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={firstName} onChange={(event) => onFirstNameChange(event.target.value)} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={lastName} onChange={(event) => onLastNameChange(event.target.value)} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico</span><input type="email" placeholder="Ej: maria@correo.com" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}<label className="owner-wizard-field"><span>Teléfono</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div></>;
 }
 
 function ContractOptions({
@@ -349,7 +350,7 @@ function ContractOptions({
   if (loadState === "error") {
     return <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />No pudimos cargar sus datos. Inténtelo de nuevo más tarde.</p>;
   }
-  if (loadState === null) return <p className="owner-wizard-help">Cargando…</p>;
+  if (loadState === null) return <Cargando>Cargando…</Cargando>;
   if (options.length === 0) return empty;
 
   return <div className="owner-wizard-options" role="radiogroup">
@@ -357,9 +358,9 @@ function ContractOptions({
   </div>;
 }
 
-function ContractPropertyStep({ lists, selected, onSelect }: Readonly<{ lists: ContractLists | "error" | null; selected: number | null; onSelect: (id: number) => void }>) {
+function ContractPropertyStep({ lists, selected, onSelect, onNewProperty }: Readonly<{ lists: ContractLists | "error" | null; selected: number | null; onSelect: (id: number) => void; onNewProperty?: () => void }>) {
   const options = typeof lists === "object" && lists !== null ? lists.propiedades : [];
-  return <><h1>¿Qué propiedad va a alquilar?</h1><p>Elija una de sus propiedades sin contrato vigente. Después le pedimos el inquilino.</p><ContractOptions loadState={lists} options={options} selected={selected} onSelect={onSelect} icon="building" empty={<p className="owner-wizard-help">Todas sus propiedades ya tienen un contrato vigente. Cargue una nueva para poder alquilarla.</p>} /></>;
+  return <><h1>¿Qué propiedad va a alquilar?</h1><p>Elija una de sus propiedades sin contrato vigente. Después le pedimos el inquilino.</p><ContractOptions loadState={lists} options={options} selected={selected} onSelect={onSelect} icon="building" empty={<p className="owner-wizard-help">{typeof lists === "object" && lists?.sinPropiedades ? "Todavía no cargó ninguna propiedad." : "Todas sus propiedades ya tienen un contrato vigente."}</p>} /><button type="button" className="owner-wizard-quiet" onClick={onNewProperty}><Icon name="plus" />Agregar una propiedad nueva</button></>;
 }
 
 function ContractTenantStep({ lists, selected, onSelect, onNewTenant }: Readonly<{ lists: ContractLists | "error" | null; selected: number | null; onSelect: (id: number) => void; onNewTenant?: () => void }>) {
@@ -388,11 +389,11 @@ function ContractReviewStep({ lists, propertyId, tenantId, rent, dueDay, term, s
 }
 
 function ContractWizardStep(props: Readonly<{
-  step: number; lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; error: string | null; onPropertyChange: (value: number) => void; onTenantChange: (value: number) => void; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onNewTenant?: () => void;
+  step: number; lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; error: string | null; onPropertyChange: (value: number) => void; onTenantChange: (value: number) => void; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onNewTenant?: () => void; onNewProperty?: () => void;
 }>) {
   const { step, ...stepProps } = props;
   const steps: Record<number, React.ReactNode> = {
-    1: <ContractPropertyStep lists={stepProps.lists} selected={stepProps.propertyId} onSelect={stepProps.onPropertyChange} />,
+    1: <ContractPropertyStep lists={stepProps.lists} selected={stepProps.propertyId} onSelect={stepProps.onPropertyChange} onNewProperty={stepProps.onNewProperty} />,
     2: <ContractTenantStep lists={stepProps.lists} selected={stepProps.tenantId} onSelect={stepProps.onTenantChange} onNewTenant={stepProps.onNewTenant} />,
     3: <ContractRentStep rent={stepProps.rent} dueDay={stepProps.dueDay} onRentChange={stepProps.onRentChange} onDueDayChange={stepProps.onDueDayChange} />,
     4: <ContractTermStep startDate={stepProps.startDate} term={stepProps.term} isStartDateValid={stepProps.isStartDateValid} onStartDateChange={stepProps.onStartDateChange} onTermChange={stepProps.onTermChange} />,
@@ -401,15 +402,23 @@ function ContractWizardStep(props: Readonly<{
   return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propertyId={stepProps.propertyId} tenantId={stepProps.tenantId} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} error={stepProps.error} />;
 }
 
-export default function CreationWizard({ kind, onClose, onComplete, onNewTenant, demo = false, initialPropertyId }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; onNewTenant?: () => void; demo?: boolean; initialPropertyId?: number }>) {
+export default function CreationWizard({ kind: tipo, onClose, onComplete, demo = false, initialPropertyId }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; demo?: boolean; initialPropertyId?: number }>) {
+  // Crear un inquilino o una propiedad desde el contrato es un desvío dentro del
+  // mismo asistente: el contrato en curso (elecciones, paso) queda guardado y se
+  // retoma al volver.
+  const [desvio, setDesvio] = useState<"tenant" | "property" | null>(null);
+  const [pasoDesvio, setPasoDesvio] = useState(1);
+  const kind: WizardKind = tipo === "contract" && desvio ? desvio : tipo;
   const total = cantidadPasos(kind);
   // Si el contrato se abre desde una propiedad, ya se sabe cuál es: arranca en
   // el paso del inquilino (se puede volver al 1 para cambiarla).
-  const preseleccionada = kind === "contract" && initialPropertyId !== undefined;
-  const [step, setStep] = useState(preseleccionada ? 2 : 1);
+  const preseleccionada = tipo === "contract" && initialPropertyId !== undefined;
+  const [pasoContrato, setPasoContrato] = useState(preseleccionada ? 2 : 1);
+  const step = desvio ? pasoDesvio : pasoContrato;
+  const setStep = desvio ? setPasoDesvio : setPasoContrato;
   const [propiedadId, setPropiedadId] = useState<number | null>(preseleccionada ? initialPropertyId : null);
   const [inquilinoId, setInquilinoId] = useState<number | null>(null);
-  const [method, setMethod] = useState<"FIXED_PERCENTAGE" | "ICL" | "IPC">("FIXED_PERCENTAGE");
+  const [method, setMethod] = useState<ContractMethod>("FIXED_PERCENTAGE");
   const [term, setTerm] = useState(36);
   const [alquiler, setAlquiler] = useState("");
   const [inicio, setInicio] = useState(hoyISO);
@@ -460,6 +469,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
           contratos.filter((c) => c.status === "ACTIVE").map((c) => c.property.id)
         );
         setCargaListas({
+          sinPropiedades: propiedades.length === 0,
           propiedades: propiedades
             .filter((p: PropertyResponse) => !ocupadas.has(p.id))
             .map((p: PropertyResponse) => ({
@@ -543,14 +553,39 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     return contractBloqueado();
   }
   const bloqueado = calcularBloqueado();
+  function volverAlContrato() {
+    setGuardando(false);
+    setDesvio(null);
+    setPasoDesvio(1);
+  }
+  // Desde el contrato vuelve al paso del inquilino con el nuevo ya elegido;
+  // suelto, termina el asistente (onComplete lo desmonta, sin setGuardando(false)).
+  function terminarInquilino(id: number | null) {
+    if (tipo !== "tenant") {
+      if (id !== null) setInquilinoId(id);
+      setNombre(""); setApellido(""); setCuit(""); setCorreo(""); setTelefono("");
+      return volverAlContrato();
+    }
+    onComplete();
+  }
+  // Ídem con la propiedad: vuelve al paso 1 del contrato con la nueva elegida.
+  function terminarPropiedad(id: number | null) {
+    if (tipo !== "property") {
+      if (id !== null) setPropiedadId(id);
+      setDireccion(null); setUnidad(""); setCategoria(null); setBedrooms(null);
+      setBathrooms(null); setSuperficie(""); setMascotas(false); setAmoblada(false);
+      return volverAlContrato();
+    }
+    onComplete();
+  }
   async function guardarInquilino() {
     // En /prototipo no hay sesión: guardar de verdad daría 401 y la demo se
     // cortaría justo en el paso que quiere mostrar.
-    if (demo) return onComplete();
+    if (demo) return terminarInquilino(null);
     setErrorGuardado(null);
     setGuardando(true);
     try {
-      await AlquiaBackendClient.tenants.create({
+      const creado = await AlquiaBackendClient.tenants.create({
         firstName: nombre.trim(),
         lastName: apellido.trim(),
         // Sin guiones: @ValidTaxId acepta los dos formatos, pero guardar siempre
@@ -564,8 +599,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
         // con separadores. Ver src/lib/telefono.ts.
         phoneNumber: soloDigitosTelefono(telefono),
       });
-      // Sin setGuardando(false): onComplete desmonta el asistente.
-      onComplete();
+      terminarInquilino(creado.id);
     } catch (err) {
       setErrorGuardado(mensajeDeError(err));
       setGuardando(false);
@@ -574,11 +608,11 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
 
   async function guardarPropiedad() {
     if (direccion === null || categoria === null) return;
-    if (demo) return onComplete();
+    if (demo) return terminarPropiedad(null);
     setErrorGuardado(null);
     setGuardando(true);
     try {
-      await AlquiaBackendClient.properties.create({
+      const creada = await AlquiaBackendClient.properties.create({
         street: direccion.street.trim(),
         number: direccion.number.trim(),
         // El piso y el departamento son un campo aparte del número de calle.
@@ -597,7 +631,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
         petsAllowed: mascotas || undefined,
         furnished: amoblada || undefined,
       });
-      onComplete();
+      terminarPropiedad(creada.id);
     } catch (err) {
       setErrorGuardado(mensajeDeErrorPropiedad(err));
       setGuardando(false);
@@ -754,7 +788,8 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     onMethodChange={setMethod}
     onPercentageChange={setPorcentaje}
     onFrequencyChange={setFrecuencia}
-    onNewTenant={onNewTenant}
+    onNewTenant={() => { setErrorGuardado(null); setPasoDesvio(1); setDesvio("tenant"); }}
+    onNewProperty={() => { setErrorGuardado(null); setPasoDesvio(1); setDesvio("property"); }}
   />;
 
   const tituloAsistente = (() => {
@@ -778,7 +813,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
     return contractStep;
   })();
   const footerButtonContent = (() => {
-    if (guardando) return <><span className="owner-wizard-spinner" />Guardando…</>;
+    if (guardando) return <><Spinner />Guardando…</>;
     if (finish) return finishLabel;
     return <>Seguir <Icon name="arrow" /></>;
   })();
@@ -799,7 +834,7 @@ export default function CreationWizard({ kind, onClose, onComplete, onNewTenant,
       </header>
       <main className="owner-wizard__body">{stepContent}</main>
       <footer className="owner-wizard__footer">
-        <button type="button" className="owner-wizard-quiet" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1 || guardando}>
+        <button type="button" className="owner-wizard-quiet" onClick={() => (desvio && step === 1 ? volverAlContrato() : setStep((current) => Math.max(1, current - 1)))} disabled={(step === 1 && !desvio) || guardando}>
           Atrás
         </button>
         <button type="button" className="owner-wizard-next" onClick={next} disabled={bloqueado}>

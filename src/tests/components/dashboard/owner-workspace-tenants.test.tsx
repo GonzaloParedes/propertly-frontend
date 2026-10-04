@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse, InvoiceResponse, TenantResponse } from "@/lib/backend-types";
 
 // OwnerWorkspace nombra la cuenta desde la sesión; estas vistas no la usan.
@@ -11,7 +12,7 @@ vi.mock("@/context/auth-context", () => ({
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
-    tenants: { list: vi.fn(), update: vi.fn(), archive: vi.fn() },
+    tenants: { list: vi.fn(), create: vi.fn(), update: vi.fn(), archive: vi.fn() },
     contracts: { list: vi.fn(), getTenantAccess: vi.fn() },
     properties: { list: vi.fn(), archive: vi.fn() },
     users: { getReminderSettings: vi.fn() },
@@ -21,6 +22,7 @@ vi.mock("@/lib/backend-client", () => ({
 
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockTenants = vi.mocked(AlquiaBackendClient.tenants.list);
+const mockCreateTenant = vi.mocked(AlquiaBackendClient.tenants.create);
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
 
@@ -63,7 +65,7 @@ describe("carga", () => {
     mockInvoices.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="inquilinos" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus inquilinos…")).toBeInTheDocument();
     // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
     // después es el parpadeo que se veía al entrar a la pantalla.
     expect(screen.queryByRole("button", { name: "Agregar inquilino" })).not.toBeInTheDocument();
@@ -104,7 +106,7 @@ describe("modo demo", () => {
     render(<OwnerWorkspace initialView="inquilinos" demo />);
 
     expect(screen.getByText("Jorge Paletta")).toBeInTheDocument();
-    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cargando sus inquilinos…")).not.toBeInTheDocument();
   });
 
   it("incluye un inquilino sin contrato, que también es parte del diseño", () => {
@@ -113,6 +115,46 @@ describe("modo demo", () => {
 
     expect(screen.getByText("Sin contrato")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Crear contrato" })).toBeInTheDocument();
+  });
+});
+
+describe("modo demo · avisos", () => {
+  it("al terminar el asistente de inquilino vuelve al listado y lo confirma", async () => {
+    conDatos();
+    render(<OwnerWorkspace initialView="inquilinos" demo />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Agregar inquilino" }));
+    await userEvent.type(screen.getByLabelText("Nombre"), "Lucía");
+    await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), "27248910556");
+    await userEvent.type(screen.getByLabelText("Correo electrónico"), "lucia@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
+
+    expect(await screen.findByText(/Inquilino agregado/)).toBeInTheDocument();
+    expect(screen.getByText("Jorge Paletta")).toBeInTheDocument();
+  });
+});
+
+describe("alta de inquilino", () => {
+  it("vuelve a pedir el listado y muestra al inquilino recién creado", async () => {
+    mockTenants.mockResolvedValueOnce([]).mockResolvedValueOnce([JORGE]);
+    mockContracts.mockResolvedValue([]);
+    mockInvoices.mockResolvedValue([]);
+    mockCreateTenant.mockResolvedValue(JORGE);
+    render(<OwnerWorkspace initialView="inquilinos" />);
+
+    await screen.findByText("Todavía no cargó ningún inquilino");
+    await userEvent.click(screen.getByRole("button", { name: "Agregar inquilino" }));
+    await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
+    await userEvent.type(screen.getByLabelText("Apellido"), "Paletta");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), "20224567899");
+    await userEvent.type(screen.getByLabelText("Correo electrónico"), "jorge@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
+
+    expect(await screen.findByText("Jorge Paletta")).toBeInTheDocument();
+    expect(mockTenants).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -286,7 +328,9 @@ describe("detalle · editar datos", () => {
   });
 
   it("explica el documento duplicado, que es lo que el propietario puede resolver", async () => {
-    mockUpdate.mockRejectedValueOnce(new ApiError(400, "Tax ID already registered"));
+    mockUpdate.mockRejectedValueOnce(
+      new ApiError(409, "Tax ID already registered", ERROR.DUPLICATE_TAX_ID)
+    );
     const dialogo = await abrirEdicion();
 
     await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
@@ -370,6 +414,7 @@ describe("detalle · archivar", () => {
 
     await waitFor(() => expect(mockArchive).toHaveBeenCalledWith(2));
     expect(await screen.findByText("Todavía no cargó ningún inquilino")).toBeInTheDocument();
+    expect(await screen.findByText(/Inquilino archivado/)).toBeInTheDocument();
   });
 
   it("explica el 409 y el inquilino sigue en la lista", async () => {
