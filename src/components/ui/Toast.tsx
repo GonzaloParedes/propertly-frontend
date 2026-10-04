@@ -1,11 +1,18 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/ui/Icon";
 
-type Tipo = "exito" | "error";
+// «aviso» es algo que cambió sin que la persona lo pidiera (llegó un pago para revisar).
+// No es un éxito ni un error, así que no se muestra con ninguno de sus colores.
+type Tipo = "exito" | "error" | "aviso";
 type Aviso = { id: number; tipo: Tipo; mensaje: string };
 
-type ToastApi = { exito: (mensaje: string) => void; error: (mensaje: string) => void };
+type ToastApi = {
+  exito: (mensaje: string) => void;
+  error: (mensaje: string) => void;
+  aviso: (mensaje: string) => void;
+};
 
 const ToastContext = createContext<ToastApi | null>(null);
 
@@ -34,7 +41,11 @@ export function ToastProvider({ children }: Readonly<{ children: React.ReactNode
   }, []);
 
   const api = useMemo<ToastApi>(
-    () => ({ exito: (mensaje) => agregar("exito", mensaje), error: (mensaje) => agregar("error", mensaje) }),
+    () => ({
+      exito: (mensaje) => agregar("exito", mensaje),
+      error: (mensaje) => agregar("error", mensaje),
+      aviso: (mensaje) => agregar("aviso", mensaje),
+    }),
     [agregar]
   );
 
@@ -47,7 +58,7 @@ export function ToastProvider({ children }: Readonly<{ children: React.ReactNode
           chocaría con los avisos inline de las pantallas, que ya lo usan. */}
       <div className="alquia-toasts">
         <div aria-live="polite" data-toasts="exito" className="alquia-toasts__region">
-          {avisos.filter((aviso) => aviso.tipo === "exito").map((aviso) => (
+          {avisos.filter((aviso) => aviso.tipo !== "error").map((aviso) => (
             <Toast key={aviso.id} aviso={aviso} onClose={cerrar} />
           ))}
         </div>
@@ -66,12 +77,13 @@ function Toast({ aviso, onClose }: Readonly<{ aviso: Aviso; onClose: (id: number
   const { id, tipo, mensaje } = aviso;
 
   useEffect(() => {
-    if (tipo !== "exito" || pausado) return;
+    if (tipo === "error" || pausado) return;
     const timer = setTimeout(() => onClose(id), DURACION_EXITO_MS);
     return () => clearTimeout(timer);
   }, [id, tipo, pausado, onClose]);
 
   const esExito = tipo === "exito";
+  const prefijo = { exito: "Listo: ", error: "Error: ", aviso: "Aviso: " }[tipo];
   return (
     <div
       className={`alquia-toast alquia-toast--${tipo}`}
@@ -81,11 +93,13 @@ function Toast({ aviso, onClose }: Readonly<{ aviso: Aviso; onClose: (id: number
       onBlur={() => setPausado(false)}
     >
       <span className="alquia-toast__icon" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-          {esExito ? <path d="m20 6.5-10.5 10L4 11.5" /> : <><path d="M12 3.5 2.5 20.5h19L12 3.5Z" /><path d="M12 10v4.5M12 17.8v.1" /></>}
-        </svg>
+        {tipo === "aviso" ? <Icon name="clock" size={22} /> : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            {esExito ? <path d="m20 6.5-10.5 10L4 11.5" /> : <><path d="M12 3.5 2.5 20.5h19L12 3.5Z" /><path d="M12 10v4.5M12 17.8v.1" /></>}
+          </svg>
+        )}
       </span>
-      <p><span className="sr-only">{esExito ? "Listo: " : "Error: "}</span>{mensaje}</p>
+      <p><span className="sr-only">{prefijo}</span>{mensaje}</p>
       <button type="button" aria-label="Cerrar aviso" onClick={() => onClose(id)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
           <path d="m6.5 6.5 11 11m0-11-11 11" />

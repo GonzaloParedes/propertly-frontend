@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
 import CreationWizard from "@/components/dashboard/CreationWizard";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -8,6 +8,7 @@ import { AlquiaBackendClient } from "@/lib/backend-client";
 import type {
   AdjustmentResponse,
   ContractResponse,
+  PaymentResponse,
   PropertyRequest,
   PropertyResponse,
   ReminderSettingsResponse,
@@ -86,7 +87,8 @@ import { estadoDeContrato } from "@/lib/contratos";
 import { describirRecordatorios, resumenRecordatorios, DIAS_MAX, DIAS_MIN } from "@/lib/recordatorios";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
-import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ApiError, AuthExpiredError, renovarSesion } from "@/lib/api";
+import { usePaymentEvents, type EventoDePago } from "@/hooks/usePaymentEvents";
 import { ERROR } from "@/lib/error-codes";
 import CambioCondicionesForm from "@/components/dashboard/CambioCondicionesForm";
 import { useAuth } from "@/context/auth-context";
@@ -2028,6 +2030,42 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   useLoadedResource({ enabled: necesitaCobranzas, refreshKey: refresco, load: loadCollectionRows, setResult: setCargaCobranzas });
 
+  // Un pago que cambia del lado del inquilino (o de otra pestaña) llega por el stream
+  // y se recarga en silencio. El aviso sale sólo si el comprobante no estaba ya en pantalla.
+  // null hasta la primera carga: el stream puede llegar antes, y sin línea de base no hay cambio que avisar.
+  const pagosMostrados = useRef<Map<number, PaymentResponse["status"]> | null>(null);
+  const eventosPorAvisar = useRef<EventoDePago[]>([]);
+  usePaymentEvents({
+    ruta: necesitaCobranzas && !demo ? "/payments/events" : null,
+    onConectada: () => setRefresco((n) => n + 1),
+    onPagoActualizado: (evento) => {
+      eventosPorAvisar.current = [...eventosPorAvisar.current, evento];
+      setRefresco((n) => n + 1);
+    },
+    renovarSesion,
+    // Sin sesión, la recarga da 401 y el flujo de sesión vencida que ya existe toma el control.
+    onSesionPerdida: () => setRefresco((n) => n + 1),
+  });
+
+  useEffect(() => {
+    if (!cargaCobranzas || !("ok" in cargaCobranzas)) return;
+    const filas = cargaCobranzas.ok;
+    const eventos = eventosPorAvisar.current;
+    eventosPorAvisar.current = [];
+    const anteriores = pagosMostrados.current;
+    const llegoUnComprobante = anteriores !== null && eventos.some(
+      (evento) => evento.status === "AWAITING_CONFIRMATION" && anteriores.get(evento.paymentId) !== "AWAITING_CONFIRMATION",
+    );
+    if (llegoUnComprobante) toast.aviso("Llegó un comprobante para revisar.");
+
+    const mostrados = new Map<number, PaymentResponse["status"]>();
+    for (const fila of filas) {
+      if (fila.pagoPendiente) mostrados.set(fila.pagoPendiente.id, fila.pagoPendiente.status);
+      if (fila.pagoConfirmado) mostrados.set(fila.pagoConfirmado.id, fila.pagoConfirmado.status);
+    }
+    pagosMostrados.current = mostrados;
+  }, [cargaCobranzas, toast]);
+
   const inquilinos = loadedData(demo, inquilinosDemo, carga);
   const inquilinosError = loadHasError(demo, carga);
   const selectedProperty = demoSelection(properties, selected);
@@ -2080,6 +2118,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   const cobranzas = loadedData(demo, cobranzasDemo, cargaCobranzas);
   const cobranzasError = loadHasError(demo, cargaCobranzas);
+  // Si la cuota que se está revisando cambió en el servidor, el diálogo muestra su estado
+  // actual: la acción se hace sobre lo que la persona ve, no sobre el comprobante viejo.
+  const revisionActual = enRevision && ((cobranzas ?? []).find((fila) => fila.invoiceId === enRevision.invoiceId) ?? enRevision);
   // La cuota en edición se deriva por id desde la lista ya cargada, no se guarda
   // una copia: así el diálogo refleja cada ítem agregado/editado/quitado apenas
   // se recarga, sin re-apuntar un snapshot a mano.
@@ -2508,7 +2549,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     archivingProperty: archivando,
     editingProperty: editandoPropiedad,
     editingPropertyId: propiedadEditadaId,
-    reviewingPayment: enRevision,
+    reviewingPayment: revisionActual,
     registeringPayment: aRegistrar,
     confirmingInvoice: confirmando,
     paymentFile: archivo,
@@ -2556,7 +2597,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     confirmInvoice: (invoiceId) => void accionDeCuota(() => AlquiaBackendClient.invoices.confirm(invoiceId), () => setConfirmando(null), "Importe confirmado. Le avisamos al inquilino que ya puede pagar."),
     viewReceipt: (paymentId) => verComprobante(paymentId),
     rejectPayment: (paymentId) => accionDeCuota(() => AlquiaBackendClient.payments.reject(paymentId), () => setEnRevision(null), "Pago rechazado. El inquilino puede cargar un comprobante nuevo."),
-    confirmPayment: (paymentId) => accionDeCuota(() => AlquiaBackendClient.payments.confirm(paymentId), () => setEnRevision(null), `Pago confirmado. La cuota de ${enRevision?.periodo} quedó pagada.`),
+    confirmPayment: (paymentId) => accionDeCuota(() => AlquiaBackendClient.payments.confirm(paymentId), () => setEnRevision(null), `Pago confirmado. La cuota de ${revisionActual?.periodo} quedó pagada.`),
     closePaymentRegistration: () => setARegistrar(null),
     setPaymentFile: setArchivo,
     registerPayment: (invoiceId, file) => void accionDeCuota(() => AlquiaBackendClient.payments.create(invoiceId, file), () => { setARegistrar(null); setArchivo(null); }, `Pago registrado. La cuota de ${aRegistrar?.periodo} quedó pagada.`),

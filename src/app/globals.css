@@ -179,6 +179,8 @@ body {
 .alquia-toast__icon{display:grid;flex:none;width:44px;height:44px;place-items:center;border-radius:50%}
 .alquia-toast--exito{background:var(--exito-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--exito) 35%,transparent),0 14px 34px -12px rgba(30,27,46,.18)}
 .alquia-toast--exito .alquia-toast__icon{background:#fff;color:var(--exito)}
+.alquia-toast--aviso{background:var(--indigo-suave);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--indigo) 35%,transparent),0 14px 34px -12px rgba(30,27,46,.18)}
+.alquia-toast--aviso .alquia-toast__icon{background:#fff;color:var(--indigo)}
 .alquia-toast--error{background:var(--error-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--error) 35%,transparent),0 14px 34px -12px rgba(30,27,46,.18)}
 .alquia-toast--error .alquia-toast__icon{background:#fff;color:var(--error)}
 .alquia-toast button{display:grid;flex:none;width:48px;height:48px;place-items:center;border:0;border-radius:12px;

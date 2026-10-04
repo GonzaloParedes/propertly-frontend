@@ -119,6 +119,28 @@ async function request<T>(
   return JSON.parse(text) as T;
 }
 
+/** URL absoluta para los casos que no pasan por fetch, como EventSource. */
+export function apiUrl(path: string): string {
+  return `${BASE_URL}${path}`;
+}
+
+/**
+ * Renueva el access token sin disparar `authExpired`: un stream que no logra
+ * reconectarse decide qué hacer con el resultado, y no debe redirigir solo.
+ */
+export async function renovarSesion(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { ...CSRF_HEADER },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function apiGet<T>(path: string, options?: { retry?: boolean }): Promise<T> {
   return request<T>(path, { method: "GET" }, options?.retry ?? true);
 }
