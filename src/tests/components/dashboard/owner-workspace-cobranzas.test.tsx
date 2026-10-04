@@ -4,6 +4,7 @@ import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
 import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse, InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
+import { FakeEventSource, instalarEventSourceFalso } from "@/tests/fake-event-source";
 
 // OwnerWorkspace nombra la cuenta desde la sesión; estas vistas no la usan.
 vi.mock("@/context/auth-context", () => ({
@@ -505,5 +506,56 @@ describe("ajustar importe", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "La cuota quedó confirmada mientras editaba"
     );
+  });
+});
+
+// --- pagos en vivo ---
+
+describe("pagos en vivo", () => {
+  let Falso: typeof FakeEventSource;
+
+  beforeEach(() => {
+    Falso = instalarEventSourceFalso();
+  });
+
+  const streamDelPropietario = () => Falso.instancias.find((stream) => stream.url.endsWith("/payments/events"));
+
+  it("un comprobante que llega del inquilino recarga la lista y avisa", async () => {
+    mockInvoices.mockResolvedValueOnce([cuota({ payments: [] })]);
+    mockInvoices.mockResolvedValue([cuota({ payments: [pago({ id: 500, status: "AWAITING_CONFIRMATION", submittedByTenant: true })] })]);
+    mockContracts.mockResolvedValue([CONTRATO]);
+    render(<OwnerWorkspace initialView="cobranzas" />);
+    await waitFor(() => expect(screen.queryByText("Cargando sus cobranzas…")).not.toBeInTheDocument());
+    await waitFor(() => expect(streamDelPropietario()).toBeDefined());
+
+    streamDelPropietario()?.emitir("payment-updated", { paymentId: 500, invoiceId: 1000, contractId: 100, status: "AWAITING_CONFIRMATION" });
+
+    expect(await screen.findByText(/Llegó un comprobante para revisar\./)).toBeInTheDocument();
+    expect(mockInvoices).toHaveBeenCalledTimes(2);
+  });
+
+  it("no avisa de nuevo un comprobante que ya estaba en pantalla", async () => {
+    mockInvoices.mockResolvedValue([cuota({ payments: [pago({ id: 500, status: "AWAITING_CONFIRMATION", submittedByTenant: true })] })]);
+    mockContracts.mockResolvedValue([CONTRATO]);
+    render(<OwnerWorkspace initialView="cobranzas" />);
+    await waitFor(() => expect(screen.queryByText("Cargando sus cobranzas…")).not.toBeInTheDocument());
+    await waitFor(() => expect(streamDelPropietario()).toBeDefined());
+
+    streamDelPropietario()?.emitir("payment-updated", { paymentId: 500, invoiceId: 1000, contractId: 100, status: "AWAITING_CONFIRMATION" });
+
+    await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/Llegó un comprobante/)).not.toBeInTheDocument();
+  });
+
+  it("al conectarse vuelve a cargar las cuotas", async () => {
+    mockInvoices.mockResolvedValue([cuota()]);
+    mockContracts.mockResolvedValue([CONTRATO]);
+    render(<OwnerWorkspace initialView="cobranzas" />);
+    await waitFor(() => expect(screen.queryByText("Cargando sus cobranzas…")).not.toBeInTheDocument());
+    await waitFor(() => expect(streamDelPropietario()).toBeDefined());
+
+    streamDelPropietario()?.emitir("connected");
+
+    await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
   });
 });

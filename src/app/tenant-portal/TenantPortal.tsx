@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePaymentEvents } from "@/hooks/usePaymentEvents";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -52,6 +53,21 @@ function etiquetaMesVacio(mes: MesCalendarioInquilino): string {
   } as const;
   return etiquetas[mes.estado];
 }
+
+/** Estado de cada pago tal como lo muestra la pantalla: sirve para avisar sólo lo que cambió. */
+function mapaDePagos(calendar: TenantCalendarResponse): Map<number, string> {
+  const mapa = new Map<number, string>();
+  for (const cuota of calendar.invoices) {
+    for (const pago of cuota.payments) mapa.set(pago.id, pago.status);
+  }
+  return mapa;
+}
+
+/** Los únicos cambios del propietario que el inquilino tiene que enterarse de inmediato. */
+const AVISO_POR_ESTADO: Partial<Record<string, string>> = {
+  CONFIRMED: "Su pago fue confirmado.",
+  REJECTED: "El propietario rechazó su comprobante. Puede subir uno nuevo.",
+};
 
 function anioInicial(anios: number[]): number {
   const actual = new Date().getFullYear();
@@ -127,15 +143,47 @@ export default function TenantPortal() {
   const botonesMesRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const detalleRef = useRef<HTMLElement>(null);
 
+  // null hasta la primera carga exitosa: sin línea de base no hay cambios que avisar.
+  const pagosMostrados = useRef<Map<number, string> | null>(null);
+
   async function cargarCalendario() {
     try {
       setEstado({ fase: "cargando" });
       const calendar = await AlquiaBackendClient.tenantPortal.calendar();
+      pagosMostrados.current = mapaDePagos(calendar);
       setEstado({ fase: "listo", calendar });
     } catch (err) {
       setEstado(err instanceof ApiError && err.status === 401 ? { fase: "invalido" } : { fase: "error" });
     }
   }
+
+  // Recarga sin pasar por «cargando»: la pantalla queda como está y cambian sólo los datos.
+  // Un error transitorio no borra lo que ya se ve; un 401 manda al flujo de sesión vencida.
+  async function recargarEnSilencio() {
+    try {
+      const calendar = await AlquiaBackendClient.tenantPortal.calendar();
+      const anteriores = pagosMostrados.current;
+      const nuevos = mapaDePagos(calendar);
+      if (anteriores) {
+        nuevos.forEach((estadoNuevo, pagoId) => {
+          const aviso = AVISO_POR_ESTADO[estadoNuevo];
+          if (aviso && anteriores.get(pagoId) !== estadoNuevo) toast.aviso(aviso);
+        });
+      }
+      pagosMostrados.current = nuevos;
+      setEstado({ fase: "listo", calendar });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) setEstado({ fase: "invalido" });
+    }
+  }
+
+  usePaymentEvents({
+    ruta: estado.fase === "listo" ? "/tenant/payments/events" : null,
+    onConectada: () => void recargarEnSilencio(),
+    onPagoActualizado: () => void recargarEnSilencio(),
+    // El inquilino no tiene renovación de sesión: si el stream se cierra, la recarga da 401 y la pantalla pasa a «sesión vencida».
+    onSesionPerdida: () => void recargarEnSilencio(),
+  });
 
   useEffect(() => {
     let cancelado = false;
@@ -159,7 +207,7 @@ export default function TenantPortal() {
     setSubiendo(invoiceId);
     try {
       await AlquiaBackendClient.tenantPortal.createPayment(invoiceId, archivo);
-      await cargarCalendario();
+      await recargarEnSilencio();
       toast.exito("Recibimos su comprobante. Queda esperando la confirmación del propietario.");
     } catch (err) {
       toast.error(err instanceof ApiError && err.status === 400 ? "No pudimos registrar el comprobante. Verifique el archivo e intente de nuevo." : "No pudimos subir el comprobante. Inténtelo de nuevo más tarde.");

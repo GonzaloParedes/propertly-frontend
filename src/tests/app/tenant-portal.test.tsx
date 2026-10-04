@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import TenantPortalPage from "@/app/tenant-portal/page";
 import { ApiError } from "@/lib/api";
 import type { TenantCalendarPreInvoiceResponse, TenantCalendarResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
+import { FakeEventSource, instalarEventSourceFalso } from "@/tests/fake-event-source";
 
 let searchParams = new URLSearchParams();
 
@@ -235,5 +236,74 @@ describe("acciones del detalle", () => {
     await userEvent.click(screen.getByRole("button", { name: "Ver comprobante" }));
     await waitFor(() => expect(mockRecibo).toHaveBeenCalledWith(5));
     expect(window.open).toHaveBeenCalledWith("blob:mock", "_blank", "noopener");
+  });
+});
+
+describe("cambios de pagos en vivo", () => {
+  let Falso: typeof FakeEventSource;
+
+  const pagoDe = (id: number, status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "REJECTED") => ({
+    id, invoiceId: 1000, status, submittedByTenant: true,
+  });
+
+  const streamDelInquilino = () => Falso.instancias.find((stream) => stream.url.endsWith("/tenant/payments/events"));
+
+  beforeEach(() => {
+    Falso = instalarEventSourceFalso();
+  });
+
+  it("abre el stream del inquilino cuando el calendario ya cargó", async () => {
+    render(<TenantPortalPage />);
+
+    await waitFor(() => expect(streamDelInquilino()).toBeDefined());
+    expect(streamDelInquilino()?.init).toEqual({ withCredentials: true });
+  });
+
+  it("avisa cuando el propietario confirma, sin mostrar la pantalla de carga", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "PENDING", payments: [pagoDe(500, "AWAITING_CONFIRMATION")] })]));
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "PAID", payments: [pagoDe(500, "CONFIRMED")] })]));
+    render(<TenantPortalPage />);
+    await waitFor(() => expect(streamDelInquilino()).toBeDefined());
+
+    streamDelInquilino()?.emitir("payment-updated", { paymentId: 500, invoiceId: 1000, contractId: 100, status: "CONFIRMED" });
+
+    expect(await screen.findByText(/Su pago fue confirmado\./)).toBeInTheDocument();
+    expect(mockCalendario).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("Cargando sus cuotas…")).not.toBeInTheDocument();
+  });
+
+  it("avisa el rechazo con el paso siguiente", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "PENDING", payments: [pagoDe(500, "AWAITING_CONFIRMATION")] })]));
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "PENDING", payments: [pagoDe(500, "REJECTED")] })]));
+    render(<TenantPortalPage />);
+    await waitFor(() => expect(streamDelInquilino()).toBeDefined());
+
+    streamDelInquilino()?.emitir("payment-updated", { paymentId: 500, invoiceId: 1000, contractId: 100, status: "REJECTED" });
+
+    expect(await screen.findByText(/El propietario rechazó su comprobante\. Puede subir uno nuevo\./)).toBeInTheDocument();
+  });
+
+  it("no avisa de nuevo lo que ya se mostraba confirmado", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "PAID", payments: [pagoDe(500, "CONFIRMED")] })]));
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "PAID", payments: [pagoDe(500, "CONFIRMED")] })]));
+    render(<TenantPortalPage />);
+    await waitFor(() => expect(streamDelInquilino()).toBeDefined());
+
+    streamDelInquilino()?.emitir("payment-updated", { paymentId: 500, invoiceId: 1000, contractId: 100, status: "CONFIRMED" });
+
+    await waitFor(() => expect(mockCalendario).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/Su pago fue confirmado/)).not.toBeInTheDocument();
+  });
+
+  it("si la recarga da 401, pasa a sesión vencida", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota()]));
+    mockCalendario.mockRejectedValueOnce(new ApiError(401, "Invalid or expired access link"));
+    render(<TenantPortalPage />);
+    await waitFor(() => expect(streamDelInquilino()).toBeDefined());
+
+    streamDelInquilino()?.emitir("connected");
+
+    await waitFor(() => expect(mockCalendario).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Pídale a su propietario que le envíe un enlace nuevo para ingresar.")).toBeInTheDocument();
   });
 });
