@@ -178,28 +178,54 @@ function PhoneField({
   );
 }
 
-function PasswordField({ showPassword, disabled, onToggle }: Readonly<{
+function PasswordField({
+  id,
+  name,
+  label,
+  placeholder,
+  showLabel,
+  hideLabel,
+  showPassword,
+  error,
+  disabled,
+  onToggle,
+  onChange,
+}: Readonly<{
+  id: string;
+  name: string;
+  label: string;
+  placeholder: string;
+  // aria-label propio del toggle: con dos campos de contraseña, un mismo texto
+  // dejaría ambos botones indistinguibles para lectores de pantalla.
+  showLabel: string;
+  hideLabel: string;
   showPassword: boolean;
+  error?: string;
   disabled: boolean;
   onToggle: () => void;
+  onChange: () => void;
 }>) {
   const inputType = showPassword ? "text" : "password";
-  const toggleLabel = showPassword ? "Ocultar contraseña" : "Mostrar contraseña";
+  const toggleLabel = showPassword ? hideLabel : showLabel;
   const ToggleIcon = showPassword ? EyeOffIcon : EyeIcon;
+  const errorId = `${id}-error`;
   return (
     <div className="mb-2 flex flex-col gap-1.5">
-      <label htmlFor="rg-pass" className="font-bold">Contraseña</label>
+      <label htmlFor={id} className="font-bold">{label}</label>
       <div className="relative">
         <input
-          id="rg-pass"
-          name="password"
+          id={id}
+          name={name}
           type={inputType}
           autoComplete="new-password"
-          placeholder="Mínimo 8 caracteres"
+          placeholder={placeholder}
           required
           disabled={disabled}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          onChange={onChange}
           className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-          style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+          style={{ borderColor: error ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
         />
         <button
           type="button"
@@ -211,6 +237,11 @@ function PasswordField({ showPassword, disabled, onToggle }: Readonly<{
           <ToggleIcon />
         </button>
       </div>
+      {error && (
+        <p id={errorId} className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -221,6 +252,8 @@ export default function RegistroPage() {
   const [erroresDeCampo, setErroresDeCampo] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [erroresContrasena, setErroresContrasena] = useState<Record<string, string>>({});
   const [email, setEmail] = useState("");
   const [taxId, setTaxId] = useState("");
   const [taxIdTouched, setTaxIdTouched] = useState(false);
@@ -237,6 +270,7 @@ export default function RegistroPage() {
     e.preventDefault();
     setError(null);
     setErroresDeCampo({});
+    setErroresContrasena({});
     // El CUIT se valida acá y no con `required` porque el navegador no sabe
     // calcular el dígito verificador: sin esto el error llegaría como un 400
     // del backend que no dice qué campo está mal.
@@ -248,8 +282,14 @@ export default function RegistroPage() {
       setPhoneTouched(true);
       return;
     }
-    setIsPending(true);
     const form = new FormData(e.currentTarget);
+    // Chequeo solo del cliente: que la contraseña y su confirmación coincidan.
+    // El backend no recibe `confirm`; el payload de más abajo no lo incluye.
+    if (form.get("password") !== form.get("confirm")) {
+      setErroresContrasena({ confirm: "Las contraseñas no coinciden." });
+      return;
+    }
+    setIsPending(true);
     try {
       await apiPost(
         "/auth/register",
@@ -489,9 +529,31 @@ export default function RegistroPage() {
                   </div>
 
                   <PasswordField
+                    id="rg-pass"
+                    name="password"
+                    label="Contraseña"
+                    placeholder="Mínimo 8 caracteres"
+                    showLabel="Mostrar contraseña"
+                    hideLabel="Ocultar contraseña"
                     showPassword={showPassword}
+                    error={erroresContrasena.password}
                     disabled={isPending}
                     onToggle={() => setShowPassword((value) => !value)}
+                    onChange={() => setErroresContrasena((prev) => sinCampo(prev, "password"))}
+                  />
+
+                  <PasswordField
+                    id="rg-confirm"
+                    name="confirm"
+                    label="Confirmar contraseña"
+                    placeholder="Repita la contraseña"
+                    showLabel="Mostrar confirmación de contraseña"
+                    hideLabel="Ocultar confirmación de contraseña"
+                    showPassword={showConfirm}
+                    error={erroresContrasena.confirm}
+                    disabled={isPending}
+                    onToggle={() => setShowConfirm((value) => !value)}
+                    onChange={() => setErroresContrasena((prev) => sinCampo(prev, "confirm"))}
                   />
 
                   {error && (

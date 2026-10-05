@@ -26,6 +26,7 @@ async function fillAndSubmit({
   email = "maria@ejemplo.com",
   phone = "1144552210",
   password = "secreta123",
+  confirm = "",
 } = {}) {
   await userEvent.type(screen.getByLabelText("Nombre"), firstName);
   await userEvent.type(screen.getByLabelText("Apellido"), lastName);
@@ -33,6 +34,7 @@ async function fillAndSubmit({
   await userEvent.type(screen.getByLabelText("Correo electrónico"), email);
   if (phone) await userEvent.type(screen.getByLabelText("Teléfono"), phone);
   await userEvent.type(screen.getByLabelText("Contraseña"), password);
+  await userEvent.type(screen.getByLabelText("Confirmar contraseña"), confirm || password);
   await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 }
 
@@ -46,6 +48,7 @@ describe("renderizado", () => {
     expect(screen.getByLabelText("CUIT o CUIL")).toBeInTheDocument();
     expect(screen.getByLabelText("Correo electrónico")).toBeInTheDocument();
     expect(screen.getByLabelText("Contraseña")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar contraseña")).toBeInTheDocument();
   });
 
   it("muestra el botón de crear cuenta", () => {
@@ -78,6 +81,58 @@ describe("toggle mostrar/ocultar contraseña", () => {
     await userEvent.click(screen.getByRole("button", { name: "Mostrar contraseña" }));
     await userEvent.click(screen.getByRole("button", { name: "Ocultar contraseña" }));
     expect(screen.getByLabelText("Contraseña")).toHaveAttribute("type", "password");
+  });
+});
+
+// --- Confirmación de contraseña ---
+
+describe("confirmación de contraseña", () => {
+  it("muestra el campo de confirmar contraseña", () => {
+    render(<RegistroPage />);
+    expect(screen.getByLabelText("Confirmar contraseña")).toBeInTheDocument();
+  });
+
+  it("su toggle funciona independiente del de la contraseña", async () => {
+    render(<RegistroPage />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Mostrar confirmación de contraseña" })
+    );
+    expect(screen.getByLabelText("Confirmar contraseña")).toHaveAttribute("type", "text");
+    expect(screen.getByLabelText("Contraseña")).toHaveAttribute("type", "password");
+  });
+
+  it("no llama al backend si las contraseñas no coinciden", async () => {
+    render(<RegistroPage />);
+    await fillAndSubmit({ password: "secreta123", confirm: "otracosa456" });
+
+    expect(await screen.findByText("Las contraseñas no coinciden.")).toBeInTheDocument();
+    expect(mockApiPost).not.toHaveBeenCalled();
+  });
+
+  it("marca el campo de confirmación como inválido para lectores de pantalla", async () => {
+    render(<RegistroPage />);
+    await fillAndSubmit({ password: "secreta123", confirm: "otracosa456" });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Confirmar contraseña")).toHaveAttribute("aria-invalid", "true")
+    );
+  });
+
+  it("limpia el error cuando el usuario corrige la confirmación", async () => {
+    render(<RegistroPage />);
+    await fillAndSubmit({ password: "secreta123", confirm: "otracosa456" });
+
+    await screen.findByText("Las contraseñas no coinciden.");
+    await userEvent.type(screen.getByLabelText("Confirmar contraseña"), "7");
+    expect(screen.queryByText("Las contraseñas no coinciden.")).not.toBeInTheDocument();
+  });
+
+  it("llama al backend cuando las contraseñas coinciden", async () => {
+    mockApiPost.mockResolvedValueOnce({});
+    render(<RegistroPage />);
+    await fillAndSubmit({ password: "secreta123", confirm: "secreta123" });
+
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalled());
   });
 });
 
