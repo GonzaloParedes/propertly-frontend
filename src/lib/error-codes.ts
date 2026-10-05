@@ -6,6 +6,8 @@ import { ApiError } from "./api";
 // front cae al fallback en español, nunca muestra el texto en inglés del backend.
 // Sólo se listan los `type` que alguna pantalla distingue; el resto usa el fallback.
 export const ERROR = {
+  EMAIL_NOT_VERIFIED: "urn:alquia:error:email-not-verified",
+  INVALID_OR_EXPIRED_TOKEN: "urn:alquia:error:invalid-or-expired-token",
   DUPLICATE_EMAIL: "urn:alquia:error:duplicate-email",
   DUPLICATE_TAX_ID: "urn:alquia:error:duplicate-tax-id",
   DUPLICATE_PHONE_NUMBER: "urn:alquia:error:duplicate-phone-number",
@@ -25,6 +27,9 @@ export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
 // Copy en español por defecto para cada `type`. Una pantalla puede sobrescribir el
 // texto de un `type` puntual pasando `overrides` a `copyDeError`.
 const COPY: Record<string, string> = {
+  [ERROR.EMAIL_NOT_VERIFIED]:
+    "Tenés que verificar tu correo. Te reenviamos el enlace, revisá tu casilla (y el spam).",
+  [ERROR.INVALID_OR_EXPIRED_TOKEN]: "El enlace venció o no es válido. Pedí uno nuevo.",
   [ERROR.DUPLICATE_EMAIL]: "Ese correo ya tiene una cuenta.",
   [ERROR.DUPLICATE_TAX_ID]: "Ese documento ya está registrado.",
   [ERROR.DUPLICATE_PHONE_NUMBER]: "Ese teléfono ya está registrado.",

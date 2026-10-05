@@ -4,6 +4,8 @@ import type {
   RegisterRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ConfirmEmailRequest,
+  ResendVerificationRequest,
   UserResponse,
   UserUpdateRequest,
   TenantRequest,
@@ -66,6 +68,10 @@ export const AlquiaBackendClient = {
       apiPost("/auth/forgot-password", body, { retry: false }),
     resetPassword: (body: ResetPasswordRequest): Promise<void> =>
       apiPost("/auth/reset-password", body, { retry: false }),
+    confirmEmail: (body: ConfirmEmailRequest): Promise<void> =>
+      apiPost("/auth/confirm-email", body, { retry: false }),
+    resendVerification: (body: ResendVerificationRequest): Promise<void> =>
+      apiPost("/auth/resend-verification", body, { retry: false }),
   },
 
   users: {
@@ -239,6 +245,8 @@ export type {
   RegisterRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ConfirmEmailRequest,
+  ResendVerificationRequest,
   UserResponse,
   UserUpdateRequest,
   TenantRequest,

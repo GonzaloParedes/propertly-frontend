@@ -81,6 +81,24 @@ describe("AlquiaBackendClient.auth", () => {
       { retry: false }
     );
   });
+
+  it("confirmEmail pega a POST /auth/confirm-email sin reintento", async () => {
+    await AlquiaBackendClient.auth.confirmEmail({ token: "t" });
+    expect(mockPost).toHaveBeenCalledWith(
+      "/auth/confirm-email",
+      { token: "t" },
+      { retry: false }
+    );
+  });
+
+  it("resendVerification pega a POST /auth/resend-verification sin reintento", async () => {
+    await AlquiaBackendClient.auth.resendVerification({ email: "a@a.com" });
+    expect(mockPost).toHaveBeenCalledWith(
+      "/auth/resend-verification",
+      { email: "a@a.com" },
+      { retry: false }
+    );
+  });
 });
 
 describe("AlquiaBackendClient.users", () => {

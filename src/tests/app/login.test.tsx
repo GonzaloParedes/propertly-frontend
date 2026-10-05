@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import LoginPage from "@/app/login/page";
 
 const mockLogin = vi.fn();
@@ -118,6 +119,13 @@ describe("estados de error", () => {
   it("muestra error en credenciales con AuthExpiredError", async () => {
     const alert = await submitWithError(new AuthExpiredError());
     expect(alert).toHaveTextContent("Correo o contraseña incorrectos");
+  });
+
+  it("avisa que la cuenta no está verificada ante EMAIL_NOT_VERIFIED", async () => {
+    const alert = await submitWithError(
+      new ApiError(403, "Forbidden", ERROR.EMAIL_NOT_VERIFIED)
+    );
+    expect(alert).toHaveTextContent("Tenés que verificar tu correo");
   });
 
   it("muestra error de servidor con ApiError 500", async () => {

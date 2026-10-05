@@ -8,6 +8,7 @@ import { Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Spinner } from "@/components/ui/Spinner";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR, copyDeError } from "@/lib/error-codes";
 
 const BENEFITS = [
   "Sepa al instante qué alquileres están pagos",
@@ -49,7 +50,10 @@ export default function LoginPage() {
       await login(email, password);
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      if (err instanceof ApiError && err.type === ERROR.EMAIL_NOT_VERIFIED) {
+        // El backend ya reenvió el mail de verificación al detectar el intento.
+        setError(copyDeError(err));
+      } else if (err instanceof ApiError && err.status === 401) {
         setError("Correo o contraseña incorrectos. Intente nuevamente.");
       } else if (err instanceof AuthExpiredError) {
         // AuthExpiredError acá significa que /auth/login salió bien pero el

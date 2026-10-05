@@ -23,6 +23,14 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
+export interface ConfirmEmailRequest {
+  token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
 // --- Users ---
 
 export interface UserResponse {
