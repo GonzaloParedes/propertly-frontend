@@ -1,0 +1,104 @@
+/* ------------------------------------------------------------------
+   Landing · variante con scroll (/prototipo/landing-2)
+
+   Lo que se ve avanza con el scroll, al estilo de las páginas de producto
+   de Apple. Todo es CSS nativo (`animation-timeline`), sin JS: la
+   animación no corre sola, la mueve el scroll del usuario.
+
+   Cada efecto tiene un motivo:
+   · Hero fijo: la tarjeta de Inicio se abre (de inclinada a plana), entra
+     el aviso y el texto se despide. Presenta el producto.
+   · Tareas: cada línea se enciende y la tacha la raya rosa. Narra.
+   · Un mes: el calendario y el aviso quedan fijos; los avisos se
+     reemplazan en el mismo lugar y cada día se enciende con el suyo.
+   · Cómo funciona y cierre: las piezas entran subiendo, en orden de lectura.
+
+   Sin soporte (Firefox hoy) o con movimiento reducido, nada de esto aplica
+   y la página se ve igual que /prototipo/landing.
+   ------------------------------------------------------------------ */
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+
+    /* Títulos de sección: suben al entrar. */
+    .lp--scroll .lp-seccion h2 { animation: lps-aparece linear both; animation-timeline: view(); animation-range: entry 0% cover 28%; }
+
+    /* Tareas: cada línea se enciende y después se tacha. */
+    .lp--scroll .lp-tareas__lista li { view-timeline: --lps-tarea block; }
+    .lp--scroll .lp-tareas__lista span { animation: lps-tarea linear both; animation-timeline: --lps-tarea; animation-range: entry 60% cover 52%; }
+    .lp--scroll .lp-tareas__cierre { transform-origin: left center; animation: lps-crece linear both; animation-timeline: view(); animation-range: entry 20% cover 45%; }
+
+    /* Un mes: el recorrido es alto y la grilla queda fija. Los avisos se
+       reemplazan en el mismo lugar, uno por cuarto de recorrido, y cada día
+       del calendario se enciende cuando llega su aviso y queda encendido. */
+    .lp--scroll .lp-mes__recorrido { height: 320vh; view-timeline: --lps-mes block; }
+    .lp--scroll .lp-mes__grilla { position: sticky; top: var(--lp-nav); height: calc(100dvh - var(--lp-nav)); align-items: center; margin-top: 0; }
+    .lp--scroll .lp-mes__avisos { display: grid; }
+    .lp--scroll .lp-mes__avisos li { grid-area: 1 / 1; grid-template-columns: 64px minmax(0, 1fr); gap: var(--esp-26); align-items: start; padding: 0; box-shadow: none; animation: lps-aviso linear both; animation-timeline: --lps-mes; }
+    .lp--scroll .lp-mes__avisos .lp-mes__dia { width: 64px; height: 64px; font-size: 24px; }
+    .lp--scroll .lp-mes__avisos .lp-mes__para { font-size: 17px; }
+    .lp--scroll .lp-mes__avisos .lp-mes__texto { margin-top: var(--esp-10); font: 600 clamp(24px, 2.4vw, 32px)/1.3 var(--font-quicksand), sans-serif; letter-spacing: -.015em; }
+    .lp--scroll .lp-mes__avisos li:nth-child(1) { animation-name: lps-aviso-primero; animation-range: contain 0% contain 25%; }
+    .lp--scroll .lp-mes__avisos li:nth-child(2) { animation-range: contain 25% contain 50%; }
+    .lp--scroll .lp-mes__avisos li:nth-child(3) { animation-range: contain 50% contain 75%; }
+    .lp--scroll .lp-mes__avisos li:nth-child(4) { animation-name: lps-aviso-ultimo; animation-range: contain 75% contain 100%; }
+    /* El primer día ya está encendido: su aviso es el que se ve al llegar. */
+    .lp--scroll .lp-calendario__dia--n2 { animation: lps-dia linear both; animation-timeline: --lps-mes; animation-range: contain 25% contain 30%; }
+    .lp--scroll .lp-calendario__dia--n3 { animation: lps-dia linear both; animation-timeline: --lps-mes; animation-range: contain 50% contain 55%; }
+    .lp--scroll .lp-calendario__dia--n4 { animation: lps-dia linear both; animation-timeline: --lps-mes; animation-range: contain 75% contain 80%; }
+
+    /* Cómo funciona: el texto aparece con su bloque; las piezas suben y crecen. */
+    .lp--scroll .lp-momento { view-timeline: --lps-momento block; }
+    .lp--scroll .lp-momento__texto > * { animation: lps-aparece linear both; animation-timeline: --lps-momento; animation-range: entry 5% entry 45%; }
+    .lp--scroll .lp-momento__piezas > .lp-pieza { animation: lps-entra linear both; animation-timeline: view(); animation-range: entry 0% cover 32%; }
+
+    /* Empezar: los tres pasos entran en orden de lectura. */
+    .lp--scroll .lp-empezar__pasos li { animation: lps-aparece linear both; animation-timeline: view(); }
+    .lp--scroll .lp-empezar__pasos li:nth-child(1) { animation-range: entry 0% cover 22%; }
+    .lp--scroll .lp-empezar__pasos li:nth-child(2) { animation-range: entry 30% cover 30%; }
+    .lp--scroll .lp-empezar__pasos li:nth-child(3) { animation-range: entry 60% cover 38%; }
+
+    .lp--scroll .lp-preguntas details { animation: lps-aparece linear both; animation-timeline: view(); animation-range: entry 0% entry 90%; }
+
+    /* Cierre: el título crece hasta su tamaño. */
+    .lp--scroll .lp-final h2 { transform-origin: left bottom; animation: lps-crece linear both; animation-timeline: view(); animation-range: entry 10% cover 42%; }
+    .lp--scroll .lp-final__accion { animation: lps-aparece linear both; animation-timeline: view(); animation-range: entry 30% cover 45%; }
+
+    /* Hero fijo, sólo con ancho de escritorio: en celular el texto y la
+       tarjeta no entran juntos en una pantalla y fijarlos los cortaría. */
+    @media (min-width: 901px) {
+      .lp--scroll .lp-hero { height: 240vh; padding: 0; view-timeline: --lps-hero block; }
+      .lp--scroll .lp-hero__pin { position: sticky; top: var(--lp-nav); display: flex; height: calc(100dvh - var(--lp-nav)); align-items: center; }
+      .lp--scroll .lp-pieza--inicio > div { perspective: 1400px; }
+      .lp--scroll .lp-pieza--inicio .owner-portfolio { transform-origin: center bottom; animation: lps-abre linear both; animation-timeline: --lps-hero; animation-range: contain 0% contain 50%; }
+      .lp--scroll .lp-pieza__superpuesta { animation: lps-aparece linear both; animation-timeline: --lps-hero; animation-range: contain 38% contain 66%; }
+      .lp--scroll .lp-hero__texto { animation: lps-se-va linear both; animation-timeline: --lps-hero; animation-range: contain 74% contain 100%; }
+    }
+
+    /* Celular: sin fijar el hero; la tarjeta se abre al entrar. */
+    @media (max-width: 900px) {
+      .lp--scroll .lp-pieza--inicio > div { perspective: 1000px; }
+      .lp--scroll .lp-pieza--inicio .owner-portfolio { transform-origin: center bottom; animation: lps-abre linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; }
+      .lp--scroll .lp-pieza__superpuesta { animation: lps-aparece linear both; animation-timeline: view(); animation-range: entry 0% cover 30%; }
+      .lp--scroll .lp-mes__grilla { align-content: center; gap: var(--esp-26); }
+      .lp--scroll .lp-mes__avisos li { grid-template-columns: 48px minmax(0, 1fr); gap: var(--esp-16); }
+      .lp--scroll .lp-mes__avisos .lp-mes__dia { width: 48px; height: 48px; font-size: 19px; }
+      .lp--scroll .lp-mes__avisos .lp-mes__texto { font-size: 21px; }
+    }
+  }
+}
+
+@keyframes lps-aparece { from { opacity: 0; transform: translateY(48px); } to { opacity: 1; transform: none; } }
+@keyframes lps-entra { from { opacity: 0; transform: translateY(88px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes lps-crece { from { opacity: .15; transform: scale(.88); } to { opacity: 1; transform: none; } }
+@keyframes lps-abre { from { transform: rotateX(24deg) scale(.88) translateY(32px); } to { transform: none; } }
+@keyframes lps-se-va { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-56px); } }
+@keyframes lps-aviso { 0% { opacity: 0; transform: translateY(40px); } 22%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-40px); } }
+@keyframes lps-aviso-primero { 0%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-40px); } }
+@keyframes lps-aviso-ultimo { 0% { opacity: 0; transform: translateY(40px); } 22%, 100% { opacity: 1; transform: none; } }
+@keyframes lps-dia { from { background: transparent; color: var(--tinta); transform: scale(.9); } to { background: var(--indigo); color: #fff; transform: none; } }
+@keyframes lps-tarea {
+  0% { color: var(--borde-campo); background-size: 0% 3px; }
+  55% { color: var(--tinta); background-size: 0% 3px; }
+  100% { color: var(--gris); background-size: 100% 3px; }
+}
