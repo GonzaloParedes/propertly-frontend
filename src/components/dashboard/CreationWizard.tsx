@@ -13,6 +13,7 @@ import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
 import { correoValido } from "@/lib/correo";
 import { formatearDireccion } from "@/lib/tenant-rows";
+import ContractFromPdf from "@/components/dashboard/ContractFromPdf";
 
 /**
  * El backend distingue cada condición con un `type` estable (RFC 9457): los dos
@@ -197,7 +198,7 @@ function Icon({ name, size = 22 }: Readonly<{ name: IconName; size?: number }>) 
   return <AppIcon name={name} size={size} />;
 }
 
-function Option({ selected, icon, title, description, onClick }: Readonly<{ selected: boolean; icon: "building" | "users" | "trend"; title: string; description: string; onClick: () => void }>) {
+function Option({ selected, icon, title, description, onClick }: Readonly<{ selected: boolean; icon: IconName; title: string; description: string; onClick: () => void }>) {
   return <button type="button" className="owner-wizard-option" role="radio" aria-checked={selected} onClick={onClick}><span className="owner-wizard-option__icon"><Icon name={icon} /></span><span><b>{title}</b><small>{description}</small></span><span className="owner-wizard-option__check"><Icon name="check" /></span></button>;
 }
 
@@ -402,6 +403,16 @@ function ContractWizardStep(props: Readonly<{
   return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propertyId={stepProps.propertyId} tenantId={stepProps.tenantId} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} error={stepProps.error} />;
 }
 
+type ModoContrato = "pdf" | "manual";
+
+/**
+ * PROTOTIPO, sólo en /prototipo: la carga desde el PDF todavía no tiene backend.
+ * Ver docs/design/propuesta-contrato-desde-pdf.md.
+ */
+function ContractModeStep({ selected, onSelect }: Readonly<{ selected: ModoContrato | null; onSelect: (modo: ModoContrato) => void }>) {
+  return <><h1>¿Cómo quiere cargar el contrato?</h1><p>Si ya lo tiene firmado, lo leemos por usted y le mostramos los datos para que los revise.</p><div className="owner-wizard-options" role="radiogroup" aria-label="Cómo cargar el contrato"><Option selected={selected === "pdf"} icon="file" title="Subir el contrato firmado" description="Completamos los datos desde el PDF. Usted los revisa antes de guardar." onClick={() => onSelect("pdf")} /><Option selected={selected === "manual"} icon="edit" title="Cargarlo a mano" description="Le pedimos los datos de a uno, en 6 pasos." onClick={() => onSelect("manual")} /></div></>;
+}
+
 export default function CreationWizard({ kind: tipo, onClose, onComplete, demo = false, initialPropertyId }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; demo?: boolean; initialPropertyId?: number }>) {
   // Crear un inquilino o una propiedad desde el contrato es un desvío dentro del
   // mismo asistente: el contrato en curso (elecciones, paso) queda guardado y se
@@ -448,6 +459,12 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
   const [correo, setCorreo] = useState("");
   const [telefono, setTelefono] = useState("");
+  // Antes del primer paso del contrato se elige cómo cargarlo. Sólo en demo:
+  // fuera de /prototipo el asistente sigue arrancando en la carga a mano.
+  const ofrecePdf = tipo === "contract" && demo;
+  const [modo, setModo] = useState<ModoContrato | "elegir">(ofrecePdf ? "elegir" : "manual");
+  const [modoElegido, setModoElegido] = useState<ModoContrato | null>(null);
+  const eligiendo = modo === "elegir";
   // Sólo el alta de contrato necesita las listas, y en /prototipo no se piden:
   // esa ruta no tiene sesión y las dos llamadas darían 401.
   useEffect(() => {
@@ -548,6 +565,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
   }
   function calcularBloqueado(): boolean {
     if (guardando) return true;
+    if (eligiendo) return modoElegido === null;
     if (kind === "tenant") return tenantBloqueado();
     if (kind === "property") return propertyBloqueado();
     return contractBloqueado();
@@ -665,6 +683,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
   }
 
   const next = () => {
+    if (eligiendo) return modoElegido && setModo(modoElegido);
     if (!finish) return setStep((current) => current + 1);
     if (kind === "tenant") return void guardarInquilino();
     if (kind === "contract") return void guardarContrato();
@@ -808,15 +827,28 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
     return "Crear contrato";
   })();
   const stepContent = (() => {
+    if (eligiendo) return <ContractModeStep selected={modoElegido} onSelect={setModoElegido} />;
     if (kind === "property") return propertyStep;
     if (kind === "tenant") return tenantStep;
     return contractStep;
   })();
   const footerButtonContent = (() => {
+    if (eligiendo) return <>Seguir <Icon name="arrow" /></>;
     if (guardando) return <><Spinner />Guardando…</>;
     if (finish) return finishLabel;
     return <>Seguir <Icon name="arrow" /></>;
   })();
+
+  if (modo === "pdf") {
+    return <ContractFromPdf demo={demo} onBack={() => setModo("elegir")} onManual={() => { setModoElegido("manual"); setModo("manual"); }} onClose={onClose} onComplete={onComplete} />;
+  }
+
+  // Desde el primer paso a mano, «Atrás» vuelve a la elección.
+  const atras = () => {
+    if (desvio && step === 1) return volverAlContrato();
+    if (ofrecePdf && !desvio && step === 1) return setModo("elegir");
+    setStep((current) => Math.max(1, current - 1));
+  };
 
   return (
     <section className="owner-wizard" aria-label={ariaAsistente}>
@@ -825,7 +857,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
           <Icon name="x" />
         </button>
         <b>{tituloAsistente}</b>
-        {total > 1 && (
+        {total > 1 && !eligiendo && (
           <>
             <progress className="owner-wizard__progress" value={step} max={total} aria-label="Progreso del asistente" />
             <span>Paso {step} de {total}</span>
@@ -834,7 +866,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
       </header>
       <main className="owner-wizard__body">{stepContent}</main>
       <footer className="owner-wizard__footer">
-        <button type="button" className="owner-wizard-quiet" onClick={() => (desvio && step === 1 ? volverAlContrato() : setStep((current) => Math.max(1, current - 1)))} disabled={(step === 1 && !desvio) || guardando}>
+        <button type="button" className="owner-wizard-quiet" onClick={atras} disabled={eligiendo || (step === 1 && !desvio && !ofrecePdf) || guardando}>
           Atrás
         </button>
         <button type="button" className="owner-wizard-next" onClick={next} disabled={bloqueado}>

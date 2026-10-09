@@ -671,3 +671,99 @@
 @media (min-width:621px){
   .owner-table td .owner-status,.owner-table td .owner-status + .owner-substatus{box-sizing:border-box;height:34px;padding-top:0;padding-bottom:0;line-height:1}
 }
+
+/* ── Contrato desde el PDF (PROTOTIPO) ─────────────────────────────
+   Ver docs/design/propuesta-contrato-desde-pdf.md. Radios y anillos
+   copiados de los hermanos: zona de carga = .owner-wizard-field,
+   lista de datos = .owner-list, cita = .owner-wizard-note.
+   ------------------------------------------------------------------ */
+.owner-pdf-drop{display:flex;flex-direction:column;align-items:center;gap:var(--esp-10);padding:var(--esp-44) var(--esp-20);border-radius:20px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde-campo);text-align:center}
+.owner-pdf-drop[data-arrastrando]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-pdf-drop__icon{display:grid;width:64px;height:64px;margin-bottom:var(--esp-6);place-items:center;border-radius:999px;background:var(--elev);color:var(--indigo)}
+.owner-pdf-drop b{font:700 19px var(--font-quicksand),sans-serif}
+.owner-pdf-drop small{color:var(--gris);font-size:15px}
+.owner-pdf-drop .owner-button{min-height:48px}
+.owner-pdf-file{display:flex;align-items:center;gap:var(--esp-14);padding:var(--esp-18);border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-pdf-file>span{display:grid;width:44px;height:44px;flex:none;place-items:center;border-radius:10px;background:var(--elev);color:var(--indigo)}
+.owner-pdf-file>div{min-width:0;flex:1}
+.owner-pdf-file b{display:block;overflow-wrap:anywhere;font-size:17px}
+.owner-pdf-file small{display:block;margin-top:3px;color:var(--gris);font-size:14.5px}
+.owner-pdf .owner-wizard-quiet{margin-top:var(--esp-16)}
+.owner-pdf-note{margin-top:var(--esp-26);font-size:15.5px}
+
+/* La espera: qué se está buscando, no sólo un anillo. */
+.owner-pdf-reading{text-align:center}
+.owner-pdf-reading>p{margin-left:auto!important;margin-right:auto!important}
+.owner-pdf-reading__spin{display:inline-grid;width:64px;height:64px;margin-bottom:var(--esp-20);place-items:center;border-radius:999px;background:var(--indigo-suave);color:var(--indigo)}
+.owner-pdf-reading__spin svg,.owner-pdf-reading__spin>*{transform:scale(1.5)}
+.owner-pdf-reading ol{display:inline-grid;gap:var(--esp-12);margin:0;padding:0;list-style:none;text-align:left}
+.owner-pdf-reading li{display:flex;align-items:center;gap:var(--esp-12);color:var(--gris);font-size:17px}
+.owner-pdf-reading li>span:first-child{display:grid;width:26px;height:26px;flex:none;place-items:center;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--borde-campo)}
+.owner-pdf-reading li[data-estado="ahora"]{color:var(--tinta);font-weight:700}
+.owner-pdf-reading li[data-estado="ahora"]>span:first-child{box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-pdf-reading li[data-estado="listo"]{color:var(--tinta)}
+.owner-pdf-reading li[data-estado="listo"]>span:first-child{background:var(--exito-bg);box-shadow:none;color:var(--exito)}
+
+/* La revisión: documento a la izquierda, datos a la derecha. */
+.owner-wizard__body.owner-pdf-review{display:grid;width:min(100% - 64px,1180px);grid-template-columns:minmax(0,1fr) minmax(0,560px);grid-template-areas:"intro intro" "doc data";gap:0 var(--esp-44);margin:0 auto;padding-top:var(--esp-32)}
+.owner-pdf-review__intro{grid-area:intro}
+.owner-pdf-review__intro>p{max-width:60ch;margin:0 0 var(--esp-26);color:var(--gris);font-size:17px}
+.owner-pdf-review__doc{position:sticky;top:var(--esp-20);grid-area:doc;align-self:start;max-height:calc(100vh - 200px);overflow:auto;border-radius:14px}
+.owner-pdf-review__data{grid-area:data;min-width:0}
+.owner-pdf-group{margin:var(--esp-26) 0 var(--esp-10);color:var(--gris);font:700 15px/1.2 var(--font-nunito-sans),sans-serif}
+.owner-pdf-group:first-child{margin-top:0}
+.owner-pdf-list{overflow:hidden;border-radius:20px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-pdf-item{display:grid;gap:var(--esp-6);padding:var(--esp-18) var(--esp-20)}
+.owner-pdf-item+.owner-pdf-item{box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-pdf-item[data-activo]{background:var(--superficie)}
+.owner-pdf-item__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-12)}
+.owner-pdf-item__label{color:var(--gris);font-size:15px;font-weight:700}
+.owner-pdf-item__source{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px}
+.owner-pdf-item__source svg{color:var(--exito)}
+.owner-pdf-item__value{font:700 21px/1.25 var(--font-quicksand),sans-serif;letter-spacing:-.01em}
+.owner-pdf-item__detail{color:var(--gris);font-size:15px}
+.owner-pdf-item__why{margin:var(--esp-6) 0 var(--esp-6);color:var(--tinta);font-size:15.5px}
+.owner-pdf-item__edit{display:grid;gap:var(--esp-12);margin-top:var(--esp-10)}
+.owner-pdf-item__edit .owner-wizard-field--amount{font-size:24px}
+.owner-pdf-item__actions{display:flex;flex-wrap:wrap;gap:var(--esp-8);margin-top:var(--esp-8)}
+.owner-pdf-item__actions .owner-button svg{flex:none}
+.owner-pdf-item>.owner-wizard-stack,.owner-pdf-item>.owner-wizard-options{margin-top:var(--esp-10)}
+.owner-pdf-item__quote{display:none;margin:var(--esp-8) 0 0;padding:var(--esp-14) var(--esp-16);border-radius:14px;background:var(--indigo-suave);color:var(--tinta);font:italic 16px/1.5 Georgia,'Times New Roman',serif}
+.owner-pdf-item__quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
+.owner-pdf-pending{margin-left:auto;color:var(--gris);font-size:15px;font-weight:600}
+.owner-pdf-pending+.owner-wizard-next{margin-left:0}
+
+/* El documento es papel: se queda claro también en modo oscuro. */
+.owner-pdf-paper{border-radius:14px;background:#E9E7F2}
+.owner-pdf-paper__bar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:var(--esp-8);padding:var(--esp-10) var(--esp-14);background:#E9E7F2;color:#514D63;font-size:14px}
+.owner-pdf-paper__bar span{min-width:0;flex:1;overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.owner-pdf-paper__page{margin:0 var(--esp-14) var(--esp-14);padding:var(--esp-32) 36px;border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(30,27,46,.12);color:#1E1B2E;font:15px/1.65 Georgia,'Times New Roman',serif}
+.owner-pdf-paper__page h3{margin:0 0 var(--esp-18);font:700 14px/1.4 Georgia,serif;letter-spacing:.04em;text-align:center}
+.owner-pdf-paper__page p{margin:0 0 var(--esp-12);text-align:justify}
+.owner-pdf-paper mark{padding:1px 2px;border-radius:4px;background:#ECE9FA;color:inherit;transition:background .2s ease,box-shadow .2s ease}
+.owner-pdf-paper mark[data-activo]{background:#D9D3F6;box-shadow:0 0 0 2px #5B4BC4}
+.owner-pdf-paper__fade{opacity:.45}
+
+@media (prefers-reduced-motion:reduce){.owner-pdf-paper mark{transition:none}}
+
+@media (max-width:900px){
+  /* Sin lugar para el documento al lado: cada dato muestra su cita. */
+  .owner-wizard__body.owner-pdf-review{display:block;width:min(100% - 40px,620px)}
+  .owner-pdf-review__doc{display:none}
+  .owner-pdf-item__quote{display:block}
+}
+@media (max-width:620px){
+  .owner-pdf-drop{padding:var(--esp-32) var(--esp-16)}
+  .owner-pdf-file{flex-wrap:wrap}
+  .owner-pdf-file .owner-button{width:100%;min-height:46px}
+  .owner-wizard:not(.owner-dialog) .owner-wizard__body.owner-pdf-review{width:calc(100% - 24px);padding:var(--esp-16) 0;background:transparent;box-shadow:none}
+  .owner-pdf-review__intro{padding:0 var(--esp-8)}
+  .owner-pdf-item{padding:var(--esp-16)}
+  .owner-pdf-item__head{align-items:flex-start;flex-direction:column;gap:var(--esp-6)}
+  /* Dos o tres acciones: se reparten el renglón en vez de apilarse de a una. */
+  .owner-pdf-item__actions .owner-button{flex:1 1 140px;min-height:46px;justify-content:center}
+  /* El pendiente sube a su renglón: al lado del botón no entra. */
+  .owner-pdf .owner-wizard__footer{flex-wrap:wrap}
+  .owner-pdf-pending{order:-1;width:100%;margin:0;text-align:center}
+  .owner-pdf .owner-wizard__footer .owner-wizard-next{flex:1;justify-content:center}
+}
