@@ -785,3 +785,9 @@
 .owner-flag--urgente{background:var(--error-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--error) 35%,transparent)}
 .owner-flag--urgente svg{color:var(--error)}
 .owner-unconfirmed-card{margin-bottom:var(--esp-16)}
+
+/* ── Garantías del contrato ──────────────────────────────────────── */
+.owner-garantias{display:flex;flex-direction:column;gap:var(--esp-16)}
+.owner-garantia{display:flex;flex-direction:column;gap:var(--esp-16);padding:var(--esp-20);border-radius:16px;box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-garantia__cabecera{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--esp-8) var(--esp-16)}
+.owner-garantia__acciones{display:flex;flex-wrap:wrap;gap:var(--esp-6)}

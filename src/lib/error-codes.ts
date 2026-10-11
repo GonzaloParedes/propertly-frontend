@@ -16,6 +16,8 @@ export const ERROR = {
   ADJUSTMENT_ON_CONFIRMED_INVOICE: "urn:alquia:error:adjustment-on-confirmed-invoice",
   INVOICE_TOTAL_NEGATIVE: "urn:alquia:error:invoice-total-negative",
   SCHEMA_CHANGE_OVER_PAID_INVOICE: "urn:alquia:error:schema-change-over-paid-invoice",
+  GUARANTEES_LIMIT_EXCEEDED: "urn:alquia:error:guarantees-limit-exceeded",
+  GUARANTEE_FIELD_NOT_ALLOWED: "urn:alquia:error:guarantee-field-not-allowed",
   LATE_FEE_NOT_CONFIGURED: "urn:alquia:error:late-fee-not-configured",
   LATE_FEE_ALREADY_SETTLED: "urn:alquia:error:late-fee-already-settled",
   CONTRACT_ALREADY_HAS_SUCCESSOR: "urn:alquia:error:contract-already-has-successor",
@@ -44,6 +46,8 @@ const COPY: Record<string, string> = {
   [ERROR.INVOICE_TOTAL_NEGATIVE]: "El total de la cuota no puede quedar negativo.",
   [ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE]:
     "Ya hay una cuota paga desde ese mes, así que no se puede programar el cambio ahí.",
+  [ERROR.GUARANTEES_LIMIT_EXCEEDED]: "Un contrato admite hasta tres garantías.",
+  [ERROR.GUARANTEE_FIELD_NOT_ALLOWED]: "Hay un dato que no corresponde al tipo de garantía. Revise cada una.",
   [ERROR.LATE_FEE_NOT_CONFIGURED]: "Este contrato no tiene punitorios, así que la cuota no tiene recargo.",
   [ERROR.LATE_FEE_ALREADY_SETTLED]: "La cuota ya está paga: su recargo quedó firme y no se puede cambiar.",
   [ERROR.CONTRACT_ALREADY_HAS_SUCCESSOR]: "Ese contrato ya tiene un cambio programado.",

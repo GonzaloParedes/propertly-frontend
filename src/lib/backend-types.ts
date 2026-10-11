@@ -160,7 +160,32 @@ export type Currency = "ARS" | "USD";
 
 // Tres, no las cinco que ofrecía `ContractForm`: no existen aval bancario ni
 // «otro». Ver el pendiente de P1-4 en docs/backend/.
-export type DepositType = "CASH" | "SURETY_INSURANCE" | "PROPERTY_GUARANTEE";
+export type GuaranteeType = "PERSONAL" | "PROPERTY" | "SURETY_INSURANCE";
+
+/**
+ * Cada tipo usa sólo sus campos: el backend rechaza uno que no le corresponde
+ * (`GUARANTEE_FIELD_NOT_ALLOWED`). Un contrato lleva hasta tres, y al actualizar
+ * la lista reemplaza a la anterior.
+ */
+export interface GuaranteeRequest {
+  type: GuaranteeType;
+  /** PERSONAL y PROPERTY: obligatorio. */
+  fullName?: string;
+  taxId?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+  /** Sólo PERSONAL. */
+  employer?: string;
+  /** Sólo PROPERTY: obligatoria. */
+  propertyAddress?: string;
+  propertyRegistry?: string;
+  /** Sólo SURETY_INSURANCE: obligatoria. */
+  insurerName?: string;
+  policyNumber?: string;
+}
+
+export type GuaranteeResponse = GuaranteeRequest;
 
 // `SHARED`, no `SPLIT`: pedimos uno y mandaron el otro. Manda el backend.
 export type CommissionPayer = "LANDLORD" | "TENANT" | "SHARED";
@@ -195,7 +220,8 @@ export interface ContractRequest {
   /** Ausente = ARS. El backend no la exige y las cuotas heredan la del contrato. */
   currency?: Currency;
   depositAmount?: number;
-  depositType?: DepositType;
+  /** Hasta tres. Ausente en un contrato sin garantías. */
+  guarantees?: GuaranteeRequest[];
   /** 0 a 100. */
   commissionPercent?: number;
   commissionPayer?: CommissionPayer;
@@ -227,7 +253,8 @@ export interface ContractResponse {
   /** Ausente = ARS. El backend no la exige y las cuotas heredan la del contrato. */
   currency?: Currency;
   depositAmount?: number;
-  depositType?: DepositType;
+  /** Hasta tres. Ausente en un contrato sin garantías. */
+  guarantees?: GuaranteeResponse[];
   /** 0 a 100. */
   commissionPercent?: number;
   commissionPayer?: CommissionPayer;

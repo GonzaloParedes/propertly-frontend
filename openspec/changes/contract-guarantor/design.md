@@ -31,7 +31,7 @@ Each card shows the required fields first and "Agregar más datos" for the optio
 
 `contrato-detalle.ts` builds one line per guarantee:
 
-- "Garante con recibo de sueldo: <nombre> (CUIT …) · <teléfono>"
+- "Garante con recibo de sueldo: <nombre> (CUIT …) · <teléfono> · trabaja en <empleador>"
 - "Garantía propietaria de <nombre>: <dirección>, matrícula <n>"
 - "Seguro de caución: <aseguradora>, póliza <n>"
 

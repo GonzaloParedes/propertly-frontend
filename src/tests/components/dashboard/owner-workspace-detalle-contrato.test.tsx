@@ -181,10 +181,12 @@ describe("próxima actualización", () => {
 describe("condiciones pactadas", () => {
   it("las muestra cuando el contrato las tiene", async () => {
     await abrir(
-      contrato({ depositAmount: 478691, depositType: "CASH", commissionPercent: 5, commissionPayer: "TENANT" })
+      contrato({ depositAmount: 478691, guarantees: [{ type: "SURETY_INSURANCE", insurerName: "Aseguradora Sur", policyNumber: "4411" }], commissionPercent: 5, commissionPayer: "TENANT" })
     );
     expect(screen.getByText("Condiciones pactadas")).toBeInTheDocument();
-    expect(screen.getByText("$ 478.691 · Depósito en efectivo")).toBeInTheDocument();
+    const tarjeta = within(screen.getByText("Condiciones pactadas").closest(".owner-card") as HTMLElement);
+    expect(tarjeta.getByText("$ 478.691")).toBeInTheDocument();
+    expect(tarjeta.getByText("Seguro de caución: Aseguradora Sur, póliza 4411")).toBeInTheDocument();
     expect(screen.getByText("5 % · la paga el inquilino")).toBeInTheDocument();
   });
 

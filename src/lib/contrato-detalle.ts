@@ -1,4 +1,5 @@
 import { formatearFecha } from "@/lib/formato";
+import { describirGarantia } from "@/lib/garantias";
 import type {
   ContractResponse,
   Currency,
@@ -77,12 +78,6 @@ export interface Condicion {
   valor: string;
 }
 
-const DEPOSITO: Record<string, string> = {
-  CASH: "Depósito en efectivo",
-  SURETY_INSURANCE: "Seguro de caución",
-  PROPERTY_GUARANTEE: "Garantía propietaria",
-};
-
 const PAGADOR: Record<string, string> = {
   LANDLORD: "la paga el propietario",
   TENANT: "la paga el inquilino",
@@ -90,19 +85,19 @@ const PAGADOR: Record<string, string> = {
 };
 
 function agregarDeposito(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
-  if (contract.depositAmount) {
+  if (!contract.depositAmount) return;
+  condiciones.push({ etiqueta: "Depósito", valor: formatearImporte(contract.depositAmount, moneda) });
+}
+
+/** Una línea por garantía: «Garantía» si hay una sola, «Garantía 1», «Garantía 2»… si hay varias. */
+function agregarGarantias(condiciones: Condicion[], contract: ContractResponse) {
+  const garantias = contract.guarantees ?? [];
+  garantias.forEach((garantia, indice) => {
     condiciones.push({
-      etiqueta: "Depósito",
-      valor: [
-        formatearImporte(contract.depositAmount, moneda),
-        contract.depositType && DEPOSITO[contract.depositType],
-      ]
-        .filter(Boolean)
-        .join(" · "),
+      etiqueta: garantias.length > 1 ? `Garantía ${indice + 1}` : "Garantía",
+      valor: describirGarantia(garantia),
     });
-  } else if (contract.depositType) {
-    condiciones.push({ etiqueta: "Depósito", valor: DEPOSITO[contract.depositType] });
-  }
+  });
 }
 
 function agregarComision(condiciones: Condicion[], contract: ContractResponse) {
@@ -173,6 +168,7 @@ export function condicionesComerciales(contract: ContractResponse): Condicion[] 
   const moneda = contract.currency;
 
   agregarDeposito(condiciones, contract, moneda);
+  agregarGarantias(condiciones, contract);
   agregarComision(condiciones, contract);
   agregarPunitorios(condiciones, contract, moneda);
   agregarRenovacion(condiciones, contract);

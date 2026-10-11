@@ -130,21 +130,39 @@ describe("condicionesComerciales", () => {
     expect(condicionesComerciales(CONTRATO)).toEqual([]);
   });
 
-  it("lista el depósito con su tipo", () => {
-    const c = condicionesComerciales({
-      ...CONTRATO,
-      depositAmount: 478691,
-      depositType: "SURETY_INSURANCE",
-    });
-    expect(c).toContainEqual({
-      etiqueta: "Depósito",
-      valor: "$ 478.691 · Seguro de caución",
-    });
+  it("el depósito es sólo su monto", () => {
+    const c = condicionesComerciales({ ...CONTRATO, depositAmount: 478691 });
+    expect(c).toContainEqual({ etiqueta: "Depósito", valor: "$ 478.691" });
   });
 
-  it("el tipo de depósito sin monto también se muestra", () => {
-    const c = condicionesComerciales({ ...CONTRATO, depositType: "PROPERTY_GUARANTEE" });
-    expect(c).toContainEqual({ etiqueta: "Depósito", valor: "Garantía propietaria" });
+  describe("garantías", () => {
+    const garantias = (guarantees: ContractResponse["guarantees"]) =>
+      condicionesComerciales({ ...CONTRATO, guarantees }).filter((c) => c.etiqueta.startsWith("Garantía"));
+
+    it("un seguro de caución dice la aseguradora y la póliza", () => {
+      expect(garantias([{ type: "SURETY_INSURANCE", insurerName: "Aseguradora Sur", policyNumber: "4411" }])).toEqual([
+        { etiqueta: "Garantía", valor: "Seguro de caución: Aseguradora Sur, póliza 4411" },
+      ]);
+    });
+
+    it("una garantía propietaria dice de quién es la propiedad, dónde y su matrícula", () => {
+      expect(garantias([{ type: "PROPERTY", fullName: "Ana Gómez", propertyAddress: "Av. Rivadavia 1234", propertyRegistry: "15-1234" }])).toEqual([
+        { etiqueta: "Garantía", valor: "Garantía propietaria de Ana Gómez: Av. Rivadavia 1234, matrícula 15-1234" },
+      ]);
+    });
+
+    it("con varias, las numera", () => {
+      const c = garantias([
+        { type: "PERSONAL", fullName: "Ana Gómez" },
+        { type: "SURETY_INSURANCE", insurerName: "Aseguradora Sur" },
+      ]);
+      expect(c.map((x) => x.etiqueta)).toEqual(["Garantía 1", "Garantía 2"]);
+    });
+
+    it("sin garantías no hay línea", () => {
+      expect(garantias(undefined)).toEqual([]);
+      expect(garantias([])).toEqual([]);
+    });
   });
 
   it("la comisión dice quién la paga", () => {
