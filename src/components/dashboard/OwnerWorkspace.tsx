@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
 import CreationWizard from "@/components/dashboard/CreationWizard";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
+import { validarImporteDeRecargo } from "@/lib/recargo";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type {
   AdjustmentResponse,
@@ -89,7 +91,8 @@ import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError, renovarSesion } from "@/lib/api";
 import { usePaymentEvents, type EventoDePago } from "@/hooks/usePaymentEvents";
-import { ERROR } from "@/lib/error-codes";
+import { useCambioDeDia } from "@/hooks/useCambioDeDia";
+import { ERROR, copyDeError } from "@/lib/error-codes";
 import CambioCondicionesForm from "@/components/dashboard/CambioCondicionesForm";
 import { useAuth } from "@/context/auth-context";
 
@@ -149,19 +152,19 @@ const inquilinosDemo: TenantRow[] = [
  * las cuatro acciones posibles: revisar, confirmar, registrar y descargar.
  */
 const cobranzasDemo: FilaCobranza[] = [
-  { invoiceId: 1, importeBase: 478691, totalVigente: 478691, ajustes: [], direccion: "Av. Rivadavia 2340, 5.º A", inquilino: "Jorge Paletta", periodo: "agosto 2026",
+  { invoiceId: 1, contractId: 1, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 478691, totalVigente: 478691, ajustes: [], direccion: "Av. Rivadavia 2340, 5.º A", inquilino: "Jorge Paletta", periodo: "agosto 2026",
     monto: "$ 478.691", vencimiento: "10/08/2026", vencimientoISO: "2026-08-10", estado: "Vencida",
     confirmada: true, accion: "registrar", pagoPendiente: null, pagoConfirmado: null },
-  { invoiceId: 2, importeBase: 520000, totalVigente: 520000, ajustes: [], direccion: "Lavalle 950, 3.º B", inquilino: "Marta Suárez", periodo: "agosto 2026",
+  { invoiceId: 2, contractId: 2, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 520000, totalVigente: 520000, ajustes: [], direccion: "Lavalle 950, 3.º B", inquilino: "Marta Suárez", periodo: "agosto 2026",
     monto: "$ 520.000", vencimiento: "10/08/2026", vencimientoISO: "2026-08-10", estado: "Pago a confirmar",
     confirmada: true, accion: "revisar",
     pagoPendiente: { id: 90, invoiceId: 2, status: "AWAITING_CONFIRMATION", submittedByTenant: true,
       receiptFileName: "comprobante-transferencia.jpg", receiptContentType: "image/jpeg", receiptSizeBytes: 1887436 },
     pagoConfirmado: null },
-  { invoiceId: 3, importeBase: 505000, totalVigente: 505000, ajustes: [], direccion: "Colón 2255, 4.º D", inquilino: "Diego Ferrari", periodo: "agosto 2026",
+  { invoiceId: 3, contractId: 3, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 505000, totalVigente: 505000, ajustes: [], direccion: "Colón 2255, 4.º D", inquilino: "Diego Ferrari", periodo: "agosto 2026",
     monto: "$ 505.000", vencimiento: "25/08/2026", vencimientoISO: "2026-08-25", estado: "A vencer",
     confirmada: false, accion: "confirmar", pagoPendiente: null, pagoConfirmado: null },
-  { invoiceId: 4, importeBase: 430000, totalVigente: 430000, ajustes: [], direccion: "Belgrano 445, PB", inquilino: "Ana Ferreyra", periodo: "agosto 2026",
+  { invoiceId: 4, contractId: 4, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 430000, totalVigente: 430000, ajustes: [], direccion: "Belgrano 445, PB", inquilino: "Ana Ferreyra", periodo: "agosto 2026",
     monto: "$ 430.000", vencimiento: "05/08/2026", vencimientoISO: "2026-08-05", estado: "Pagada",
     confirmada: true, accion: "comprobante",
     pagoPendiente: null,
@@ -349,6 +352,13 @@ function mensajeDeErrorCobranza(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
   if (err instanceof ApiError && err.type === ERROR.PAYMENT_ON_UNCONFIRMED_INVOICE) {
     return "Primero hay que confirmar la cuota. Después se le puede registrar el pago.";
+  }
+  if (err instanceof ApiError && (err.type === ERROR.LATE_FEE_NOT_CONFIGURED || err.type === ERROR.LATE_FEE_ALREADY_SETTLED)) {
+    return copyDeError(err);
+  }
+  // El tope del recargo lo valida el backend contra el de hoy: si el contrato cambió el día entremedio, rechaza.
+  if (err instanceof ApiError && err.status === 400 && err.fieldErrors?.amount) {
+    return "Ese importe supera el recargo que corresponde hoy según el contrato. Pruebe con uno menor.";
   }
   if (err instanceof ApiError && err.status === 400) return "No se pudo completar la acción. Revise los datos.";
   return "No pudimos completar la acción. Inténtelo de nuevo más tarde.";
@@ -799,6 +809,7 @@ type CollectionActionProps = Readonly<{
   onReview: (item: FilaCobranza) => void;
   onConfirm: (item: FilaCobranza) => void;
   onAdjust: (item: FilaCobranza) => void;
+  onLateFee: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
 }>;
@@ -810,12 +821,15 @@ function CollectionAction({
   onReview,
   onConfirm,
   onAdjust,
+  onLateFee,
   onViewReceipt,
   onRegisterPayment,
 }: CollectionActionProps) {
-  if (item.accion === "revisar") return <Button tone="secondary" small onClick={() => onReview(item)}>Revisar pago</Button>;
+  const recargo = item.recargoEditable && <Button tone="quiet" small disabled={isBusy} onClick={() => onLateFee(item)}>Recargo</Button>;
+  if (item.accion === "revisar") return <>{recargo}<Button tone="secondary" small onClick={() => onReview(item)}>Revisar pago</Button></>;
   if (item.accion === "confirmar") {
     return <>
+      {recargo}
       <Button tone="quiet" small disabled={isBusy || !canAdjust} onClick={() => onAdjust(item)}>Ajustar importe</Button>
       <Button tone="secondary" small disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar importe</Button>
     </>;
@@ -825,7 +839,7 @@ function CollectionAction({
       return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
     }}><Icon name="download" size={16} />Comprobante</Button>;
   }
-  return <Button tone="secondary" small onClick={() => onRegisterPayment(item)}>Registrar pago</Button>;
+  return <>{recargo}<Button tone="secondary" small onClick={() => onRegisterPayment(item)}>Registrar pago</Button></>;
 }
 
 type CollectionsViewProps = Readonly<{
@@ -838,6 +852,7 @@ type CollectionsViewProps = Readonly<{
   onReview: (item: FilaCobranza) => void;
   onConfirm: (item: FilaCobranza) => void;
   onAdjust: (item: FilaCobranza) => void;
+  onLateFee: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
   onCreateContract: () => void;
@@ -853,6 +868,7 @@ function CollectionsView({
   onReview,
   onConfirm,
   onAdjust,
+  onLateFee,
   onViewReceipt,
   onRegisterPayment,
   onCreateContract,
@@ -880,7 +896,7 @@ function CollectionsView({
       </div>
       {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
         otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
-        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small></td><td data-cell="monto" className="owner-number owner-money">{item.monto}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className="owner-substatus"><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
+        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money">{item.monto}{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
       </tbody></table></div>}
     </>}
   </>;
@@ -1325,6 +1341,8 @@ type ContractDetailProps = Readonly<{
   increments: RentIncrementResponse[] | "error" | null;
   scheduledContract: ContractResponse | null;
   successorId: number | null;
+  unconfirmedInvoices: FilaCobranza[];
+  onConfirmInvoice: (fila: FilaCobranza) => void;
   onBack: () => void;
   onOpenContract: (contractId: number) => void;
   onOpenConditions: () => void;
@@ -1336,6 +1354,19 @@ type ContractDetailProps = Readonly<{
   onRemoveDocument: (contractId: number) => void | Promise<unknown>;
   onAttachDocument: (contractId: number, file: File) => void | Promise<unknown>;
 }>;
+
+function UnconfirmedInvoicesCard({ invoices, onConfirm }: Readonly<{ invoices: FilaCobranza[]; onConfirm: (fila: FilaCobranza) => void }>) {
+  return <div className="owner-card owner-unconfirmed-card">
+    <h2>Cuotas sin confirmar</h2>
+    <ul className="owner-unconfirmed">
+      {invoices.map((fila) => <li key={fila.invoiceId}>
+        <span className={`owner-flag${fila.sinConfirmar?.urgente ? " owner-flag--urgente" : ""}`}><Icon name="alert" size={15} />Sin confirmar</span>
+        <b>{fila.periodo}</b> · {fila.monto} · vence el {fila.vencimiento}
+        {fila.sinConfirmar && <p className={`owner-aviso${fila.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{fila.sinConfirmar.texto} <button type="button" className="owner-aviso__link" onClick={() => onConfirm(fila)}>Confirmar</button></p>}
+      </li>)}
+    </ul>
+  </div>;
+}
 
 function ContractBreadcrumb({ name, onBack }: Readonly<{ name: string; onBack: () => void }>) {
   return <nav className="owner-crumb"><button type="button" onClick={onBack}>Contratos</button><span>/</span><span>{name}</span></nav>;
@@ -1391,6 +1422,8 @@ function ContractDetail({
   increments,
   scheduledContract,
   successorId,
+  unconfirmedInvoices,
+  onConfirmInvoice,
   onBack,
   onOpenContract,
   onOpenConditions,
@@ -1424,6 +1457,7 @@ function ContractDetail({
   return <>
     <ContractBreadcrumb name={address} onBack={onBack} />
     <header className="owner-page-head"><div><h1>{address}</h1><p>Contrato con {tenantName} · {vigenciaEnFechas(contract)}</p></div><ContractHeaderActions isActive={isActive} scheduledContract={scheduledContract} successorId={successorId} onOpenConditions={onOpenConditions} onBeginTermination={onBeginTermination} /></header>
+    {unconfirmedInvoices.length > 0 && <UnconfirmedInvoicesCard invoices={unconfirmedInvoices} onConfirm={onConfirmInvoice} />}
     <section className="owner-detail-grid">
       <ContractSummaryCard contract={contract} nextUpdate={nextUpdate} scheduledContract={scheduledContract} onOpenContract={onOpenContract} />
       <ContractAccessCard contract={contract} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
@@ -1616,6 +1650,56 @@ function InvoiceAdjustmentDialog({
   return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><div className="owner-wizard-chips" role="group" aria-label="Suma o resta"><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></div><div className="owner-wizard-chips" role="group" aria-label="Tipo de valor"><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></div><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : "$"}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
 }
 
+function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza; onClose: () => void; onChanged: (mensaje: string) => void }>) {
+  const [cambiando, setCambiando] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const editable = row.recargoEditable;
+  if (!editable) return null;
+
+  async function aplicar(hacer: () => Promise<unknown>, mensaje: string) {
+    setError(null);
+    setOcupado(true);
+    try {
+      await hacer();
+      onChanged(mensaje);
+    } catch (err) {
+      setError(mensajeDeErrorCobranza(err));
+    } finally {
+      setOcupado(false);
+    }
+  }
+  function guardar() {
+    const importe = validarImporteDeRecargo(texto, editable!.maximo);
+    if ("error" in importe) {
+      setError(importe.error);
+      return;
+    }
+    void aplicar(() => AlquiaBackendClient.invoices.setLateFee(row.invoiceId, { amount: importe.valor }), importe.valor === 0 ? "Recargo perdonado." : "Recargo actualizado.");
+  }
+
+  return <Dialog title="Recargo por atraso" onClose={onClose}><div className="owner-dialog__body">
+    <p>{row.direccion} · cuota de {row.periodo}.</p>
+    <dl className="owner-definition">
+      <div><dt>Recargo de hoy</dt><dd>{formatearMonto(editable.actual)}</dd></div>
+      {editable.modificado && <div><dt>Recargo modificado</dt><dd>No es el que calcula el contrato</dd></div>}
+    </dl>
+    {cambiando && <label className="owner-wizard-field"><span>Nuevo recargo</span><input inputMode="decimal" autoFocus placeholder="Ej: 3.000" value={texto} aria-invalid={error !== null} onChange={(event) => { setTexto(event.target.value); setError(null); }} /></label>}
+    {cambiando && editable.maximo !== null && <p className="owner-dialog__hint">Entre {formatearMonto(0)} y {formatearMonto(editable.maximo)}, el recargo de hoy según el contrato.</p>}
+    {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
+  </div><div className="owner-dialog__foot">
+    {cambiando ? <>
+      <Button tone="quiet" disabled={ocupado} onClick={() => { setCambiando(false); setError(null); }}>Cancelar</Button>
+      <Button busy={ocupado} onClick={guardar}>{ocupado ? "Guardando…" : "Guardar"}</Button>
+    </> : <>
+      {editable.modificado && <Button tone="quiet" disabled={ocupado} onClick={() => void aplicar(() => AlquiaBackendClient.invoices.clearLateFee(row.invoiceId), "Recargo recalculado según el contrato.")}>Volver a calcular</Button>}
+      <Button tone="secondary" disabled={ocupado} onClick={() => setCambiando(true)}>Cambiar el recargo</Button>
+      <Button tone="danger" disabled={ocupado || editable.actual === 0} busy={ocupado} onClick={() => void aplicar(() => AlquiaBackendClient.invoices.setLateFee(row.invoiceId, { amount: 0 }), "Recargo perdonado.")}>Perdonar recargo</Button>
+    </>}
+  </div></Dialog>;
+}
+
 function RemoveInvoiceAdjustmentDialog({ error, isBusy, onClose, onRemove }: Readonly<{ error: string | null; isBusy: boolean; onClose: () => void; onRemove: () => void }>) {
   const buttonLabel = isBusy ? "Quitando…" : "Quitar";
   return <Dialog title="Quitar este ajuste" onClose={onClose}><div className="owner-dialog__body"><p>El total de la cuota vuelve a calcularse sin él.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onRemove}>{buttonLabel}</Button></div></Dialog>;
@@ -1689,10 +1773,10 @@ function InvoiceConfirmationDialog({ row, error, isBusy, onClose, onConfirm }: R
   </div></Dialog>;
 }
 
-function PaymentRegistrationDialog({ row, file, error, isBusy, onClose, onFileChange, onRegister }: Readonly<{ row: FilaCobranza; file: File | null; error: string | null; isBusy: boolean; onClose: () => void; onFileChange: (file: File | null) => void; onRegister: (file: File) => void }>) {
+function PaymentRegistrationDialog({ row, file, error, isBusy, onClose, onFileChange, onRegister, onChangeLateFee }: Readonly<{ onChangeLateFee: (row: FilaCobranza) => void; row: FilaCobranza; file: File | null; error: string | null; isBusy: boolean; onClose: () => void; onFileChange: (file: File | null) => void; onRegister: (file: File) => void }>) {
   const buttonLabel = isBusy ? "Guardando…" : "Registrar pago";
   const register = () => { if (file) onRegister(file); };
-  return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p><label className="owner-file"><span>Comprobante del pago</span><input type="file" accept="image/*,application/pdf" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} /></label><p className="owner-dialog__hint">Adjunte la transferencia, el recibo firmado o la boleta de depósito. Queda guardada junto a la cuota.</p>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} disabled={!file} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
+  return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p>{row.recargo?.monto && <p className="owner-dialog__hint">Incluye el recargo por atraso de <b>{row.recargo.monto}</b>, que queda saldado con este pago.{row.recargoEditable && <> <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onChangeLateFee(row)}>Cambiar</button></>}</p>}<label className="owner-file"><span>Comprobante del pago</span><input type="file" accept="image/*,application/pdf" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} /></label><p className="owner-dialog__hint">Adjunte la transferencia, el recibo firmado o la boleta de depósito. Queda guardada junto a la cuota.</p>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} disabled={!file} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
 }
 
 function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ tenant: TenantRequest; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (tenant: TenantRequest) => void; onSave: () => void }>) {
@@ -1832,6 +1916,7 @@ type WorkspaceDialogState = {
   editingPropertyId: number | null;
   reviewingPayment: FilaCobranza | null;
   registeringPayment: FilaCobranza | null;
+  lateFeeRow: FilaCobranza | null;
   confirmingInvoice: FilaCobranza | null;
   paymentFile: File | null;
   conditionsOpen: boolean;
@@ -1881,6 +1966,9 @@ type WorkspaceDialogActions = {
   rejectPayment: (paymentId: number) => Promise<void>;
   confirmPayment: (paymentId: number) => Promise<void>;
   closePaymentRegistration: () => void;
+  openLateFee: (row: FilaCobranza) => void;
+  closeLateFee: () => void;
+  lateFeeChanged: (mensaje: string) => void;
   setPaymentFile: (file: File | null) => void;
   registerPayment: (invoiceId: number, file: File) => void;
   closeConditions: () => void;
@@ -1915,7 +2003,8 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
     {state.archivingProperty && <ArchivePropertyDialog property={state.archivingProperty} error={state.archiveError} isBusy={state.archiveBusy} onClose={actions.closePropertyArchive} onArchive={() => actions.archiveProperty(state.archivingProperty!)} />}
     {state.reviewingPayment && <PaymentReviewDialog row={state.reviewingPayment} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentReview} onViewReceipt={actions.viewReceipt} onRejectPayment={actions.rejectPayment} onConfirmPayment={actions.confirmPayment} />}
     {state.confirmingInvoice && <InvoiceConfirmationDialog row={state.confirmingInvoice} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeInvoiceConfirmation} onConfirm={actions.confirmInvoice} />}
-    {state.registeringPayment && <PaymentRegistrationDialog row={state.registeringPayment} file={state.paymentFile} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentRegistration} onFileChange={actions.setPaymentFile} onRegister={(file) => actions.registerPayment(state.registeringPayment!.invoiceId, file)} />}
+    {state.lateFeeRow && <LateFeeDialog row={state.lateFeeRow} onClose={actions.closeLateFee} onChanged={actions.lateFeeChanged} />}
+    {state.registeringPayment && !state.lateFeeRow && <PaymentRegistrationDialog row={state.registeringPayment} onChangeLateFee={actions.openLateFee} file={state.paymentFile} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentRegistration} onFileChange={actions.setPaymentFile} onRegister={(file) => actions.registerPayment(state.registeringPayment!.invoiceId, file)} />}
     <ContractConditionsDialog isOpen={state.conditionsOpen} contract={state.contract} onClose={actions.closeConditions} onProgrammed={actions.conditionsProgrammed} />
   </>;
 }
@@ -1979,6 +2068,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   // tapar el alquiler vigente ni el documento.
   const [aumentos, setAumentos] = useState<RentIncrementResponse[] | "error" | null>(null);
   const [recargaContrato, setRecargaContrato] = useState(0);
+  const [cuotasSinConfirmar, setCuotasSinConfirmar] = useState<FilaCobranza[]>([]);
   const [finalizando, setFinalizando] = useState(false);
   const [fechaFin, setFechaFin] = useState("");
   const [errorContrato, setErrorContrato] = useState<string | null>(null);
@@ -2011,6 +2101,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const [filtroContrato, setFiltroContrato] = useState<FiltroContrato>("vigentes");
   const [enRevision, setEnRevision] = useState<FilaCobranza | null>(null);
   const [aRegistrar, setARegistrar] = useState<FilaCobranza | null>(null);
+  const [recargando, setRecargando] = useState<FilaCobranza | null>(null);
   const [confirmando, setConfirmando] = useState<FilaCobranza | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [accionEnCurso, setAccionEnCurso] = useState(false);
@@ -2045,6 +2136,13 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     renovarSesion,
     // Sin sesión, la recarga da 401 y el flujo de sesión vencida que ya existe toma el control.
     onSesionPerdida: () => setRefresco((n) => n + 1),
+  });
+
+  // El recargo por atraso crece a la medianoche argentina: si hay uno corriendo (o un aviso por
+  // volverse urgente), se vuelve a leer al cambiar el día, igual que con un evento del stream.
+  useCambioDeDia({
+    activo: necesitaCobranzas && !demo && !!cargaCobranzas && "ok" in cargaCobranzas && cargaCobranzas.ok.some((fila) => fila.dependeDelDia),
+    alCambiar: () => setRefresco((n) => n + 1),
   });
 
   useEffect(() => {
@@ -2089,6 +2187,24 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
 
   // Un contrato vigente apunta a su sucesor apenas hay un cambio programado; el
   // detalle lo pide para mostrar desde cuándo rige y con qué condiciones.
+  // Las cuotas sin confirmar del contrato abierto, para avisarlas en su detalle. Es un dato de apoyo:
+  // si no carga, el detalle se muestra igual sin el aviso.
+  const contratoAbierto = cargaContrato && "ok" in cargaContrato ? cargaContrato.ok : null;
+  useEffect(() => {
+    if (!necesitaContrato || !contratoAbierto) return;
+    let cancelado = false;
+    Promise.resolve(AlquiaBackendClient.invoices.list({ contractId: contratoAbierto.id }))
+      .then((cuotas) => {
+        if (!cancelado) setCuotasSinConfirmar(buildFilasCobranza(cuotas, [contratoAbierto]).filter((fila) => fila.sinConfirmar));
+      })
+      .catch(() => {
+        if (!cancelado) setCuotasSinConfirmar([]);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [necesitaContrato, contratoAbierto, refresco]);
+
   const sucesorId = activeSuccessorId(cargaContrato);
 
   useScheduledContractLoad({ successorId: sucesorId, refreshKey: recargaContrato, setScheduled: setCargaProgramado });
@@ -2196,6 +2312,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     setAjustandoId(null);
     setAjusteEditado(null);
     setFormItem(FORM_ITEM_VACIO);
+  }
+  function abrirRecargo(fila: FilaCobranza) {
+    setErrorAccion(null);
+    setRecargando(fila);
   }
   function registrarPago(fila: FilaCobranza) {
     setErrorAccion(null);
@@ -2503,13 +2623,13 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const wizardContent = <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} onClose={() => setWizard(null)} onComplete={() => { go(wizardDestinations[wizardKind]); toast.exito(WIZARD_SUCCESS[wizardKind]); }} />;
   const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
     property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => beginCreation("contract", demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
-    contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} />,
+    contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} unconfirmedInvoices={cuotasSinConfirmar.filter((fila) => fila.contractId === contratoAbierto?.id)} onConfirmInvoice={pedirConfirmacion} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} />,
     tenant: <TenantDetail onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => beginCreation("contract")} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
   };
   const viewContent: Record<OwnerView, React.ReactNode> = {
     propiedades: <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => beginCreation("property")} onOpenProperty={(propertyId) => openDetail("property", propertyId)} />,
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => beginCreation("contract")} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
-    cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onRegisterPayment={registrarPago} onCreateContract={() => beginCreation("contract")} />,
+    cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => beginCreation("contract")} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => beginCreation("contract")} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} onCreateProperty={() => beginCreation("property")} onCreateContract={() => beginCreation("contract")} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
@@ -2550,7 +2670,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     editingProperty: editandoPropiedad,
     editingPropertyId: propiedadEditadaId,
     reviewingPayment: revisionActual,
-    registeringPayment: aRegistrar,
+    // Tras cambiar el recargo la lista se relee: el diálogo de pago tiene que mostrar el importe nuevo, no el de antes.
+    registeringPayment: aRegistrar && (cobranzas?.find((fila) => fila.invoiceId === aRegistrar.invoiceId) ?? aRegistrar),
+    lateFeeRow: recargando && (cobranzas?.find((fila) => fila.invoiceId === recargando.invoiceId) ?? recargando),
     confirmingInvoice: confirmando,
     paymentFile: archivo,
     conditionsOpen,
@@ -2599,6 +2721,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     rejectPayment: (paymentId) => accionDeCuota(() => AlquiaBackendClient.payments.reject(paymentId), () => setEnRevision(null), "Pago rechazado. El inquilino puede cargar un comprobante nuevo."),
     confirmPayment: (paymentId) => accionDeCuota(() => AlquiaBackendClient.payments.confirm(paymentId), () => setEnRevision(null), `Pago confirmado. La cuota de ${revisionActual?.periodo} quedó pagada.`),
     closePaymentRegistration: () => setARegistrar(null),
+    openLateFee: abrirRecargo,
+    closeLateFee: () => setRecargando(null),
+    lateFeeChanged: (mensaje) => { setRecargando(null); setRefresco((n) => n + 1); toast.exito(mensaje); },
     setPaymentFile: setArchivo,
     registerPayment: (invoiceId, file) => void accionDeCuota(() => AlquiaBackendClient.payments.create(invoiceId, file), () => { setARegistrar(null); setArchivo(null); }, `Pago registrado. La cuota de ${aRegistrar?.periodo} quedó pagada.`),
     closeConditions: () => setConditionsOpen(false),

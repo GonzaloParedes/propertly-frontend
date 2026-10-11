@@ -199,8 +199,9 @@ export interface ContractRequest {
   /** 0 a 100. */
   commissionPercent?: number;
   commissionPayer?: CommissionPayer;
-  /** Reusa el enum de los ajustes: porcentaje o monto fijo. */
-  lateFeeType?: AdjustmentValueType;
+  /** Cómo se cobra el atraso, con su unidad. Ausente = el contrato no define punitorios. */
+  lateFeeMethod?: LateFeeMethod;
+  /** Porcentaje o monto según el método: ver `LateFeeMethod`. */
   lateFeeValue?: number;
   lateFeeGraceDays?: number;
   autoRenewal?: boolean;
@@ -230,8 +231,9 @@ export interface ContractResponse {
   /** 0 a 100. */
   commissionPercent?: number;
   commissionPayer?: CommissionPayer;
-  /** Reusa el enum de los ajustes: porcentaje o monto fijo. */
-  lateFeeType?: AdjustmentValueType;
+  /** Cómo se cobra el atraso, con su unidad. Ausente = el contrato no define punitorios. */
+  lateFeeMethod?: LateFeeMethod;
+  /** Porcentaje o monto según el método: ver `LateFeeMethod`. */
   lateFeeValue?: number;
   lateFeeGraceDays?: number;
   autoRenewal?: boolean;
@@ -293,6 +295,41 @@ export type InvoiceStatus = "PENDING" | "DUE" | "PAID";
 export type AdjustmentKind = "DISCOUNT" | "SURCHARGE";
 export type AdjustmentValueType = "FIXED_AMOUNT" | "PERCENTAGE";
 
+export type LateFeeMethod =
+  | "PERCENT_PER_DAY"
+  | "PERCENT_PER_MONTH"
+  | "PERCENT_PER_YEAR"
+  | "FIXED_PER_DAY"
+  | "FIXED_ONCE";
+
+/**
+ * NOT_STARTED: aún en los días de gracia. ACCRUING: corre cada día. FROZEN: hay un comprobante
+ * enviado que congela el importe en su fecha. SETTLED: la cuota se pagó y el recargo quedó firme.
+ */
+export type LateFeeState = "NOT_STARTED" | "ACCRUING" | "FROZEN" | "SETTLED";
+
+/** Lo calcula el backend al leer la cuota. El front sólo lo muestra: nunca lo recalcula. */
+export interface LateFeeResponse {
+  method: LateFeeMethod;
+  value: number;
+  /** Primer día con recargo, ya descontados los días de gracia. */
+  accruesFrom: string;
+  /** Fecha (Argentina) a la que está calculado `amount`. */
+  asOf: string;
+  daysLate: number;
+  amount: number;
+  /** Lo que sería `amount` mañana. Igual a `amount` cuando no corre más. */
+  nextDayAmount: number;
+  state: LateFeeState;
+  /** El propietario fijó o perdonó el recargo a mano. */
+  overridden: boolean;
+}
+
+export interface LateFeeOverrideRequest {
+  /** De 0 al recargo contractual de hoy; con 0 se perdona. */
+  amount: number;
+}
+
 export interface AdjustmentResponse {
   id: number;
   name: string;
@@ -308,6 +345,10 @@ export interface InvoiceResponse {
   dueDate: string;
   baseAmount: number;
   total: number;
+  /** `total` más el recargo por atraso: lo que se adeuda hoy. */
+  amountDue: number;
+  /** Null si el contrato no define punitorios. */
+  lateFee: LateFeeResponse | null;
   status: InvoiceStatus;
   confirmed: boolean;
   adjustments: AdjustmentResponse[];

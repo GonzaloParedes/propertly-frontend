@@ -1,9 +1,10 @@
+import { act } from "@testing-library/react";
 import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
 import { ERROR } from "@/lib/error-codes";
-import type { ContractResponse, InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
+import type { ContractResponse, InvoiceResponse, LateFeeResponse, PaymentResponse } from "@/lib/backend-types";
 import { FakeEventSource, instalarEventSourceFalso } from "@/tests/fake-event-source";
 
 // OwnerWorkspace nombra la cuenta desde la sesión; estas vistas no la usan.
@@ -16,7 +17,7 @@ vi.mock("@/lib/backend-client", () => ({
     tenants: { list: vi.fn() },
     contracts: { list: vi.fn() },
     properties: { list: vi.fn(), archive: vi.fn() },
-    invoices: { list: vi.fn(), confirm: vi.fn(), addAdjustment: vi.fn(), editAdjustment: vi.fn(), removeAdjustment: vi.fn() },
+    invoices: { list: vi.fn(), confirm: vi.fn(), addAdjustment: vi.fn(), editAdjustment: vi.fn(), removeAdjustment: vi.fn(), setLateFee: vi.fn(), clearLateFee: vi.fn() },
     payments: { create: vi.fn(), confirm: vi.fn(), reject: vi.fn(), getReceipt: vi.fn() },
   },
 }));
@@ -25,6 +26,8 @@ import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockConfirmarCuota = vi.mocked(AlquiaBackendClient.invoices.confirm);
+const mockFijarRecargo = vi.mocked(AlquiaBackendClient.invoices.setLateFee);
+const mockQuitarRecargo = vi.mocked(AlquiaBackendClient.invoices.clearLateFee);
 const mockCrearPago = vi.mocked(AlquiaBackendClient.payments.create);
 const mockConfirmarPago = vi.mocked(AlquiaBackendClient.payments.confirm);
 const mockRechazarPago = vi.mocked(AlquiaBackendClient.payments.reject);
@@ -46,7 +49,7 @@ const pago = (over: Partial<PaymentResponse> = {}): PaymentResponse => ({
 
 const cuota = (over: Partial<InvoiceResponse> = {}): InvoiceResponse => ({
   id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-10",
-  baseAmount: 478691, total: 478691, status: "DUE", confirmed: true,
+  baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "DUE", confirmed: true,
   adjustments: [], payments: [], ...over,
 });
 
@@ -335,7 +338,7 @@ describe("ajustar importe", () => {
 
   const conAjuste = (over: Partial<InvoiceResponse> = {}) =>
     sinConfirmar({
-      total: 428691,
+      total: 428691, amountDue: 428691, lateFee: null,
       adjustments: [
         { id: 7, name: "Reparación", kind: "DISCOUNT", valueType: "FIXED_AMOUNT", value: 50000 },
       ],
@@ -557,5 +560,236 @@ describe("pagos en vivo", () => {
     streamDelPropietario()?.emitir("connected");
 
     await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
+  });
+});
+
+
+// --- recargo por atraso y cuotas sin confirmar ---
+
+describe("recargo por atraso", () => {
+  const recargo = (over: Partial<LateFeeResponse> = {}): LateFeeResponse => ({
+    method: "PERCENT_PER_DAY", value: 1.5, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
+    amount: 6750, nextDayAmount: 9000, state: "ACCRUING", overridden: false, ...over,
+  });
+
+  it("la fila muestra lo que se adeuda hoy, el recargo y lo que se adeuda mañana", async () => {
+    conCuotas([cuota({ total: 450000, amountDue: 456750, lateFee: recargo() })]);
+    const filaCuota = within(await screen.findByRole("row", { name: /Av\. Rivadavia/ }));
+
+    expect(filaCuota.getByText("$ 456.750", { selector: "td" , exact: false })).toBeInTheDocument();
+    expect(filaCuota.getByText(/Recargo por atraso/)).toHaveTextContent("$ 6.750");
+    expect(filaCuota.getByText(/Desde mañana/)).toHaveTextContent("$ 459.000");
+  });
+
+  it("antes de que empiece, dice desde cuándo y no suma nada al importe", async () => {
+    conCuotas([cuota({ amountDue: 478691, lateFee: recargo({ state: "NOT_STARTED", amount: 0, nextDayAmount: 2250, accruesFrom: "2026-08-16" }) })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.getByText("Desde el 16/08 se suma un recargo de $ 2.250 por día")).toBeInTheDocument();
+    expect(screen.queryByText(/Recargo por atraso/)).not.toBeInTheDocument();
+  });
+
+  it("un recargo perdonado se le dice al propietario", async () => {
+    conCuotas([cuota({ lateFee: recargo({ overridden: true, amount: 0, nextDayAmount: 0 }) })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.getByText("Recargo perdonado")).toBeInTheDocument();
+  });
+
+  it("con la pantalla abierta pasada la medianoche argentina, vuelve a leer las cuotas", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(new Date("2026-08-15T02:50:00Z")); // 23:50 del 14/08 en Buenos Aires
+    try {
+      mockInvoices
+        .mockResolvedValueOnce([cuota({ amountDue: 485441, lateFee: recargo({ amount: 6750, nextDayAmount: 8000 }) })])
+        .mockResolvedValueOnce([cuota({ amountDue: 486691, lateFee: recargo({ amount: 8000, nextDayAmount: 9250 }) })]);
+      mockContracts.mockResolvedValue([CONTRATO]);
+      render(<OwnerWorkspace initialView="cobranzas" />);
+      expect(await screen.findByText(/Recargo por atraso/)).toHaveTextContent("$ 6.750");
+
+      await act(async () => { vi.advanceTimersByTime(15 * 60_000); });
+
+      await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.getByText(/Recargo por atraso/)).toHaveTextContent("$ 8.000"));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("una cuota sin recargo no muestra nada de esto", async () => {
+    conCuotas([cuota()]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.queryByText(/recargo/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("cuotas sin confirmar", () => {
+  it("vencida y con punitorios: aviso urgente con el recargo de hoy y el enlace a confirmar", async () => {
+    conCuotas([cuota({
+      confirmed: false, amountDue: 485441,
+      lateFee: { method: "FIXED_PER_DAY", value: 1250, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
+        amount: 6750, nextDayAmount: 8000, state: "ACCRUING", overridden: false },
+    })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.getByText(/no puede pagarla en el portal/)).toHaveTextContent(
+      "El recargo por atraso corre igual, según el contrato: hoy suma $ 6.750."
+    );
+    expect(screen.getByText("Sin confirmar").closest("small")).toHaveClass("owner-substatus--urgente");
+
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    expect(within(screen.getByRole("dialog")).getByText(/ya no se puede ajustar/)).toBeInTheDocument();
+  });
+
+  it("sin punitorios el aviso no habla de recargo", async () => {
+    conCuotas([cuota({ confirmed: false })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.getByText(/no puede pagarla en el portal/)).not.toHaveTextContent(/recargo/);
+  });
+
+  it("todavía no vencida: el aviso no es urgente", async () => {
+    conCuotas([cuota({ confirmed: false, status: "PENDING", dueDate: "2099-01-10" })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.getByText("Sin confirmar").closest("small")).not.toHaveClass("owner-substatus--urgente");
+  });
+});
+
+
+// --- cambiar el recargo ---
+
+describe("perdonar, cambiar y volver a calcular el recargo", () => {
+  const recargo = (over: Partial<LateFeeResponse> = {}): LateFeeResponse => ({
+    method: "PERCENT_PER_DAY", value: 1.5, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
+    amount: 6750, nextDayAmount: 9000, state: "ACCRUING", overridden: false, ...over,
+  });
+  const conRecargo = (lateFee: LateFeeResponse | null = recargo(), amountDue = 485441) =>
+    cuota({ amountDue, lateFee });
+
+  async function abrirRecargo(fila: InvoiceResponse = conRecargo(), despues: InvoiceResponse = conRecargo(null, 478691)) {
+    mockInvoices.mockResolvedValueOnce([fila]).mockResolvedValue([despues]);
+    mockContracts.mockResolvedValue([CONTRATO]);
+    render(<OwnerWorkspace initialView="cobranzas" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Recargo" }));
+    return screen.getByRole("dialog");
+  }
+
+  it("la fila ofrece el recargo sólo si hay uno que cambiar", async () => {
+    conCuotas([cuota()]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+    expect(screen.queryByRole("button", { name: "Recargo" })).not.toBeInTheDocument();
+  });
+
+  it("perdonar manda amount 0, relee las cuotas y avisa", async () => {
+    mockFijarRecargo.mockResolvedValue(cuota());
+    const dialogo = await abrirRecargo();
+    expect(within(dialogo).getByText("$ 6.750")).toBeInTheDocument();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Perdonar recargo" }));
+
+    await waitFor(() => expect(mockFijarRecargo).toHaveBeenCalledWith(1000, { amount: 0 }));
+    await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Recargo perdonado.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("cambiar manda el importe escrito y respeta el máximo de hoy", async () => {
+    mockFijarRecargo.mockResolvedValue(cuota());
+    const dialogo = await abrirRecargo();
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Cambiar el recargo" }));
+    expect(within(dialogo).getByText(/Entre \$ 0 y \$ 6\.750/)).toBeInTheDocument();
+
+    await userEvent.type(within(dialogo).getByLabelText("Nuevo recargo"), "10.000");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+    expect(within(dialogo).getByRole("alert")).toHaveTextContent("El máximo es $ 6.750");
+    expect(mockFijarRecargo).not.toHaveBeenCalled();
+
+    await userEvent.clear(within(dialogo).getByLabelText("Nuevo recargo"));
+    await userEvent.type(within(dialogo).getByLabelText("Nuevo recargo"), "3.000");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(mockFijarRecargo).toHaveBeenCalledWith(1000, { amount: 3000 }));
+    expect(await screen.findByText("Recargo actualizado.")).toBeInTheDocument();
+  });
+
+  it("un recargo modificado se puede volver a calcular, y entonces el tope lo pone el backend", async () => {
+    mockQuitarRecargo.mockResolvedValue(cuota());
+    const dialogo = await abrirRecargo(conRecargo(recargo({ overridden: true, amount: 3000, nextDayAmount: 3000 }), 481691));
+    expect(within(dialogo).getByText("Recargo modificado")).toBeInTheDocument();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Cambiar el recargo" }));
+    expect(within(dialogo).queryByText(/Entre/)).not.toBeInTheDocument();
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Cancelar" }));
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Volver a calcular" }));
+    await waitFor(() => expect(mockQuitarRecargo).toHaveBeenCalledWith(1000));
+    expect(await screen.findByText("Recargo recalculado según el contrato.")).toBeInTheDocument();
+  });
+
+  it("un recargo ya perdonado no se vuelve a perdonar", async () => {
+    const dialogo = await abrirRecargo(conRecargo(recargo({ overridden: true, amount: 0, nextDayAmount: 0 }), 478691));
+    expect(within(dialogo).getByRole("button", { name: "Perdonar recargo" })).toBeDisabled();
+    expect(within(dialogo).getByRole("button", { name: "Volver a calcular" })).toBeEnabled();
+  });
+
+  it("un 409 por cuota ya paga se muestra en el diálogo, que sigue abierto", async () => {
+    mockFijarRecargo.mockRejectedValue(new ApiError(409, "Paid invoice cannot be changed", ERROR.LATE_FEE_ALREADY_SETTLED));
+    const dialogo = await abrirRecargo();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Perdonar recargo" }));
+
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent("La cuota ya está paga");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(mockInvoices).toHaveBeenCalledTimes(1);
+  });
+
+  it("un tope que el backend rechaza (400 sobre amount) se explica sin mostrar su texto", async () => {
+    mockFijarRecargo.mockRejectedValue(new ApiError(400, "Validation failed", undefined, { amount: "must be at most" }));
+    const dialogo = await abrirRecargo(conRecargo(recargo({ overridden: true, amount: 3000, nextDayAmount: 3000 }), 481691));
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Cambiar el recargo" }));
+    await userEvent.type(within(dialogo).getByLabelText("Nuevo recargo"), "99999");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent("supera el recargo que corresponde hoy");
+  });
+});
+
+describe("registrar pago con recargo", () => {
+  const lateFee: LateFeeResponse = {
+    method: "PERCENT_PER_DAY", value: 1.5, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
+    amount: 6750, nextDayAmount: 9000, state: "ACCRUING", overridden: false,
+  };
+
+  it("muestra el recargo que el pago va a saldar y deja cambiarlo antes de registrar", async () => {
+    mockInvoices
+      .mockResolvedValueOnce([cuota({ amountDue: 485441, lateFee })])
+      .mockResolvedValue([cuota({ amountDue: 478691, lateFee: { ...lateFee, amount: 0, nextDayAmount: 0, overridden: true } })]);
+    mockContracts.mockResolvedValue([CONTRATO]);
+    mockFijarRecargo.mockResolvedValue(cuota());
+    render(<OwnerWorkspace initialView="cobranzas" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    const registro = screen.getByRole("dialog");
+    expect(within(registro).getByText(/Incluye el recargo por atraso de/)).toHaveTextContent("$ 6.750");
+    expect(within(registro).getByText("$ 485.441")).toBeInTheDocument();
+
+    await userEvent.click(within(registro).getByRole("button", { name: "Cambiar" }));
+    expect(screen.getByRole("dialog", { name: "Recargo por atraso" })).toBeInTheDocument();
+    expect(screen.queryByText("Registrar pago", { selector: "h2, h1" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Perdonar recargo" }));
+
+    // Vuelve el registro del pago, ya con el importe sin recargo.
+    const de_nuevo = await screen.findByRole("dialog", { name: "Registrar pago" });
+    expect(within(de_nuevo).getByText("$ 478.691")).toBeInTheDocument();
+    expect(within(de_nuevo).queryByText(/Incluye el recargo/)).not.toBeInTheDocument();
+  });
+
+  it("sin recargo, el registro del pago no habla de él", async () => {
+    conCuotas([cuota()]);
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    expect(within(screen.getByRole("dialog")).queryByText(/recargo/i)).not.toBeInTheDocument();
   });
 });

@@ -55,7 +55,7 @@ function cuota(contractId: number, extra: Partial<InvoiceResponse> = {}): Invoic
     period: "2026-08-01",
     dueDate: "2026-08-10",
     baseAmount: 400000,
-    total: 400000,
+    total: 400000, amountDue: 400000, lateFee: null,
     status: "PENDING",
     confirmed: true,
     adjustments: [],

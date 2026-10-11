@@ -123,14 +123,19 @@ function pluralizar(cantidad: number, singular: string, plural: string): string 
 }
 
 function agregarPunitorios(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
-  if (!contract.lateFeeValue) return;
-  const valor = contract.lateFeeType === "PERCENTAGE"
-    ? `${contract.lateFeeValue} % por mora`
-    : `${formatearImporte(contract.lateFeeValue, moneda)} por mora`;
-  const gracia = contract.lateFeeGraceDays
-    ? `tras ${contract.lateFeeGraceDays} ${pluralizar(contract.lateFeeGraceDays, "día", "días")} de gracia`
-    : null;
-  condiciones.push({ etiqueta: "Punitorios", valor: [valor, gracia].filter(Boolean).join(" · ") });
+  const { lateFeeMethod: metodo, lateFeeValue: valor } = contract;
+  if (!metodo || valor === undefined || valor === null) return;
+  const porcentaje = `${valor.toLocaleString("es-AR", { maximumFractionDigits: 2 })} %`;
+  const importe = formatearImporte(valor, moneda);
+  const desde = `desde el día ${(contract.lateFeeGraceDays ?? 0) + 1} de atraso`;
+  const tasa = {
+    PERCENT_PER_DAY: `${porcentaje} diario sobre la cuota`,
+    PERCENT_PER_MONTH: `${porcentaje} mensual, cobrado por día de atraso`,
+    PERCENT_PER_YEAR: `${porcentaje} anual, cobrado por día de atraso`,
+    FIXED_PER_DAY: `${importe} por cada día de atraso`,
+    FIXED_ONCE: `Multa única de ${importe}`,
+  }[metodo];
+  condiciones.push({ etiqueta: "Punitorios", valor: `${tasa}, ${desde}` });
 }
 
 function agregarRenovacion(condiciones: Condicion[], contract: ContractResponse) {

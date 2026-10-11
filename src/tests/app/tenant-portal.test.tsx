@@ -1,8 +1,9 @@
+import { act } from "@testing-library/react";
 import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import TenantPortalPage from "@/app/tenant-portal/page";
 import { ApiError } from "@/lib/api";
-import type { TenantCalendarPreInvoiceResponse, TenantCalendarResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
+import type { LateFeeResponse, TenantCalendarPreInvoiceResponse, TenantCalendarResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
 import { FakeEventSource, instalarEventSourceFalso } from "@/tests/fake-event-source";
 
 let searchParams = new URLSearchParams();
@@ -29,7 +30,7 @@ const mockRecibo = vi.mocked(AlquiaBackendClient.tenantPortal.getReceipt);
 function cuota(over: Partial<TenantCalendarInvoiceResponse> = {}): TenantCalendarInvoiceResponse {
   return {
     id: 1000, contractId: 100, period: "2026-09-01", dueDate: "2026-09-10",
-    baseAmount: 478691, total: 478691, status: "PENDING", confirmed: true,
+    baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "PENDING", confirmed: true,
     adjustments: [], payments: [], canSubmitPayment: true, ...over,
   };
 }
@@ -107,6 +108,73 @@ describe("calendario anual", () => {
     expect(within(detalle).getByText("Vence el 10/09/2026")).toBeInTheDocument();
     expect(within(detalle).getByText("$ 478.691")).toBeInTheDocument();
     expect(within(detalle).getByRole("button", { name: "Subir comprobante" })).toBeInTheDocument();
+  });
+
+  describe("recargo por atraso", () => {
+    const recargo = (over: Partial<LateFeeResponse> = {}): LateFeeResponse => ({
+      method: "PERCENT_PER_DAY", value: 1.5, accruesFrom: "2026-09-11", asOf: "2026-09-14", daysLate: 3,
+      amount: 6750, nextDayAmount: 9000, state: "ACCRUING", overridden: false, ...over,
+    });
+
+    async function detalleCon(over: Partial<TenantCalendarInvoiceResponse>, estado = "Vencida") {
+      mockCalendario.mockResolvedValueOnce(calendario([cuota({ status: "DUE", ...over })]));
+      render(<TenantPortalPage />);
+      await abrirMes("Septiembre", 2026, estado);
+      return within(screen.getByRole("region", { name: "Detalle de septiembre 2026" }));
+    }
+
+    it("corriendo: hoy, el recargo y desde mañana", async () => {
+      const detalle = await detalleCon({ total: 450000, amountDue: 456750, lateFee: recargo() });
+      expect(detalle.getByText("$ 456.750", { selector: "span" })).toBeInTheDocument();
+      expect(detalle.getByText(/Hoy:/)).toHaveTextContent("$ 456.750");
+      expect(detalle.getByText(/Recargo por atraso/)).toHaveTextContent("$ 6.750");
+      expect(detalle.getByText(/Desde mañana/)).toHaveTextContent("$ 459.000");
+    });
+
+    it("antes de empezar: el importe es el total y se avisa desde cuándo", async () => {
+      const detalle = await detalleCon({
+        status: "PENDING", amountDue: 478691,
+        lateFee: recargo({ state: "NOT_STARTED", amount: 0, nextDayAmount: 2250, accruesFrom: "2026-10-16" }),
+      }, "A vencer");
+      expect(detalle.getByText("$ 478.691")).toBeInTheDocument();
+      expect(detalle.getByText("Desde el 16/10 se suma un recargo de $ 2.250 por día")).toBeInTheDocument();
+    });
+
+    it("congelado por un comprobante: la fecha del cálculo y sin «Desde mañana»", async () => {
+      const detalle = await detalleCon({
+        amountDue: 485441, lateFee: recargo({ state: "FROZEN", asOf: "2026-10-18", nextDayAmount: 6750 }),
+      });
+      expect(detalle.getByText("Calculado al 18/10, el día que se envió el comprobante")).toBeInTheDocument();
+      expect(detalle.queryByText(/Desde mañana/)).not.toBeInTheDocument();
+    });
+
+    it("con la pestaña abierta pasada la medianoche argentina, muestra el importe del día nuevo", async () => {
+      // Sólo el reloj y el intervalo son falsos: las promesas y el render siguen su curso normal.
+      vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+      vi.setSystemTime(new Date("2026-10-11T02:50:00Z")); // 23:50 del 10/10 en Buenos Aires
+      try {
+        mockCalendario
+          .mockResolvedValueOnce(calendario([cuota({ status: "DUE", amountDue: 456750, lateFee: recargo() })]))
+          .mockResolvedValueOnce(calendario([cuota({ status: "DUE", amountDue: 459000, lateFee: recargo({ amount: 9000, nextDayAmount: 11250 }) })]));
+        render(<TenantPortalPage />);
+        await abrirMes("Septiembre", 2026, "Vencida");
+        const detalle = () => within(screen.getByRole("region", { name: "Detalle de septiembre 2026" }));
+        expect(detalle().getByText(/Recargo por atraso/)).toHaveTextContent("$ 6.750");
+        expect(mockCalendario).toHaveBeenCalledTimes(1);
+
+        await act(async () => { vi.advanceTimersByTime(15 * 60_000); }); // 00:05 del 11/10
+
+        await waitFor(() => expect(mockCalendario).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(detalle().getByText(/Recargo por atraso/)).toHaveTextContent("$ 9.000"));
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("al inquilino no se le muestra que el propietario modificó el recargo", async () => {
+      const detalle = await detalleCon({ lateFee: recargo({ overridden: true, amount: 3000, nextDayAmount: 3000 }) });
+      expect(detalle.queryByText(/Recargo modificado/)).not.toBeInTheDocument();
+    });
   });
 
   it("distingue los meses anteriores al contrato de los meses sin cuota", async () => {
@@ -194,7 +262,7 @@ describe("calendario anual", () => {
   });
 
   it("muestra todas las cuotas si el backend devuelve más de una para el mes", async () => {
-    mockCalendario.mockResolvedValueOnce(calendario([cuota({ id: 1, status: "PAID" }), cuota({ id: 2, status: "DUE", total: 500000 })]));
+    mockCalendario.mockResolvedValueOnce(calendario([cuota({ id: 1, status: "PAID" }), cuota({ id: 2, status: "DUE", total: 500000, amountDue: 500000 })]));
     render(<TenantPortalPage />);
     await abrirMes("Septiembre", 2026, "2 cuotas");
     const detalle = screen.getByRole("region", { name: "Detalle de septiembre 2026" });

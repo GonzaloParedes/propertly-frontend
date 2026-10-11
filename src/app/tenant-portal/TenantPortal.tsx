@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePaymentEvents } from "@/hooks/usePaymentEvents";
+import { useCambioDeDia } from "@/hooks/useCambioDeDia";
+import { recargoEnCurso } from "@/lib/recargo";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -18,6 +20,7 @@ import type { TenantCalendarResponse } from "@/lib/backend-types";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { Icon } from "@/components/ui/Icon";
+import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import "./tenant-portal.css";
 
 type Estado =
@@ -101,6 +104,7 @@ function CuotaDetalle({ fila, perteneceACondicionesAnteriores, subiendo, viendoC
       </div>
       <div className="tenant-cuota__monto">
         <span>{fila.monto}</span>
+        {fila.recargo && <RecargoPorAtraso vista={fila.recargo} importeHoy={fila.monto} />}
         {fila.ajustes.length > 0 && <dl className="tenant-cuota__desglose" aria-label={`Detalle del importe de ${fila.periodo}`}>
           <div><dt>Importe del contrato</dt><dd>{fila.importeBase}</dd></div>
           {fila.ajustes.map((ajuste) => <div key={ajuste.id}><dt>{ajuste.nombre}{ajuste.detalle && <small> · {ajuste.detalle}</small>}</dt><dd>{ajuste.efecto}</dd></div>)}
@@ -183,6 +187,12 @@ export default function TenantPortal() {
     onPagoActualizado: () => void recargarEnSilencio(),
     // El inquilino no tiene renovación de sesión: si el stream se cierra, la recarga da 401 y la pantalla pasa a «sesión vencida».
     onSesionPerdida: () => void recargarEnSilencio(),
+  });
+
+  // El recargo corre a la medianoche argentina: con la pantalla abierta, se relee al cambiar el día.
+  useCambioDeDia({
+    activo: estado.fase === "listo" && estado.calendar.invoices.some(recargoEnCurso),
+    alCambiar: () => void recargarEnSilencio(),
   });
 
   useEffect(() => {

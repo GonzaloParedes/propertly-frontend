@@ -156,16 +156,36 @@ describe("condicionesComerciales", () => {
     expect(c).toContainEqual({ etiqueta: "Comisión", valor: "5 % · la paga el inquilino" });
   });
 
-  it("los punitorios incluyen los días de gracia", () => {
-    const c = condicionesComerciales({
-      ...CONTRATO,
-      lateFeeType: "PERCENTAGE",
-      lateFeeValue: 2,
-      lateFeeGraceDays: 5,
+  describe("punitorios", () => {
+    const punitorios = (over: Partial<ContractResponse>) =>
+      condicionesComerciales({ ...CONTRATO, ...over }).find((c) => c.etiqueta === "Punitorios")?.valor;
+
+    it("un porcentaje por día cuenta los días de gracia como atraso aparte", () => {
+      expect(punitorios({ lateFeeMethod: "PERCENT_PER_DAY", lateFeeValue: 0.5, lateFeeGraceDays: 5 })).toBe(
+        "0,5 % diario sobre la cuota, desde el día 6 de atraso"
+      );
     });
-    expect(c).toContainEqual({
-      etiqueta: "Punitorios",
-      valor: "2 % por mora · tras 5 días de gracia",
+
+    it("la tasa mensual y la anual aclaran que se cobra por día", () => {
+      expect(punitorios({ lateFeeMethod: "PERCENT_PER_MONTH", lateFeeValue: 5, lateFeeGraceDays: 0 })).toBe(
+        "5 % mensual, cobrado por día de atraso, desde el día 1 de atraso"
+      );
+      expect(punitorios({ lateFeeMethod: "PERCENT_PER_YEAR", lateFeeValue: 60, lateFeeGraceDays: 3 })).toBe(
+        "60 % anual, cobrado por día de atraso, desde el día 4 de atraso"
+      );
+    });
+
+    it("un monto fijo por día y una multa única llevan la moneda del contrato", () => {
+      expect(punitorios({ lateFeeMethod: "FIXED_PER_DAY", lateFeeValue: 5000, lateFeeGraceDays: 2 })).toBe(
+        "$ 5.000 por cada día de atraso, desde el día 3 de atraso"
+      );
+      expect(
+        punitorios({ lateFeeMethod: "FIXED_ONCE", lateFeeValue: 20000, currency: "USD" })
+      ).toBe("Multa única de US$ 20.000, desde el día 1 de atraso");
+    });
+
+    it("sin método no hay línea de punitorios", () => {
+      expect(punitorios({ lateFeeValue: 2, lateFeeGraceDays: 5 })).toBeUndefined();
     });
   });
 

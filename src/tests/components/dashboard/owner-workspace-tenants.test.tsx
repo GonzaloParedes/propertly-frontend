@@ -162,7 +162,7 @@ describe("alta de inquilino", () => {
 
 describe("filas", () => {
   it("muestra nombre, documento, correo, dirección y alquiler", async () => {
-    conDatos({ invoices: [{ id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-01", baseAmount: 478691, total: 478691, status: "DUE" as const, confirmed: true, adjustments: [], payments: [] }] });
+    conDatos({ invoices: [{ id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-01", baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "DUE" as const, confirmed: true, adjustments: [], payments: [] }] });
     render(<OwnerWorkspace initialView="inquilinos" />);
 
     const fila = (await screen.findByText("Jorge Paletta")).closest(".owner-row") as HTMLElement;

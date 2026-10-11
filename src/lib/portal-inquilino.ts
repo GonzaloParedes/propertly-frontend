@@ -1,6 +1,7 @@
 import { describirAjuste, type LineaAjuste } from "@/lib/ajustes";
 import { estadoDeCuota, type EstadoCuota } from "@/lib/cobranzas";
 import { formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
+import { recargoEnCurso, vistaDeRecargo, type RecargoVista } from "@/lib/recargo";
 import type {
   InvoiceResponse,
   PaymentResponse,
@@ -22,7 +23,11 @@ export interface FilaCuotaInquilino {
   periodoISO: string;
   vencimiento: string;
   vencimientoISO: string;
+  /** Lo que se adeuda hoy: el total de la cuota más el recargo por atraso. */
   monto: string;
+  recargo: RecargoVista | null;
+  /** El recargo cambia a la medianoche: la pantalla tiene que releerlo. */
+  recargoEnCurso: boolean;
   /** El importe antes de ajustes; sólo importa si hay ajustes que lo expliquen. */
   importeBase: string;
   /**
@@ -96,7 +101,9 @@ export function buildFilasInquilino(
     periodoISO: invoice.period.slice(0, 7),
     vencimiento: formatearFecha(invoice.dueDate),
     vencimientoISO: invoice.dueDate,
-    monto: formatearMonto(invoice.total),
+    monto: formatearMonto(invoice.amountDue),
+    recargo: vistaDeRecargo(invoice, "inquilino"),
+    recargoEnCurso: recargoEnCurso(invoice),
     importeBase: formatearMonto(invoice.baseAmount),
     ajustes: invoice.adjustments.map((a) => describirAjuste(a, invoice.baseAmount)),
     estado: estadoDeCuota(invoice),

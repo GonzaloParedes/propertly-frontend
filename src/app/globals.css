@@ -301,3 +301,12 @@ body {
   }
   [class*="animate-step-"] { animation: none !important; }
 }
+
+/* Recargo por atraso de una cuota: debajo del importe, en el portal del inquilino
+   y en las filas del propietario. Todas las líneas pueden ocupar varios renglones. */
+.recargo { display: flex; flex-direction: column; gap: var(--esp-2); margin-top: var(--esp-6); color: var(--gris); font-size: 14px; line-height: 1.35; }
+.recargo b { color: var(--tinta); font-variant-numeric: tabular-nums; }
+.recargo__linea { display: block; white-space: normal; }
+.recargo__linea--etiqueta { display: inline-flex; align-items: center; gap: var(--esp-6); color: var(--adv); font-weight: 600; }
+.recargo__linea--etiqueta svg { flex: none; }
+.recargo__linea--modificado { font-weight: 600; }

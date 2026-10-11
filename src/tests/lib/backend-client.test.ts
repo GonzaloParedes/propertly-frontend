@@ -354,6 +354,16 @@ describe("AlquiaBackendClient.invoices", () => {
     expect(mockPost).toHaveBeenCalledWith("/invoices/4/confirm");
   });
 
+  it("setLateFee pega a PUT /invoices/{id}/late-fee con el importe", async () => {
+    await AlquiaBackendClient.invoices.setLateFee(4, { amount: 0 });
+    expect(mockPut).toHaveBeenCalledWith("/invoices/4/late-fee", { amount: 0 });
+  });
+
+  it("clearLateFee pega a DELETE /invoices/{id}/late-fee", async () => {
+    await AlquiaBackendClient.invoices.clearLateFee(4);
+    expect(mockDelete).toHaveBeenCalledWith("/invoices/4/late-fee");
+  });
+
   it("schemaChange pega a POST /invoices/{id}/schema-change", async () => {
     const body = {
       rentBaseline: 100000,

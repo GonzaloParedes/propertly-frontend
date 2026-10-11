@@ -16,6 +16,8 @@ export const ERROR = {
   ADJUSTMENT_ON_CONFIRMED_INVOICE: "urn:alquia:error:adjustment-on-confirmed-invoice",
   INVOICE_TOTAL_NEGATIVE: "urn:alquia:error:invoice-total-negative",
   SCHEMA_CHANGE_OVER_PAID_INVOICE: "urn:alquia:error:schema-change-over-paid-invoice",
+  LATE_FEE_NOT_CONFIGURED: "urn:alquia:error:late-fee-not-configured",
+  LATE_FEE_ALREADY_SETTLED: "urn:alquia:error:late-fee-already-settled",
   CONTRACT_ALREADY_HAS_SUCCESSOR: "urn:alquia:error:contract-already-has-successor",
   EFFECTIVE_FROM_NOT_FIRST_OF_MONTH: "urn:alquia:error:effective-from-not-first-of-month",
   EFFECTIVE_FROM_NOT_FUTURE: "urn:alquia:error:effective-from-not-future",
@@ -42,6 +44,8 @@ const COPY: Record<string, string> = {
   [ERROR.INVOICE_TOTAL_NEGATIVE]: "El total de la cuota no puede quedar negativo.",
   [ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE]:
     "Ya hay una cuota paga desde ese mes, así que no se puede programar el cambio ahí.",
+  [ERROR.LATE_FEE_NOT_CONFIGURED]: "Este contrato no tiene punitorios, así que la cuota no tiene recargo.",
+  [ERROR.LATE_FEE_ALREADY_SETTLED]: "La cuota ya está paga: su recargo quedó firme y no se puede cambiar.",
   [ERROR.CONTRACT_ALREADY_HAS_SUCCESSOR]: "Ese contrato ya tiene un cambio programado.",
   [ERROR.EFFECTIVE_FROM_NOT_FIRST_OF_MONTH]: "El cambio tiene que arrancar el primer día de un mes.",
   [ERROR.EFFECTIVE_FROM_NOT_FUTURE]: "El cambio tiene que arrancar en un mes posterior al actual.",

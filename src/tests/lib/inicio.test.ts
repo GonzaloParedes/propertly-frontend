@@ -56,7 +56,7 @@ function cuota(extra: Partial<InvoiceResponse> = {}): InvoiceResponse {
     period: "2026-09-01",
     dueDate: "2026-09-10",
     baseAmount: 100000,
-    total: 100000,
+    total: 100000, amountDue: 100000, lateFee: null,
     status: "PENDING",
     confirmed: true,
     adjustments: [],
@@ -83,9 +83,9 @@ describe("períodos", () => {
 describe("resumenDeCobranza", () => {
   it("reparte los montos entre los tres estados", () => {
     const r = resumenDeCobranza([
-      cuota({ id: 1, status: "PAID", total: 430000, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-      cuota({ id: 2, status: "PENDING", total: 505000 }),
-      cuota({ id: 3, status: "DUE", total: 478691 }),
+      cuota({ id: 1, status: "PAID", total: 430000, amountDue: 430000, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+      cuota({ id: 2, status: "PENDING", total: 505000, amountDue: 505000 }),
+      cuota({ id: 3, status: "DUE", total: 478691, amountDue: 478691 }),
     ]);
     expect(r.cobrado).toBe(430000);
     expect(r.aVencer).toBe(505000);
@@ -98,7 +98,7 @@ describe("resumenDeCobranza", () => {
   it("un pago esperando confirmación no cuenta como cobrado", () => {
     const esperando = cuota({
       status: "DUE",
-      total: 520000,
+      total: 520000, amountDue: 520000, lateFee: null,
       payments: [{ id: 9, invoiceId: 1, status: "AWAITING_CONFIRMATION", submittedByTenant: true }],
     });
     const r = resumenDeCobranza([esperando]);
@@ -109,7 +109,7 @@ describe("resumenDeCobranza", () => {
   it("uno esperando pero no vencido todavía cuenta por vencer", () => {
     const esperando = cuota({
       status: "PENDING",
-      total: 520000,
+      total: 520000, amountDue: 520000, lateFee: null,
       payments: [{ id: 9, invoiceId: 1, status: "AWAITING_CONFIRMATION", submittedByTenant: true }],
     });
     expect(resumenDeCobranza([esperando]).aVencer).toBe(520000);
@@ -195,7 +195,7 @@ describe("avisosPendientes", () => {
 
   it("nombra al inquilino, la propiedad y desde cuándo espera el comprobante", () => {
     const esperando = cuota({
-      total: 520000,
+      total: 520000, amountDue: 520000, lateFee: null,
       payments: [
         {
           id: 9,
@@ -232,8 +232,8 @@ describe("avisosPendientes", () => {
   it("agrupa las vencidas en un solo aviso con el total", () => {
     const avisos = avisosPendientes(
       [
-        cuota({ id: 1, status: "DUE", total: 478691, dueDate: "2026-09-10" }),
-        cuota({ id: 2, status: "DUE", total: 520000, dueDate: "2026-09-20" }),
+        cuota({ id: 1, status: "DUE", total: 478691, amountDue: 478691, lateFee: null, dueDate: "2026-09-10" }),
+        cuota({ id: 2, status: "DUE", total: 520000, amountDue: 520000, lateFee: null, dueDate: "2026-09-20" }),
       ],
       [CONTRATO],
       HOY

@@ -35,3 +35,18 @@ export function formatearPeriodo(fechaISO: string): string {
   const p = partes(fechaISO);
   return p ? `${MESES[p[1] - 1]} ${p[0]}` : fechaISO;
 }
+
+/** «16/10»: para fechas cercanas, donde el año sobra. */
+export function formatearDiaMes(fechaISO: string): string {
+  const p = partes(fechaISO);
+  return p ? `${String(p[2]).padStart(2, "0")}/${String(p[1]).padStart(2, "0")}` : fechaISO;
+}
+
+/**
+ * El día de hoy en Argentina, como `LocalDate`. El backend cambia de día a la
+ * medianoche argentina, así que `new Date().toISOString()` (UTC) se adelanta un
+ * día desde las 21:00 y no sirve para decidir si una cuota ya venció.
+ */
+export function hoyEnArgentina(ahora: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(ahora);
+}

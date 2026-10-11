@@ -70,7 +70,7 @@ function cuota(extra: Partial<InvoiceResponse> = {}): InvoiceResponse {
     period: "2026-09-01",
     dueDate: "2026-09-10",
     baseAmount: 100000,
-    total: 100000,
+    total: 100000, amountDue: 100000, lateFee: null,
     status: "PENDING",
     confirmed: true,
     adjustments: [],
@@ -150,9 +150,9 @@ describe("cobranza del mes", () => {
   it("reparte los tres montos y dice el total emitido", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 430000, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "PENDING", total: 505000 }),
-        cuota({ id: 3, status: "DUE", total: 478691 }),
+        cuota({ id: 1, status: "PAID", total: 430000, amountDue: 430000, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "PENDING", total: 505000, amountDue: 505000 }),
+        cuota({ id: 3, status: "DUE", total: 478691, amountDue: 478691 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -167,8 +167,8 @@ describe("cobranza del mes", () => {
   it("la barra describe los mismos porcentajes que muestra", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 500, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "DUE", total: 500 }),
+        cuota({ id: 1, status: "PAID", total: 500, amountDue: 500, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500, amountDue: 500 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -181,8 +181,8 @@ describe("cobranza del mes", () => {
   it("un monto en cero no ocupa lugar en la barra", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 500, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "DUE", total: 500 }),
+        cuota({ id: 1, status: "PAID", total: 500, amountDue: 500, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500, amountDue: 500 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -192,7 +192,7 @@ describe("cobranza del mes", () => {
   });
 
   it("con cuotas pero todo en cero, la barra queda neutra", async () => {
-    conDatos({ invoices: [cuota({ id: 1, status: "PENDING", total: 0 })] });
+    conDatos({ invoices: [cuota({ id: 1, status: "PENDING", total: 0, amountDue: 0 })] });
     render(<OwnerWorkspace initialView="inicio" />);
 
     const barra = await screen.findByLabelText("Sin montos emitidos");
@@ -277,7 +277,7 @@ describe("requieren su acción", () => {
     conDatos({
       invoices: [
         cuota({
-          total: 520000,
+          total: 520000, amountDue: 520000, lateFee: null,
           payments: [
             {
               id: 9,
@@ -300,8 +300,8 @@ describe("requieren su acción", () => {
   it("agrupa las vencidas con su total", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "DUE", total: 478691 }),
-        cuota({ id: 2, status: "DUE", total: 520000 }),
+        cuota({ id: 1, status: "DUE", total: 478691, amountDue: 478691 }),
+        cuota({ id: 2, status: "DUE", total: 520000, amountDue: 520000 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);

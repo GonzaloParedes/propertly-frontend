@@ -477,6 +477,34 @@ Fáciles de errarle si uno diseña sin leer el backend. Fuente:
    que coincida con el del contrato. Verificado que hoy no lo leemos en ningún
    lado; la regla es para cuando se construya Propiedades.
 
+7. **Lo que se adeuda es `amountDue`, y el recargo por atraso lo calcula el
+   backend.** En cualquier lugar donde el propietario o el inquilino vean el
+   importe de una cuota, el número a pagar es `amountDue` (el total más el
+   recargo). El front **nunca calcula el recargo**: redondear distinto que el
+   servidor mostraría un importe que después no coincide con el que se cobra.
+   Sólo suma lo que ya vino calculado («Desde mañana» es lo que se adeuda hoy,
+   menos el recargo de hoy, más el de mañana).
+
+   El recargo va como línea propia debajo del importe, con ícono y palabra
+   («Recargo por atraso»), y su texto depende de `lateFee.state`: antes de
+   empezar dice desde qué día y cuánto suma; corriendo muestra hoy y desde
+   mañana; congelado dice a qué fecha se calculó; saldado muestra lo que se
+   pagó. «Recargo modificado» y «Recargo perdonado» son del propietario: el
+   inquilino no los ve. Componente: `RecargoPorAtraso`, texto en `lib/recargo.ts`.
+
+   **El día cambia a la medianoche argentina**, no a la del navegador ni a la
+   UTC. Para decidir qué día es hoy se usa `hoyEnArgentina()`, y una pantalla
+   abierta con un recargo corriendo vuelve a leer las cuotas al cambiar el día
+   (`useCambioDeDia`). Las fechas del backend son `LocalDate` sin zona: ese
+   reloj de negocio es una configuración del servidor, no algo que se guarde.
+8. **El recargo se puede perdonar, cambiar o volver a calcular mientras la
+   cuota no esté paga.** El tope de un cambio es el recargo de hoy según el
+   contrato; con el recargo ya modificado el front no lo conoce y lo valida el
+   backend. El diálogo de registrar un pago muestra el recargo que ese pago
+   salda, con un enlace para cambiarlo antes. Una cuota **sin confirmar** y con
+   punitorios avisa que el recargo corre igual aunque el inquilino todavía no
+   pueda pagarla, y es urgente si ya venció.
+
 Los cuatro estados del dinero, y cómo se llaman de cara al usuario:
 
 | Backend | En pantalla |

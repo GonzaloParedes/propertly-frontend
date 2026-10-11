@@ -39,7 +39,7 @@ function contract(over: Partial<ContractResponse> = {}): ContractResponse {
 function invoice(over: Partial<InvoiceResponse> = {}): InvoiceResponse {
   return {
     id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-01",
-    baseAmount: 478691, total: 478691, status: "PENDING", confirmed: true,
+    baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "PENDING", confirmed: true,
     adjustments: [], payments: [], ...over,
   };
 }

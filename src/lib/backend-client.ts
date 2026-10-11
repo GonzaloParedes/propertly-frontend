@@ -21,6 +21,7 @@ import type {
   TenantCalendarResponse,
   InvoiceResponse,
   InvoiceAdjustmentRequest,
+  LateFeeOverrideRequest,
   SchemaChangeRequest,
   ScheduledSchemaChangeRequest,
   InvoiceListParams,
@@ -198,6 +199,12 @@ export const AlquiaBackendClient = {
       apiDelete(`/invoices/${id}/adjustments/${adjustmentId}`),
     confirm: (id: number): Promise<InvoiceResponse> =>
       apiPost<InvoiceResponse>(`/invoices/${id}/confirm`),
+    // Fija el recargo a mano (0 lo perdona). Tope: el recargo contractual de hoy.
+    setLateFee: (id: number, body: LateFeeOverrideRequest): Promise<InvoiceResponse> =>
+      apiPut<InvoiceResponse>(`/invoices/${id}/late-fee`, body),
+    // Vuelve al recargo que calcula el contrato.
+    clearLateFee: (id: number): Promise<InvoiceResponse> =>
+      apiDelete<InvoiceResponse>(`/invoices/${id}/late-fee`),
     schemaChange: (id: number, body: SchemaChangeRequest): Promise<ContractResponse> =>
       apiPost<ContractResponse>(`/invoices/${id}/schema-change`, body),
   },
@@ -258,6 +265,10 @@ export type {
   ContractTerminateRequest,
   ContractListParams,
   IncrementMethod,
+  LateFeeMethod,
+  LateFeeResponse,
+  LateFeeState,
+  LateFeeOverrideRequest,
   ContractStatus,
   PaymentResponse,
   PaymentStatus,
