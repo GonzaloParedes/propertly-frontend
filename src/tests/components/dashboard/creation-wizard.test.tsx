@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CreationWizard from "@/components/dashboard/CreationWizard";
 import { ApiError, AuthExpiredError } from "@/lib/api";
@@ -39,6 +39,12 @@ const DIEGO = {
 // 27-24891055-6 tiene dígito verificador válido; el asistente no deja avanzar
 // con uno inventado, así que los tests necesitan uno real.
 const CUIT_VALIDO = "27248910556";
+
+/** Sólo el reloj es falso: las promesas y los timers de userEvent siguen reales. */
+function fijarHoy(isoUtc: string) {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(isoUtc));
+}
 
 let onComplete: ReturnType<typeof vi.fn>;
 let onClose: ReturnType<typeof vi.fn>;
@@ -273,6 +279,11 @@ describe("validación previa", () => {
 // --- contador de plazo del contrato ---
 
 describe("asistente de contrato", () => {
+  // Con el inicio del 01/09 y «hoy» a mediados de agosto, el contrato no tiene cuotas vencidas
+  // que preguntar: estos tests no dependen del día en que se corren.
+  beforeEach(() => fijarHoy("2026-08-15T15:00:00Z"));
+  afterEach(() => vi.useRealTimers());
+
   function renderContrato() {
     render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
   }
@@ -627,6 +638,9 @@ describe("asistente de propiedad · tipo y guardado", () => {
 // --- día de vencimiento: el backend lo amplió de 1–10 a 1–28 (263576d) ---
 
 describe("asistente de contrato · día de vencimiento", () => {
+  beforeEach(() => fijarHoy("2026-08-15T15:00:00Z"));
+  afterEach(() => vi.useRealTimers());
+
   async function irAlPasoDelDia() {
     mockPropiedades.mockResolvedValueOnce([MITRE]);
     mockInquilinos.mockResolvedValueOnce([DIEGO]);
@@ -774,5 +788,110 @@ describe("asistente de contrato · propiedad nueva sobre la marcha", () => {
     expect(onComplete).not.toHaveBeenCalled();
     expect(await screen.findByText("Lavalle 950")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
+  });
+});
+
+
+// --- «¿Hasta qué mes le pagaron?» en un contrato que ya empezó ---
+
+describe("asistente de contrato · cuotas anteriores a hoy", () => {
+  // 12:00 del 10/10/2026 en Buenos Aires.
+  beforeEach(() => fijarHoy("2026-10-10T15:00:00Z"));
+  afterEach(() => vi.useRealTimers());
+
+  const seguir = () => userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+
+  /** Llega a la revisión de un contrato de $ 450.000 que vence el día 10. */
+  async function irALaRevision(inicio: string) {
+    render(<CreationWizard kind="contract" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.click(await screen.findByRole("radio", { name: /Mitre 78/ }));
+    await seguir();
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+    await userEvent.click(screen.getByRole("button", { name: "Día 10" }));
+    await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
+    await seguir();
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: inicio } });
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Porcentaje de aumento"), "8");
+    await seguir();
+  }
+
+  const grupo = () => screen.getByRole("radiogroup", { name: "¿Hasta qué mes le pagaron?" });
+  const crear = () => screen.getByRole("button", { name: "Crear contrato" });
+
+  it("pregunta con cada mes transcurrido y «Ninguno todavía», sin nada elegido, y no deja crear", async () => {
+    await irALaRevision("2026-06-01");
+
+    const opciones = within(grupo()).getAllByRole("radio");
+    expect(opciones.map((o) => o.textContent)).toEqual(["junio 2026", "julio 2026", "agosto 2026", "septiembre 2026", "Ninguno todavía"]);
+    expect(opciones.every((o) => o.getAttribute("aria-checked") === "false")).toBe(true);
+    expect(crear()).toBeDisabled();
+    expect(screen.getByText("Elija una opción para poder seguir.")).toBeInTheDocument();
+  });
+
+  it("al elegir agosto explica qué queda cobrado y qué queda como deuda, y manda paidThrough", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevision("2026-06-01");
+    await userEvent.click(within(grupo()).getByRole("radio", { name: "agosto 2026" }));
+
+    expect(screen.getByText("Junio a agosto quedan como cobradas (sin comprobante).")).toBeInTheDocument();
+    expect(screen.getByText("Septiembre queda como deuda: $ 450.000.")).toBeInTheDocument();
+    expect(screen.getByText("Su inquilino va a recibir el aviso de cuota vencida.")).toBeInTheDocument();
+    expect(screen.queryByText(/recargo/i)).not.toBeInTheDocument();
+
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
+    expect(mockCrearContrato.mock.calls[0][0].elapsed).toEqual({ paidThrough: "2026-08" });
+  });
+
+  it("«Ninguno todavía» se manda como paidThrough null", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevision("2026-06-01");
+    await userEvent.click(within(grupo()).getByRole("radio", { name: "Ninguno todavía" }));
+    expect(screen.getByText("Ninguna cuota queda como cobrada.")).toBeInTheDocument();
+
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
+    expect(mockCrearContrato.mock.calls[0][0].elapsed).toEqual({ paidThrough: null });
+  });
+
+  it("un contrato que no tiene cuotas vencidas no pregunta y no manda elapsed", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevision("2026-12-01");
+
+    expect(screen.queryByRole("radiogroup", { name: "¿Hasta qué mes le pagaron?" })).not.toBeInTheDocument();
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
+    expect(mockCrearContrato.mock.calls[0][0].elapsed).toBeUndefined();
+  });
+
+  it("cambiar la fecha de inicio después de contestar descarta una respuesta que ya no corresponde", async () => {
+    await irALaRevision("2026-06-01");
+    await userEvent.click(within(grupo()).getByRole("radio", { name: "septiembre 2026" }));
+    expect(crear()).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: /Atrás/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Atrás/ }));
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-08-01" } });
+    await seguir();
+    await seguir();
+
+    expect(within(grupo()).getAllByRole("radio").map((o) => o.textContent)).toEqual(["agosto 2026", "septiembre 2026", "Ninguno todavía"]);
+    expect(within(grupo()).getByRole("radio", { name: "septiembre 2026" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("si el backend corrige los períodos, vuelve a preguntar con los suyos", async () => {
+    mockCrearContrato.mockRejectedValueOnce(
+      new ApiError(400, "Elapsed invoices require a decision", ERROR.ELAPSED_INVOICES_DECISION_REQUIRED, { elapsed: "2026-06, 2026-07" })
+    );
+    await irALaRevision("2026-06-01");
+    await userEvent.click(within(grupo()).getByRole("radio", { name: "agosto 2026" }));
+    await userEvent.click(crear());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Hay cuotas anteriores a hoy. Indique hasta qué mes le pagaron.");
+    expect(within(grupo()).getAllByRole("radio").map((o) => o.textContent)).toEqual(["junio 2026", "julio 2026", "Ninguno todavía"]);
+    expect(crear()).toBeDisabled();
+    expect(onComplete).not.toHaveBeenCalled();
   });
 });

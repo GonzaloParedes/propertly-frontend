@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError } from "@/lib/api";
-import { ERROR } from "@/lib/error-codes";
+import { ERROR, copyDeError } from "@/lib/error-codes";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { AddressSuggestionResponse, PropertyCategory, PropertyResponse, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
@@ -12,6 +12,9 @@ import Counter from "@/components/ui/Counter";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
 import { correoValido } from "@/lib/correo";
+import { hoyEnArgentina } from "@/lib/formato";
+import { faltaResponder, mesesTranscurridos, paidThroughDe, periodosDelBackend, type RespuestaPagadoHasta } from "@/lib/transcurridos";
+import PagosTranscurridos from "@/components/dashboard/PagosTranscurridos";
 import { formatearDireccion } from "@/lib/tenant-rows";
 import ContractFromPdf from "@/components/dashboard/ContractFromPdf";
 
@@ -214,6 +217,9 @@ function mensajeDeErrorContrato(err: unknown): string {
   if (err instanceof ApiError && err.type === ERROR.PROPERTY_HAS_ACTIVE_CONTRACT) {
     return "Esa propiedad ya tiene un contrato vigente. Finalícelo antes de crear otro.";
   }
+  if (err instanceof ApiError && (err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED || err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE)) {
+    return copyDeError(err);
+  }
   if (err instanceof ApiError && err.status === 400) {
     return "Verifique los datos del contrato e inténtelo de nuevo.";
   }
@@ -381,16 +387,16 @@ function ContractIndexStep({ method, percentage, frequency, onMethodChange, onPe
   return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" placeholder="Ej. 8" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<p className="owner-wizard-label">Cada cuánto se actualiza</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div>{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
 }
 
-function ContractReviewStep({ lists, propertyId, tenantId, rent, dueDay, term, startDate, method, percentage, frequency, error }: Readonly<{ lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; error: string | null }>) {
+function ContractReviewStep({ lists, propertyId, tenantId, rent, dueDay, term, startDate, method, percentage, frequency, error, elapsedSection }: Readonly<{ lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; error: string | null; elapsedSection: React.ReactNode }>) {
   const loadedLists = typeof lists === "object" && lists !== null ? lists : null;
   const propertyName = loadedLists?.propiedades.find((option) => option.id === propertyId)?.titulo ?? "Sin cargar";
   const tenantName = loadedLists?.inquilinos.find((option) => option.id === tenantId)?.titulo ?? "Sin cargar";
   const adjustment = method === "FIXED_PERCENTAGE" ? `${percentage} % cada ${frequency} meses` : `Según el ${method} · cada ${frequency} meses`;
-  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, vuelva al paso correspondiente y modifíquelo.</p><Summary rows={[["Propiedad", propertyName], ["Inquilino", tenantName], ["Alquiler inicial", `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`], ["Plazo", `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`], ["Actualización", adjustment]]} />{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}<aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
+  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, vuelva al paso correspondiente y modifíquelo.</p><Summary rows={[["Propiedad", propertyName], ["Inquilino", tenantName], ["Alquiler inicial", `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`], ["Plazo", `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`], ["Actualización", adjustment]]} />{elapsedSection}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}<aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
 }
 
 function ContractWizardStep(props: Readonly<{
-  step: number; lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; error: string | null; onPropertyChange: (value: number) => void; onTenantChange: (value: number) => void; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onNewTenant?: () => void; onNewProperty?: () => void;
+  step: number; lists: ContractLists | "error" | null; propertyId: number | null; tenantId: number | null; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; error: string | null; elapsedSection: React.ReactNode; onPropertyChange: (value: number) => void; onTenantChange: (value: number) => void; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onNewTenant?: () => void; onNewProperty?: () => void;
 }>) {
   const { step, ...stepProps } = props;
   const steps: Record<number, React.ReactNode> = {
@@ -400,7 +406,7 @@ function ContractWizardStep(props: Readonly<{
     4: <ContractTermStep startDate={stepProps.startDate} term={stepProps.term} isStartDateValid={stepProps.isStartDateValid} onStartDateChange={stepProps.onStartDateChange} onTermChange={stepProps.onTermChange} />,
     5: <ContractIndexStep method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} onMethodChange={stepProps.onMethodChange} onPercentageChange={stepProps.onPercentageChange} onFrequencyChange={stepProps.onFrequencyChange} />,
   };
-  return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propertyId={stepProps.propertyId} tenantId={stepProps.tenantId} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} error={stepProps.error} />;
+  return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propertyId={stepProps.propertyId} tenantId={stepProps.tenantId} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} error={stepProps.error} elapsedSection={stepProps.elapsedSection} />;
 }
 
 type ModoContrato = "pdf" | "manual";
@@ -436,6 +442,11 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
   const [diaVencimiento, setDiaVencimiento] = useState(1);
   const [porcentaje, setPorcentaje] = useState("");
   const [frecuencia, setFrecuencia] = useState(6);
+  // «¿Hasta qué mes le pagaron?»: vacío hasta que el propietario contesta. Si el backend corrige la
+  // lista de meses (un contrato por índice no genera todas las cuotas), su lista vale mientras no
+  // cambien el inicio, el plazo o el vencimiento que la originaron.
+  const [pagadoHasta, setPagadoHasta] = useState<RespuestaPagadoHasta>("");
+  const [periodosBackend, setPeriodosBackend] = useState<{ clave: string; meses: string[] } | null>(null);
   // Las dos listas del alta de contrato, en un solo estado: o están las dos, o
   // hubo error, o todavía se están trayendo. Nunca media pantalla usable.
   const [cargaListas, setCargaListas] = useState<ContractLists | "error" | null>(null);
@@ -544,6 +555,13 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
   const alquilerOk = Number(alquiler) > 0;
   const inicioOk = inicio !== "" && inicio >= PISO_INICIO;
   const porcentajeOk = method !== "FIXED_PERCENTAGE" || Number(porcentaje) > 0;
+  const hoyArgentina = hoyEnArgentina();
+  const claveDeFechas = `${inicio}|${term}|${diaVencimiento}`;
+  const mesesPorPagar = periodosBackend?.clave === claveDeFechas
+    ? periodosBackend.meses
+    : mesesTranscurridos({ inicioISO: inicio, plazoMeses: term, diaVencimiento, hoyISO: hoyArgentina });
+  // Una respuesta que ya no corresponde a ningún mes (cambiaron las fechas) cuenta como sin responder.
+  const respuestaVigente: RespuestaPagadoHasta = pagadoHasta === "" || pagadoHasta === "ninguno" || mesesPorPagar.includes(pagadoHasta) ? pagadoHasta : "";
 
   const finish = step === total;
   // No se puede avanzar con datos que el backend rechazaría (@NotBlank / @ValidTaxId / @Email)
@@ -561,6 +579,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
     if (step === 3) return !alquilerOk;
     if (step === 4) return !inicioOk;
     if (step === 5) return !porcentajeOk;
+    if (step === 6) return faltaResponder(respuestaVigente, mesesPorPagar);
     return false;
   }
   function calcularBloqueado(): boolean {
@@ -674,9 +693,18 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
         // exige incrementValue y prohíbe incrementIndexName, INDEX al revés.
         // Mandar los dos, o ninguno, es un 400.
         ...datosDeActualizacion(method, porcentaje),
+        elapsed: paidThroughDe(respuestaVigente, mesesPorPagar),
       });
       onComplete();
     } catch (err) {
+      if (err instanceof ApiError && err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED) {
+        // Pasa cerca de la medianoche o con un contrato por índice: la lista del backend manda y se vuelve a preguntar.
+        const periodos = periodosDelBackend(err.fieldErrors);
+        if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
+        setPagadoHasta("");
+      } else if (err instanceof ApiError && err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) {
+        setPagadoHasta("");
+      }
       setErrorGuardado(mensajeDeErrorContrato(err));
       setGuardando(false);
     }
@@ -798,6 +826,8 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, demo =
     percentage={porcentaje}
     frequency={frecuencia}
     error={errorGuardado}
+    // `tieneRecargo` queda en falso hasta que «Otras condiciones» (contract-onboarding-flow 1.3b) cargue los punitorios.
+    elapsedSection={<PagosTranscurridos meses={mesesPorPagar} value={respuestaVigente} onChange={setPagadoHasta} inicioISO={inicio} alquiler={Number(alquiler)} frecuenciaMeses={frecuencia} tieneRecargo={false} hoyISO={hoyArgentina} />}
     onPropertyChange={setPropiedadId}
     onTenantChange={setInquilinoId}
     onRentChange={setAlquiler}

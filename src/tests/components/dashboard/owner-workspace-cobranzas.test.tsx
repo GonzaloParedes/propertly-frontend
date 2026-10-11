@@ -793,3 +793,26 @@ describe("registrar pago con recargo", () => {
     expect(within(screen.getByRole("dialog")).queryByText(/recargo/i)).not.toBeInTheDocument();
   });
 });
+
+
+// --- pagos registrados al dar de alta un contrato en curso ---
+
+describe("pagos del alta", () => {
+  const delAlta = pago({ origin: "ONBOARDING", hasReceipt: false, submittedByTenant: false });
+
+  it("una cuota cobrada al dar de alta lo dice y no ofrece comprobante ni acciones", async () => {
+    conCuotas([cuota({ status: "PAID", payments: [delAlta] })]);
+    const filaCuota = within(await screen.findByRole("row", { name: /Av\. Rivadavia/ }));
+
+    expect(filaCuota.getByText("Registrado al dar de alta · sin comprobante")).toBeInTheDocument();
+    expect(filaCuota.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("una cuota cobrada con comprobante sigue ofreciéndolo", async () => {
+    conCuotas([cuota({ status: "PAID", payments: [pago({ origin: "LANDLORD", hasReceipt: true })] })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.getByRole("button", { name: /Comprobante/ })).toBeEnabled();
+    expect(screen.queryByText(/Registrado al dar de alta/)).not.toBeInTheDocument();
+  });
+});

@@ -233,6 +233,14 @@ export interface ContractRequest {
   autoRenewal?: boolean;
   terminationNoticeMonths?: number;
   earlyTerminationPenalty?: number;
+  /** Sólo al crear, y obligatorio si el contrato ya tiene cuotas con vencimiento anterior a hoy. */
+  elapsed?: ElapsedDecision;
+}
+
+/** Hasta qué mes se cobraron las cuotas transcurridas. */
+export interface ElapsedDecision {
+  /** «2026-08», o null si todavía no se cobró ninguna. */
+  paidThrough: string | null;
 }
 
 export interface ContractResponse {
@@ -297,11 +305,17 @@ export interface ContractListParams {
 // al construir Cobranzas — ya no queda deuda en este grupo.
 export type PaymentStatus = "AWAITING_CONFIRMATION" | "CONFIRMED" | "REJECTED";
 
+/** Quién cargó el pago. ONBOARDING: lo registró el alta de un contrato en curso, sin comprobante. */
+export type PaymentOrigin = "TENANT" | "LANDLORD" | "ONBOARDING";
+
 export interface PaymentResponse {
   id: number;
   invoiceId: number;
   status: PaymentStatus;
   submittedByTenant: boolean;
+  origin?: PaymentOrigin;
+  /** Falso en un pago de ONBOARDING: no hay archivo que bajar. */
+  hasReceipt?: boolean;
   receiptFileName?: string;
   receiptContentType?: string;
   receiptSizeBytes?: number;

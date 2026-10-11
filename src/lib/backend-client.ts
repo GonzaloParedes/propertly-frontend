@@ -272,6 +272,8 @@ export type {
   ContractStatus,
   PaymentResponse,
   PaymentStatus,
+  PaymentOrigin,
+  ElapsedDecision,
   TenantSessionRequest,
   TenantCalendarResponse,
   TenantCalendarCoverage,

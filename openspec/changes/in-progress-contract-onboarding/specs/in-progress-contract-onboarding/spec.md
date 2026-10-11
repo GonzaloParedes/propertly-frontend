@@ -23,15 +23,19 @@ Every contract-creation flow (manual wizard, unified flow, PDF review) SHALL, wh
 Under the answer, the flow SHALL state:
 
 - which months remain as collected without receipt;
-- which months remain as debt, and their total;
+- which months remain as debt, and their total when it is known, that is, when none of those months comes after the first rent increase;
 - that the tenant will receive the overdue notice for them;
-- when the contract has a late fee, that the surcharge starts counting from today.
+- when the contract has a late fee and some debt remains, that the surcharge starts counting from today.
 
 The review step SHALL repeat this summary.
 
 #### Scenario: Paid through August with a late fee
 - **WHEN** the owner chooses agosto, the rent is 450,000 and the contract has a late fee
 - **THEN** the block says junio to agosto stay collected without receipt, septiembre stays as debt for $ 450.000, the tenant will be notified, and the surcharge starts today
+
+#### Scenario: Debt after a rent increase
+- **WHEN** a month left as debt comes after the first rent increase
+- **THEN** the block names the month as debt without a total
 
 ### Requirement: Onboarding payments are labelled and inert
 

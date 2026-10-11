@@ -791,3 +791,12 @@
 .owner-garantia{display:flex;flex-direction:column;gap:var(--esp-16);padding:var(--esp-20);border-radius:16px;box-shadow:inset 0 0 0 1.5px var(--borde)}
 .owner-garantia__cabecera{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--esp-8) var(--esp-16)}
 .owner-garantia__acciones{display:flex;flex-wrap:wrap;gap:var(--esp-6)}
+
+/* ── Cuotas anteriores a hoy (contrato en curso) ─────────────────── */
+.owner-wizard-chips button[aria-checked="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
+.owner-wizard-chips button[role="radio"]{display:inline-flex;align-items:center;gap:var(--esp-6)}
+.owner-pagos-transcurridos{display:flex;flex-direction:column;gap:var(--esp-12);margin-top:var(--esp-32)}
+.owner-pagos-transcurridos .owner-wizard-chips{margin-top:0}
+.owner-pagos-transcurridos .owner-wizard-note p+p{margin-top:var(--esp-6)}
+.owner-pago-alta{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px;font-weight:600;white-space:normal}
+.owner-pago-alta svg{flex:none;color:var(--exito)}

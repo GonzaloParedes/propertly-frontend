@@ -17,7 +17,7 @@
 
 - [ ] 4.1 Map the result to review items (D-4), including unsupported reasons and matches (D-5); verify each state and resolution.
 - [ ] 4.2 PDF page viewer with `pdfjs-dist` (pinned, lazy-loaded, eval disabled) and "Ver en el contrato" (D-3), with the narrow-screen variant; verify with component tests.
-- [ ] 4.3 Footer counter, the elapsed-installments question, and the "Crear contrato" enablement rules; verify with component tests.
+- [ ] 4.3 Footer counter, the elapsed-installments question (reuse `PagosTranscurridos` and `src/lib/transcurridos.ts` from `in-progress-contract-onboarding`), and the "Crear contrato" enablement rules; verify with component tests.
 
 ## 5. Create and leave
 

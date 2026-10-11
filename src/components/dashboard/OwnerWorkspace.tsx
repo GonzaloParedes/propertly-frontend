@@ -23,6 +23,8 @@ import {
   buildFilasCobranza,
   contarPorFiltro,
   buscarCobranzas,
+  esPagoDelAlta,
+  ETIQUETA_PAGO_DEL_ALTA,
   filtrar,
   resumenCobranzas,
   type FilaCobranza,
@@ -835,6 +837,8 @@ function CollectionAction({
     </>;
   }
   if (item.accion === "comprobante") {
+    // Un pago del alta no tiene archivo: en vez de un botón que no abre nada, dice de dónde sale.
+    if (esPagoDelAlta(item.pagoConfirmado)) return <span className="owner-pago-alta"><Icon name="check" size={16} />{ETIQUETA_PAGO_DEL_ALTA}</span>;
     return <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
       return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
     }}><Icon name="download" size={16} />Comprobante</Button>;

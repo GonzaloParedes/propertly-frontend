@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePaymentEvents } from "@/hooks/usePaymentEvents";
 import { useCambioDeDia } from "@/hooks/useCambioDeDia";
 import { recargoEnCurso } from "@/lib/recargo";
+import { ETIQUETA_PAGO_DEL_ALTA, esPagoDelAlta } from "@/lib/cobranzas";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -112,7 +113,11 @@ function CuotaDetalle({ fila, perteneceACondicionesAnteriores, subiendo, viendoC
         {!fila.confirmada && <small className="tenant-cuota__aviso">El propietario todavía no cerró este importe: puede cambiar.</small>}
         {fila.estado === "Vencida" && perteneceACondicionesAnteriores && <small className="tenant-cuota__aviso">Esta cuota sigue pendiente aunque las condiciones hayan cambiado.</small>}
       </div>
-      {fila.pago && <div className="tenant-cuota__pago">
+      {fila.pago && esPagoDelAlta(fila.pago) && <div className="tenant-cuota__pago">
+        {/* El propietario registró este pago al cargar el contrato: no hay comprobante que ver. */}
+        <span className="tenant-pago-estado tenant-pago-estado--ok"><Icon name="check" size={16} />{ETIQUETA_PAGO_DEL_ALTA}</span>
+      </div>}
+      {fila.pago && !esPagoDelAlta(fila.pago) && <div className="tenant-cuota__pago">
         {fila.pago.status === "AWAITING_CONFIRMATION" && <span className="tenant-pago-estado tenant-pago-estado--info">Comprobante esperando confirmación del propietario</span>}
         {fila.pago.status === "CONFIRMED" && <span className="tenant-pago-estado tenant-pago-estado--ok">Pago confirmado</span>}
         {fila.pago.status === "REJECTED" && <span className="tenant-pago-estado tenant-pago-estado--bad">El propietario rechazó este comprobante{fila.pago.rejectionReason && `: ${fila.pago.rejectionReason}`}</span>}

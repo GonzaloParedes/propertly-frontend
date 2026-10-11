@@ -69,6 +69,13 @@ export interface FilaCobranza {
   pagoConfirmado: PaymentResponse | null;
 }
 
+/** Lo que dice un pago que registró el alta de un contrato en curso: no hay comprobante ni nada que hacerle. */
+export const ETIQUETA_PAGO_DEL_ALTA = "Registrado al dar de alta · sin comprobante";
+
+export function esPagoDelAlta(pago: PaymentResponse | null | undefined): boolean {
+  return pago?.origin === "ONBOARDING";
+}
+
 export function estadoDeCuota(invoice: InvoiceResponse): EstadoCuota {
   if (invoice.payments.some((p) => p.status === "AWAITING_CONFIRMATION")) {
     return "Pago a confirmar";

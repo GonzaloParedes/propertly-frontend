@@ -177,6 +177,19 @@ describe("calendario anual", () => {
     });
   });
 
+  it("una cuota que registró el alta del contrato se muestra como paga, sin comprobante que ver", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([
+      cuota({ status: "PAID", payments: [{ id: 7, invoiceId: 1000, status: "CONFIRMED", submittedByTenant: false, origin: "ONBOARDING", hasReceipt: false }] }),
+    ]));
+    render(<TenantPortalPage />);
+    await abrirMes("Septiembre", 2026, "Pagada");
+
+    const detalle = within(screen.getByRole("region", { name: "Detalle de septiembre 2026" }));
+    expect(detalle.getByText("Registrado al dar de alta · sin comprobante")).toBeInTheDocument();
+    expect(detalle.queryByRole("button", { name: "Ver comprobante" })).not.toBeInTheDocument();
+    expect(detalle.queryByText("Pago confirmado")).not.toBeInTheDocument();
+  });
+
   it("distingue los meses anteriores al contrato de los meses sin cuota", async () => {
     mockCalendario.mockResolvedValueOnce(calendario([], [{ startDate: "2025-06-15", effectiveEndDate: "2025-12-31" }]));
     render(<TenantPortalPage />);

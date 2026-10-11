@@ -16,6 +16,8 @@ export const ERROR = {
   ADJUSTMENT_ON_CONFIRMED_INVOICE: "urn:alquia:error:adjustment-on-confirmed-invoice",
   INVOICE_TOTAL_NEGATIVE: "urn:alquia:error:invoice-total-negative",
   SCHEMA_CHANGE_OVER_PAID_INVOICE: "urn:alquia:error:schema-change-over-paid-invoice",
+  ELAPSED_INVOICES_DECISION_REQUIRED: "urn:alquia:error:elapsed-invoices-decision-required",
+  ELAPSED_PAID_THROUGH_OUT_OF_RANGE: "urn:alquia:error:elapsed-paid-through-out-of-range",
   GUARANTEES_LIMIT_EXCEEDED: "urn:alquia:error:guarantees-limit-exceeded",
   GUARANTEE_FIELD_NOT_ALLOWED: "urn:alquia:error:guarantee-field-not-allowed",
   LATE_FEE_NOT_CONFIGURED: "urn:alquia:error:late-fee-not-configured",
@@ -46,6 +48,8 @@ const COPY: Record<string, string> = {
   [ERROR.INVOICE_TOTAL_NEGATIVE]: "El total de la cuota no puede quedar negativo.",
   [ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE]:
     "Ya hay una cuota paga desde ese mes, así que no se puede programar el cambio ahí.",
+  [ERROR.ELAPSED_INVOICES_DECISION_REQUIRED]: "Hay cuotas anteriores a hoy. Indique hasta qué mes le pagaron.",
+  [ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE]: "Ese mes no corresponde a una cuota anterior a hoy. Elija otro.",
   [ERROR.GUARANTEES_LIMIT_EXCEEDED]: "Un contrato admite hasta tres garantías.",
   [ERROR.GUARANTEE_FIELD_NOT_ALLOWED]: "Hay un dato que no corresponde al tipo de garantía. Revise cada una.",
   [ERROR.LATE_FEE_NOT_CONFIGURED]: "Este contrato no tiene punitorios, así que la cuota no tiene recargo.",
