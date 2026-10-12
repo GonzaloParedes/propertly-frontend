@@ -13,6 +13,7 @@ vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { list: vi.fn(), create: vi.fn() },
     contracts: { list: vi.fn() },
+    contractImports: { quota: vi.fn() },
     properties: { list: vi.fn(), create: vi.fn(), archive: vi.fn() },
     invoices: { list: vi.fn(), confirm: vi.fn() },
     payments: { create: vi.fn(), confirm: vi.fn(), reject: vi.fn(), getReceipt: vi.fn() },
@@ -47,6 +48,7 @@ function conContratos(contratos: ContractResponse[]) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(HOY);
 });
@@ -221,6 +223,12 @@ describe("modo demo", () => {
 
 // --- inquilino nuevo desde el asistente de contrato ---
 
+/** El asistente de contrato abre preguntando cómo cargarlo: estos tests siguen por la carga a mano. */
+async function elegirCargaAMano() {
+  await userEvent.click(await screen.findByRole("radio", { name: /Cargarlo a mano/ }));
+  await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+}
+
 describe("propiedad del asistente de contrato", () => {
   it("sin ninguna propiedad cargada, no dice que todas tienen contrato", async () => {
     vi.mocked(AlquiaBackendClient.properties.list).mockResolvedValue([]);
@@ -229,6 +237,7 @@ describe("propiedad del asistente de contrato", () => {
     await screen.findByText("Todavía no tiene contratos");
 
     await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+    await elegirCargaAMano();
 
     expect(await screen.findByText(/Todavía no cargó ninguna propiedad/)).toBeInTheDocument();
     expect(screen.queryByText(/ya tienen un contrato vigente/)).not.toBeInTheDocument();
@@ -241,6 +250,7 @@ describe("propiedad del asistente de contrato", () => {
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
     await userEvent.click(screen.getAllByRole("button", { name: "Nuevo contrato" })[0]);
+    await elegirCargaAMano();
 
     expect(await screen.findByText(/ya tienen un contrato vigente/)).toBeInTheDocument();
   });
@@ -253,7 +263,8 @@ describe("propiedad nueva desde el asistente de contrato", () => {
     conContratos([]);
     await screen.findByText("Todavía no tiene contratos");
     await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Agregar una propiedad nueva" }));
+    await elegirCargaAMano();
+    await userEvent.click(await screen.findByRole("radio", { name: /Una propiedad nueva/ }));
     return screen.findByRole("region", { name: "Asistente de nueva propiedad" });
   }
 
@@ -264,7 +275,7 @@ describe("propiedad nueva desde el asistente de contrato", () => {
     await userEvent.click(within(asistente).getByRole("button", { name: "Atrás" }));
 
     const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
-    expect(within(contrato).getByText("Paso 1 de 6")).toBeInTheDocument();
+    expect(within(contrato).getByText("Paso 1 de 7")).toBeInTheDocument();
   });
 });
 
@@ -276,37 +287,36 @@ describe("inquilino nuevo desde el asistente de contrato", () => {
     await screen.findByText("Todavía no tiene contratos");
 
     await userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+    await elegirCargaAMano();
     await userEvent.click(await screen.findByText("Av. Rivadavia 2340, 5.º A"));
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
-    await userEvent.click(await screen.findByRole("button", { name: "Agregar un inquilino nuevo" }));
+    await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
     return screen.findByRole("region", { name: "Asistente de nuevo inquilino" });
   }
 
-  it("abre el formulario de inquilino en un solo paso, con «Guardar inquilino» y no «Seguir»", async () => {
+  it("abre el formulario de inquilino en un solo paso, con «Usar este inquilino» y no «Seguir»", async () => {
     const asistente = await hastaAgregarInquilino();
 
     // Antes quedaba en el paso 2 de un asistente de 1 paso: «Seguir» sumaba pasos y nunca guardaba.
-    expect(within(asistente).getByRole("button", { name: "Guardar inquilino" })).toBeInTheDocument();
+    expect(within(asistente).getByRole("button", { name: "Usar este inquilino" })).toBeInTheDocument();
     expect(within(asistente).queryByRole("button", { name: /Seguir/ })).not.toBeInTheDocument();
   });
 
-  it("al guardarlo vuelve al contrato en el paso del inquilino, con el nuevo elegido", async () => {
+  it("al terminar vuelve al contrato con el inquilino nuevo elegido, y no lo guarda todavía", async () => {
     const asistente = await hastaAgregarInquilino();
-    const nuevo = { id: 7, firstName: "Ana", lastName: "Gómez", taxId: "20224567899",
-      email: "ana@ejemplo.com", phoneNumber: "1144552210" };
-    vi.mocked(AlquiaBackendClient.tenants.create).mockResolvedValue(nuevo);
-    vi.mocked(AlquiaBackendClient.tenants.list).mockResolvedValue([nuevo]);
 
     await userEvent.type(within(asistente).getByLabelText("Nombre"), "Ana");
     await userEvent.type(within(asistente).getByLabelText("Apellido"), "Gómez");
     await userEvent.type(within(asistente).getByLabelText("CUIT o CUIL"), "20224567899");
     await userEvent.type(within(asistente).getByLabelText("Correo electrónico"), "ana@ejemplo.com");
     await userEvent.type(within(asistente).getByLabelText("Teléfono"), "1144552210");
-    await userEvent.click(within(asistente).getByRole("button", { name: "Guardar inquilino" }));
+    await userEvent.click(within(asistente).getByRole("button", { name: "Usar este inquilino" }));
 
     const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
-    expect(await within(contrato).findByText("Paso 2 de 6")).toBeInTheDocument();
+    expect(await within(contrato).findByText("Paso 2 de 7")).toBeInTheDocument();
+    expect(within(contrato).getByRole("radio", { name: /Inquilino nuevo: Ana Gómez/ })).toHaveAttribute("aria-checked", "true");
     expect(within(contrato).getByRole("button", { name: /Seguir/ })).toBeEnabled();
+    expect(AlquiaBackendClient.tenants.create).not.toHaveBeenCalled();
   });
 
   it("«Atrás» descarta el formulario y vuelve al contrato sin perder la propiedad", async () => {
@@ -315,6 +325,6 @@ describe("inquilino nuevo desde el asistente de contrato", () => {
     await userEvent.click(within(asistente).getByRole("button", { name: "Atrás" }));
 
     const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
-    expect(within(contrato).getByText("Paso 2 de 6")).toBeInTheDocument();
+    expect(within(contrato).getByText("Paso 2 de 7")).toBeInTheDocument();
   });
 });

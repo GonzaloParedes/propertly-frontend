@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/api";
-import { ERROR, FALLBACK, copyDeError } from "@/lib/error-codes";
+import { ERROR, FALLBACK, copyDeError, idDelContratoActivo, idDelInquilinoExistente } from "@/lib/error-codes";
 
 function errorConType(type: string | null): ApiError {
   return new ApiError(409, "English detail from backend", type);
@@ -46,5 +46,44 @@ describe("copyDeError", () => {
       overrides: { [ERROR.DUPLICATE_TAX_ID]: "Ese CUIT ya tiene una cuenta." },
     });
     expect(copy).toBe("Ese teléfono ya está registrado.");
+  });
+});
+
+describe("extensiones de un conflicto del alta de contrato", () => {
+  const conExtensiones = (extensions: Record<string, unknown> | null) =>
+    new ApiError(409, "Conflict", ERROR.DUPLICATE_TAX_ID, null, extensions);
+
+  it("lee el inquilino que ya existe y el contrato vigente", () => {
+    expect(idDelInquilinoExistente(conExtensiones({ existingTenantId: 7 }))).toBe(7);
+    expect(idDelContratoActivo(conExtensiones({ activeContractId: 42 }))).toBe(42);
+  });
+
+  it("sin la extensión, o con otra cosa que un número, devuelve null", () => {
+    expect(idDelInquilinoExistente(conExtensiones(null))).toBeNull();
+    expect(idDelInquilinoExistente(conExtensiones({ existingTenantId: "7" }))).toBeNull();
+    expect(idDelContratoActivo(new Error("otro"))).toBeNull();
+  });
+});
+
+describe("rechazos de la lectura de un contrato", () => {
+  const rechazos = [
+    ERROR.IMPORT_FILE_TOO_LARGE,
+    ERROR.IMPORT_FILE_NOT_PDF,
+    ERROR.IMPORT_FILE_CORRUPT,
+    ERROR.IMPORT_FILE_ENCRYPTED,
+    ERROR.IMPORT_FILE_TOO_MANY_PAGES,
+    ERROR.IMPORT_FILE_ACTIVE_CONTENT,
+    ERROR.IMPORT_QUOTA_EXCEEDED,
+    ERROR.AI_IMPORTS_UNAVAILABLE,
+  ];
+
+  it.each(rechazos)("%s tiene un texto propio en español, no el genérico", (type) => {
+    const copy = copyDeError(errorConType(type));
+    expect(copy).not.toBe(FALLBACK);
+    expect(copy).not.toContain("English");
+  });
+
+  it("al archivo con contraseña le dice qué hacer", () => {
+    expect(copyDeError(errorConType(ERROR.IMPORT_FILE_ENCRYPTED))).toMatch(/contraseña/i);
   });
 });

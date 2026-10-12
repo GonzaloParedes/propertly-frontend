@@ -26,6 +26,17 @@ export const ERROR = {
   EFFECTIVE_FROM_NOT_FIRST_OF_MONTH: "urn:alquia:error:effective-from-not-first-of-month",
   EFFECTIVE_FROM_NOT_FUTURE: "urn:alquia:error:effective-from-not-future",
   EFFECTIVE_FROM_OUTSIDE_TERM: "urn:alquia:error:effective-from-outside-term",
+  IMPORT_FILE_TOO_LARGE: "urn:alquia:error:import-file-too-large",
+  IMPORT_FILE_NOT_PDF: "urn:alquia:error:import-file-not-pdf",
+  IMPORT_FILE_CORRUPT: "urn:alquia:error:import-file-corrupt",
+  IMPORT_FILE_ENCRYPTED: "urn:alquia:error:import-file-encrypted",
+  IMPORT_FILE_TOO_MANY_PAGES: "urn:alquia:error:import-file-too-many-pages",
+  IMPORT_FILE_ACTIVE_CONTENT: "urn:alquia:error:import-file-active-content",
+  IMPORT_NOT_READY: "urn:alquia:error:import-not-ready",
+  IMPORT_NOT_RETRYABLE: "urn:alquia:error:import-not-retryable",
+  IMPORT_ALREADY_COMPLETED: "urn:alquia:error:import-already-completed",
+  IMPORT_QUOTA_EXCEEDED: "urn:alquia:error:import-quota-exceeded",
+  AI_IMPORTS_UNAVAILABLE: "urn:alquia:error:ai-imports-unavailable",
 } as const;
 
 export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
@@ -58,6 +69,18 @@ const COPY: Record<string, string> = {
   [ERROR.EFFECTIVE_FROM_NOT_FIRST_OF_MONTH]: "El cambio tiene que arrancar el primer día de un mes.",
   [ERROR.EFFECTIVE_FROM_NOT_FUTURE]: "El cambio tiene que arrancar en un mes posterior al actual.",
   [ERROR.EFFECTIVE_FROM_OUTSIDE_TERM]: "Ese mes queda fuera del plazo del contrato.",
+  [ERROR.IMPORT_FILE_TOO_LARGE]: "El archivo es demasiado grande. El máximo es 20 MB.",
+  [ERROR.IMPORT_FILE_NOT_PDF]: "Ese archivo no es un PDF. Si tiene el contrato en papel, escanéelo y guárdelo como PDF.",
+  [ERROR.IMPORT_FILE_CORRUPT]: "No pudimos abrir el archivo: parece dañado. Pruebe con otra copia.",
+  [ERROR.IMPORT_FILE_ENCRYPTED]: "El PDF tiene contraseña. Guárdelo sin contraseña y vuelva a subirlo.",
+  [ERROR.IMPORT_FILE_TOO_MANY_PAGES]: "El PDF tiene demasiadas páginas para leerlo. Suba solo el contrato.",
+  [ERROR.IMPORT_FILE_ACTIVE_CONTENT]:
+    "Este PDF trae contenido que no podemos abrir con seguridad. Pruebe con una copia escaneada o impresa a PDF.",
+  [ERROR.IMPORT_NOT_READY]: "Todavía estamos leyendo el contrato. Espere un momento.",
+  [ERROR.IMPORT_NOT_RETRYABLE]: "Esta lectura no se puede volver a intentar. Suba el archivo de nuevo.",
+  [ERROR.IMPORT_ALREADY_COMPLETED]: "Este contrato ya se creó desde esa lectura.",
+  [ERROR.IMPORT_QUOTA_EXCEEDED]: "Ya usó todas las lecturas de contratos que tiene disponibles. Puede cargar el contrato a mano.",
+  [ERROR.AI_IMPORTS_UNAVAILABLE]: "La lectura de contratos no está disponible en este momento. Puede cargar el contrato a mano.",
 };
 
 export const FALLBACK = "No se pudo completar la acción. Inténtelo de nuevo más tarde.";
@@ -77,4 +100,20 @@ export function copyDeError(
     return overrides?.[err.type] ?? COPY[err.type] ?? fallback;
   }
   return fallback;
+}
+
+function idDeExtension(err: unknown, clave: string): number | null {
+  if (!(err instanceof ApiError)) return null;
+  const valor = err.extensions?.[clave];
+  return typeof valor === "number" ? valor : null;
+}
+
+/** El inquilino que ya existe con ese CUIT o teléfono, en un 409 del alta de contrato. */
+export function idDelInquilinoExistente(err: unknown): number | null {
+  return idDeExtension(err, "existingTenantId");
+}
+
+/** El contrato vigente de la propiedad, en un 409 del alta de contrato. */
+export function idDelContratoActivo(err: unknown): number | null {
+  return idDeExtension(err, "activeContractId");
 }

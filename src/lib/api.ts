@@ -16,7 +16,9 @@ export class ApiError extends Error {
     public status: number,
     message: string,
     public type: string | null = null,
-    public fieldErrors: Record<string, string> | null = null
+    public fieldErrors: Record<string, string> | null = null,
+    /** Propiedades extra del problema (RFC 9457), como `existingTenantId` en un 409. */
+    public extensions: Record<string, unknown> | null = null
   ) {
     super(message);
     this.name = "ApiError";
@@ -29,15 +31,19 @@ async function apiErrorFromResponse(res: Response): Promise<ApiError> {
   let message = res.statusText;
   let type: string | null = null;
   let fieldErrors: Record<string, string> | null = null;
+  let extensions: Record<string, unknown> | null = null;
   try {
     const body = await res.json();
     message = body.detail ?? body.title ?? message;
     type = body.type ?? null;
     fieldErrors = body.errors ?? null;
+    const resto: Record<string, unknown> = { ...body };
+    for (const campo of ["type", "title", "status", "detail", "instance", "errors"]) delete resto[campo];
+    extensions = Object.keys(resto).length > 0 ? resto : null;
   } catch {
     // use statusText as fallback
   }
-  return new ApiError(res.status, message, type, fieldErrors);
+  return new ApiError(res.status, message, type, fieldErrors, extensions);
 }
 
 export class AuthExpiredError extends Error {

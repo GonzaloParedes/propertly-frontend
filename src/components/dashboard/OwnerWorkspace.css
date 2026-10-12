@@ -696,11 +696,12 @@
 .owner-pdf-reading>p{margin-left:auto!important;margin-right:auto!important}
 .owner-pdf-reading__spin{display:inline-grid;width:64px;height:64px;margin-bottom:var(--esp-20);place-items:center;border-radius:999px;background:var(--indigo-suave);color:var(--indigo)}
 .owner-pdf-reading__spin svg,.owner-pdf-reading__spin>*{transform:scale(1.5)}
+.owner-pdf-reading__arco{display:inline-block;margin-bottom:var(--esp-26)}
 .owner-pdf-reading ol{display:inline-grid;gap:var(--esp-12);margin:0;padding:0;list-style:none;text-align:left}
 .owner-pdf-reading li{display:flex;align-items:center;gap:var(--esp-12);color:var(--gris);font-size:17px}
 .owner-pdf-reading li>span:first-child{display:grid;width:26px;height:26px;flex:none;place-items:center;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--borde-campo)}
 .owner-pdf-reading li[data-estado="ahora"]{color:var(--tinta);font-weight:700}
-.owner-pdf-reading li[data-estado="ahora"]>span:first-child{box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-pdf-reading li[data-estado="ahora"]>span:first-child{box-shadow:none;color:var(--indigo)}
 .owner-pdf-reading li[data-estado="listo"]{color:var(--tinta)}
 .owner-pdf-reading li[data-estado="listo"]>span:first-child{background:var(--exito-bg);box-shadow:none;color:var(--exito)}
 
@@ -797,6 +798,38 @@
 .owner-wizard-chips button[role="radio"]{display:inline-flex;align-items:center;gap:var(--esp-6)}
 .owner-pagos-transcurridos{display:flex;flex-direction:column;gap:var(--esp-12);margin-top:var(--esp-32)}
 .owner-pagos-transcurridos .owner-wizard-chips{margin-top:0}
+.owner-pagos-transcurridos__fecha{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--esp-12)}
+@media (max-width:620px){.owner-pagos-transcurridos__fecha{grid-template-columns:minmax(0,1fr)}}
+.owner-pagos-transcurridos .owner-wizard-note{display:block}
+.owner-pagos-transcurridos .owner-wizard-note p{margin:0}
 .owner-pagos-transcurridos .owner-wizard-note p+p{margin-top:var(--esp-6)}
+/* Dentro de una tarjeta de la revisión del PDF: sin el aire que lleva como paso suelto del asistente. */
+.owner-pdf-item .owner-pagos-transcurridos{margin-top:0}
+.owner-wizard:not(.owner-dialog) .owner-pdf-item .owner-pagos-transcurridos .owner-wizard-label{margin:0!important}
+.owner-pdf-item .owner-pagos-transcurridos .owner-wizard-help{margin:0}
 .owner-pago-alta{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px;font-weight:600;white-space:normal}
 .owner-pago-alta svg{flex:none;color:var(--exito)}
+.owner-wizard-summary .owner-wizard-quiet{flex:none;margin:0 0 0 var(--esp-10)}
+.owner-wizard-alert>div p{margin:0}
+.owner-wizard-alert>div .owner-garantia__acciones{margin-top:var(--esp-6)}
+.owner-wizard-alert .owner-wizard-quiet{margin-top:0}
+
+/* Lectura del contrato desde el PDF: citas, visor y espera larga. */
+.owner-pdf-item__quote p{margin:0}
+.owner-pdf-item__quote p+p{margin-top:var(--esp-10)}
+.owner-pdf-item__quote--siempre{display:block}
+.owner-pdf-item__page-link{display:none;margin-top:var(--esp-10);padding:0;border:0;background:none;color:var(--indigo);font:700 15px var(--font-nunito-sans),sans-serif;text-decoration:underline;cursor:pointer}
+.owner-pdf-quote{margin:var(--esp-12) 0 0;padding:var(--esp-14) var(--esp-16);border-radius:14px;background:var(--indigo-suave);color:var(--tinta);font:italic 16px/1.5 Georgia,'Times New Roman',serif}
+.owner-pdf-quote p{margin:0}
+.owner-pdf-quote p+p{margin-top:var(--esp-10)}
+.owner-pdf-quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
+.owner-pdf-quote--hint{background:transparent;color:var(--gris);font:15px/1.5 var(--font-nunito-sans),sans-serif}
+.owner-pdf-viewer{overflow:hidden;border-radius:14px;background:#E9E7F2}
+.owner-pdf-viewer__bar{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-8);padding:var(--esp-10) var(--esp-14);color:#514D63;font-size:14px}
+.owner-pdf-viewer__bar span{min-width:0;flex:1;overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.owner-pdf-viewer canvas{display:block;max-width:100%;margin:0 auto var(--esp-14);border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(30,27,46,.12)}
+.owner-pdf-viewer__wait,.owner-pdf-viewer__error{display:flex;align-items:center;justify-content:center;gap:var(--esp-10);margin:0;padding:var(--esp-32) var(--esp-20);color:#514D63;font-size:15px}
+.owner-pdf-add{margin-top:var(--esp-16)}
+.owner-pdf-slow{display:grid;gap:var(--esp-10);max-width:520px;margin:var(--esp-26) auto 0;text-align:left}
+.owner-pdf-slow__actions{display:flex;flex-wrap:wrap;gap:var(--esp-8)}
+.owner-pdf-review__doc .owner-pdf-quote{margin-top:var(--esp-12)}

@@ -23,14 +23,17 @@ The choice screen sits in front of the existing "Nuevo contrato" (prototype deci
 
 The waiting screen keeps the prototype's design: a list whose items are ticked off one by one (the product owner likes it). Each tick follows a real backend `stage`, never a timer:
 
-| Item | Ticked when the job reaches |
-|---|---|
-| Abriendo el archivo | `READING_PAGES` (or later) |
-| Leyendo las páginas (página N de M) | `FINDING_DATA` (or later); the counter follows `pagesDone`/`pagesTotal` |
-| Buscando los datos del contrato | `CHECKING` (or later) |
-| Revisando lo que encontramos | `READY` |
+The backend reports the stage the job is in, and two of them run in parallel: the local OCR (`READING_PAGES`, with `pagesDone`/`pagesTotal`) and the model call (`FINDING_DATA`). It reports `FINDING_DATA` while both run, and `READING_PAGES` when only the OCR is left, so neither stage proves that the other has finished. Showing both as separate items made two of them look in progress at once, so the screen merges them into one step and the list has three, always in order:
 
-The current item shows the activity indicator, and items not reached yet are dimmed, as in the prototype. A stage the pipeline skips is ticked together with the next one. The front polls every 2 s.
+| Item | Ticked when the job reaches | In progress while the stage is |
+|---|---|---|
+| Abriendo el archivo | `READING_PAGES`, `FINDING_DATA` or later | `OPENING` |
+| Leyendo las páginas y buscando los datos (página N de M) | `CHECKING` (or later) | `READING_PAGES` or `FINDING_DATA` (the counter follows `pagesDone`/`pagesTotal`) |
+| Revisando lo que encontramos | `READY` | `CHECKING` |
+
+A job still in `QUEUED` has no stage, so nothing is in progress or ticked and the screen says it is waiting for its turn.
+
+The current item shows the activity indicator, and items not reached yet are dimmed, as in the prototype. The large indicator at the top is an arc whose stroke grows and shrinks while it turns, not the fixed quarter ring of the small inline spinner. The front polls every 2 s.
 
 - **After 90 s still processing:** "Está tardando más de lo normal", with "Seguir esperando" and "Cargarlo a mano".
 - **"Cancelar":** calls `DELETE` (the backend then discards the file) and returns to the upload screen.
@@ -41,7 +44,7 @@ Status changes are announced through an `aria-live` region.
 
 The evidence is a page number and a quote, with offsets into the page text. It has no coordinates on the page image, and the contracts are scanned, so the prototype's highlighted fragment cannot be drawn precisely. "Ver en el contrato" therefore:
 
-- renders the cited page with `pdfjs-dist` (pinned version, `isEvalSupported: false`), loaded from the backend as a blob;
+- renders the cited page with `pdfjs-dist` on a canvas, loaded from the backend as a blob and imported only when the review opens. The version is pinned (5.7.284), which no longer evaluates code at run time and has no `isEvalSupported` option to turn off; upgrading must keep it that way;
 - shows the quote in a highlighted box next to the page;
 - on narrow screens (< 900 px, where the document does not fit beside the data), shows the quote under the value and a "Ver página N" link.
 

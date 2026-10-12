@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
 import CreationWizard from "@/components/dashboard/CreationWizard";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import Dialog from "@/components/ui/Dialog";
 import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import { validarImporteDeRecargo } from "@/lib/recargo";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -286,6 +287,7 @@ const inicioDemo = {
   // Los mismos cuatro contratos del resto de la demo, con la forma del dato
   // real: si no, el panel diría que no hay contratos y las otras vistas los
   // mostrarían igual.
+  tieneContratos: true,
   contratos: contracts.map((c, indice) => ({
     id: indice + 1,
     property: {
@@ -612,10 +614,6 @@ function Notice({ tone, title, children, action }: Readonly<{ tone: "info" | "wa
   return <article className={`owner-notice owner-notice--${tone}`}><span className="owner-notice__icon"><Icon name={icon} /></span><div><strong>{title}</strong><p>{children}</p></div><div className="owner-notice__action">{action}</div></article>;
 }
 
-function Dialog({ title, children, onClose }: Readonly<{ title: string; children: React.ReactNode; onClose: () => void }>) {
-  return <dialog open className="owner-dialog" aria-modal="true" aria-labelledby="dialog-title"><button type="button" aria-label="Cerrar" className="owner-dialog__backdrop" onClick={onClose} /><section className="owner-dialog__panel"><div className="owner-dialog__head"><h2 id="dialog-title">{title}</h2><button type="button" className="owner-icon-button" aria-label="Cerrar" onClick={onClose}><Icon name="x" /></button></div>{children}</section></dialog>;
-}
-
 type TenantDetailProps = Readonly<{
   selectedId: string;
   tenants: readonly TenantRow[] | null;
@@ -911,6 +909,8 @@ type OverviewData = Readonly<{
   cartera: ResumenCartera;
   avisos: Aviso[];
   contratos: ContractResponse[];
+  /** Hay al menos un contrato, vigente o no: sin ninguno, Inicio ofrece «Cargar mi primer contrato». */
+  tieneContratos: boolean;
 }>;
 
 type OverviewProps = Readonly<{
@@ -948,13 +948,15 @@ function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: Proy
 }
 
 /**
- * Sin propiedades, «Nuevo contrato» lleva a un asistente sin nada para elegir:
- * el paso que falta es cargar la propiedad. Va en secondary porque el
- * primario de la pantalla ya está en el encabezado.
+ * Sin ningún contrato, el paso que sigue es «Cargar mi primer contrato»: el asistente deja cargar la
+ * propiedad y el inquilino en el mismo recorrido, así que ya no hace falta pasar antes por
+ * «Agregar propiedad». Es la acción principal de la pantalla (el encabezado ofrece lo mismo, pero
+ * acá es el único camino que se explica). Con contratos que ya terminaron, en cambio, no es el
+ * primero: sigue siendo «Nuevo contrato».
  */
-function NoActiveContracts({ hasProperties, onCreateProperty, onCreateContract }: Readonly<{ hasProperties: boolean; onCreateProperty: () => void; onCreateContract: () => void }>) {
-  if (!hasProperties) {
-    return <EmptyState art="contratos" title="Todavía no tiene contratos vigentes" action={<Button tone="secondary" onClick={onCreateProperty}><Icon name="plus" size={18} />Agregar propiedad</Button>}>Empiece por cargar su primera propiedad. Después la vincula con su inquilino en un contrato.</EmptyState>;
+function NoActiveContracts({ hasContracts, onCreateContract }: Readonly<{ hasContracts: boolean; onCreateContract: () => void }>) {
+  if (!hasContracts) {
+    return <EmptyState art="contratos" title="Todavía no tiene contratos" action={<Button onClick={onCreateContract}><Icon name="plus" size={18} />Cargar mi primer contrato</Button>}>Un contrato vincula una propiedad con un inquilino y define el alquiler. Los carga juntos, en un solo recorrido.</EmptyState>;
   }
   return <EmptyState art="contratos" title="Todavía no tiene contratos vigentes" action={<Button tone="secondary" onClick={onCreateContract}><Icon name="plus" size={18} />Nuevo contrato</Button>}>Un contrato vincula una propiedad con un inquilino y define el alquiler.</EmptyState>;
 }
@@ -981,7 +983,7 @@ function Overview({
   if (hasError) return <>{header}<LoadError title="No pudimos cargar su panel" /></>;
   if (data === null) return <>{header}<div className="owner-card"><Cargando>Cargando su panel…</Cargando></div></>;
 
-  const { cobranza, cartera, avisos, contratos } = data;
+  const { cobranza, cartera, avisos, contratos, tieneContratos } = data;
   const percent = proporciones(cobranza);
   const cuotasCobradasLabel = cobranza.cuotas === 1 ? "cuota cobrada" : "cuotas cobradas";
   return <>
@@ -1002,7 +1004,7 @@ function Overview({
       </div>
     </section>
     <section className="owner-section"><div className="owner-section__head"><h2>Requieren su acción</h2>{avisos.length > 0 && <Button tone="secondary" small onClick={onOpenCollections}>Ir a cobranzas</Button>}</div>{avisos.length === 0 ? <EmptyState compact art="alDia" title="Nada pendiente por ahora">{contratos.length > 0 ? "Sus cuotas están al día." : "Cuando tenga contratos, acá le avisamos qué cuotas vencen o esperan su confirmación."}</EmptyState> : <div className="owner-notices">{avisos.map((notice) => <Notice key={notice.id} tone={notice.tono} title={notice.titulo} action={<Button tone="secondary" small onClick={onOpenCollections}>{notice.accion}</Button>}>{notice.cuerpo}</Notice>)}</div>}</section>
-    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasProperties={cartera.total > 0} onCreateProperty={onCreateProperty} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
+    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
 
@@ -1559,7 +1561,7 @@ function useOverviewLoad({ enabled, setOverview, setProjection }: Readonly<{
     const contracts = AlquiaBackendClient.contracts.list();
     Promise.all([AlquiaBackendClient.invoices.list({ period: periodoCorriente(today) }), AlquiaBackendClient.properties.list(), contracts]).then(([invoices, properties, loadedContracts]) => {
       if (cancelled) return;
-      setOverview({ cobranza: resumenDeCobranza(invoices), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts) });
+      setOverview({ cobranza: resumenDeCobranza(invoices), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts), tieneContratos: loadedContracts.length > 0 });
     }).catch(() => {
       if (!cancelled) setOverview({ error: true });
     });
@@ -2083,6 +2085,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
         cartera: ResumenCartera;
         avisos: Aviso[];
         contratos: ContractResponse[];
+        tieneContratos: boolean;
       }
     | { error: true }
     | null
@@ -2624,7 +2627,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const WIZARD_SUCCESS: Record<Exclude<Creation, null>, string> = { property: "Propiedad agregada.", tenant: "Inquilino agregado.", contract: "Contrato creado. Le enviamos al inquilino su enlace por correo." };
   const wizardDestinations: Record<Exclude<Creation, null>, OwnerView> = { property: "propiedades", tenant: "inquilinos", contract: "contratos" };
   const wizardKind = wizard ?? "contract";
-  const wizardContent = <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} onClose={() => setWizard(null)} onComplete={() => { go(wizardDestinations[wizardKind]); toast.exito(WIZARD_SUCCESS[wizardKind]); }} />;
+  const wizardContent = <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} onClose={() => setWizard(null)} onOpenContract={(contractId) => { setWizard(null); openDetail("contract", String(contractId)); }} onComplete={() => { go(wizardDestinations[wizardKind]); toast.exito(WIZARD_SUCCESS[wizardKind]); }} />;
   const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
     property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => beginCreation("contract", demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
     contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} unconfirmedInvoices={cuotasSinConfirmar.filter((fila) => fila.contractId === contratoAbierto?.id)} onConfirmInvoice={pedirConfirmacion} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} />,

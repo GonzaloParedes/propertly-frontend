@@ -213,6 +213,22 @@ body {
 /* Con movimiento reducido no se apaga: gira lento, es el único indicio de que
    la app sigue trabajando. */
 @media (prefers-reduced-motion:reduce){.alquia-spinner{animation-duration:2.4s}}
+/* Aro grande de una espera larga: el trazo crece y se achica mientras gira (circunferencia ≈ 251). */
+.alquia-arco{display:block;width:72px;height:72px;color:var(--indigo);animation:alquia-arco-giro 1.6s linear infinite}
+.alquia-arco circle{fill:none;stroke-width:7;stroke-linecap:round}
+.alquia-arco__pista{stroke:var(--indigo-suave)}
+.alquia-arco__trazo{stroke:currentColor;stroke-dasharray:12 251;animation:alquia-arco-trazo 1.6s ease-in-out infinite}
+@keyframes alquia-arco-giro{to{transform:rotate(360deg)}}
+@keyframes alquia-arco-trazo{
+  0%{stroke-dasharray:12 251;stroke-dashoffset:0}
+  50%{stroke-dasharray:150 251;stroke-dashoffset:-45}
+  100%{stroke-dasharray:12 251;stroke-dashoffset:-243}
+}
+/* Con movimiento reducido gira lento y con el trazo fijo: sigue diciendo que la app trabaja. */
+@media (prefers-reduced-motion:reduce){
+  .alquia-arco{animation-duration:3.2s}
+  .alquia-arco__trazo{animation:none;stroke-dasharray:110 251}
+}
 
 /* Carga de bloque: nace invisible y se muestra a los 300 ms, así una carga
    rápida se desmonta sin haberse visto. */

@@ -1,7 +1,11 @@
 # Propuesta · Cargar un contrato desde el PDF
 
-**Estado: prototipo local, sin backend.** Rama `prototipo/contrato-desde-pdf`
-(sólo local, no se sube). Se ve en `/prototipo` → Contratos → Nuevo contrato.
+**Estado: implementada contra el backend** (cambio `contract-pdf-import`; ver
+«Cargar un contrato desde el PDF» en `docs/design/sistema-ui.md`). El prototipo
+con la lectura simulada sigue en `/prototipo` → Contratos → Nuevo contrato
+(`ContractFromPdfDemo`), para las revisiones de diseño. Lo que sigue es la
+propuesta original, con las decisiones que la implementación respetó y una
+que cambió: **R5**.
 
 ## El problema
 
@@ -99,8 +103,14 @@ Sin rutas ni formatos: sólo las reglas, para que el backend decida cómo.
   una propiedad o un inquilino del propietario.
 - **R4 · Cuotas anteriores al alta.** Poder crear un contrato en curso sin que las
   cuotas ya transcurridas queden como deuda (ver arriba).
-- **R5 · Privacidad.** El documento sólo se usa para la lectura y para quedar
-  adjunto; no se retiene en ningún otro lado ni se usa para otra cosa.
+- **R5 · Privacidad.** ~~El documento sólo se usa para la lectura y para quedar
+  adjunto; no se retiene en ningún otro lado ni se usa para otra cosa.~~
+  **Reemplazada (10/10/2026).** El backend guarda completos los datos de las
+  lecturas que terminan en un contrato (también el PDF, que queda adjunto), para
+  poder armar más adelante un modelo propio; la anonimización se hace al
+  entrenar. Si el propietario sale sin crear el contrato, o la lectura queda sin
+  terminar 30 días, se borra todo: el archivo, su nombre y lo leído. El aviso de
+  privacidad y los términos tienen que decirlo.
 
 ## Preguntas abiertas
 

@@ -19,6 +19,7 @@ vi.mock("@/lib/backend-client", () => ({
     properties: { list: vi.fn(), archive: vi.fn() },
     invoices: { list: vi.fn(), confirm: vi.fn(), addAdjustment: vi.fn(), editAdjustment: vi.fn(), removeAdjustment: vi.fn(), setLateFee: vi.fn(), clearLateFee: vi.fn() },
     payments: { create: vi.fn(), confirm: vi.fn(), reject: vi.fn(), getReceipt: vi.fn() },
+    contractImports: { quota: vi.fn() },
   },
 }));
 
@@ -63,6 +64,7 @@ const fila = (texto: string | RegExp) => screen.getByRole("row", { name: texto }
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
 });
 
 // --- carga ---

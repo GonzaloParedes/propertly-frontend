@@ -13,6 +13,7 @@ import type {
   PropertyRequest,
   PropertyResponse,
   ContractRequest,
+  ContractOnboardingRequest,
   ContractResponse,
   ContractTerminateRequest,
   ContractListParams,
@@ -34,6 +35,9 @@ import type {
   AddressSuggestionResponse,
   ResolvedAddressResponse,
   PaymentRejectionRequest,
+  ContractImportResponse,
+  ContractImportCompletionRequest,
+  ContractImportQuotaResponse,
 } from "@/lib/backend-types";
 
 /**
@@ -130,6 +134,9 @@ export const AlquiaBackendClient = {
       apiGet<ContractResponse[]>(`/contracts${buildQuery(params ?? {})}`),
     create: (body: ContractRequest): Promise<ContractResponse> =>
       apiPost<ContractResponse>("/contracts", body),
+    // Propiedad, inquilino y contrato en un solo pedido: o se crea todo, o nada.
+    onboard: (body: ContractOnboardingRequest): Promise<ContractResponse> =>
+      apiPost<ContractResponse>("/contracts/onboarding", body),
     get: (id: number): Promise<ContractResponse> =>
       apiGet<ContractResponse>(`/contracts/${id}`),
     update: (id: number, body: ContractRequest): Promise<ContractResponse> =>
@@ -158,6 +165,28 @@ export const AlquiaBackendClient = {
       apiGet<TenantAccessResponse>(`/contracts/${id}/tenant-access`),
     rentIncrements: (id: number): Promise<RentIncrementResponse[]> =>
       apiGet<RentIncrementResponse[]>(`/contracts/${id}/rent-increments`),
+  },
+
+  // La lectura de un contrato firmado. El backend nunca crea nada con lo que lee: el alta pasa
+  // por `contracts.onboard` y recién después se cierra con `complete`.
+  contractImports: {
+    quota: (): Promise<ContractImportQuotaResponse> =>
+      apiGet<ContractImportQuotaResponse>("/contract-imports/quota"),
+    upload: (file: File): Promise<ContractImportResponse> => {
+      const form = new FormData();
+      form.append("file", file);
+      return apiPostForm<ContractImportResponse>("/contract-imports", form);
+    },
+    get: (id: number): Promise<ContractImportResponse> =>
+      apiGet<ContractImportResponse>(`/contract-imports/${id}`),
+    // Un reintento explícito: no vuelve a gastar una lectura.
+    retry: (id: number): Promise<ContractImportResponse> =>
+      apiPost<ContractImportResponse>(`/contract-imports/${id}/retry`),
+    complete: (id: number, body: ContractImportCompletionRequest): Promise<ContractImportResponse> =>
+      apiPost<ContractImportResponse>(`/contract-imports/${id}/complete`, body),
+    // Descarta la lectura y borra el archivo: 204 sin cuerpo.
+    discard: (id: number): Promise<void> => apiDelete(`/contract-imports/${id}`),
+    document: (id: number): Promise<Blob> => apiGetBlob(`/contract-imports/${id}/document`),
   },
 
   payments: {
@@ -248,6 +277,9 @@ export const AlquiaBackendClient = {
 };
 
 export type {
+  ContractImportResponse,
+  ContractImportCompletionRequest,
+  ContractImportQuotaResponse,
   LoginRequest,
   RegisterRequest,
   ForgotPasswordRequest,
@@ -261,6 +293,10 @@ export type {
   PropertyRequest,
   PropertyResponse,
   ContractRequest,
+  ContractOnboardingRequest,
+  ContractTerms,
+  PropertySelection,
+  TenantSelection,
   ContractResponse,
   ContractTerminateRequest,
   ContractListParams,

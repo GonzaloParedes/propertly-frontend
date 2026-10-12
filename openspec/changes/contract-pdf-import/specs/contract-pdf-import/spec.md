@@ -32,11 +32,11 @@ The upload screen SHALL accept a single PDF by drag and drop or file picker, and
 
 ### Requirement: The waiting screen reflects the real status
 
-After upload, the front SHALL poll the import until it is `READY` or `FAILED`. While waiting, it SHALL show the prototype's progress list: opening the file, reading the pages with a page counter, finding the contract data, and checking what was found. It SHALL tick each item only when the backend reports a later stage, never by time, and SHALL announce changes to assistive technology. "Cancelar" SHALL discard the import and return to upload. After 90 seconds it SHALL offer "Seguir esperando" and "Cargarlo a mano". A `FAILED` import SHALL offer "Probar con otro archivo", "Cargarlo a mano", and "Intentar de nuevo" (retry).
+After upload, the front SHALL poll the import until it is `READY` or `FAILED`. While waiting, it SHALL show a progress list of three steps in order: opening the file, reading the pages and finding the contract data (with a page counter), and checking what was found. The backend runs the page reading and the data extraction in parallel, so they are one step. It SHALL tick each step only when the backend reports a later stage, never by time, and SHALL never show two steps in progress at once, and SHALL announce changes to assistive technology. "Cancelar" SHALL discard the import and return to upload. After 90 seconds it SHALL offer "Seguir esperando" and "Cargarlo a mano". A `FAILED` import SHALL offer "Probar con otro archivo", "Cargarlo a mano", and "Intentar de nuevo" (retry).
 
 #### Scenario: Reading pages
 - **WHEN** the backend reports `READING_PAGES` with `pagesDone` 3 and `pagesTotal` 6
-- **THEN** "Abriendo el archivo" is ticked, "Leyendo las páginas" is current and shows page 3 of 6, and the remaining items are not ticked
+- **THEN** "Abriendo el archivo" is ticked, "Leyendo las páginas y buscando los datos" is the only step in progress and shows page 3 of 6, and "Revisando lo que encontramos" is not ticked
 
 #### Scenario: Cancel
 - **WHEN** the owner cancels while the import is processing
