@@ -61,7 +61,7 @@ export function definicionDeMetodo(method: LateFeeMethod) {
 /** «0,5» y «0.5» son lo mismo; cualquier otra cosa no es un número. */
 export function numeroDecimal(texto: string): number {
   const limpio = texto.trim().replace(",", ".");
-  return limpio === "" || !/^\d*\.?\d*$/.test(limpio) ? Number.NaN : Number(limpio);
+  return /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(limpio) ? Number(limpio) : Number.NaN;
 }
 
 /** Sólo dígitos y a lo sumo un separador decimal. */
@@ -119,13 +119,28 @@ export function armarOtrasCondiciones(o: OtrasCondiciones): Partial<ContractTerm
 const PESOS = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
 const PORCENTAJE = (texto: string) => `${texto.trim().replace(".", ",")} %`;
 
+function montoDePunitorios(p: PunitoriosBorrador, method: LateFeeMethod): string {
+  const { unidad, sufijo } = definicionDeMetodo(method);
+  const valor = numeroDecimal(p.value);
+  if (Number.isNaN(valor)) return "—";
+  if (unidad === "$") return `${PESOS(valor)} ${sufijo}`;
+  return `${PORCENTAJE(p.value)} ${sufijo.replace(/^% /, "")}`;
+}
+
+function textoDeGracia(graceDays: string): string {
+  if (graceDays === "") return "";
+  const unidad = graceDays === "1" ? "día" : "días";
+  return ` · ${graceDays} ${unidad} de gracia`;
+}
+
 export function describirPunitorios(p: PunitoriosBorrador): string {
   if (p.method === null) return "Sin cargar";
-  const { unidad, sufijo } = definicionDeMetodo(p.method);
-  const valor = numeroDecimal(p.value);
-  const monto = Number.isNaN(valor) ? "—" : unidad === "$" ? `${PESOS(valor)} ${sufijo}` : `${PORCENTAJE(p.value)} ${sufijo.replace(/^% /, "")}`;
-  const gracia = p.graceDays === "" ? "" : ` · ${p.graceDays} ${p.graceDays === "1" ? "día" : "días"} de gracia`;
-  return `${monto}${gracia}`;
+  return `${montoDePunitorios(p, p.method)}${textoDeGracia(p.graceDays)}`;
+}
+
+function textoDeGarantias(cantidad: number): string {
+  if (cantidad === 0) return "Sin cargar";
+  return `${cantidad} ${cantidad === 1 ? "garantía" : "garantías"}`;
 }
 
 /** Una línea por grupo, para la lista del paso y para la revisión. */
@@ -141,7 +156,7 @@ export function resumenDeGrupo(o: OtrasCondiciones, grupo: GrupoDeCondiciones): 
     case "punitorios":
       return describirPunitorios(o.punitorios);
     case "garantias":
-      return o.garantias.length === 0 ? "Sin cargar" : `${o.garantias.length} ${o.garantias.length === 1 ? "garantía" : "garantías"}`;
+      return textoDeGarantias(o.garantias.length);
   }
 }
 

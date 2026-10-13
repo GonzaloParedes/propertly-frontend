@@ -62,9 +62,14 @@ export function periodosDelBackend(fieldErrors: Record<string, string> | null | 
   return periodos.length > 0 ? periodos : null;
 }
 
-/** La respuesta del propietario: sin responder, «Ninguno todavía» o un mes. */
 export const NINGUNO = "ninguno";
-export type RespuestaPagadoHasta = "" | typeof NINGUNO | string;
+/** La respuesta del propietario: "" sin responder, `NINGUNO` («Ninguno todavía») o un mes («2026-06»). */
+export type RespuestaPagadoHasta = string;
+
+/** Una respuesta que ya no corresponde a ningún mes (cambiaron las fechas) cuenta como sin responder. */
+export function respuestaVigenteDe(respuesta: RespuestaPagadoHasta, meses: string[]): RespuestaPagadoHasta {
+  return respuesta === "" || respuesta === NINGUNO || meses.includes(respuesta) ? respuesta : "";
+}
 
 /** Lo que viaja como `elapsed.paidThrough`; null si no hay nada transcurrido que decidir. */
 export function paidThroughDe(respuesta: RespuestaPagadoHasta, meses: string[]): { paidThrough: string | null } | undefined {
@@ -81,8 +86,30 @@ function rango(periodos: string[], hoyISO: string): string {
   const anioActual = hoyISO.slice(0, 4);
   const mismoAnio = periodos.every((p) => p.startsWith(anioActual));
   const nombre = (p: string) => (mismoAnio ? nombreDeMes(p).replace(/ \d{4}$/, "") : nombreDeMes(p));
-  const texto = periodos.length === 1 ? nombre(periodos[0]) : `${nombre(periodos[0])} a ${nombre(periodos[periodos.length - 1])}`;
+  const texto = periodos.length === 1 ? nombre(periodos[0]) : `${nombre(periodos[0])} a ${nombre(periodos.at(-1)!)}`;
   return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function fraseDeCobradas(cobradas: string[], hoyISO: string): string {
+  if (cobradas.length === 0) return "Ninguna cuota queda como cobrada.";
+  const verbo = cobradas.length === 1 ? "queda como cobrada" : "quedan como cobradas";
+  return `${rango(cobradas, hoyISO)} ${verbo} (sin comprobante).`;
+}
+
+function frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO }: Readonly<{
+  deuda: string[];
+  totalDeuda: number | null;
+  tieneRecargo: boolean;
+  hoyISO: string;
+}>): string[] {
+  if (deuda.length === 0) return ["No queda deuda."];
+  const verbo = deuda.length === 1 ? "queda como deuda" : "quedan como deuda";
+  const detalle = totalDeuda === null ? "" : `: ${formatearMonto(totalDeuda)}`;
+  return [
+    `${rango(deuda, hoyISO)} ${verbo}${detalle}.`,
+    "Su inquilino va a recibir el aviso de cuota vencida.",
+    ...(tieneRecargo ? ["El recargo por atraso empieza a correr desde hoy."] : []),
+  ];
 }
 
 export interface Consecuencia {
@@ -119,19 +146,6 @@ export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenc
   const antesDelAumento = deuda.every((m) => m < sumarMeses(mes(inicioISO), frecuenciaMeses));
   const totalDeuda = deuda.length > 0 && antesDelAumento && alquiler > 0 ? alquiler * deuda.length : null;
 
-  const frases: string[] = [];
-  if (cobradas.length > 0) {
-    frases.push(`${rango(cobradas, hoyISO)} ${cobradas.length === 1 ? "queda como cobrada" : "quedan como cobradas"} (sin comprobante).`);
-  } else {
-    frases.push("Ninguna cuota queda como cobrada.");
-  }
-  if (deuda.length > 0) {
-    const detalle = totalDeuda !== null ? `: ${formatearMonto(totalDeuda)}` : "";
-    frases.push(`${rango(deuda, hoyISO)} ${deuda.length === 1 ? "queda como deuda" : "quedan como deuda"}${detalle}.`);
-    frases.push("Su inquilino va a recibir el aviso de cuota vencida.");
-    if (tieneRecargo) frases.push("El recargo por atraso empieza a correr desde hoy.");
-  } else {
-    frases.push("No queda deuda.");
-  }
+  const frases = [fraseDeCobradas(cobradas, hoyISO), ...frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO })];
   return { cobradas, deuda, totalDeuda, frases };
 }

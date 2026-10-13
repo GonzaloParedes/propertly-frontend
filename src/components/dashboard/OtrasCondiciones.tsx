@@ -82,9 +82,10 @@ export function EditorDeGrupo({ grupo, value, onChange, mostrarErrores, erroresD
       </label>
       <ErrorDeCampo>{(mostrarErrores ? errores.comision : undefined) ?? aviso("commissionPercent")}</ErrorDeCampo>
       <p className="owner-wizard-label">Quién la paga</p>
-      <div className="owner-wizard-chips" role="group" aria-label="Quién paga la comisión">
+      <fieldset className="owner-fieldset owner-wizard-chips">
+        <legend className="sr-only">Quién paga la comisión</legend>
         {QUIEN_PAGA.map(({ valor, etiqueta }) => <button key={valor} type="button" aria-pressed={value.quienPagaComision === valor} onClick={() => onChange({ ...value, quienPagaComision: value.quienPagaComision === valor ? null : valor })}>{etiqueta}</button>)}
-      </div>
+      </fieldset>
       <ErrorDeCampo>{aviso("commissionPayer")}</ErrorDeCampo>
     </>;
   }
@@ -178,9 +179,10 @@ export default function OtrasCondiciones({ value, onChange, onSkip, mostrarError
               <span className="owner-wizard-option__icon"><Icon name={ICONOS[grupo]} /></span>
               <span><b>{titulo}</b><small>{resumen}</small></span>
             </button>
-            {esteAbierto && <div className="owner-wizard-stack" role="group" aria-label={titulo}>
+            {esteAbierto && <fieldset className="owner-fieldset owner-wizard-stack">
+              <legend className="sr-only">{titulo}</legend>
               <EditorDeGrupo grupo={grupo} value={value} onChange={onChange} mostrarErrores={mostrarErrores} erroresDelBackend={erroresDelBackend} />
-            </div>}
+            </fieldset>}
           </div>
         );
       })}

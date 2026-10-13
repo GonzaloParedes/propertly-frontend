@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Icon } from "@/components/ui/Icon";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { formatearCuit } from "@/lib/cuit";
 import type { GuaranteeType } from "@/lib/backend-types";
 import {
@@ -26,10 +26,26 @@ type Props = Readonly<{
   erroresDelBackend?: Record<string, string>;
 }>;
 
+const ICONO_DE_TIPO: Record<GuaranteeType, IconName> = {
+  PERSONAL: "users",
+  PROPERTY: "building",
+  SURETY_INSURANCE: "file",
+};
+
+function inputModeDe(campo: CampoGarantia): "numeric" | "tel" | undefined {
+  if (campo === "taxId") return "numeric";
+  return campo === "phoneNumber" ? "tel" : undefined;
+}
+
+function tipoDeInput(campo: CampoGarantia): "email" | "tel" | "text" {
+  if (campo === "email") return "email";
+  return campo === "phoneNumber" ? "tel" : "text";
+}
+
 function OpcionDeTipo({ tipo, titulo, ayuda, onElegir }: Readonly<{ tipo: GuaranteeType; titulo: string; ayuda: string; onElegir: (tipo: GuaranteeType) => void }>) {
   return (
     <button type="button" className="owner-wizard-option" role="radio" aria-checked={false} onClick={() => onElegir(tipo)}>
-      <span className="owner-wizard-option__icon"><Icon name={tipo === "SURETY_INSURANCE" ? "file" : tipo === "PROPERTY" ? "building" : "users"} /></span>
+      <span className="owner-wizard-option__icon"><Icon name={ICONO_DE_TIPO[tipo]} /></span>
       <span><b>{titulo}</b><small>{ayuda}</small></span>
     </button>
   );
@@ -44,7 +60,8 @@ export default function GarantiasSection({ value, onChange, mostrarErrores = fal
   const [eligiendoTipo, setEligiendoTipo] = useState(false);
   const [cambiandoTipo, setCambiandoTipo] = useState<number | null>(null);
   const [confirmandoCambio, setConfirmandoCambio] = useState<{ indice: number; tipo: GuaranteeType; perdidos: CampoGarantia[] } | null>(null);
-  const [conMasDatos, setConMasDatos] = useState<number[]>([]);
+  // Por id de garantía: la fila sigue siendo la misma aunque cambie de lugar.
+  const [conMasDatos, setConMasDatos] = useState<string[]>([]);
   const [tocados, setTocados] = useState<string[]>([]);
 
   const alLimite = value.length >= MAX_GARANTIAS;
@@ -57,12 +74,10 @@ export default function GarantiasSection({ value, onChange, mostrarErrores = fal
     setEligiendoTipo(false);
   }
   function quitar(indice: number) {
+    const { id } = value[indice];
     onChange(value.filter((_, i) => i !== indice));
-    setConMasDatos((actuales) => actuales.filter((i) => i !== indice).map((i) => (i > indice ? i - 1 : i)));
-    setTocados((actuales) => actuales.filter((clave) => !clave.startsWith(`${indice}.`)).map((clave) => {
-      const [i, campo] = clave.split(".");
-      return Number(i) > indice ? `${Number(i) - 1}.${campo}` : clave;
-    }));
+    setConMasDatos((actuales) => actuales.filter((otro) => otro !== id));
+    setTocados((actuales) => actuales.filter((clave) => !clave.startsWith(`${id}.`)));
     setCambiandoTipo(null);
     setConfirmandoCambio(null);
   }
@@ -72,12 +87,6 @@ export default function GarantiasSection({ value, onChange, mostrarErrores = fal
     const copia = [...value];
     [copia[indice], copia[destino]] = [copia[destino], copia[indice]];
     onChange(copia);
-    const girar = (i: number) => (i === indice ? destino : i === destino ? indice : i);
-    setConMasDatos((actuales) => actuales.map(girar));
-    setTocados((actuales) => actuales.map((clave) => {
-      const [i, campo] = clave.split(".");
-      return `${girar(Number(i))}.${campo}`;
-    }));
     setCambiandoTipo(null);
     setConfirmandoCambio(null);
   }
@@ -96,8 +105,8 @@ export default function GarantiasSection({ value, onChange, mostrarErrores = fal
     setConfirmandoCambio(null);
     setCambiandoTipo(null);
   }
-  function tocar(indice: number, campo: CampoGarantia) {
-    const clave = `${indice}.${campo}`;
+  function tocar(id: string, campo: CampoGarantia) {
+    const clave = `${id}.${campo}`;
     setTocados((actuales) => (actuales.includes(clave) ? actuales : [...actuales, clave]));
   }
 
@@ -108,22 +117,22 @@ export default function GarantiasSection({ value, onChange, mostrarErrores = fal
       {value.map((garantia, indice) => {
         const errores = validarGarantia(garantia);
         const definicion = CAMPOS_POR_TIPO[garantia.type];
-        const masDatos = conMasDatos.includes(indice) || tieneOpcionalesCargados(garantia);
+        const masDatos = conMasDatos.includes(garantia.id) || tieneOpcionalesCargados(garantia);
         const campo = ({ campo: nombre, etiqueta, ejemplo }: { campo: CampoGarantia; etiqueta: string; ejemplo: string }) => {
-          const clave = `${indice}.${nombre}`;
-          const errorLocal = mostrarErrores || tocados.includes(clave) ? errores[nombre] : undefined;
-          const error = errorLocal ?? erroresDelBackend[clave];
+          const errorLocal = mostrarErrores || tocados.includes(`${garantia.id}.${nombre}`) ? errores[nombre] : undefined;
+          // El backend ubica sus errores por posición en la lista.
+          const error = errorLocal ?? erroresDelBackend[`${indice}.${nombre}`];
           return (
             <div key={nombre}>
               <label className="owner-wizard-field">
                 <span>{etiqueta}</span>
                 <input
                   placeholder={ejemplo}
-                  inputMode={nombre === "taxId" ? "numeric" : nombre === "phoneNumber" ? "tel" : undefined}
-                  type={nombre === "email" ? "email" : nombre === "phoneNumber" ? "tel" : "text"}
+                  inputMode={inputModeDe(nombre)}
+                  type={tipoDeInput(nombre)}
                   value={garantia[nombre]}
                   aria-invalid={error !== undefined}
-                  onBlur={() => tocar(indice, nombre)}
+                  onBlur={() => tocar(garantia.id, nombre)}
                   onChange={(event) => reemplazar(indice, { ...garantia, [nombre]: nombre === "taxId" ? formatearCuit(event.target.value) : event.target.value })}
                 />
               </label>
@@ -132,7 +141,8 @@ export default function GarantiasSection({ value, onChange, mostrarErrores = fal
           );
         };
         return (
-          <div className="owner-garantia" key={indice} role="group" aria-label={`Garantía ${indice + 1}: ${nombreDelTipo(garantia.type)}`}>
+          <fieldset className="owner-fieldset owner-garantia" key={garantia.id}>
+            <legend className="sr-only">{`Garantía ${indice + 1}: ${nombreDelTipo(garantia.type)}`}</legend>
             <div className="owner-garantia__cabecera">
               <b>Garantía {indice + 1} · {nombreDelTipo(garantia.type)}</b>
               <span className="owner-garantia__acciones">
@@ -165,9 +175,9 @@ export default function GarantiasSection({ value, onChange, mostrarErrores = fal
               {masDatos && definicion.opcionales.map(campo)}
             </div>
             {definicion.opcionales.length > 0 && !masDatos && (
-              <button type="button" className="owner-wizard-quiet" aria-expanded={false} onClick={() => setConMasDatos((actuales) => [...actuales, indice])}>Agregar más datos</button>
+              <button type="button" className="owner-wizard-quiet" aria-expanded={false} onClick={() => setConMasDatos((actuales) => [...actuales, garantia.id])}>Agregar más datos</button>
             )}
-          </div>
+          </fieldset>
         );
       })}
 

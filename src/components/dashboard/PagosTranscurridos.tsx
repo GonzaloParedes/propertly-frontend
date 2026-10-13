@@ -23,11 +23,12 @@ function ElegirMes({ meses, value, onChange }: Readonly<{ meses: string[]; value
   const [algunas, setAlgunas] = useState(haySeleccion);
   const [mes, setMes] = useState(haySeleccion ? mesDe(value) : "");
   // Con un solo año posible no hay nada que decidir: queda a la vista y sin elegir de más.
-  const [anio, setAnio] = useState(haySeleccion ? anioDe(value) : anios.length === 1 ? anios[0] : "");
+  const anioUnico = anios.length === 1 ? anios[0] : "";
+  const [anio, setAnio] = useState(haySeleccion ? anioDe(value) : anioUnico);
 
   const ninguna = value === NINGUNO;
   const mesesDelAnio = anio ? meses.filter((m) => anioDe(m) === anio) : meses;
-  const opcionesDeMes = [...new Set(mesesDelAnio.map(mesDe))].sort();
+  const opcionesDeMes = [...new Set(mesesDelAnio.map(mesDe))].sort((a, b) => a.localeCompare(b));
 
   function responder(nuevoMes: string, nuevoAnio: string) {
     if (nuevoMes && nuevoAnio && meses.includes(`${nuevoAnio}-${nuevoMes}`)) onChange(`${nuevoAnio}-${nuevoMes}`);
@@ -37,7 +38,9 @@ function ElegirMes({ meses, value, onChange }: Readonly<{ meses: string[]; value
   function elegirMes(nuevo: string) {
     // Si el año elegido no tiene ese mes, se pasa al único año que sí lo tiene (o se deja sin elegir).
     const posibles = anios.filter((a) => meses.includes(`${a}-${nuevo}`));
-    const nuevoAnio = anio && posibles.includes(anio) ? anio : posibles.length === 1 ? posibles[0] : "";
+    let nuevoAnio = "";
+    if (anio && posibles.includes(anio)) nuevoAnio = anio;
+    else if (posibles.length === 1) nuevoAnio = posibles[0];
     setMes(nuevo);
     setAnio(nuevoAnio);
     responder(nuevo, nuevoAnio);
@@ -67,7 +70,7 @@ function ElegirMes({ meses, value, onChange }: Readonly<{ meses: string[]; value
         {opcion("Todavía no se pagó ninguna", "Ninguna de las cuotas anteriores a hoy se cobró.", ninguna, () => {
           setAlgunas(false);
           setMes("");
-          setAnio(anios.length === 1 ? anios[0] : "");
+          setAnio(anioUnico);
           onChange(NINGUNO);
         })}
       </div>

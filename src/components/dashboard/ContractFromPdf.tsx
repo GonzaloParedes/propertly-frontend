@@ -42,6 +42,7 @@ import {
   type Decisiones,
   type ItemId,
   type Lectura,
+  type PasoDeLectura,
 } from "@/lib/importacion-pdf";
 import { punitoriosCargados } from "@/lib/otras-condiciones";
 import { formatearDireccion } from "@/lib/tenant-rows";
@@ -50,6 +51,7 @@ import {
   mesesTranscurridos,
   paidThroughDe,
   periodosDelBackend,
+  respuestaVigenteDe,
   type RespuestaPagadoHasta,
 } from "@/lib/transcurridos";
 
@@ -72,6 +74,153 @@ interface Fallo {
 }
 
 const TEXTO_DE_SALIDA = "Si sale ahora, se descarta la lectura y no guardamos el archivo.";
+
+/** Mientras la lectura está en curso, pregunta cómo va cada tanto hasta que termina o deja de haber conexión. */
+function useConsultaDeLectura({ activa, importId, atender, rechazar }: Readonly<{
+  activa: boolean;
+  importId: number | null;
+  atender: (respuesta: ContractImportResponse) => void;
+  rechazar: (mensaje: string) => void;
+}>) {
+  useEffect(() => {
+    if (!activa || importId === null) return;
+    let cancelado = false;
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
+    let fallos = 0;
+    const consultar = async () => {
+      try {
+        const respuesta = await AlquiaBackendClient.contractImports.get(importId);
+        if (cancelado) return;
+        fallos = 0;
+        atender(respuesta);
+        if (respuesta.status !== "QUEUED" && respuesta.status !== "PROCESSING") return;
+      } catch (err) {
+        if (cancelado) return;
+        if (err instanceof ApiError && err.status === 404) return rechazar("Esta lectura ya no existe. Suba el archivo de nuevo.");
+        fallos += 1;
+        if (fallos >= FALLOS_SEGUIDOS) {
+          return rechazar("Perdimos la conexión mientras leíamos el contrato. Compruebe su conexión y vuelva a subir el archivo.");
+        }
+      }
+      temporizador = setTimeout(consultar, INTERVALO_MS);
+    };
+    temporizador = setTimeout(consultar, INTERVALO_MS);
+    return () => {
+      cancelado = true;
+      clearTimeout(temporizador);
+    };
+  }, [activa, importId, atender, rechazar]);
+}
+
+/** Las cuotas anteriores a hoy que hay que decidir: la lista del backend si ya corrigió la del cliente, y si no, la estimación local. */
+function mesesPorPagarDe({ b, fechasValidas, periodosBackend, claveDeFechas, hoy }: Readonly<{
+  b: Borrador | null;
+  fechasValidas: boolean;
+  periodosBackend: { clave: string; meses: string[] } | null;
+  claveDeFechas: string;
+  hoy: string;
+}>): string[] {
+  if (!b || !fechasValidas) return [];
+  if (periodosBackend?.clave === claveDeFechas) return periodosBackend.meses;
+  return mesesTranscurridos({ inicioISO: b.inicio, plazoMeses: Number(b.plazo), diaVencimiento: Number(b.dia), hoyISO: hoy });
+}
+
+/** El tilde, el spinner o nada, según cómo va ese paso de la lectura. */
+function IndicadorDePaso({ estado }: Readonly<{ estado: PasoDeLectura["estado"] }>) {
+  if (estado === "listo") return <Icon name="check" size={17} />;
+  return estado === "ahora" ? <Spinner /> : null;
+}
+
+const ESTADO_PARA_LECTORES: Record<PasoDeLectura["estado"], string> = { listo: ": listo", ahora: ": en curso", despues: "" };
+
+function PantallaLeyendo({ progreso, lento, onSeguirEsperando, onCargarAMano }: Readonly<{
+  progreso: Progreso;
+  lento: boolean;
+  onSeguirEsperando: () => void;
+  onCargarAMano: () => void;
+}>) {
+  return (
+    <main className="owner-wizard__body owner-pdf-reading" aria-busy="true">
+      <span className="owner-pdf-reading__arco"><ArcoDeEspera /></span>
+      <h1>{progreso.status === "QUEUED" ? "Esperando su turno…" : "Leyendo el contrato…"}</h1>
+      <p>Tarda menos de un minuto. No hace falta que se quede mirando.</p>
+      <ol aria-live="polite" aria-label="Avance de la lectura">
+        {pasosDeLectura(progreso).map(({ clave, texto, estado, detalle }) => (
+          <li key={clave} data-estado={estado}>
+            <span aria-hidden="true"><IndicadorDePaso estado={estado} /></span>
+            {texto}{detalle ? ` (${detalle})` : ""}
+            <span className="sr-only">{ESTADO_PARA_LECTORES[estado]}</span>
+          </li>
+        ))}
+      </ol>
+      {lento && (
+        <output className="owner-wizard-note owner-pdf-slow">
+          <span>Está tardando más de lo normal. Puede seguir esperando o cargar el contrato a mano.</span>
+          <span className="owner-pdf-slow__actions">
+            <button type="button" className="owner-button owner-button--secondary owner-button--small" onClick={onSeguirEsperando}>Seguir esperando</button>
+            <button type="button" className="owner-button owner-button--secondary owner-button--small" onClick={onCargarAMano}>Cargarlo a mano</button>
+          </span>
+        </output>
+      )}
+    </main>
+  );
+}
+
+function PantallaDeFallo({ fallo, onReintentar, onOtroArchivo, onCargarAMano }: Readonly<{
+  fallo: Fallo;
+  onReintentar: () => void;
+  onOtroArchivo: () => void;
+  onCargarAMano: () => void;
+}>) {
+  return (
+    <main className="owner-wizard__body">
+      <h1>{fallo.titulo}</h1>
+      <p role="alert">{fallo.mensaje}</p>
+      <div className="owner-wizard-options">
+        {fallo.reintentable && (
+          <button type="button" className="owner-wizard-option" onClick={onReintentar}>
+            <span className="owner-wizard-option__icon"><Icon name="clock" /></span>
+            <span><b>Intentar de nuevo</b><small>Vuelve a leer el mismo archivo.</small></span>
+          </button>
+        )}
+        <button type="button" className="owner-wizard-option" onClick={onOtroArchivo}>
+          <span className="owner-wizard-option__icon"><FileUp aria-hidden="true" size={22} /></span>
+          <span><b>Probar con otro archivo</b><small>Una versión más nítida, o el PDF original si lo tiene.</small></span>
+        </button>
+        <button type="button" className="owner-wizard-option" onClick={onCargarAMano}>
+          <span className="owner-wizard-option__icon"><Icon name="edit" /></span>
+          <span><b>Cargarlo a mano</b><small>Le pedimos los datos de a uno.</small></span>
+        </button>
+      </div>
+    </main>
+  );
+}
+
+/** El contrato se creó pero no se pudo adjuntar el PDF. */
+function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete }: Readonly<{
+  contratoId: number;
+  onOpenContract?: (contratoId: number) => void;
+  onComplete: () => void;
+}>) {
+  return (
+    <main className="owner-wizard__body">
+      <h1>El contrato se creó</h1>
+      <p><output>No pudimos adjuntar el PDF al contrato. El contrato está creado y no hace falta cargarlo de nuevo: puede adjuntar el archivo desde el detalle del contrato.</output></p>
+      <div className="owner-wizard-options">
+        {onOpenContract && (
+          <button type="button" className="owner-wizard-option" onClick={() => onOpenContract(contratoId)}>
+            <span className="owner-wizard-option__icon"><Icon name="file" /></span>
+            <span><b>Ver el contrato</b><small>Desde ahí puede adjuntar el PDF.</small></span>
+          </button>
+        )}
+        <button type="button" className="owner-wizard-option" onClick={onComplete}>
+          <span className="owner-wizard-option__icon"><Icon name="check" /></span>
+          <span><b>Listo</b><small>Volver a sus contratos.</small></span>
+        </button>
+      </div>
+    </main>
+  );
+}
 
 export default function ContractFromPdf({ onBack, onManual, onClose, onComplete, onOpenContract }: Readonly<{
   onBack: () => void;
@@ -160,34 +309,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
     if (respuesta.status === "ABANDONED") return rechazar("Esta lectura se descartó. Suba el archivo de nuevo para empezar otra.");
   }, [mostrarResultado, fallar, rechazar]);
 
-  useEffect(() => {
-    if (fase !== "leyendo" || importId === null) return;
-    let cancelado = false;
-    let temporizador: ReturnType<typeof setTimeout> | undefined;
-    let fallos = 0;
-    const consultar = async () => {
-      try {
-        const respuesta = await AlquiaBackendClient.contractImports.get(importId);
-        if (cancelado) return;
-        fallos = 0;
-        atender(respuesta);
-        if (respuesta.status !== "QUEUED" && respuesta.status !== "PROCESSING") return;
-      } catch (err) {
-        if (cancelado) return;
-        if (err instanceof ApiError && err.status === 404) return rechazar("Esta lectura ya no existe. Suba el archivo de nuevo.");
-        fallos += 1;
-        if (fallos >= FALLOS_SEGUIDOS) {
-          return rechazar("Perdimos la conexión mientras leíamos el contrato. Compruebe su conexión y vuelva a subir el archivo.");
-        }
-      }
-      temporizador = setTimeout(consultar, INTERVALO_MS);
-    };
-    temporizador = setTimeout(consultar, INTERVALO_MS);
-    return () => {
-      cancelado = true;
-      clearTimeout(temporizador);
-    };
-  }, [fase, importId, atender, rechazar]);
+  useConsultaDeLectura({ activa: fase === "leyendo", importId, atender, rechazar });
 
   // Después de un rato largo se avisa que tarda, sin cortar nada.
   useEffect(() => {
@@ -299,13 +421,8 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   const hoy = hoyEnArgentina();
   const fechasValidas = b !== null && /^\d{4}-\d{2}-\d{2}$/.test(b.inicio) && Number(b.plazo) > 0 && Number(b.dia) >= 1 && Number(b.dia) <= 28;
   const claveDeFechas = b ? `${b.inicio}|${b.plazo}|${b.dia}` : "";
-  const mesesPorPagar = !b || !fechasValidas
-    ? []
-    : periodosBackend?.clave === claveDeFechas
-      ? periodosBackend.meses
-      : mesesTranscurridos({ inicioISO: b.inicio, plazoMeses: Number(b.plazo), diaVencimiento: Number(b.dia), hoyISO: hoy });
-  // Una respuesta que ya no corresponde a ningún mes (cambiaron las fechas) cuenta como sin responder.
-  const respuestaVigente: RespuestaPagadoHasta = pagadoHasta === "" || pagadoHasta === "ninguno" || mesesPorPagar.includes(pagadoHasta) ? pagadoHasta : "";
+  const mesesPorPagar = mesesPorPagarDe({ b, fechasValidas, periodosBackend, claveDeFechas, hoy });
+  const respuestaVigente = respuestaVigenteDe(pagadoHasta, mesesPorPagar);
 
   const pendientes = lectura && b ? calcularPendientes(lectura, b, decisiones, revisados, sumados) : [];
   const restantes = pendientes.length + (faltaResponder(respuestaVigente, mesesPorPagar) ? 1 : 0);
@@ -326,36 +443,46 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
 
   const cargarDocumento = useCallback(() => AlquiaBackendClient.contractImports.document(importId!), [importId]);
 
+  /** Pasa cerca de la medianoche o con un contrato por índice: la lista del backend manda y se vuelve a preguntar. */
+  function preguntarOtraVezLasCuotas(err: ApiError, conListaDelBackend: boolean) {
+    const periodos = conListaDelBackend ? periodosDelBackend(err.fieldErrors) : null;
+    if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
+    setPagadoHasta("");
+    setAviso({ mensaje: copyDeError(err) });
+  }
+
+  /** El inquilino ya existe con ese CUIT o teléfono: se ofrece usarlo en vez de crear otro. */
+  function ofrecerInquilinoExistente(existente: number) {
+    setLectura((actual) => (actual ? { ...actual, coincidencias: { ...actual.coincidencias, inquilinoId: existente } } : actual));
+    setBorrador((actual) => (actual ? { ...actual, inquilinoId: existente } : actual));
+    AlquiaBackendClient.tenants.get(existente)
+      .then((inquilino) => setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` })))
+      .catch(() => {});
+    setAviso({ mensaje: "Ya tiene cargado a ese inquilino con el mismo CUIT o teléfono. Lo dejamos elegido: revise y cree el contrato de nuevo." });
+  }
+
+  /** Si el servidor rechazó datos puntuales, se marcan en la revisión; devuelve si había alguno. */
+  function marcarErroresDelServidor(err: ApiError): boolean {
+    const errores = err.status === 400 ? ubicacionDeErrores(err.fieldErrors) : null;
+    if (!errores || errores.ubicaciones.length === 0) return false;
+    setErroresDelBackend(errores.porRuta);
+    setItemsConError(new Set(itemsConErrorDelServidor(err.fieldErrors)));
+    setAviso({ mensaje: "El servidor no aceptó algunos datos. Los marcamos para que los corrija." });
+    return true;
+  }
+
   function conAvisoDelAlta(err: unknown) {
-    if (err instanceof ApiError && err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED) {
-      // Pasa cerca de la medianoche o con un contrato por índice: la lista del backend manda y se vuelve a preguntar.
-      const periodos = periodosDelBackend(err.fieldErrors);
-      if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
-      setPagadoHasta("");
-      return setAviso({ mensaje: copyDeError(err) });
-    }
-    if (err instanceof ApiError && err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) {
-      setPagadoHasta("");
-      return setAviso({ mensaje: copyDeError(err) });
-    }
-    const existente = idDelInquilinoExistente(err);
-    if (err instanceof ApiError && (err.type === ERROR.DUPLICATE_TAX_ID || err.type === ERROR.DUPLICATE_PHONE_NUMBER) && existente !== null) {
-      // El inquilino ya existe con ese CUIT o teléfono: se ofrece usarlo en vez de crear otro.
-      setLectura((actual) => (actual ? { ...actual, coincidencias: { ...actual.coincidencias, inquilinoId: existente } } : actual));
-      setBorrador((actual) => (actual ? { ...actual, inquilinoId: existente } : actual));
-      AlquiaBackendClient.tenants.get(existente)
-        .then((inquilino) => setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` })))
-        .catch(() => {});
-      return setAviso({ mensaje: "Ya tiene cargado a ese inquilino con el mismo CUIT o teléfono. Lo dejamos elegido: revise y cree el contrato de nuevo." });
-    }
-    if (err instanceof ApiError && err.type === ERROR.PROPERTY_HAS_ACTIVE_CONTRACT) {
-      return setAviso({ mensaje: copyDeError(err), contratoActivoId: idDelContratoActivo(err) });
-    }
-    const errores = err instanceof ApiError && err.status === 400 ? ubicacionDeErrores(err.fieldErrors) : null;
-    if (errores && errores.ubicaciones.length > 0) {
-      setErroresDelBackend(errores.porRuta);
-      setItemsConError(new Set(itemsConErrorDelServidor(err instanceof ApiError ? err.fieldErrors : null)));
-      return setAviso({ mensaje: "El servidor no aceptó algunos datos. Los marcamos para que los corrija." });
+    if (err instanceof ApiError) {
+      if (err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED) return preguntarOtraVezLasCuotas(err, true);
+      if (err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) return preguntarOtraVezLasCuotas(err, false);
+      const existente = idDelInquilinoExistente(err);
+      if ((err.type === ERROR.DUPLICATE_TAX_ID || err.type === ERROR.DUPLICATE_PHONE_NUMBER) && existente !== null) {
+        return ofrecerInquilinoExistente(existente);
+      }
+      if (err.type === ERROR.PROPERTY_HAS_ACTIVE_CONTRACT) {
+        return setAviso({ mensaje: copyDeError(err), contratoActivoId: idDelContratoActivo(err) });
+      }
+      if (marcarErroresDelServidor(err)) return;
     }
     setAviso({ mensaje: copyDeError(err, { fallback: "No pudimos crear el contrato. Inténtelo de nuevo." }) });
   }
@@ -390,7 +517,6 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   }
 
   const paso = fase === "revisar" || fase === "creado" ? 2 : 1;
-  const pasos = pasosDeLectura(progreso);
   const hayPunitorios = b !== null && punitoriosCargados(b.otras.punitorios) && decisiones.punitorios !== "sinPunitorios";
 
   return (
@@ -441,52 +567,11 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
       )}
 
       {fase === "leyendo" && (
-        <main className="owner-wizard__body owner-pdf-reading" aria-busy="true">
-          <span className="owner-pdf-reading__arco"><ArcoDeEspera /></span>
-          <h1>{progreso.status === "QUEUED" ? "Esperando su turno…" : "Leyendo el contrato…"}</h1>
-          <p>Tarda menos de un minuto. No hace falta que se quede mirando.</p>
-          <ol aria-live="polite" aria-label="Avance de la lectura">
-            {pasos.map(({ clave, texto, estado, detalle }) => (
-              <li key={clave} data-estado={estado}>
-                <span aria-hidden="true">{estado === "listo" ? <Icon name="check" size={17} /> : estado === "ahora" ? <Spinner /> : null}</span>
-                {texto}{detalle ? ` (${detalle})` : ""}
-                <span className="sr-only">{estado === "listo" ? ": listo" : estado === "ahora" ? ": en curso" : ""}</span>
-              </li>
-            ))}
-          </ol>
-          {lento && (
-            <div className="owner-wizard-note owner-pdf-slow" role="status">
-              <span>Está tardando más de lo normal. Puede seguir esperando o cargar el contrato a mano.</span>
-              <div className="owner-pdf-slow__actions">
-                <button type="button" className="owner-button owner-button--secondary owner-button--small" onClick={() => setLento(false)}>Seguir esperando</button>
-                <button type="button" className="owner-button owner-button--secondary owner-button--small" onClick={cargarAMano}>Cargarlo a mano</button>
-              </div>
-            </div>
-          )}
-        </main>
+        <PantallaLeyendo progreso={progreso} lento={lento} onSeguirEsperando={() => setLento(false)} onCargarAMano={cargarAMano} />
       )}
 
       {fase === "fallo" && fallo && (
-        <main className="owner-wizard__body">
-          <h1>{fallo.titulo}</h1>
-          <p role="alert">{fallo.mensaje}</p>
-          <div className="owner-wizard-options">
-            {fallo.reintentable && (
-              <button type="button" className="owner-wizard-option" onClick={() => void reintentar()}>
-                <span className="owner-wizard-option__icon"><Icon name="clock" /></span>
-                <span><b>Intentar de nuevo</b><small>Vuelve a leer el mismo archivo.</small></span>
-              </button>
-            )}
-            <button type="button" className="owner-wizard-option" onClick={volverASubir}>
-              <span className="owner-wizard-option__icon"><FileUp aria-hidden="true" size={22} /></span>
-              <span><b>Probar con otro archivo</b><small>Una versión más nítida, o el PDF original si lo tiene.</small></span>
-            </button>
-            <button type="button" className="owner-wizard-option" onClick={cargarAMano}>
-              <span className="owner-wizard-option__icon"><Icon name="edit" /></span>
-              <span><b>Cargarlo a mano</b><small>Le pedimos los datos de a uno.</small></span>
-            </button>
-          </div>
-        </main>
+        <PantallaDeFallo fallo={fallo} onReintentar={() => void reintentar()} onOtroArchivo={volverASubir} onCargarAMano={cargarAMano} />
       )}
 
       {fase === "revisar" && lectura && b && (
@@ -542,22 +627,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
       )}
 
       {fase === "creado" && creado !== null && (
-        <main className="owner-wizard__body">
-          <h1>El contrato se creó</h1>
-          <p role="status">No pudimos adjuntar el PDF al contrato. El contrato está creado y no hace falta cargarlo de nuevo: puede adjuntar el archivo desde el detalle del contrato.</p>
-          <div className="owner-wizard-options">
-            {onOpenContract && (
-              <button type="button" className="owner-wizard-option" onClick={() => onOpenContract(creado)}>
-                <span className="owner-wizard-option__icon"><Icon name="file" /></span>
-                <span><b>Ver el contrato</b><small>Desde ahí puede adjuntar el PDF.</small></span>
-              </button>
-            )}
-            <button type="button" className="owner-wizard-option" onClick={onComplete}>
-              <span className="owner-wizard-option__icon"><Icon name="check" /></span>
-              <span><b>Listo</b><small>Volver a sus contratos.</small></span>
-            </button>
-          </div>
-        </main>
+        <PantallaCreadoSinPdf contratoId={creado} onOpenContract={onOpenContract} onComplete={onComplete} />
       )}
 
       <footer className="owner-wizard__footer">

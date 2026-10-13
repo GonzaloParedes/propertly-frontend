@@ -80,7 +80,6 @@ export function pasosDeLectura(lectura: Pick<ContractImportResponse, "status" | 
   const { status, stage, pagesDone, pagesTotal } = lectura;
   const lista = status === "READY" || status === "COMPLETED";
   const revisando = stage === "CHECKING";
-  const leyendo = stage === "READING_PAGES" || stage === "FINDING_DATA";
   const hechos: Record<PasoDeLectura["clave"], boolean> = {
     abrir: lista || (stage !== null && stage !== "OPENING"),
     leer: lista || revisando,
@@ -91,17 +90,33 @@ export function pasosDeLectura(lectura: Pick<ContractImportResponse, "status" | 
     leer: "Leyendo las páginas y buscando los datos",
     revisar: "Revisando lo que encontramos",
   };
-  // Sin etapa todavía (en cola) nada está en curso, para no afirmar que ya se está leyendo.
-  const enCurso: PasoDeLectura["clave"] | null = lista ? null : stage === "OPENING" ? "abrir" : leyendo ? "leer" : revisando ? "revisar" : null;
-  const contador = pagesTotal !== null && pagesTotal > 0
-    ? pagesDone !== null && pagesDone > 0 ? `página ${Math.min(pagesDone, pagesTotal)} de ${pagesTotal}` : `${pagesTotal} páginas`
-    : undefined;
+  const enCurso = pasoEnCurso(lista, stage);
+  const contador = contadorDePaginas(pagesDone, pagesTotal);
   return (["abrir", "leer", "revisar"] as const).map((clave) => ({
     clave,
     texto: textos[clave],
-    estado: hechos[clave] ? "listo" : clave === enCurso ? "ahora" : "despues",
+    estado: estadoDePaso(hechos[clave], clave === enCurso),
     detalle: clave === "leer" && enCurso === "leer" ? contador : undefined,
   }));
+}
+
+/** Sin etapa todavía (en cola) nada está en curso, para no afirmar que ya se está leyendo. */
+function pasoEnCurso(lista: boolean, stage: ContractImportResponse["stage"]): PasoDeLectura["clave"] | null {
+  if (lista) return null;
+  if (stage === "OPENING") return "abrir";
+  if (stage === "READING_PAGES" || stage === "FINDING_DATA") return "leer";
+  return stage === "CHECKING" ? "revisar" : null;
+}
+
+function contadorDePaginas(pagesDone: number | null, pagesTotal: number | null): string | undefined {
+  if (pagesTotal === null || pagesTotal <= 0) return undefined;
+  if (pagesDone !== null && pagesDone > 0) return `página ${Math.min(pagesDone, pagesTotal)} de ${pagesTotal}`;
+  return `${pagesTotal} páginas`;
+}
+
+function estadoDePaso(listo: boolean, enCurso: boolean): PasoDeLectura["estado"] {
+  if (listo) return "listo";
+  return enCurso ? "ahora" : "despues";
 }
 
 // --- Qué se le pide al propietario --------------------------------------------------------------
@@ -237,9 +252,13 @@ const valorDe = (campos: Campos, clave: string): unknown => {
   return valor === undefined ? null : valor;
 };
 
-const texto = (valor: unknown): string => (valor === null || valor === undefined ? "" : String(valor).trim());
+/** Sólo un dato escalar tiene texto; un objeto no se convierte en «[object Object]». */
+const textoPlano = (valor: unknown): string =>
+  typeof valor === "string" || typeof valor === "number" || typeof valor === "boolean" ? String(valor) : "";
+
+const texto = (valor: unknown): string => textoPlano(valor).trim();
 const digitos = (valor: unknown): string => {
-  const n = typeof valor === "number" ? valor : Number(String(valor ?? "").replace(/[^\d.,-]/g, "").replace(",", "."));
+  const n = typeof valor === "number" ? valor : Number(textoPlano(valor).replace(/[^\d.,-]/g, "").replace(",", "."));
   return Number.isFinite(n) && texto(valor) !== "" ? String(Math.round(n)) : "";
 };
 const numeroTexto = (valor: unknown): string => {
@@ -378,14 +397,11 @@ function estadoDe(id: ItemId, campos: Campos, claves: string[]): EstadoDeItem {
   return sinConfirmar ? "revisar" : "ok";
 }
 
-export function leerResultado(importacion: ContractImportResponse): Lectura {
-  const campos: Campos = importacion.fields ?? {};
-  const lista = Array.isArray(importacion.unsupported) ? importacion.unsupported : [];
+type SinSoporte = { motivo: MotivoNoSePuede; citas: Cita[] };
 
+function borradorDe(importacion: ContractImportResponse, campos: Campos): Borrador {
   const piso = texto(valorDe(campos, "property.floorUnit"));
-  const actualizacion = actualizacionDe(campos);
-  const moneda = valorDe(campos, "rent.currency") === "USD" ? "USD" : "ARS";
-  const borrador: Borrador = {
+  return {
     propiedadId: importacion.matches?.property?.id ?? null,
     calle: texto(valorDe(campos, "property.street")),
     numero: texto(valorDe(campos, "property.number")),
@@ -401,81 +417,126 @@ export function leerResultado(importacion: ContractImportResponse): Lectura {
     correo: texto(valorDe(campos, "tenant.email")),
     telefono: texto(valorDe(campos, "tenant.phone")),
     alquiler: digitos(valorDe(campos, "rent.initialAmount")),
-    moneda,
+    moneda: valorDe(campos, "rent.currency") === "USD" ? "USD" : "ARS",
     dia: digitos(valorDe(campos, "rent.dueDay")),
     inicio: texto(valorDe(campos, "dates.startDate")),
     plazo: digitos(valorDe(campos, "dates.termMonths")),
-    ...actualizacion,
+    ...actualizacionDe(campos),
     frecuencia: digitos(valorDe(campos, "increments.frequencyMonths")),
     otras: otrasDe(campos),
   };
+}
 
-  // Un día de vencimiento mayor a 28 no se puede guardar: queda fuera del borrador hasta que se resuelva.
+/**
+ * Lo que la app no puede guardar tal cual se saca del borrador y queda marcado:
+ * un día de vencimiento mayor a 28 y un depósito en otra moneda que el alquiler.
+ */
+function apartarLoQueNoSePuedeGuardar(campos: Campos, borrador: Borrador): { diaFueraDeRango: number | null; depositoEnOtraMoneda: boolean } {
   const diaLeido = Number(borrador.dia);
-  const diaFueraDeRango = borrador.dia !== "" && (diaLeido < 1 || diaLeido > 28);
-  const diaDelContratoLeido = diaFueraDeRango ? diaLeido : null;
-  if (diaFueraDeRango) borrador.dia = "";
+  const diaFueraDeRango = borrador.dia !== "" && (diaLeido < 1 || diaLeido > 28) ? diaLeido : null;
+  if (diaFueraDeRango !== null) borrador.dia = "";
 
-  // La moneda del depósito distinta de la del alquiler tampoco se puede guardar como monto.
   const monedaDelDeposito = valorDe(campos, "deposit.currency");
-  const depositoEnOtraMoneda = (monedaDelDeposito === "ARS" || monedaDelDeposito === "USD") && hayValor(valorDe(campos, "deposit.amount")) && monedaDelDeposito !== moneda;
+  const depositoEnOtraMoneda =
+    (monedaDelDeposito === "ARS" || monedaDelDeposito === "USD") &&
+    hayValor(valorDe(campos, "deposit.amount")) &&
+    monedaDelDeposito !== borrador.moneda;
   if (depositoEnOtraMoneda) borrador.otras = { ...borrador.otras, deposito: "" };
 
-  // Las cláusulas sin soporte, por item: las del campo (`status: UNSUPPORTED`) y las de la lista aparte.
-  const noSePuede = new Map<ItemId, { motivo: MotivoNoSePuede; citas: Cita[] }>();
-  const sumar = (item: ItemId, motivo: MotivoNoSePuede, citas: Cita[]) => {
-    const previo = noSePuede.get(item);
-    // Varios campos de una misma cláusula citan el mismo pasaje: se muestra una vez.
-    const todas = [...(previo?.citas ?? []), ...citas];
-    const unicas = todas.filter((cita, i) => todas.findIndex((otra) => otra.pagina === cita.pagina && otra.texto === cita.texto) === i);
-    noSePuede.set(item, { motivo: previo?.motivo ?? motivo, citas: unicas });
-  };
-  for (const entrada of lista) {
+  return { diaFueraDeRango, depositoEnOtraMoneda };
+}
+
+function sumarSinSoporte(noSePuede: Map<ItemId, SinSoporte>, item: ItemId, motivo: MotivoNoSePuede, citas: Cita[]) {
+  const previo = noSePuede.get(item);
+  // Varios campos de una misma cláusula citan el mismo pasaje: se muestra una vez.
+  const todas = [...(previo?.citas ?? []), ...citas];
+  const unicas = todas.filter((cita, i) => todas.findIndex((otra) => otra.pagina === cita.pagina && otra.texto === cita.texto) === i);
+  noSePuede.set(item, { motivo: previo?.motivo ?? motivo, citas: unicas });
+}
+
+/** Las cláusulas sin soporte, por item: las del campo (`status: UNSUPPORTED`), las de la lista aparte y las que apartó el borrador. */
+function sinSoporteDe(
+  campos: Campos,
+  lista: ContractImportResponse["unsupported"],
+  apartado: ReturnType<typeof apartarLoQueNoSePuedeGuardar>
+): Map<ItemId, SinSoporte> {
+  const noSePuede = new Map<ItemId, SinSoporte>();
+  for (const entrada of Array.isArray(lista) ? lista : []) {
     const { item, motivo } = clasificarNoSePuede(entrada.field, entrada.reason);
-    sumar(item, motivo, citasDe(entrada.evidence));
+    sumarSinSoporte(noSePuede, item, motivo, citasDe(entrada.evidence));
   }
   for (const [clave, campo] of Object.entries(campos)) {
     if (campo.status !== "UNSUPPORTED") continue;
     const { item, motivo } = clasificarNoSePuede(clave, "");
-    if (item !== "otro") sumar(item, motivo, citasDe(campo.evidence));
+    if (item !== "otro") sumarSinSoporte(noSePuede, item, motivo, citasDe(campo.evidence));
   }
-  if (diaFueraDeRango) sumar("vencimiento", "diaMayorA28", citasDe(campos["rent.dueDay"]?.evidence));
-  if (depositoEnOtraMoneda) sumar("deposito", "monedaDelDeposito", citasDe(campos["deposit.amount"]?.evidence));
+  if (apartado.diaFueraDeRango !== null) sumarSinSoporte(noSePuede, "vencimiento", "diaMayorA28", citasDe(campos["rent.dueDay"]?.evidence));
+  if (apartado.depositoEnOtraMoneda) sumarSinSoporte(noSePuede, "deposito", "monedaDelDeposito", citasDe(campos["deposit.amount"]?.evidence));
+  return noSePuede;
+}
+
+function estadoYPresenciaDe(
+  id: ItemId,
+  campos: Campos,
+  claves: string[],
+  borrador: Borrador,
+  sinSoporte: SinSoporte | null
+): { estado: EstadoDeItem; presente: boolean } {
+  if (id === "tipo") {
+    // El contrato dice «vivienda» o «comercial», no el tipo de propiedad que usa la app: siempre se mira.
+    return { estado: borrador.categoria === null ? "falta" : "revisar", presente: borrador.propiedadId === null };
+  }
+  const estado: EstadoDeItem = sinSoporte ? "noSePuede" : estadoDe(id, campos, claves);
+  if (id === "otro") return { estado, presente: sinSoporte !== null };
+  const claveDePresencia = CLAVE_DE_PRESENCIA[id];
+  const presente = claveDePresencia === undefined || hayValor(campos[claveDePresencia]?.value) || sinSoporte !== null;
+  return { estado, presente };
+}
+
+function itemLeidoDe(
+  id: ItemId,
+  { campos, borrador, sinSoporte, diaDelContratoLeido }: Readonly<{
+    campos: Campos;
+    borrador: Borrador;
+    sinSoporte: SinSoporte | null;
+    diaDelContratoLeido: number | null;
+  }>
+): ItemLeido {
+  const claves = CLAVES_DE[id];
+  const base = estadoYPresenciaDe(id, campos, claves, borrador, sinSoporte);
+  const { presente } = base;
+  // Las garantías leídas son datos de revisión, no garantías definitivas: se confirman antes de crear
+  // el contrato, y recién se guardan con él (`guarantees`), no por cerrar la lectura.
+  const garantiasLeidas = id === "garantias" && presente && sinSoporte === null;
+  const estado: EstadoDeItem = garantiasLeidas && base.estado === "ok" ? "revisar" : base.estado;
+  const citas = sinSoporte ? sinSoporte.citas : claves.flatMap((clave) => citasDe(campos[clave]?.evidence)).slice(0, 3);
+  const nota = claves.map((clave) => campos[clave]?.note).find((n): n is string => !!n && n !== NOTA_DEL_BACKEND);
+  const motivos = estado === "revisar" ? motivosDe(campos, claves) : [];
+  if (estado === "revisar" && garantiasLeidas) motivos.push(MOTIVO_DE_GARANTIAS);
+  return {
+    id,
+    estado,
+    claves,
+    citas,
+    motivos,
+    nota: nota ?? null,
+    presente,
+    noSePuede: sinSoporte?.motivo ?? null,
+    diaDelContrato: id === "vencimiento" && sinSoporte ? diaDelContratoLeido ?? diaDeLaCita(sinSoporte.citas) : null,
+  };
+}
+
+export function leerResultado(importacion: ContractImportResponse): Lectura {
+  const campos: Campos = importacion.fields ?? {};
+  const borrador = borradorDe(importacion, campos);
+  const apartado = apartarLoQueNoSePuedeGuardar(campos, borrador);
+  const noSePuede = sinSoporteDe(campos, importacion.unsupported, apartado);
 
   const items = {} as Record<ItemId, ItemLeido>;
   for (const id of ORDEN_DE_ITEMS) {
-    const claves = CLAVES_DE[id];
-    const sinSoporte = noSePuede.get(id) ?? null;
-    const claveDePresencia = CLAVE_DE_PRESENCIA[id];
-    let presente = claveDePresencia === undefined || hayValor(campos[claveDePresencia]?.value) || sinSoporte !== null;
-    let estado: EstadoDeItem = sinSoporte ? "noSePuede" : estadoDe(id, campos, claves);
-    if (id === "tipo") {
-      // El contrato dice «vivienda» o «comercial», no el tipo de propiedad que usa la app: siempre se mira.
-      estado = borrador.categoria === null ? "falta" : "revisar";
-      presente = borrador.propiedadId === null;
-    }
-    if (id === "otro") presente = sinSoporte !== null;
-    // Las garantías leídas son datos de revisión, no garantías definitivas: se confirman antes de crear
-    // el contrato, y recién se guardan con él (`guarantees`), no por cerrar la lectura.
-    const garantiasLeidas = id === "garantias" && presente && sinSoporte === null;
-    if (garantiasLeidas && estado === "ok") estado = "revisar";
-    const citas = sinSoporte ? sinSoporte.citas : claves.flatMap((clave) => citasDe(campos[clave]?.evidence)).slice(0, 3);
-    const notas = claves.map((clave) => campos[clave]?.note).filter((nota): nota is string => !!nota && nota !== NOTA_DEL_BACKEND);
-    items[id] = {
-      id,
-      estado,
-      claves,
-      citas,
-      motivos: estado === "revisar"
-        ? [...motivosDe(campos, claves), ...(garantiasLeidas ? [MOTIVO_DE_GARANTIAS] : [])]
-        : [],
-      nota: notas[0] ?? null,
-      presente,
-      noSePuede: sinSoporte?.motivo ?? null,
-      diaDelContrato: id === "vencimiento" && sinSoporte ? diaDelContratoLeido ?? diaDeLaCita(sinSoporte.citas) : null,
-    };
+    items[id] = itemLeidoDe(id, { campos, borrador, sinSoporte: noSePuede.get(id) ?? null, diaDelContratoLeido: apartado.diaFueraDeRango });
   }
-  // Un campo del contrato sin soporte que ningún item reconoce igual se muestra y bloquea.
+
   const originales: Record<string, unknown> = {};
   for (const [clave, campo] of Object.entries(campos)) originales[clave] = campo.value ?? null;
 
@@ -533,38 +594,29 @@ export interface Pendiente {
   bloqueante: boolean;
 }
 
-const BLOQUEANTES: MotivoNoSePuede[] = ["alquilerEscalonado", "indice", "otro"];
+const BLOQUEANTES: ReadonlySet<MotivoNoSePuede> = new Set(["alquilerEscalonado", "indice", "otro"]);
+
+function pendienteSinSoporte(id: ItemId, motivo: MotivoNoSePuede, b: Borrador, decisiones: Decisiones): Pendiente[] {
+  if (BLOQUEANTES.has(motivo)) return [{ id, razon: "noSePuede", bloqueante: true }];
+  const resuelto = motivo === "variosInquilinos" ? datosCompletos("inquilino", b) : decisiones[id] !== undefined;
+  return resuelto ? [] : [{ id, razon: "noSePuede", bloqueante: false }];
+}
 
 /**
  * Los items que todavía impiden crear el contrato. Un item opcional que el contrato no trae y el
  * propietario no sumó no cuenta. `revisados`: los que el propietario confirmó o corrigió.
  */
 export function pendientes(lectura: Lectura, b: Borrador, decisiones: Decisiones, revisados: ReadonlySet<ItemId>, sumados: ReadonlySet<ItemId>): Pendiente[] {
-  const resultado: Pendiente[] = [];
-  for (const id of ORDEN_DE_ITEMS) {
+  return ORDEN_DE_ITEMS.flatMap((id): Pendiente[] => {
     const item = lectura.items[id];
     const opcional = CLAVE_DE_PRESENCIA[id] !== undefined;
-    if (id === "tipo" && b.propiedadId !== null) continue;
-    if (opcional && !item.presente && !sumados.has(id)) continue;
-    if (id === "otro" && !item.presente) continue;
-    if (item.estado === "noSePuede") {
-      const motivo = item.noSePuede!;
-      if (BLOQUEANTES.includes(motivo)) {
-        resultado.push({ id, razon: "noSePuede", bloqueante: true });
-      } else if (motivo === "variosInquilinos") {
-        if (!datosCompletos("inquilino", b)) resultado.push({ id, razon: "noSePuede", bloqueante: false });
-      } else if (decisiones[id] === undefined) {
-        resultado.push({ id, razon: "noSePuede", bloqueante: false });
-      }
-      continue;
-    }
-    if (!datosCompletos(id, b)) {
-      resultado.push({ id, razon: "falta", bloqueante: false });
-      continue;
-    }
-    if (item.estado === "revisar" && !revisados.has(id)) resultado.push({ id, razon: "revisar", bloqueante: false });
-  }
-  return resultado;
+    if (id === "tipo" && b.propiedadId !== null) return [];
+    if (opcional && !item.presente && !sumados.has(id)) return [];
+    if (id === "otro" && !item.presente) return [];
+    if (item.estado === "noSePuede") return pendienteSinSoporte(id, item.noSePuede!, b, decisiones);
+    if (!datosCompletos(id, b)) return [{ id, razon: "falta", bloqueante: false }];
+    return item.estado === "revisar" && !revisados.has(id) ? [{ id, razon: "revisar", bloqueante: false }] : [];
+  });
 }
 
 // --- Armar lo que se manda ------------------------------------------------------------------------
@@ -686,11 +738,11 @@ function itemDeClave(clave: string): ItemId | null {
 function normalizado(clave: string, valor: unknown): string {
   if (valor === null || valor === undefined) return "";
   if (Array.isArray(valor)) return JSON.stringify(valor);
-  if (clave === "tenant.taxId" || clave === "tenant.phone") return String(valor).replace(/\D/g, "");
+  if (clave === "tenant.taxId" || clave === "tenant.phone") return textoPlano(valor).replace(/\D/g, "");
   if (typeof valor === "number") return String(valor);
   const comoNumero = Number(valor);
   if (typeof valor === "string" && valor.trim() !== "" && Number.isFinite(comoNumero)) return String(comoNumero);
-  return String(valor).trim();
+  return textoPlano(valor).trim();
 }
 
 /**

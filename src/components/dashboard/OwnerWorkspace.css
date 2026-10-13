@@ -819,3 +819,6 @@
 .owner-pdf-slow{display:grid;gap:var(--esp-10);max-width:520px;margin:var(--esp-26) auto 0;text-align:left}
 .owner-pdf-slow__actions{display:flex;flex-wrap:wrap;gap:var(--esp-8)}
 .owner-pdf-review__doc .owner-pdf-quote{margin-top:var(--esp-12)}
+/* <fieldset> como agrupador accesible: sin el borde, el relleno ni el ancho mínimo del navegador.
+   Con :where() no pesa más que la clase propia de cada uso (p. ej. .owner-garantia, que trae su relleno y borde). */
+:where(.owner-fieldset){min-width:0;margin-inline:0;padding:0;border:0}

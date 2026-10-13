@@ -96,9 +96,10 @@ export function avisoSinConfirmar(invoice: InvoiceResponse, hoyISO: string): Avi
   if (invoice.confirmed) return null;
   const recargo = vistaDeRecargo(invoice, "propietario");
   // `lateFee` viene sólo si el contrato tiene punitorios, aunque hoy no sume nada.
-  const correRecargo = invoice.lateFee !== null
-    ? ` El recargo por atraso corre igual, según el contrato${recargo?.monto ? `: hoy suma ${recargo.monto}` : ""}.`
-    : "";
+  const hoySuma = recargo?.monto ? `: hoy suma ${recargo.monto}` : "";
+  const correRecargo = invoice.lateFee === null
+    ? ""
+    : ` El recargo por atraso corre igual, según el contrato${hoySuma}.`;
   return {
     urgente: invoice.dueDate < hoyISO,
     texto: `El inquilino todavía no puede pagarla en el portal.${correRecargo}`,

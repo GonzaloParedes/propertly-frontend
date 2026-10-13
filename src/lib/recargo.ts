@@ -1,5 +1,5 @@
 import { formatearDiaMes, formatearMonto } from "@/lib/formato";
-import type { InvoiceResponse } from "@/lib/backend-types";
+import type { InvoiceResponse, LateFeeResponse } from "@/lib/backend-types";
 
 /**
  * Cómo se muestra el recargo por atraso de una cuota. Todos los importes
@@ -26,46 +26,51 @@ function redondear(importe: number): number {
   return Math.round(importe * 100) / 100;
 }
 
+function marcaDeModificado(lateFee: LateFeeResponse, quien: Quien): RecargoVista["modificado"] {
+  if (quien !== "propietario" || !lateFee.overridden) return null;
+  return lateFee.amount > 0 ? "Recargo modificado" : "Recargo perdonado";
+}
+
+function detalleDeRecargo(lateFee: LateFeeResponse): string | null {
+  switch (lateFee.state) {
+    case "NOT_STARTED": {
+      if (lateFee.nextDayAmount <= 0) return null;
+      const cuanto = formatearMonto(lateFee.nextDayAmount);
+      const desde = formatearDiaMes(lateFee.accruesFrom);
+      return lateFee.method === "FIXED_ONCE"
+        ? `Desde el ${desde} se suma una multa de ${cuanto}`
+        : `Desde el ${desde} se suma un recargo de ${cuanto} por día`;
+    }
+    case "FROZEN":
+      return `Calculado al ${formatearDiaMes(lateFee.asOf)}, el día que se envió el comprobante`;
+    case "SETTLED":
+      return lateFee.amount > 0 ? "Recargo pagado" : null;
+    default:
+      return null;
+  }
+}
+
+function importeDesdeManana(invoice: InvoiceResponse, lateFee: LateFeeResponse): string | null {
+  if (lateFee.state !== "ACCRUING" || lateFee.nextDayAmount === lateFee.amount) return null;
+  return formatearMonto(redondear(invoice.amountDue - lateFee.amount + lateFee.nextDayAmount));
+}
+
 export function vistaDeRecargo(invoice: InvoiceResponse, quien: Quien): RecargoVista | null {
   const { lateFee } = invoice;
   if (!lateFee) return null;
 
-  const modificado =
-    quien === "propietario" && lateFee.overridden
-      ? lateFee.amount > 0 ? "Recargo modificado" : "Recargo perdonado"
-      : null;
+  const modificado = marcaDeModificado(lateFee, quien);
   const corre = lateFee.amount > 0;
   const arrancaPronto = lateFee.state === "NOT_STARTED" && lateFee.nextDayAmount > 0;
   if (!corre && !arrancaPronto && !modificado) return null;
 
-  const monto = corre ? formatearMonto(lateFee.amount) : null;
-  let detalle: string | null = null;
-  let desdeManana: string | null = null;
-
-  switch (lateFee.state) {
-    case "NOT_STARTED":
-      if (arrancaPronto) {
-        const cuanto = formatearMonto(lateFee.nextDayAmount);
-        detalle =
-          lateFee.method === "FIXED_ONCE"
-            ? `Desde el ${formatearDiaMes(lateFee.accruesFrom)} se suma una multa de ${cuanto}`
-            : `Desde el ${formatearDiaMes(lateFee.accruesFrom)} se suma un recargo de ${cuanto} por día`;
-      }
-      break;
-    case "ACCRUING":
-      if (lateFee.nextDayAmount !== lateFee.amount) {
-        desdeManana = formatearMonto(redondear(invoice.amountDue - lateFee.amount + lateFee.nextDayAmount));
-      }
-      break;
-    case "FROZEN":
-      detalle = `Calculado al ${formatearDiaMes(lateFee.asOf)}, el día que se envió el comprobante`;
-      break;
-    case "SETTLED":
-      if (corre) detalle = "Recargo pagado";
-      break;
-  }
-
-  return { etiqueta: "Recargo por atraso", monto, detalle, desdeManana, modificado };
+  return {
+    etiqueta: "Recargo por atraso",
+    monto: corre ? formatearMonto(lateFee.amount) : null,
+    detalle: detalleDeRecargo(lateFee),
+    desdeManana: importeDesdeManana(invoice, lateFee),
+    modificado,
+  };
 }
 
 /** El recargo todavía no está firme: cambia con el día aunque nadie toque la cuota. */

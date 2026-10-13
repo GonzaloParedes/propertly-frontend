@@ -17,8 +17,11 @@ export type CampoGarantia =
   | "insurerName"
   | "policyNumber";
 
-/** Lo que el propietario está cargando: el tipo y un texto por campo, aunque no se use. */
-export type GarantiaBorrador = { type: GuaranteeType } & Record<CampoGarantia, string>;
+/**
+ * Lo que el propietario está cargando: el tipo y un texto por campo, aunque no se use. El `id` sólo
+ * identifica la fila en pantalla (para que no se mezcle al borrar o reordenar): nunca viaja.
+ */
+export type GarantiaBorrador = { id: string; type: GuaranteeType } & Record<CampoGarantia, string>;
 
 export const TIPOS_DE_GARANTIA: { type: GuaranteeType; titulo: string; ayuda: string }[] = [
   { type: "PERSONAL", titulo: "Un garante con recibo de sueldo", ayuda: "Una persona que responde con su sueldo." },
@@ -73,9 +76,12 @@ export function camposDe(tipo: GuaranteeType): CampoGarantia[] {
   return [...obligatorios, ...opcionales].map((definicion) => definicion.campo);
 }
 
+let ultimoId = 0;
+
 export function garantiaVacia(tipo: GuaranteeType): GarantiaBorrador {
   const base = Object.fromEntries(TODOS_LOS_CAMPOS.map((campo) => [campo, ""])) as Record<CampoGarantia, string>;
-  return { type: tipo, ...base };
+  ultimoId += 1;
+  return { id: `garantia-${ultimoId}`, type: tipo, ...base };
 }
 
 export function nombreDelTipo(tipo: GuaranteeType): string {
@@ -92,7 +98,8 @@ export function camposCargados(garantia: GarantiaBorrador): CampoGarantia[] {
  * `perdidos` son los campos con datos que no sobreviven, para avisar antes.
  */
 export function cambiarTipo(garantia: GarantiaBorrador, nuevoTipo: GuaranteeType): { garantia: GarantiaBorrador; perdidos: CampoGarantia[] } {
-  const siguiente = garantiaVacia(nuevoTipo);
+  // Es la misma fila con otro tipo: conserva el id.
+  const siguiente = { ...garantiaVacia(nuevoTipo), id: garantia.id };
   const quedan = new Set(camposDe(nuevoTipo));
   const perdidos: CampoGarantia[] = [];
   for (const campo of camposCargados(garantia)) {
@@ -206,7 +213,8 @@ export function describirGarantia(garantia: GuaranteeResponse): string {
       const nombre = garantia.fullName ? `: ${garantia.fullName}` : "";
       const cuit = garantia.taxId ? ` (CUIT ${formatearCuit(garantia.taxId)})` : "";
       const resto = [garantia.phoneNumber, garantia.employer && `trabaja en ${garantia.employer}`].filter(Boolean);
-      return `Garante con recibo de sueldo${nombre}${cuit}${resto.length > 0 ? ` · ${resto.join(" · ")}` : ""}`;
+      const contacto = resto.length > 0 ? ` · ${resto.join(" · ")}` : "";
+      return `Garante con recibo de sueldo${nombre}${cuit}${contacto}`;
     }
     case "PROPERTY":
       return conDetalle(

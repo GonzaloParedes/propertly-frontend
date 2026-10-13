@@ -34,7 +34,7 @@ describe("PdfPageViewer", () => {
     await waitFor(() => expect(documento.getPage).toHaveBeenCalledWith(2));
     expect(await screen.findByText("Página 2 de 6")).toBeInTheDocument();
     expect(screen.getByText("contrato.pdf")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Página 2 del contrato" })).toBeInTheDocument();
+    expect(screen.getByText("Página 2 del contrato")).toBeInTheDocument();
     expect(documento.render).toHaveBeenCalledTimes(1);
   });
 

@@ -30,7 +30,7 @@ export default function PdfPageViewer({ cargar, pagina, nombre }: Readonly<{
   useEffect(() => {
     let cancelado = false;
     let abierto: PDFDocumentProxy | null = null;
-    (async () => {
+    void (async () => {
       try {
         const [pdfjs, blob] = await Promise.all([import("pdfjs-dist"), cargar()]);
         pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
@@ -53,7 +53,7 @@ export default function PdfPageViewer({ cargar, pagina, nombre }: Readonly<{
     if (!documento || !lienzo.current) return;
     let cancelado = false;
     let tarea: { cancel: () => void; promise: Promise<unknown> } | null = null;
-    (async () => {
+    void (async () => {
       try {
         const numero = Math.min(Math.max(1, pagina), documento.numPages);
         const hoja = await documento.getPage(numero);
@@ -96,8 +96,9 @@ export default function PdfPageViewer({ cargar, pagina, nombre }: Readonly<{
         <p className="owner-pdf-viewer__error" role="alert">No pudimos mostrar el documento. La cita de cada dato sigue disponible debajo de él.</p>
       ) : (
         <>
-          {estado === "cargando" && <p className="owner-pdf-viewer__wait" role="status"><Spinner />Abriendo el contrato…</p>}
-          <canvas ref={lienzo} role="img" aria-label={`Página ${pagina} del contrato`} hidden={estado === "cargando"} />
+          {estado === "cargando" && <output className="owner-pdf-viewer__wait"><Spinner />Abriendo el contrato…</output>}
+          {/* El texto de adentro es el contenido alternativo del canvas: lo leen los lectores de pantalla. */}
+          <canvas ref={lienzo} hidden={estado === "cargando"}>{`Página ${pagina} del contrato`}</canvas>
         </>
       )}
     </div>
