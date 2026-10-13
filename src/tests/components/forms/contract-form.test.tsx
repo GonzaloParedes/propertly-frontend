@@ -21,7 +21,6 @@ async function fillMinimalContract() {
   await userEvent.type(screen.getByLabelText("Monto inicial del alquiler"), "520000");
   await userEvent.type(screen.getByLabelText("Día de vencimiento del pago"), "10");
   await userEvent.type(screen.getByLabelText("Monto del depósito/garantía"), "520000");
-  await userEvent.selectOptions(screen.getByLabelText("Tipo de garantía"), "Depósito en efectivo");
   await userEvent.type(screen.getByLabelText("% de comisión"), "5");
   await userEvent.selectOptions(screen.getByLabelText("Comisión a cargo de"), "PROPIETARIO");
 

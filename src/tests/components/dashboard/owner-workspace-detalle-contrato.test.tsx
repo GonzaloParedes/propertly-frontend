@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
-import type { ContractResponse, RentIncrementResponse } from "@/lib/backend-types";
+import type { ContractResponse, InvoiceResponse, RentIncrementResponse } from "@/lib/backend-types";
 
 vi.mock("@/context/auth-context", () => ({
   useAuth: () => ({ user: null, isLoading: false }),
@@ -29,6 +29,7 @@ vi.mock("@/lib/backend-client", () => ({
 
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockList = vi.mocked(AlquiaBackendClient.contracts.list);
+const mockCuotas = vi.mocked(AlquiaBackendClient.invoices.list);
 const mockGet = vi.mocked(AlquiaBackendClient.contracts.get);
 const mockIncrements = vi.mocked(AlquiaBackendClient.contracts.rentIncrements);
 const mockAccess = vi.mocked(AlquiaBackendClient.contracts.getTenantAccess);
@@ -180,10 +181,12 @@ describe("próxima actualización", () => {
 describe("condiciones pactadas", () => {
   it("las muestra cuando el contrato las tiene", async () => {
     await abrir(
-      contrato({ depositAmount: 478691, depositType: "CASH", commissionPercent: 5, commissionPayer: "TENANT" })
+      contrato({ depositAmount: 478691, guarantees: [{ type: "SURETY_INSURANCE", insurerName: "Aseguradora Sur", policyNumber: "4411" }], commissionPercent: 5, commissionPayer: "TENANT" })
     );
     expect(screen.getByText("Condiciones pactadas")).toBeInTheDocument();
-    expect(screen.getByText("$ 478.691 · Depósito en efectivo")).toBeInTheDocument();
+    const tarjeta = within(screen.getByText("Condiciones pactadas").closest(".owner-card") as HTMLElement);
+    expect(tarjeta.getByText("$ 478.691")).toBeInTheDocument();
+    expect(tarjeta.getByText("Seguro de caución: Aseguradora Sur, póliza 4411")).toBeInTheDocument();
     expect(screen.getByText("5 % · la paga el inquilino")).toBeInTheDocument();
   });
 
@@ -384,5 +387,50 @@ describe("finalizar el contrato", () => {
   it("no se ofrece sobre un contrato que ya terminó", async () => {
     await abrir(contrato({ status: "TERMINATED", actualEndDate: "2027-06-30" }));
     expect(screen.queryByRole("button", { name: "Finalizar contrato" })).not.toBeInTheDocument();
+  });
+});
+
+
+// --- Cuotas sin confirmar ---
+
+describe("cuotas sin confirmar", () => {
+  const cuotaSinConfirmar = (over: Partial<InvoiceResponse> = {}): InvoiceResponse => ({
+    id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-10",
+    baseAmount: 478691, total: 478691, amountDue: 485441, status: "DUE", confirmed: false,
+    adjustments: [], payments: [],
+    lateFee: { method: "FIXED_PER_DAY", value: 1250, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
+      amount: 6750, nextDayAmount: 8000, state: "ACCRUING", overridden: false },
+    ...over,
+  });
+
+  it("avisa la cuota vencida sin confirmar, con el recargo que corre, y deja confirmarla", async () => {
+    mockCuotas.mockResolvedValue([cuotaSinConfirmar()]);
+    await abrir();
+
+    const aviso = (await screen.findByRole("heading", { name: "Cuotas sin confirmar" })).closest(".owner-card") as HTMLElement;
+    expect(within(aviso).getByText("agosto 2026")).toBeInTheDocument();
+    expect(within(aviso).getByText(/no puede pagarla en el portal/)).toHaveTextContent(
+      "El recargo por atraso corre igual, según el contrato: hoy suma $ 6.750."
+    );
+    expect(mockCuotas).toHaveBeenCalledWith({ contractId: 100 });
+
+    await userEvent.click(within(aviso).getByRole("button", { name: "Confirmar" }));
+    expect(within(screen.getByRole("dialog")).getByText(/ya no se puede ajustar/)).toBeInTheDocument();
+  });
+
+  it("si todas las cuotas están confirmadas, no hay aviso", async () => {
+    mockCuotas.mockResolvedValue([cuotaSinConfirmar({ confirmed: true })]);
+    await abrir();
+
+    await waitFor(() => expect(mockCuotas).toHaveBeenCalled());
+    expect(screen.queryByRole("heading", { name: "Cuotas sin confirmar" })).not.toBeInTheDocument();
+  });
+
+  it("si las cuotas no cargan, el detalle se muestra igual", async () => {
+    mockCuotas.mockRejectedValue(new ApiError(500, "Boom"));
+    await abrir();
+
+    expect(screen.getByText(/Contrato con Jorge Paletta/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Cuotas sin confirmar" })).not.toBeInTheDocument();
   });
 });

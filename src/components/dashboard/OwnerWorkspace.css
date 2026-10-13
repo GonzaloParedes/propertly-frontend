@@ -671,3 +671,154 @@
 @media (min-width:621px){
   .owner-table td .owner-status,.owner-table td .owner-status + .owner-substatus{box-sizing:border-box;height:34px;padding-top:0;padding-bottom:0;line-height:1}
 }
+
+/* ── Contrato desde el PDF (PROTOTIPO) ─────────────────────────────
+   Ver docs/design/propuesta-contrato-desde-pdf.md. Radios y anillos
+   copiados de los hermanos: zona de carga = .owner-wizard-field,
+   lista de datos = .owner-list, cita = .owner-wizard-note.
+   ------------------------------------------------------------------ */
+.owner-pdf-drop{display:flex;flex-direction:column;align-items:center;gap:var(--esp-10);padding:var(--esp-44) var(--esp-20);border-radius:20px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde-campo);text-align:center}
+.owner-pdf-drop[data-arrastrando]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-pdf-drop__icon{display:grid;width:64px;height:64px;margin-bottom:var(--esp-6);place-items:center;border-radius:999px;background:var(--elev);color:var(--indigo)}
+.owner-pdf-drop b{font:700 19px var(--font-quicksand),sans-serif}
+.owner-pdf-drop small{color:var(--gris);font-size:15px}
+.owner-pdf-drop .owner-button{min-height:48px}
+.owner-pdf-file{display:flex;align-items:center;gap:var(--esp-14);padding:var(--esp-18);border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-pdf-file>span{display:grid;width:44px;height:44px;flex:none;place-items:center;border-radius:10px;background:var(--elev);color:var(--indigo)}
+.owner-pdf-file>div{min-width:0;flex:1}
+.owner-pdf-file b{display:block;overflow-wrap:anywhere;font-size:17px}
+.owner-pdf-file small{display:block;margin-top:3px;color:var(--gris);font-size:14.5px}
+.owner-pdf .owner-wizard-quiet{margin-top:var(--esp-16)}
+.owner-pdf-note{margin-top:var(--esp-26);font-size:15.5px}
+
+/* La espera: qué se está buscando, no sólo un anillo. */
+.owner-pdf-reading{text-align:center}
+.owner-pdf-reading>p{margin-left:auto!important;margin-right:auto!important}
+.owner-pdf-reading__arco{display:inline-block;margin-bottom:var(--esp-26)}
+.owner-pdf-reading ol{display:inline-grid;gap:var(--esp-12);margin:0;padding:0;list-style:none;text-align:left}
+.owner-pdf-reading li{display:flex;align-items:center;gap:var(--esp-12);color:var(--gris);font-size:17px}
+.owner-pdf-reading li>span:first-child{display:grid;width:26px;height:26px;flex:none;place-items:center;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--borde-campo)}
+.owner-pdf-reading li[data-estado="ahora"]{color:var(--tinta);font-weight:700}
+.owner-pdf-reading li[data-estado="ahora"]>span:first-child{box-shadow:none;color:var(--indigo)}
+.owner-pdf-reading li[data-estado="listo"]{color:var(--tinta)}
+.owner-pdf-reading li[data-estado="listo"]>span:first-child{background:var(--exito-bg);box-shadow:none;color:var(--exito)}
+
+/* La revisión: documento a la izquierda, datos a la derecha. */
+.owner-wizard__body.owner-pdf-review{display:grid;width:min(100% - 64px,1180px);grid-template-columns:minmax(0,1fr) minmax(0,560px);grid-template-areas:"intro intro" "doc data";gap:0 var(--esp-44);margin:0 auto;padding-top:var(--esp-32)}
+.owner-pdf-review__intro{grid-area:intro}
+.owner-pdf-review__intro>p{max-width:60ch;margin:0 0 var(--esp-26);color:var(--gris);font-size:17px}
+.owner-pdf-review__doc{position:sticky;top:var(--esp-20);grid-area:doc;align-self:start;max-height:calc(100vh - 200px);overflow:auto;border-radius:14px}
+.owner-pdf-review__data{grid-area:data;min-width:0}
+.owner-pdf-group{margin:var(--esp-26) 0 var(--esp-10);color:var(--gris);font:700 15px/1.2 var(--font-nunito-sans),sans-serif}
+.owner-pdf-group:first-child{margin-top:0}
+.owner-pdf-list{overflow:hidden;border-radius:20px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-pdf-item{display:grid;gap:var(--esp-6);padding:var(--esp-18) var(--esp-20)}
+.owner-pdf-item+.owner-pdf-item{box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-pdf-item[data-activo]{background:var(--superficie)}
+.owner-pdf-item__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-12)}
+.owner-pdf-item__label{color:var(--gris);font-size:15px;font-weight:700}
+.owner-pdf-item__source{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px}
+.owner-pdf-item__source svg{color:var(--exito)}
+.owner-pdf-item__value{font:700 21px/1.25 var(--font-quicksand),sans-serif;letter-spacing:-.01em}
+.owner-pdf-item__detail{color:var(--gris);font-size:15px}
+.owner-pdf-item__why{margin:var(--esp-6) 0 var(--esp-6);color:var(--tinta);font-size:15.5px}
+.owner-pdf-item__edit{display:grid;gap:var(--esp-12);margin-top:var(--esp-10)}
+.owner-pdf-item__edit .owner-wizard-field--amount{font-size:24px}
+.owner-pdf-item__actions{display:flex;flex-wrap:wrap;gap:var(--esp-8);margin-top:var(--esp-8)}
+.owner-pdf-item__actions .owner-button svg{flex:none}
+.owner-pdf-item>.owner-wizard-stack,.owner-pdf-item>.owner-wizard-options{margin-top:var(--esp-10)}
+.owner-pdf-item__quote{display:none;margin:var(--esp-8) 0 0;padding:var(--esp-14) var(--esp-16);border-radius:14px;background:var(--indigo-suave);color:var(--tinta);font:italic 16px/1.5 Georgia,'Times New Roman',serif}
+.owner-pdf-item__quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
+.owner-pdf-pending{margin-left:auto;color:var(--gris);font-size:15px;font-weight:600}
+.owner-pdf-pending+.owner-wizard-next{margin-left:0}
+
+@media (max-width:900px){
+  /* Sin lugar para el documento al lado: cada dato muestra su cita. */
+  .owner-wizard__body.owner-pdf-review{display:block;width:min(100% - 40px,620px)}
+  .owner-pdf-review__doc{display:none}
+  .owner-pdf-item__quote{display:block}
+}
+@media (max-width:620px){
+  .owner-pdf-drop{padding:var(--esp-32) var(--esp-16)}
+  .owner-pdf-file{flex-wrap:wrap}
+  .owner-pdf-file .owner-button{width:100%;min-height:46px}
+  .owner-wizard:not(.owner-dialog) .owner-wizard__body.owner-pdf-review{width:calc(100% - 24px);padding:var(--esp-16) 0;background:transparent;box-shadow:none}
+  .owner-pdf-review__intro{padding:0 var(--esp-8)}
+  .owner-pdf-item{padding:var(--esp-16)}
+  .owner-pdf-item__head{align-items:flex-start;flex-direction:column;gap:var(--esp-6)}
+  /* Dos o tres acciones: se reparten el renglón en vez de apilarse de a una. */
+  .owner-pdf-item__actions .owner-button{flex:1 1 140px;min-height:46px;justify-content:center}
+  /* El pendiente sube a su renglón: al lado del botón no entra. */
+  .owner-pdf .owner-wizard__footer{flex-wrap:wrap}
+  .owner-pdf-pending{order:-1;width:100%;margin:0;text-align:center}
+  .owner-pdf .owner-wizard__footer .owner-wizard-next{flex:1;justify-content:center}
+}
+
+/* ── Recargo por atraso y cuotas sin confirmar ───────────────────── */
+.owner-number .recargo{align-items:flex-end;font-weight:400;text-align:right}
+/* La explicación de «Sin confirmar» es una frase, no una etiqueta: ocupa varios renglones. */
+.owner-table td p.owner-aviso,.owner-unconfirmed p.owner-aviso{margin:var(--esp-8) 0 0;max-width:34ch;color:var(--gris);font-size:14px;font-weight:400;line-height:1.4;white-space:normal}
+.owner-aviso--urgente{color:var(--tinta)!important;font-weight:600!important}
+.owner-aviso__link{padding:0;border:0;background:none;color:var(--indigo);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.owner-aviso__link:disabled{opacity:.5;cursor:default}
+/* Vencida sin confirmar: la píldora pasa de advertencia a error, con el mismo icono y la misma palabra. */
+.owner-table td .owner-status + .owner-substatus--urgente{background:var(--error-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--error) 35%,transparent)}
+.owner-substatus--urgente svg{color:var(--error)}
+.owner-unconfirmed p.owner-aviso{max-width:none}
+.owner-unconfirmed{display:flex;flex-direction:column;gap:var(--esp-16);margin:var(--esp-12) 0 0;padding:0;list-style:none}
+.owner-flag{display:inline-flex;align-items:center;gap:7px;margin-right:var(--esp-8);padding:var(--esp-6) var(--esp-12);border-radius:999px;background:var(--warn-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--adv) 35%,transparent);color:var(--tinta);font-size:14px;font-weight:700}
+.owner-flag svg{flex:none;color:var(--adv)}
+.owner-flag--urgente{background:var(--error-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--error) 35%,transparent)}
+.owner-flag--urgente svg{color:var(--error)}
+.owner-unconfirmed-card{margin-bottom:var(--esp-16)}
+
+/* ── Garantías del contrato ──────────────────────────────────────── */
+.owner-garantias{display:flex;flex-direction:column;gap:var(--esp-16)}
+.owner-garantia{display:flex;flex-direction:column;gap:var(--esp-16);padding:var(--esp-20);border-radius:16px;box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-garantia__cabecera{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--esp-8) var(--esp-16)}
+.owner-garantia__acciones{display:flex;flex-wrap:wrap;gap:var(--esp-6)}
+
+/* ── Cuotas anteriores a hoy (contrato en curso) ─────────────────── */
+.owner-wizard-chips button[aria-checked="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
+.owner-wizard-chips button[role="radio"]{display:inline-flex;align-items:center;gap:var(--esp-6)}
+.owner-pagos-transcurridos{display:flex;flex-direction:column;gap:var(--esp-12);margin-top:var(--esp-32)}
+.owner-pagos-transcurridos .owner-wizard-chips{margin-top:0}
+.owner-pagos-transcurridos__fecha{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--esp-12)}
+@media (max-width:620px){.owner-pagos-transcurridos__fecha{grid-template-columns:minmax(0,1fr)}}
+.owner-pagos-transcurridos .owner-wizard-note{display:block}
+.owner-pagos-transcurridos .owner-wizard-note p{margin:0}
+.owner-pagos-transcurridos .owner-wizard-note p+p{margin-top:var(--esp-6)}
+/* Dentro de una tarjeta de la revisión del PDF: sin el aire que lleva como paso suelto del asistente. */
+.owner-pdf-item .owner-pagos-transcurridos{margin-top:0}
+.owner-wizard:not(.owner-dialog) .owner-pdf-item .owner-pagos-transcurridos .owner-wizard-label{margin:0!important}
+.owner-pdf-item .owner-pagos-transcurridos .owner-wizard-help{margin:0}
+.owner-pago-alta{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px;font-weight:600;white-space:normal}
+.owner-pago-alta svg{flex:none;color:var(--exito)}
+.owner-wizard-summary .owner-wizard-quiet{flex:none;margin:0 0 0 var(--esp-10)}
+.owner-wizard-alert>div p{margin:0}
+.owner-wizard-alert>div .owner-garantia__acciones{margin-top:var(--esp-6)}
+.owner-wizard-alert .owner-wizard-quiet{margin-top:0}
+
+/* Lectura del contrato desde el PDF: citas, visor y espera larga. */
+.owner-pdf-item__quote p{margin:0}
+.owner-pdf-item__quote p+p{margin-top:var(--esp-10)}
+.owner-pdf-item__quote--siempre{display:block}
+.owner-pdf-item__page-link{display:none;margin-top:var(--esp-10);padding:0;border:0;background:none;color:var(--indigo);font:700 15px var(--font-nunito-sans),sans-serif;text-decoration:underline;cursor:pointer}
+.owner-pdf-quote{margin:var(--esp-12) 0 0;padding:var(--esp-14) var(--esp-16);border-radius:14px;background:var(--indigo-suave);color:var(--tinta);font:italic 16px/1.5 Georgia,'Times New Roman',serif}
+.owner-pdf-quote p{margin:0}
+.owner-pdf-quote p+p{margin-top:var(--esp-10)}
+.owner-pdf-quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
+.owner-pdf-quote--hint{background:transparent;color:var(--gris);font:15px/1.5 var(--font-nunito-sans),sans-serif}
+/* El documento es papel: se queda claro también en modo oscuro. */
+.owner-pdf-viewer{overflow:hidden;border-radius:14px;background:#E9E7F2}
+.owner-pdf-viewer__bar{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-8);padding:var(--esp-10) var(--esp-14);color:#514D63;font-size:14px}
+.owner-pdf-viewer__bar span{min-width:0;flex:1;overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.owner-pdf-viewer canvas{display:block;max-width:100%;margin:0 auto var(--esp-14);border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(30,27,46,.12)}
+.owner-pdf-viewer__wait,.owner-pdf-viewer__error{display:flex;align-items:center;justify-content:center;gap:var(--esp-10);margin:0;padding:var(--esp-32) var(--esp-20);color:#514D63;font-size:15px}
+.owner-pdf-add{margin-top:var(--esp-16)}
+.owner-pdf-slow{display:grid;gap:var(--esp-10);max-width:520px;margin:var(--esp-26) auto 0;text-align:left}
+.owner-pdf-slow__actions{display:flex;flex-wrap:wrap;gap:var(--esp-8)}
+.owner-pdf-review__doc .owner-pdf-quote{margin-top:var(--esp-12)}
+/* <fieldset> como agrupador accesible: sin el borde, el relleno ni el ancho mínimo del navegador.
+   Con :where() no pesa más que la clase propia de cada uso (p. ej. .owner-garantia, que trae su relleno y borde). */
+:where(.owner-fieldset){min-width:0;margin-inline:0;padding:0;border:0}

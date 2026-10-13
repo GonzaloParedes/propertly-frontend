@@ -40,7 +40,7 @@ se pide» al final.
 ### 1 · Un paso por pantalla, no un formulario largo
 
 Los datos se cargan con un **asistente a pantalla completa**, una pregunta por vez,
-sin menú lateral que distraiga. El contrato son 6 pasos; la propiedad, 3.
+sin menú lateral que distraiga. El contrato son 7 pasos; la propiedad, 3.
 
 *Por qué:* el público son propietarios de 25 años para arriba, muchos sin
 costumbre de formularios densos. Doce campos juntos abruman; una pregunta grande
@@ -49,7 +49,7 @@ y se eligió este.
 
 ### 2 · Barra de progreso, no puntitos
 
-*Por qué:* el rótulo «Paso 3 de 6» ya dice **cuántos** son. Los puntitos repetían
+*Por qué:* el rótulo «Paso 3 de 7» ya dice **cuántos** son. Los puntitos repetían
 esa misma información; la barra agrega otra distinta — **cuánto falta**. Además
 los puntitos no escalan más allá de 5 o 6, y sugieren que se puede saltar a un
 paso, cosa que no se puede.
@@ -131,9 +131,13 @@ que es el vacío de un filtro o una búsqueda sobre datos que sí existen.
   encabezado se esconde y baja al centro. Dos primarios iguales en la misma
   pantalla no dicen cuál tocar. Dentro de Inicio el botón va `secondary`,
   porque el primario de la página ya está en el encabezado (regla 7).
-- **El botón es el paso que de verdad sigue.** En Inicio, sin propiedades, el
-  vacío de «Contratos activos» ofrece «Agregar propiedad», no «Nuevo
-  contrato»: el asistente de contrato no tendría nada para elegir.
+- **El botón es el paso que de verdad sigue.** En Inicio, sin ningún contrato,
+  el vacío de «Contratos activos» ofrece «Cargar mi primer contrato» —y ése sí
+  va `primary`, porque es el único camino que la pantalla explica—. Ya no manda
+  a «Agregar propiedad» primero: el asistente deja cargar la propiedad y el
+  inquilino dentro del mismo recorrido (ver «Un contrato, un solo guardado»).
+  Con contratos que ya terminaron no es el primero: sigue siendo «Nuevo
+  contrato», en `secondary`.
 - **No afirmar lo que no se sabe.** Sin contratos, «Requieren su acción» no dice
   «sus cuotas están al día»: explica qué va a aparecer ahí.
 - **`compact`** para un bloque dentro de otra pantalla (avisos de Inicio): una
@@ -477,6 +481,34 @@ Fáciles de errarle si uno diseña sin leer el backend. Fuente:
    que coincida con el del contrato. Verificado que hoy no lo leemos en ningún
    lado; la regla es para cuando se construya Propiedades.
 
+7. **Lo que se adeuda es `amountDue`, y el recargo por atraso lo calcula el
+   backend.** En cualquier lugar donde el propietario o el inquilino vean el
+   importe de una cuota, el número a pagar es `amountDue` (el total más el
+   recargo). El front **nunca calcula el recargo**: redondear distinto que el
+   servidor mostraría un importe que después no coincide con el que se cobra.
+   Sólo suma lo que ya vino calculado («Desde mañana» es lo que se adeuda hoy,
+   menos el recargo de hoy, más el de mañana).
+
+   El recargo va como línea propia debajo del importe, con ícono y palabra
+   («Recargo por atraso»), y su texto depende de `lateFee.state`: antes de
+   empezar dice desde qué día y cuánto suma; corriendo muestra hoy y desde
+   mañana; congelado dice a qué fecha se calculó; saldado muestra lo que se
+   pagó. «Recargo modificado» y «Recargo perdonado» son del propietario: el
+   inquilino no los ve. Componente: `RecargoPorAtraso`, texto en `lib/recargo.ts`.
+
+   **El día cambia a la medianoche argentina**, no a la del navegador ni a la
+   UTC. Para decidir qué día es hoy se usa `hoyEnArgentina()`, y una pantalla
+   abierta con un recargo corriendo vuelve a leer las cuotas al cambiar el día
+   (`useCambioDeDia`). Las fechas del backend son `LocalDate` sin zona: ese
+   reloj de negocio es una configuración del servidor, no algo que se guarde.
+8. **El recargo se puede perdonar, cambiar o volver a calcular mientras la
+   cuota no esté paga.** El tope de un cambio es el recargo de hoy según el
+   contrato; con el recargo ya modificado el front no lo conoce y lo valida el
+   backend. El diálogo de registrar un pago muestra el recargo que ese pago
+   salda, con un enlace para cambiarlo antes. Una cuota **sin confirmar** y con
+   punitorios avisa que el recargo corre igual aunque el inquilino todavía no
+   pueda pagarla, y es urgente si ya venció.
+
 Los cuatro estados del dinero, y cómo se llaman de cara al usuario:
 
 | Backend | En pantalla |
@@ -593,6 +625,101 @@ plazo en meses → método de actualización → frecuencia, que es **campo por 
 paso de inquilino pide nombre / apellido / CUIT / correo, que es exactamente
 `TenantRequest`. `ContractForm` pide veinte campos, la mayoría de los cuales
 todavía no tienen dónde guardarse.
+
+### Un contrato, un solo guardado
+
+**Cambio `contract-onboarding-flow`.** «Nuevo contrato» es el único recorrido
+para cargar propiedad, inquilino y contrato. Lo que cambia respecto de cuando
+los desvíos guardaban solos:
+
+- **Los desvíos son borradores.** «Una propiedad nueva» / «Un inquilino nuevo»
+  abren el formulario de siempre, pero «Usar esta propiedad» / «Usar este
+  inquilino» sólo anota el borrador en el estado del asistente y vuelve con
+  «Propiedad nueva: Lavalle 950» elegida. Nada se guarda hasta «Crear contrato»,
+  que manda todo en **un** `POST /contracts/onboarding`: o se crea todo o nada.
+  Abandonar no deja huérfanos.
+- **Siete pasos:** propiedad → inquilino → alquiler → plazo → actualización →
+  «Otras condiciones» → revisión. «Otras condiciones» es opcional (depósito,
+  comisión, punitorios, garantías), de a un grupo por vez para que el
+  formulario nunca sea largo, y lo que queda vacío no se manda. «Saltear este
+  paso» sólo aparece mientras no hay nada cargado: saltear con datos escritos
+  sería descartarlos en silencio.
+- **La revisión lista lo nuevo como tal** y cada sección tiene «Cambiar», que
+  lleva a su paso. Sigue ahí «¿Hasta qué mes le pagaron?», y «Crear contrato»
+  queda deshabilitado mientras no se contesta y mientras el pedido viaja.
+- **Los errores vuelven al paso que los tiene.** El backend ubica cada error con
+  un prefijo (`property.`, `tenant.`, `contract.`): el asistente abre el primer
+  paso con errores, con «Revise este dato.» junto al campo (el texto del backend
+  está en inglés y nunca se muestra), y al volver retoma en el siguiente que
+  siga con errores.
+- **Dos 409 se resuelven eligiendo,** en la revisión y sin perder lo cargado:
+  el inquilino que ya existe con ese CUIT o teléfono («Usar a Diego Ferrari»
+  reenvía con su id; «Corregir los datos» reabre el formulario) y la propiedad
+  que ya tiene contrato vigente (con el enlace a ese contrato).
+- **Salir se confirma sólo si hay algo cargado,** con un diálogo propio de la app
+  que dice que no se guardó nada. Es el mismo `Dialog` del resto de la app
+  (`src/components/ui/Dialog.tsx`). Los asistentes sueltos de propiedad e
+  inquilino salen directo, como siempre.
+
+### Cargar un contrato desde el PDF
+
+**Cambio `contract-pdf-import`.** «Nuevo contrato» pregunta primero cómo cargarlo
+(salvo cuando se abre desde una propiedad, que ya está elegida). El PDF es un
+atajo del mismo asistente, no otro: toda salida sin salida —un archivo
+rechazado, una lectura que falla, una cláusula que no se puede cargar— ofrece
+«Cargarlo a mano».
+
+- **La elección dice cuántas lecturas quedan** (`GET /contract-imports/quota`).
+  Sin lecturas, o con la lectura apagada, la opción de subir queda
+  deshabilitada, explica por qué y deja elegida la carga a mano. Si no se pudo
+  preguntar la cuota, se ofrece igual: el backend decide al subir.
+- **Subir:** un solo PDF, arrastrado o elegido, con su nombre y peso y «Cambiar».
+  Antes de enviar sólo se avisa de lo obvio (no es PDF, pasa de 20 MB); el
+  backend decide el resto. Cada rechazo se dice en palabras simples, nunca con
+  el texto técnico en inglés, con las dos salidas «Probar con otro archivo» y
+  «Cargarlo a mano».
+- **La espera es una lista de tres pasos que se tilda sola, pero nunca por
+  reloj.** Cada tilde sigue una etapa que informa el backend. Como el OCR y el
+  modelo corren en paralelo, son un solo paso («Leyendo las páginas y buscando
+  los datos»): la lista avanza en orden y nunca hay dos pasos en curso. Arriba,
+  el aro grande es un trazo que crece y se achica mientras gira (`ArcoDeEspera`),
+  no el cuarto de círculo fijo del anillo chico. Se anuncia con `aria-live`. «Cancelar»
+  descarta la lectura. A los 90 s avisa que tarda, con «Seguir esperando» y
+  «Cargarlo a mano». Una falla ofrece reintentar (que no gasta otra lectura),
+  otro archivo o a mano.
+- **La revisión no es un formulario:** es el documento al lado y los datos, de
+  sólo lectura hasta «Corregir». **Cada dato dice su estado con un ícono y una
+  palabra**, nunca sólo con color: la página de la que salió (lo que el contrato
+  dice tal cual), «Revisar» (la lectura interpretó: dice qué dedujo, y se
+  resuelve con «Está bien así» o corrigiendo), «Falta completar» (el contrato no
+  lo trae y la app lo necesita) y «No se puede cargar así».
+- **Una cláusula que la app no representa nunca se carga en silencio.** Se
+  muestra con su cita y se ofrece lo que corresponde: indicar cuál es el
+  inquilino cuando hay varios; el día 28 diciendo qué dice el contrato (o a
+  mano) cuando el vencimiento pasa del 28; crear sin punitorios o sin depósito
+  cuando el recargo depende de una tasa o el depósito está en otra moneda. Un
+  alquiler escalonado o un índice que no es ICL ni IPC sólo se resuelven a mano
+  y mantienen apagado «Crear contrato».
+- **«Ver en el contrato»** muestra la página citada con la cita resaltada al
+  costado (pdf.js sobre un canvas, cargado sólo en esta pantalla). Con menos de
+  901 px no hay lugar al lado: la cita aparece bajo el dato y «Ver página N»
+  abre la página en un diálogo. No hay coordenadas sobre la imagen (los contratos
+  son escaneos), así que no se resalta el renglón exacto.
+- **Lo que viene del archivo es texto de poca confianza:** se pinta siempre como
+  texto, nunca como HTML.
+- **La propiedad y el inquilino que ya tiene** se usan por defecto («Ya la tiene
+  cargada: …»), con «Crear uno nuevo» como alternativa. El tipo de propiedad
+  siempre se confirma: el contrato dice «vivienda» o «comercial», no «PH» ni
+  «departamento».
+- **«Crear contrato» sigue apagado** mientras quede algo por resolver, y el pie
+  dice cuántas cosas. Con un inicio en el pasado exige «¿Hasta qué mes le
+  pagaron?». Crea con el mismo `POST /contracts/onboarding` del asistente y
+  después cierra la lectura (`complete`) con los valores finales y lo que hizo
+  el propietario con cada dato. Si cerrarla falla, se reintenta una vez; si
+  vuelve a fallar, el contrato se muestra como creado, con un camino para
+  adjuntar el PDF desde su detalle, y no se crea otra vez.
+- **Salir de la revisión se confirma** con el `Dialog` de la app: se descarta la
+  lectura y el archivo no se guarda.
 
 ### El cliente HTTP, al día
 

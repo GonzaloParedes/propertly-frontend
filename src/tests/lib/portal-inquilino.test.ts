@@ -15,7 +15,7 @@ function cuota(over: Partial<InvoiceResponse> = {}): InvoiceResponse {
     period: "2026-09-01",
     dueDate: "2026-09-10",
     baseAmount: 478691,
-    total: 478691,
+    total: 478691, amountDue: 478691, lateFee: null,
     status: "PENDING",
     confirmed: true,
     adjustments: [],

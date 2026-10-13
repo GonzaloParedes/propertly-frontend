@@ -1,5 +1,6 @@
 import { coincideTexto } from "@/lib/busqueda";
-import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
+import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo, hoyEnArgentina } from "@/lib/formato";
+import { recargoEditable, recargoEnCurso, vistaDeRecargo, type RecargoEditable, type RecargoVista } from "@/lib/recargo";
 import type {
   AdjustmentResponse,
   ContractResponse,
@@ -26,15 +27,33 @@ export type EstadoCuota = "Pagada" | "Vencida" | "A vencer" | "Pago a confirmar"
  */
 export type AccionCuota = "revisar" | "confirmar" | "registrar" | "comprobante";
 
+/**
+ * Una cuota que el propietario todavía no confirmó: el inquilino no puede
+ * pagarla, pero si el contrato tiene punitorios el recargo corre igual.
+ */
+export interface AvisoSinConfirmar {
+  /** La fecha de vencimiento ya pasó. */
+  urgente: boolean;
+  texto: string;
+}
+
 export interface FilaCobranza {
   invoiceId: number;
+  contractId: number;
   direccion: string;
   inquilino: string;
   periodo: string;
+  /** Lo que se adeuda hoy: el total de la cuota más el recargo por atraso. */
   monto: string;
+  recargo: RecargoVista | null;
+  /** Null si no hay recargo que cambiar: contrato sin punitorios, cuota paga o recargo en cero. */
+  recargoEditable: RecargoEditable | null;
+  sinConfirmar: AvisoSinConfirmar | null;
+  /** Algo de la fila cambia a la medianoche: el recargo corre o el aviso pasa a urgente. */
+  dependeDelDia: boolean;
   /**
    * Los tres en crudo, además del monto ya formateado: el diálogo de ajuste
-   * calcula la diferencia contra el total vigente y muestra de dónde sale.
+   * calcula la diferencia contra el total vigente (sin recargo) y muestra de dónde sale.
    */
   importeBase: number;
   totalVigente: number;
@@ -48,6 +67,13 @@ export interface FilaCobranza {
   pagoPendiente: PaymentResponse | null;
   /** El pago aceptado, para poder bajar su comprobante. */
   pagoConfirmado: PaymentResponse | null;
+}
+
+/** Lo que dice un pago que registró el alta de un contrato en curso: no hay comprobante ni nada que hacerle. */
+export const ETIQUETA_PAGO_DEL_ALTA = "Registrado al dar de alta · sin comprobante";
+
+export function esPagoDelAlta(pago: PaymentResponse | null | undefined): boolean {
+  return pago?.origin === "ONBOARDING";
 }
 
 export function estadoDeCuota(invoice: InvoiceResponse): EstadoCuota {
@@ -66,6 +92,20 @@ function accionDeCuota(invoice: InvoiceResponse, estado: EstadoCuota): AccionCuo
   return "registrar";
 }
 
+export function avisoSinConfirmar(invoice: InvoiceResponse, hoyISO: string): AvisoSinConfirmar | null {
+  if (invoice.confirmed) return null;
+  const recargo = vistaDeRecargo(invoice, "propietario");
+  // `lateFee` viene sólo si el contrato tiene punitorios, aunque hoy no sume nada.
+  const hoySuma = recargo?.monto ? `: hoy suma ${recargo.monto}` : "";
+  const correRecargo = invoice.lateFee === null
+    ? ""
+    : ` El recargo por atraso corre igual, según el contrato${hoySuma}.`;
+  return {
+    urgente: invoice.dueDate < hoyISO,
+    texto: `El inquilino todavía no puede pagarla en el portal.${correRecargo}`,
+  };
+}
+
 /**
  * Cruza cuotas con contratos para poder nombrar cada fila por su propiedad e
  * inquilino: `InvoiceResponse` sólo trae `contractId`.
@@ -77,7 +117,8 @@ function accionDeCuota(invoice: InvoiceResponse, estado: EstadoCuota): AccionCuo
  */
 export function buildFilasCobranza(
   invoices: InvoiceResponse[],
-  contracts: ContractResponse[]
+  contracts: ContractResponse[],
+  hoyISO: string = hoyEnArgentina()
 ): FilaCobranza[] {
   const porContrato = new Map(contracts.map((c) => [c.id, c]));
 
@@ -87,10 +128,15 @@ export function buildFilasCobranza(
       const estado = estadoDeCuota(invoice);
       return {
         invoiceId: invoice.id,
+        contractId: invoice.contractId,
         direccion: contrato ? formatearDireccion(contrato.property) : "—",
         inquilino: contrato ? `${contrato.tenant.firstName} ${contrato.tenant.lastName}` : "—",
         periodo: formatearPeriodo(invoice.period),
-        monto: formatearMonto(invoice.total),
+        monto: formatearMonto(invoice.amountDue),
+        recargo: vistaDeRecargo(invoice, "propietario"),
+        recargoEditable: recargoEditable(invoice),
+        sinConfirmar: avisoSinConfirmar(invoice, hoyISO),
+        dependeDelDia: recargoEnCurso(invoice) || (!invoice.confirmed && invoice.dueDate >= hoyISO),
         importeBase: invoice.baseAmount,
         totalVigente: invoice.total,
         ajustes: invoice.adjustments,

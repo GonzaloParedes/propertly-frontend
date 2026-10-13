@@ -1,4 +1,5 @@
 import { render, screen, within } from "@/tests/render";
+import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import type {
   ContractResponse,
@@ -21,6 +22,7 @@ vi.mock("@/lib/backend-client", () => ({
     properties: { list: vi.fn() },
     invoices: { list: vi.fn() },
     preInvoices: { list: vi.fn() },
+    contractImports: { quota: vi.fn() },
   },
 }));
 
@@ -70,7 +72,7 @@ function cuota(extra: Partial<InvoiceResponse> = {}): InvoiceResponse {
     period: "2026-09-01",
     dueDate: "2026-09-10",
     baseAmount: 100000,
-    total: 100000,
+    total: 100000, amountDue: 100000, lateFee: null,
     status: "PENDING",
     confirmed: true,
     adjustments: [],
@@ -81,6 +83,7 @@ function cuota(extra: Partial<InvoiceResponse> = {}): InvoiceResponse {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
 });
 
 function conDatos({
@@ -150,9 +153,9 @@ describe("cobranza del mes", () => {
   it("reparte los tres montos y dice el total emitido", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 430000, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "PENDING", total: 505000 }),
-        cuota({ id: 3, status: "DUE", total: 478691 }),
+        cuota({ id: 1, status: "PAID", total: 430000, amountDue: 430000, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "PENDING", total: 505000, amountDue: 505000 }),
+        cuota({ id: 3, status: "DUE", total: 478691, amountDue: 478691 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -167,8 +170,8 @@ describe("cobranza del mes", () => {
   it("la barra describe los mismos porcentajes que muestra", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 500, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "DUE", total: 500 }),
+        cuota({ id: 1, status: "PAID", total: 500, amountDue: 500, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500, amountDue: 500 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -181,8 +184,8 @@ describe("cobranza del mes", () => {
   it("un monto en cero no ocupa lugar en la barra", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 500, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "DUE", total: 500 }),
+        cuota({ id: 1, status: "PAID", total: 500, amountDue: 500, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500, amountDue: 500 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -192,7 +195,7 @@ describe("cobranza del mes", () => {
   });
 
   it("con cuotas pero todo en cero, la barra queda neutra", async () => {
-    conDatos({ invoices: [cuota({ id: 1, status: "PENDING", total: 0 })] });
+    conDatos({ invoices: [cuota({ id: 1, status: "PENDING", total: 0, amountDue: 0 })] });
     render(<OwnerWorkspace initialView="inicio" />);
 
     const barra = await screen.findByLabelText("Sin montos emitidos");
@@ -277,7 +280,7 @@ describe("requieren su acción", () => {
     conDatos({
       invoices: [
         cuota({
-          total: 520000,
+          total: 520000, amountDue: 520000, lateFee: null,
           payments: [
             {
               id: 9,
@@ -300,8 +303,8 @@ describe("requieren su acción", () => {
   it("agrupa las vencidas con su total", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "DUE", total: 478691 }),
-        cuota({ id: 2, status: "DUE", total: 520000 }),
+        cuota({ id: 1, status: "DUE", total: 478691, amountDue: 478691 }),
+        cuota({ id: 2, status: "DUE", total: 520000, amountDue: 520000 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -336,14 +339,34 @@ describe("contratos vigentes", () => {
     expect(await screen.findByText("Todavía no tiene contratos vigentes")).toBeInTheDocument();
   });
 
-  it("sin propiedades, el paso que ofrece es cargar la primera", async () => {
+  it("sin ningún contrato, la acción principal es «Cargar mi primer contrato» y abre el asistente", async () => {
     conDatos({ properties: [], contracts: [], invoices: [] });
     render(<OwnerWorkspace initialView="inicio" />);
 
+    const seccion = (await screen.findByText("Todavía no tiene contratos")).closest("section")!;
+    expect(within(seccion).getByText(/Los carga juntos, en un solo recorrido/)).toBeInTheDocument();
+    const accion = within(seccion).getByRole("button", { name: "Cargar mi primer contrato" });
+    expect(accion).toHaveClass("owner-button--primary");
+    expect(within(seccion).queryByRole("button", { name: "Agregar propiedad" })).not.toBeInTheDocument();
+
+    await userEvent.click(accion);
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+  });
+
+  it("con propiedades pero sin contratos, también es el primer contrato", async () => {
+    conDatos({ contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByRole("button", { name: "Cargar mi primer contrato" })).toBeInTheDocument();
+  });
+
+  it("con contratos que ya terminaron no es el primero: ofrece «Nuevo contrato»", async () => {
+    conDatos({ contracts: [{ ...CONTRATO, status: "TERMINATED" }] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
     const seccion = (await screen.findByText("Todavía no tiene contratos vigentes")).closest("section")!;
-    expect(within(seccion).getByText(/Empiece por cargar su primera propiedad/)).toBeInTheDocument();
-    expect(within(seccion).getByRole("button", { name: "Agregar propiedad" })).toBeInTheDocument();
-    expect(within(seccion).queryByRole("button", { name: "Nuevo contrato" })).not.toBeInTheDocument();
+    expect(within(seccion).getByRole("button", { name: "Nuevo contrato" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cargar mi primer contrato" })).not.toBeInTheDocument();
   });
 
   it("sin contratos no afirma que las cuotas están al día", async () => {

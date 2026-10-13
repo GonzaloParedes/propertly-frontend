@@ -287,6 +287,32 @@ describe("manejo de errores HTTP", () => {
     expect(error.fieldErrors).toEqual({ taxId: "Tax ID already registered" });
   });
 
+  it("conserva las propiedades extra del problema, como existingTenantId, y no repite las estándar", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          type: "urn:alquia:error:duplicate-tax-id",
+          title: "Tax ID already registered",
+          status: 409,
+          detail: "Tax ID already registered",
+          errors: { "tenant.taxId": "Tax ID already registered" },
+          existingTenantId: 7,
+        }),
+        { status: 409, statusText: "Conflict", headers: { "Content-Type": "application/problem+json" } }
+      )
+    );
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
+    expect(error.extensions).toEqual({ existingTenantId: 7 });
+  });
+
+  it("sin propiedades extra, extensions queda en null", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ type: "urn:alquia:error:validation", title: "Validation failed", status: 400 }), { status: 400, statusText: "Bad Request" })
+    );
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
+    expect(error.extensions).toBeNull();
+  });
+
   it("usa title como message cuando no hay detail", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ type: "urn:alquia:error:validation", title: "Validation failed" }), {

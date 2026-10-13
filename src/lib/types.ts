@@ -49,7 +49,6 @@ export interface Contract {
   currency: Currency;
   paymentDueDay: string;
   depositAmount: string;
-  depositType: string;
   commissionPercent: string;
   commissionPayer: CommissionPayer;
   indexType: IndexType;

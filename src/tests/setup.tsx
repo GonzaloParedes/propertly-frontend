@@ -1,6 +1,21 @@
 import "@testing-library/jest-dom/vitest";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
+// Node 25 trae su propio `localStorage` (Web Storage) y, sin `--localstorage-file`, pisa el de jsdom con
+// un objeto sin métodos. Si pasa, se lo reemplaza por uno en memoria con la misma interfaz.
+if (typeof window.localStorage?.getItem !== "function") {
+  const datos = new Map<string, string>();
+  const enMemoria: Storage = {
+    get length() { return datos.size; },
+    clear: () => datos.clear(),
+    getItem: (clave) => datos.get(clave) ?? null,
+    key: (indice) => [...datos.keys()][indice] ?? null,
+    removeItem: (clave) => { datos.delete(clave); },
+    setItem: (clave, valor) => { datos.set(clave, String(valor)); },
+  };
+  Object.defineProperty(window, "localStorage", { value: enMemoria, configurable: true });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();

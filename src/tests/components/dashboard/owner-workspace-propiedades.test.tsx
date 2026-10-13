@@ -51,7 +51,7 @@ const CUOTA_VENCIDA: InvoiceResponse = {
   period: "2026-08-01",
   dueDate: "2026-08-10",
   baseAmount: 478691,
-  total: 478691,
+  total: 478691, amountDue: 478691, lateFee: null,
   status: "DUE",
   confirmed: true,
   adjustments: [],

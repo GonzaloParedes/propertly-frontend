@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePaymentEvents } from "@/hooks/usePaymentEvents";
+import { useCambioDeDia } from "@/hooks/useCambioDeDia";
+import { recargoEnCurso } from "@/lib/recargo";
+import { ETIQUETA_PAGO_DEL_ALTA, esPagoDelAlta } from "@/lib/cobranzas";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -18,6 +21,7 @@ import type { TenantCalendarResponse } from "@/lib/backend-types";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { Icon } from "@/components/ui/Icon";
+import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import "./tenant-portal.css";
 
 type Estado =
@@ -101,6 +105,7 @@ function CuotaDetalle({ fila, perteneceACondicionesAnteriores, subiendo, viendoC
       </div>
       <div className="tenant-cuota__monto">
         <span>{fila.monto}</span>
+        {fila.recargo && <RecargoPorAtraso vista={fila.recargo} importeHoy={fila.monto} />}
         {fila.ajustes.length > 0 && <dl className="tenant-cuota__desglose" aria-label={`Detalle del importe de ${fila.periodo}`}>
           <div><dt>Importe del contrato</dt><dd>{fila.importeBase}</dd></div>
           {fila.ajustes.map((ajuste) => <div key={ajuste.id}><dt>{ajuste.nombre}{ajuste.detalle && <small> · {ajuste.detalle}</small>}</dt><dd>{ajuste.efecto}</dd></div>)}
@@ -108,7 +113,11 @@ function CuotaDetalle({ fila, perteneceACondicionesAnteriores, subiendo, viendoC
         {!fila.confirmada && <small className="tenant-cuota__aviso">El propietario todavía no cerró este importe: puede cambiar.</small>}
         {fila.estado === "Vencida" && perteneceACondicionesAnteriores && <small className="tenant-cuota__aviso">Esta cuota sigue pendiente aunque las condiciones hayan cambiado.</small>}
       </div>
-      {fila.pago && <div className="tenant-cuota__pago">
+      {fila.pago && esPagoDelAlta(fila.pago) && <div className="tenant-cuota__pago">
+        {/* El propietario registró este pago al cargar el contrato: no hay comprobante que ver. */}
+        <span className="tenant-pago-estado tenant-pago-estado--ok"><Icon name="check" size={16} />{ETIQUETA_PAGO_DEL_ALTA}</span>
+      </div>}
+      {fila.pago && !esPagoDelAlta(fila.pago) && <div className="tenant-cuota__pago">
         {fila.pago.status === "AWAITING_CONFIRMATION" && <span className="tenant-pago-estado tenant-pago-estado--info">Comprobante esperando confirmación del propietario</span>}
         {fila.pago.status === "CONFIRMED" && <span className="tenant-pago-estado tenant-pago-estado--ok">Pago confirmado</span>}
         {fila.pago.status === "REJECTED" && <span className="tenant-pago-estado tenant-pago-estado--bad">El propietario rechazó este comprobante{fila.pago.rejectionReason && `: ${fila.pago.rejectionReason}`}</span>}
@@ -183,6 +192,12 @@ export default function TenantPortal() {
     onPagoActualizado: () => void recargarEnSilencio(),
     // El inquilino no tiene renovación de sesión: si el stream se cierra, la recarga da 401 y la pantalla pasa a «sesión vencida».
     onSesionPerdida: () => void recargarEnSilencio(),
+  });
+
+  // El recargo corre a la medianoche argentina: con la pantalla abierta, se relee al cambiar el día.
+  useCambioDeDia({
+    activo: estado.fase === "listo" && estado.calendar.invoices.some(recargoEnCurso),
+    alCambiar: () => void recargarEnSilencio(),
   });
 
   useEffect(() => {

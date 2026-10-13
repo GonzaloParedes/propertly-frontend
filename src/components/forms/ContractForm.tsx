@@ -11,7 +11,6 @@ import type {
   Tenant,
 } from "@/lib/types";
 import { Building2, Check, FileText, TrendingUp, Upload } from "lucide-react";
-import { DEPOSIT_TYPES } from "@/lib/mock-data";
 import { inputClass, selectClass, fieldBorderStyle, labelClass } from "@/components/ui/field-styles";
 import Field from "@/components/ui/Field";
 import SectionCard from "@/components/ui/SectionCard";
@@ -30,7 +29,6 @@ interface ContractFormValues {
   rentAmount: string;
   paymentDueDay: string;
   depositAmount: string;
-  depositType: string;
   commissionPercent: string;
   commissionPayer: CommissionPayer | "";
   indexType: IndexType | "";
@@ -62,7 +60,6 @@ function validarDatosBasicos(values: ContractFormValues, errors: Errors) {
 
 function validarGarantiasYComision(values: ContractFormValues, errors: Errors) {
   if (!values.depositAmount) errors.depositAmount = "Ingrese el monto del depósito.";
-  if (!values.depositType) errors.depositType = "Seleccione el tipo de garantía.";
   if (!values.commissionPercent || Number(values.commissionPercent) < 0 || Number(values.commissionPercent) > 100) {
     errors.commissionPercent = "Ingrese un porcentaje entre 0 y 100.";
   }
@@ -164,7 +161,6 @@ export default function ContractForm() {
   const [currency, setCurrency] = useState<Currency>("ARS");
   const [paymentDueDay, setPaymentDueDay] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositType, setDepositType] = useState("");
   const [commissionPercent, setCommissionPercent] = useState("");
   const [commissionPayer, setCommissionPayer] = useState<CommissionPayer | "">("");
 
@@ -208,7 +204,6 @@ export default function ContractForm() {
       rentAmount,
       paymentDueDay,
       depositAmount,
-      depositType,
       commissionPercent,
       commissionPayer,
       indexType,
@@ -382,23 +377,6 @@ export default function ContractForm() {
               className={inputClass}
               style={fieldBorderStyle(!!errors.depositAmount)}
             />
-          </Field>
-          <Field label="Tipo de garantía" htmlFor="deposit-type" required error={errors.depositType}>
-            <select
-              id="deposit-type"
-              required
-              value={depositType}
-              onChange={(e) => setDepositType(e.target.value)}
-              className={selectClass}
-              style={fieldBorderStyle(!!errors.depositType)}
-            >
-              <option value="">Seleccionar…</option>
-              {DEPOSIT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
           </Field>
         </div>
 

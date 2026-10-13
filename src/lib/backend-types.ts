@@ -160,7 +160,32 @@ export type Currency = "ARS" | "USD";
 
 // Tres, no las cinco que ofrecía `ContractForm`: no existen aval bancario ni
 // «otro». Ver el pendiente de P1-4 en docs/backend/.
-export type DepositType = "CASH" | "SURETY_INSURANCE" | "PROPERTY_GUARANTEE";
+export type GuaranteeType = "PERSONAL" | "PROPERTY" | "SURETY_INSURANCE";
+
+/**
+ * Cada tipo usa sólo sus campos: el backend rechaza uno que no le corresponde
+ * (`GUARANTEE_FIELD_NOT_ALLOWED`). Un contrato lleva hasta tres, y al actualizar
+ * la lista reemplaza a la anterior.
+ */
+export interface GuaranteeRequest {
+  type: GuaranteeType;
+  /** PERSONAL y PROPERTY: obligatorio. */
+  fullName?: string;
+  taxId?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+  /** Sólo PERSONAL. */
+  employer?: string;
+  /** Sólo PROPERTY: obligatoria. */
+  propertyAddress?: string;
+  propertyRegistry?: string;
+  /** Sólo SURETY_INSURANCE: obligatoria. */
+  insurerName?: string;
+  policyNumber?: string;
+}
+
+export type GuaranteeResponse = GuaranteeRequest;
 
 // `SHARED`, no `SPLIT`: pedimos uno y mandaron el otro. Manda el backend.
 export type CommissionPayer = "LANDLORD" | "TENANT" | "SHARED";
@@ -195,17 +220,45 @@ export interface ContractRequest {
   /** Ausente = ARS. El backend no la exige y las cuotas heredan la del contrato. */
   currency?: Currency;
   depositAmount?: number;
-  depositType?: DepositType;
+  /** Hasta tres. Ausente en un contrato sin garantías. */
+  guarantees?: GuaranteeRequest[];
   /** 0 a 100. */
   commissionPercent?: number;
   commissionPayer?: CommissionPayer;
-  /** Reusa el enum de los ajustes: porcentaje o monto fijo. */
-  lateFeeType?: AdjustmentValueType;
+  /** Cómo se cobra el atraso, con su unidad. Ausente = el contrato no define punitorios. */
+  lateFeeMethod?: LateFeeMethod;
+  /** Porcentaje o monto según el método: ver `LateFeeMethod`. */
   lateFeeValue?: number;
   lateFeeGraceDays?: number;
   autoRenewal?: boolean;
   terminationNoticeMonths?: number;
   earlyTerminationPenalty?: number;
+  /** Sólo al crear, y obligatorio si el contrato ya tiene cuotas con vencimiento anterior a hoy. */
+  elapsed?: ElapsedDecision;
+}
+
+/** Las condiciones de un contrato, sin sus participantes: viajan aparte en el alta en un solo paso. */
+export type ContractTerms = Omit<ContractRequest, "propertyId" | "tenantId" | "elapsed">;
+
+/** Exactamente uno de los dos: una propiedad que ya existe, o los datos de una nueva. */
+export type PropertySelection = { id: number; new?: never } | { id?: never; new: PropertyRequest };
+export type TenantSelection = { id: number; new?: never } | { id?: never; new: TenantRequest };
+
+/**
+ * `POST /contracts/onboarding`: crea propiedad, inquilino y contrato juntos, o nada. Valida todo
+ * antes y ubica cada error con un prefijo (`property.`, `tenant.`, `contract.`).
+ */
+export interface ContractOnboardingRequest {
+  property: PropertySelection;
+  tenant: TenantSelection;
+  contract: ContractTerms;
+  elapsed?: ElapsedDecision;
+}
+
+/** Hasta qué mes se cobraron las cuotas transcurridas. */
+export interface ElapsedDecision {
+  /** «2026-08», o null si todavía no se cobró ninguna. */
+  paidThrough: string | null;
 }
 
 export interface ContractResponse {
@@ -226,12 +279,14 @@ export interface ContractResponse {
   /** Ausente = ARS. El backend no la exige y las cuotas heredan la del contrato. */
   currency?: Currency;
   depositAmount?: number;
-  depositType?: DepositType;
+  /** Hasta tres. Ausente en un contrato sin garantías. */
+  guarantees?: GuaranteeResponse[];
   /** 0 a 100. */
   commissionPercent?: number;
   commissionPayer?: CommissionPayer;
-  /** Reusa el enum de los ajustes: porcentaje o monto fijo. */
-  lateFeeType?: AdjustmentValueType;
+  /** Cómo se cobra el atraso, con su unidad. Ausente = el contrato no define punitorios. */
+  lateFeeMethod?: LateFeeMethod;
+  /** Porcentaje o monto según el método: ver `LateFeeMethod`. */
   lateFeeValue?: number;
   lateFeeGraceDays?: number;
   autoRenewal?: boolean;
@@ -268,11 +323,17 @@ export interface ContractListParams {
 // al construir Cobranzas — ya no queda deuda en este grupo.
 export type PaymentStatus = "AWAITING_CONFIRMATION" | "CONFIRMED" | "REJECTED";
 
+/** Quién cargó el pago. ONBOARDING: lo registró el alta de un contrato en curso, sin comprobante. */
+export type PaymentOrigin = "TENANT" | "LANDLORD" | "ONBOARDING";
+
 export interface PaymentResponse {
   id: number;
   invoiceId: number;
   status: PaymentStatus;
   submittedByTenant: boolean;
+  origin?: PaymentOrigin;
+  /** Falso en un pago de ONBOARDING: no hay archivo que bajar. */
+  hasReceipt?: boolean;
   receiptFileName?: string;
   receiptContentType?: string;
   receiptSizeBytes?: number;
@@ -293,6 +354,41 @@ export type InvoiceStatus = "PENDING" | "DUE" | "PAID";
 export type AdjustmentKind = "DISCOUNT" | "SURCHARGE";
 export type AdjustmentValueType = "FIXED_AMOUNT" | "PERCENTAGE";
 
+export type LateFeeMethod =
+  | "PERCENT_PER_DAY"
+  | "PERCENT_PER_MONTH"
+  | "PERCENT_PER_YEAR"
+  | "FIXED_PER_DAY"
+  | "FIXED_ONCE";
+
+/**
+ * NOT_STARTED: aún en los días de gracia. ACCRUING: corre cada día. FROZEN: hay un comprobante
+ * enviado que congela el importe en su fecha. SETTLED: la cuota se pagó y el recargo quedó firme.
+ */
+export type LateFeeState = "NOT_STARTED" | "ACCRUING" | "FROZEN" | "SETTLED";
+
+/** Lo calcula el backend al leer la cuota. El front sólo lo muestra: nunca lo recalcula. */
+export interface LateFeeResponse {
+  method: LateFeeMethod;
+  value: number;
+  /** Primer día con recargo, ya descontados los días de gracia. */
+  accruesFrom: string;
+  /** Fecha (Argentina) a la que está calculado `amount`. */
+  asOf: string;
+  daysLate: number;
+  amount: number;
+  /** Lo que sería `amount` mañana. Igual a `amount` cuando no corre más. */
+  nextDayAmount: number;
+  state: LateFeeState;
+  /** El propietario fijó o perdonó el recargo a mano. */
+  overridden: boolean;
+}
+
+export interface LateFeeOverrideRequest {
+  /** De 0 al recargo contractual de hoy; con 0 se perdona. */
+  amount: number;
+}
+
 export interface AdjustmentResponse {
   id: number;
   name: string;
@@ -308,6 +404,10 @@ export interface InvoiceResponse {
   dueDate: string;
   baseAmount: number;
   total: number;
+  /** `total` más el recargo por atraso: lo que se adeuda hoy. */
+  amountDue: number;
+  /** Null si el contrato no define punitorios. */
+  lateFee: LateFeeResponse | null;
   status: InvoiceStatus;
   confirmed: boolean;
   adjustments: AdjustmentResponse[];
@@ -441,4 +541,83 @@ export interface ResolvedAddressResponse {
   postalCode: string | null;
   latitude: number | null;
   longitude: number | null;
+}
+
+// --- Lectura de contratos desde el PDF (`/contract-imports`) ---
+
+export type ContractImportStatus = "QUEUED" | "PROCESSING" | "READY" | "FAILED" | "ABANDONED" | "COMPLETED";
+
+/**
+ * La etapa que el trabajo ya alcanzó. `READING_PAGES` (el OCR local) y `FINDING_DATA` (el modelo)
+ * corren en paralelo: el backend informa la que sigue activa, y `FINDING_DATA` primero si ambas.
+ */
+export type ContractImportStage = "OPENING" | "READING_PAGES" | "FINDING_DATA" | "CHECKING";
+
+/** `UNCERTAIN`: se cortó después de enviar el pedido, y sólo el propietario decide reintentar. */
+export type ContractImportFailureReason = "UNCERTAIN" | "EXTRACTION_FAILED" | (string & {});
+
+export type ImportFieldStatus = "LITERAL" | "INFERRED" | "MISSING" | "UNSUPPORTED";
+
+/** Dónde dice el contrato lo que se leyó. `start`/`end` son posiciones en el texto de la página, no en la imagen. */
+export interface ImportEvidence {
+  page: number;
+  quote: string;
+  verified: boolean;
+  start?: number;
+  end?: number;
+}
+
+/** Un dato leído, con su estado y de dónde salió. El texto viene de un archivo: es de poca confianza. */
+export interface ImportField {
+  value: unknown;
+  status: ImportFieldStatus;
+  evidence: ImportEvidence[];
+  note: string | null;
+  /** Códigos o frases técnicas en inglés: la pantalla las traduce, nunca las muestra tal cual. */
+  validation: string[];
+}
+
+/** Una cláusula que la app no puede representar. `reason` es, por ejemplo, `MULTIPLE_TENANTS`. */
+export interface ImportUnsupported {
+  field: string;
+  reason: string;
+  evidence: ImportEvidence[];
+}
+
+/** Sugerencias, nunca cambios automáticos: la propiedad o el inquilino que el propietario ya tiene. */
+export interface ImportMatches {
+  property?: { id: number; by: "ADDRESS" };
+  tenant?: { id: number; by: "TAX_ID" };
+}
+
+export interface ContractImportResponse {
+  id: number;
+  status: ContractImportStatus;
+  stage: ContractImportStage | null;
+  pagesDone: number | null;
+  pagesTotal: number | null;
+  fileName: string | null;
+  pages: number | null;
+  failureReason: ContractImportFailureReason | null;
+  /** Sólo en `READY`, por clave del catálogo: `tenant.firstName`, `rent.initialAmount`… */
+  fields: Record<string, ImportField> | null;
+  unsupported: ImportUnsupported[] | null;
+  matches: ImportMatches | null;
+}
+
+/** Qué hizo el propietario con cada dato antes de crear el contrato. */
+export type ImportFieldAction = "UNTOUCHED" | "CONFIRMED" | "CORRECTED" | "FILLED";
+
+export interface ContractImportCompletionRequest {
+  contractId: number;
+  /** Los valores finales, por clave del catálogo. */
+  finalValues: Record<string, unknown>;
+  fieldActions: Record<string, ImportFieldAction>;
+}
+
+/** `GET /contract-imports/quota`: cuántas lecturas le quedan al propietario. */
+export interface ContractImportQuotaResponse {
+  used: number;
+  limit: number;
+  available: boolean;
 }

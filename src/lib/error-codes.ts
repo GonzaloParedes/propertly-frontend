@@ -16,10 +16,27 @@ export const ERROR = {
   ADJUSTMENT_ON_CONFIRMED_INVOICE: "urn:alquia:error:adjustment-on-confirmed-invoice",
   INVOICE_TOTAL_NEGATIVE: "urn:alquia:error:invoice-total-negative",
   SCHEMA_CHANGE_OVER_PAID_INVOICE: "urn:alquia:error:schema-change-over-paid-invoice",
+  ELAPSED_INVOICES_DECISION_REQUIRED: "urn:alquia:error:elapsed-invoices-decision-required",
+  ELAPSED_PAID_THROUGH_OUT_OF_RANGE: "urn:alquia:error:elapsed-paid-through-out-of-range",
+  GUARANTEES_LIMIT_EXCEEDED: "urn:alquia:error:guarantees-limit-exceeded",
+  GUARANTEE_FIELD_NOT_ALLOWED: "urn:alquia:error:guarantee-field-not-allowed",
+  LATE_FEE_NOT_CONFIGURED: "urn:alquia:error:late-fee-not-configured",
+  LATE_FEE_ALREADY_SETTLED: "urn:alquia:error:late-fee-already-settled",
   CONTRACT_ALREADY_HAS_SUCCESSOR: "urn:alquia:error:contract-already-has-successor",
   EFFECTIVE_FROM_NOT_FIRST_OF_MONTH: "urn:alquia:error:effective-from-not-first-of-month",
   EFFECTIVE_FROM_NOT_FUTURE: "urn:alquia:error:effective-from-not-future",
   EFFECTIVE_FROM_OUTSIDE_TERM: "urn:alquia:error:effective-from-outside-term",
+  IMPORT_FILE_TOO_LARGE: "urn:alquia:error:import-file-too-large",
+  IMPORT_FILE_NOT_PDF: "urn:alquia:error:import-file-not-pdf",
+  IMPORT_FILE_CORRUPT: "urn:alquia:error:import-file-corrupt",
+  IMPORT_FILE_ENCRYPTED: "urn:alquia:error:import-file-encrypted",
+  IMPORT_FILE_TOO_MANY_PAGES: "urn:alquia:error:import-file-too-many-pages",
+  IMPORT_FILE_ACTIVE_CONTENT: "urn:alquia:error:import-file-active-content",
+  IMPORT_NOT_READY: "urn:alquia:error:import-not-ready",
+  IMPORT_NOT_RETRYABLE: "urn:alquia:error:import-not-retryable",
+  IMPORT_ALREADY_COMPLETED: "urn:alquia:error:import-already-completed",
+  IMPORT_QUOTA_EXCEEDED: "urn:alquia:error:import-quota-exceeded",
+  AI_IMPORTS_UNAVAILABLE: "urn:alquia:error:ai-imports-unavailable",
 } as const;
 
 export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
@@ -42,10 +59,28 @@ const COPY: Record<string, string> = {
   [ERROR.INVOICE_TOTAL_NEGATIVE]: "El total de la cuota no puede quedar negativo.",
   [ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE]:
     "Ya hay una cuota paga desde ese mes, así que no se puede programar el cambio ahí.",
+  [ERROR.ELAPSED_INVOICES_DECISION_REQUIRED]: "Hay cuotas anteriores a hoy. Indique hasta qué mes le pagaron.",
+  [ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE]: "Ese mes no corresponde a una cuota anterior a hoy. Elija otro.",
+  [ERROR.GUARANTEES_LIMIT_EXCEEDED]: "Un contrato admite hasta tres garantías.",
+  [ERROR.GUARANTEE_FIELD_NOT_ALLOWED]: "Hay un dato que no corresponde al tipo de garantía. Revise cada una.",
+  [ERROR.LATE_FEE_NOT_CONFIGURED]: "Este contrato no tiene punitorios, así que la cuota no tiene recargo.",
+  [ERROR.LATE_FEE_ALREADY_SETTLED]: "La cuota ya está paga: su recargo quedó firme y no se puede cambiar.",
   [ERROR.CONTRACT_ALREADY_HAS_SUCCESSOR]: "Ese contrato ya tiene un cambio programado.",
   [ERROR.EFFECTIVE_FROM_NOT_FIRST_OF_MONTH]: "El cambio tiene que arrancar el primer día de un mes.",
   [ERROR.EFFECTIVE_FROM_NOT_FUTURE]: "El cambio tiene que arrancar en un mes posterior al actual.",
   [ERROR.EFFECTIVE_FROM_OUTSIDE_TERM]: "Ese mes queda fuera del plazo del contrato.",
+  [ERROR.IMPORT_FILE_TOO_LARGE]: "El archivo es demasiado grande. El máximo es 20 MB.",
+  [ERROR.IMPORT_FILE_NOT_PDF]: "Ese archivo no es un PDF. Si tiene el contrato en papel, escanéelo y guárdelo como PDF.",
+  [ERROR.IMPORT_FILE_CORRUPT]: "No pudimos abrir el archivo: parece dañado. Pruebe con otra copia.",
+  [ERROR.IMPORT_FILE_ENCRYPTED]: "El PDF tiene contraseña. Guárdelo sin contraseña y vuelva a subirlo.",
+  [ERROR.IMPORT_FILE_TOO_MANY_PAGES]: "El PDF tiene demasiadas páginas para leerlo. Suba solo el contrato.",
+  [ERROR.IMPORT_FILE_ACTIVE_CONTENT]:
+    "Este PDF trae contenido que no podemos abrir con seguridad. Pruebe con una copia escaneada o impresa a PDF.",
+  [ERROR.IMPORT_NOT_READY]: "Todavía estamos leyendo el contrato. Espere un momento.",
+  [ERROR.IMPORT_NOT_RETRYABLE]: "Esta lectura no se puede volver a intentar. Suba el archivo de nuevo.",
+  [ERROR.IMPORT_ALREADY_COMPLETED]: "Este contrato ya se creó desde esa lectura.",
+  [ERROR.IMPORT_QUOTA_EXCEEDED]: "Ya usó todas las lecturas de contratos que tiene disponibles. Puede cargar el contrato a mano.",
+  [ERROR.AI_IMPORTS_UNAVAILABLE]: "La lectura de contratos no está disponible en este momento. Puede cargar el contrato a mano.",
 };
 
 export const FALLBACK = "No se pudo completar la acción. Inténtelo de nuevo más tarde.";
@@ -65,4 +100,20 @@ export function copyDeError(
     return overrides?.[err.type] ?? COPY[err.type] ?? fallback;
   }
   return fallback;
+}
+
+function idDeExtension(err: unknown, clave: string): number | null {
+  if (!(err instanceof ApiError)) return null;
+  const valor = err.extensions?.[clave];
+  return typeof valor === "number" ? valor : null;
+}
+
+/** El inquilino que ya existe con ese CUIT o teléfono, en un 409 del alta de contrato. */
+export function idDelInquilinoExistente(err: unknown): number | null {
+  return idDeExtension(err, "existingTenantId");
+}
+
+/** El contrato vigente de la propiedad, en un 409 del alta de contrato. */
+export function idDelContratoActivo(err: unknown): number | null {
+  return idDeExtension(err, "activeContractId");
 }

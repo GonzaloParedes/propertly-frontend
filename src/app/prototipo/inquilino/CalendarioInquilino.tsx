@@ -11,6 +11,7 @@ import {
   type MesCalendarioInquilino,
 } from "@/lib/portal-inquilino";
 import type { TenantCalendarCoverage, TenantCalendarInvoiceResponse, TenantCalendarPreInvoiceResponse } from "@/lib/backend-types";
+import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import "./calendario-inquilino.css";
 
 // Datos ficticios para probar el historial de un contrato que fue reemplazado.
@@ -28,7 +29,7 @@ const CUOTAS: TenantCalendarInvoiceResponse[] = [
       period: `2025-${String(mes + 1).padStart(2, "0")}-01`,
       dueDate: `2025-${String(mes + 1).padStart(2, "0")}-10`,
       baseAmount: 410000,
-      total: 410000,
+      total: 410000, amountDue: 410000, lateFee: null,
       status: mes === 8 ? "DUE" as const : "PAID" as const,
       confirmed: true,
       adjustments: [],
@@ -44,7 +45,7 @@ const CUOTAS: TenantCalendarInvoiceResponse[] = [
       period: `2025-${String(mes + 1).padStart(2, "0")}-01`,
       dueDate: `2025-${String(mes + 1).padStart(2, "0")}-10`,
       baseAmount: 455000,
-      total: 455000,
+      total: 455000, amountDue: 455000, lateFee: null,
       status: "PAID" as const,
       confirmed: true,
       adjustments: [],
@@ -58,7 +59,7 @@ const CUOTAS: TenantCalendarInvoiceResponse[] = [
     period: `2026-${String(mes + 1).padStart(2, "0")}-01`,
     dueDate: `2026-${String(mes + 1).padStart(2, "0")}-10`,
     baseAmount: 478691,
-    total: 478691,
+    total: 478691, amountDue: 478691, lateFee: null,
     status: "PAID" as const,
     confirmed: true,
     adjustments: [],
@@ -67,23 +68,23 @@ const CUOTAS: TenantCalendarInvoiceResponse[] = [
   })),
   {
     id: 202609, contractId: 2, period: "2026-09-01", dueDate: "2026-09-10",
-    baseAmount: 478691, total: 478691, status: "DUE", confirmed: true,
+    baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "DUE", confirmed: true,
     adjustments: [], payments: [], canSubmitPayment: true,
   },
   {
     id: 202610, contractId: 2, period: "2026-10-01", dueDate: "2026-10-10",
-    baseAmount: 478691, total: 480022, status: "PENDING", confirmed: true,
+    baseAmount: 478691, total: 480022, amountDue: 480022, lateFee: null, status: "PENDING", confirmed: true,
     adjustments: [{ id: 7, name: "Reparación del calefón", kind: "SURCHARGE", valueType: "FIXED_AMOUNT", value: 1331 }],
     payments: [{ id: 10, invoiceId: 202610, status: "AWAITING_CONFIRMATION", submittedByTenant: true }], canSubmitPayment: false,
   },
   {
     id: 202611, contractId: 2, period: "2026-11-01", dueDate: "2026-11-10",
-    baseAmount: 478691, total: 478691, status: "PENDING", confirmed: true,
+    baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "PENDING", confirmed: true,
     adjustments: [], payments: [], canSubmitPayment: true,
   },
   {
     id: 202612, contractId: 2, period: "2026-12-01", dueDate: "2026-12-10",
-    baseAmount: 478691, total: 478691, status: "PENDING", confirmed: false,
+    baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "PENDING", confirmed: false,
     adjustments: [], payments: [], canSubmitPayment: false,
   },
   ...Array.from({ length: 3 }, (_, mes) => ({
@@ -92,7 +93,7 @@ const CUOTAS: TenantCalendarInvoiceResponse[] = [
     period: `2027-${String(mes + 1).padStart(2, "0")}-01`,
     dueDate: `2027-${String(mes + 1).padStart(2, "0")}-10`,
     baseAmount: 478691,
-    total: 478691,
+    total: 478691, amountDue: 478691, lateFee: null,
     status: "PENDING" as const,
     confirmed: false,
     adjustments: [],
@@ -266,6 +267,7 @@ export default function CalendarioInquilino() {
               <div><span>Vencimiento</span><strong>{filaSeleccionada.vencimiento}</strong></div>
               <div><span>Importe</span><strong>{filaSeleccionada.monto}</strong></div>
             </div>
+            {filaSeleccionada.recargo && <RecargoPorAtraso vista={filaSeleccionada.recargo} importeHoy={filaSeleccionada.monto} />}
             {filaSeleccionada.ajustes.length > 0 && (
               <dl className="calinquilino__ajustes" aria-label="Detalle del importe">
                 <div><dt>Importe del contrato</dt><dd>{filaSeleccionada.importeBase}</dd></div>
