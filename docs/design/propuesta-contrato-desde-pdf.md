@@ -2,8 +2,8 @@
 
 **Estado: implementada contra el backend** (cambio `contract-pdf-import`; ver
 «Cargar un contrato desde el PDF» en `docs/design/sistema-ui.md`). El prototipo
-con la lectura simulada sigue en `/prototipo` → Contratos → Nuevo contrato
-(`ContractFromPdfDemo`), para las revisiones de diseño. Lo que sigue es la
+con la lectura simulada se retiró (12/10/2026) una vez implementado el flujo
+real; `/prototipo` ya no ofrece la carga desde el PDF. Lo que sigue es la
 propuesta original, con las decisiones que la implementación respetó y una
 que cambió: **R5**.
 
@@ -156,13 +156,3 @@ sobre el PDF, que es exactamente lo que necesita «de dónde salió cada dato».
 citas no se pueden pedir junto con la salida estructurada en la misma llamada;
 hay que resolverlo en el diseño de la API (dos pasos, o el JSON con el texto
 citado adentro).
-
-## Qué es maqueta en el prototipo
-
-- La lectura: tarda ~4 s y devuelve siempre el contrato de ejemplo, sea cual sea
-  el PDF. Un archivo con «ilegible» en el nombre muestra la pantalla de falla.
-- La vista del documento es HTML que imita la primera página; la real sería el
-  PDF con los mismos resaltados.
-- «Crear contrato» no guarda nada (igual que el resto de `/prototipo`).
-- La pantalla de elección sólo aparece en `/prototipo` (`demo`): fuera de ahí el
-  asistente sigue igual que siempre.

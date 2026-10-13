@@ -694,8 +694,6 @@
 /* La espera: qué se está buscando, no sólo un anillo. */
 .owner-pdf-reading{text-align:center}
 .owner-pdf-reading>p{margin-left:auto!important;margin-right:auto!important}
-.owner-pdf-reading__spin{display:inline-grid;width:64px;height:64px;margin-bottom:var(--esp-20);place-items:center;border-radius:999px;background:var(--indigo-suave);color:var(--indigo)}
-.owner-pdf-reading__spin svg,.owner-pdf-reading__spin>*{transform:scale(1.5)}
 .owner-pdf-reading__arco{display:inline-block;margin-bottom:var(--esp-26)}
 .owner-pdf-reading ol{display:inline-grid;gap:var(--esp-12);margin:0;padding:0;list-style:none;text-align:left}
 .owner-pdf-reading li{display:flex;align-items:center;gap:var(--esp-12);color:var(--gris);font-size:17px}
@@ -733,19 +731,6 @@
 .owner-pdf-item__quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
 .owner-pdf-pending{margin-left:auto;color:var(--gris);font-size:15px;font-weight:600}
 .owner-pdf-pending+.owner-wizard-next{margin-left:0}
-
-/* El documento es papel: se queda claro también en modo oscuro. */
-.owner-pdf-paper{border-radius:14px;background:#E9E7F2}
-.owner-pdf-paper__bar{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:var(--esp-8);padding:var(--esp-10) var(--esp-14);background:#E9E7F2;color:#514D63;font-size:14px}
-.owner-pdf-paper__bar span{min-width:0;flex:1;overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
-.owner-pdf-paper__page{margin:0 var(--esp-14) var(--esp-14);padding:var(--esp-32) 36px;border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(30,27,46,.12);color:#1E1B2E;font:15px/1.65 Georgia,'Times New Roman',serif}
-.owner-pdf-paper__page h3{margin:0 0 var(--esp-18);font:700 14px/1.4 Georgia,serif;letter-spacing:.04em;text-align:center}
-.owner-pdf-paper__page p{margin:0 0 var(--esp-12);text-align:justify}
-.owner-pdf-paper mark{padding:1px 2px;border-radius:4px;background:#ECE9FA;color:inherit;transition:background .2s ease,box-shadow .2s ease}
-.owner-pdf-paper mark[data-activo]{background:#D9D3F6;box-shadow:0 0 0 2px #5B4BC4}
-.owner-pdf-paper__fade{opacity:.45}
-
-@media (prefers-reduced-motion:reduce){.owner-pdf-paper mark{transition:none}}
 
 @media (max-width:900px){
   /* Sin lugar para el documento al lado: cada dato muestra su cita. */
@@ -824,6 +809,7 @@
 .owner-pdf-quote p+p{margin-top:var(--esp-10)}
 .owner-pdf-quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
 .owner-pdf-quote--hint{background:transparent;color:var(--gris);font:15px/1.5 var(--font-nunito-sans),sans-serif}
+/* El documento es papel: se queda claro también en modo oscuro. */
 .owner-pdf-viewer{overflow:hidden;border-radius:14px;background:#E9E7F2}
 .owner-pdf-viewer__bar{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-8);padding:var(--esp-10) var(--esp-14);color:#514D63;font-size:14px}
 .owner-pdf-viewer__bar span{min-width:0;flex:1;overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}

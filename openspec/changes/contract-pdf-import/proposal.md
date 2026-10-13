@@ -50,4 +50,4 @@ None at the requirement level. The manual wizard keeps its behavior; it gains an
   - `late-fee-surcharge` and `contract-guarantor`, for those fields in "También figura en el contrato".
 
   The flow cannot ship before the first three.
-- `/prototipo` keeps its simulated version for design reviews.
+- The simulated prototype (`ContractFromPdfDemo`) is removed once the real flow exists; `/prototipo` no longer offers the PDF choice.

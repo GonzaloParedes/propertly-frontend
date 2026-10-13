@@ -17,7 +17,6 @@ import { faltaResponder, mesesTranscurridos, paidThroughDe, periodosDelBackend, 
 import PagosTranscurridos from "@/components/dashboard/PagosTranscurridos";
 import { formatearDireccion } from "@/lib/tenant-rows";
 import ContractFromPdf from "@/components/dashboard/ContractFromPdf";
-import ContractFromPdfDemo from "@/components/dashboard/ContractFromPdfDemo";
 import OtrasCondiciones from "@/components/dashboard/OtrasCondiciones";
 import Dialog from "@/components/ui/Dialog";
 import { armarOtrasCondiciones, hayOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
@@ -580,15 +579,15 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
   const [correo, setCorreo] = useState("");
   const [telefono, setTelefono] = useState("");
   // Antes del primer paso del contrato se elige cómo cargarlo. Con una propiedad ya elegida
-  // (se abrió desde ella) se va directo a mano: el contrato leído no la tendría en cuenta.
-  const ofrecePdf = tipo === "contract" && !preseleccionada;
+  // (se abrió desde ella) se va directo a mano: el contrato leído no la tendría en cuenta. En
+  // /prototipo (`demo`) no hay sesión ni backend que lea el PDF, así que tampoco se ofrece.
+  const ofrecePdf = tipo === "contract" && !preseleccionada && !demo;
   const [modo, setModo] = useState<ModoContrato | "elegir">(ofrecePdf ? "elegir" : "manual");
   const [modoElegido, setModoElegido] = useState<ModoContrato | null>(null);
   const eligiendo = modo === "elegir";
-  const [cuota, setCuota] = useState<CuotaDeLecturas>({ estado: demo ? "desconocida" : "cargando" });
+  const [cuota, setCuota] = useState<CuotaDeLecturas>({ estado: "cargando" });
   useEffect(() => {
-    // En /prototipo no hay sesión: la lectura es simulada y no hay cuota que preguntar.
-    if (!ofrecePdf || demo) return;
+    if (!ofrecePdf) return;
     let cancelado = false;
     AlquiaBackendClient.contractImports.quota()
       .then((respuesta) => {
@@ -600,7 +599,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
       })
       .catch(() => { if (!cancelado) setCuota({ estado: "desconocida" }); });
     return () => { cancelado = true; };
-  }, [ofrecePdf, demo]);
+  }, [ofrecePdf]);
   // Sólo el alta de contrato necesita las listas, y en /prototipo no se piden:
   // esa ruta no tiene sesión y las dos llamadas darían 401.
   useEffect(() => {
@@ -1110,7 +1109,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
 
   if (modo === "pdf") {
     const alternar = { onBack: () => setModo("elegir"), onManual: () => { setModoElegido("manual"); setModo("manual"); }, onClose, onComplete };
-    return demo ? <ContractFromPdfDemo demo={demo} {...alternar} /> : <ContractFromPdf {...alternar} onOpenContract={onOpenContract} />;
+    return <ContractFromPdf {...alternar} onOpenContract={onOpenContract} />;
   }
 
   // Desde el primer paso a mano, «Atrás» vuelve a la elección.
