@@ -132,7 +132,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
         {navigation()}
         <div className="owner-nav__profile">
           <span className="owner-avatar" aria-hidden="true">{iniciales}</span>
-          <span><strong>{nombre}</strong>{user && <small>{user.email}</small>}</span>
+          <span className="owner-nav__profile-text"><strong>{nombre}</strong>{user && <small>{user.email}</small>}</span>
           <span className="owner-nav__profile-end"><ThemeToggle /></span>
         </div>
         <button type="button" className="owner-nav__logout" onClick={() => void logout()}><Icon name="logout" /><span>Cerrar sesión</span></button>

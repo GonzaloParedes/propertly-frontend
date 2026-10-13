@@ -333,7 +333,11 @@
 
 /* Cambio de tema (ALQ-38): a la derecha del perfil en el sidebar, y junto al
    avatar/cierre en la barra y el cajón móviles. */
-.owner-nav__profile-end{margin-left:auto}
+.owner-nav__profile-end{flex:none;margin-left:auto}
+/* El texto del perfil cede el ancho: sin min-width:0 el ítem flex no se achica
+   por debajo del email y Safari empuja el botón de tema fuera del sidebar. */
+.owner-nav__profile-text{flex:1;min-width:0;overflow-wrap:anywhere}
+.owner-nav__profile .owner-nav__profile-text small{max-width:none}
 .owner-mobile-header__end,.owner-drawer__top-end{display:flex;align-items:center;gap:var(--esp-8)}
 
 .owner-table td small{
