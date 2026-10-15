@@ -205,8 +205,13 @@ function Icon({ name, size = 22 }: Readonly<{ name: IconName; size?: number }>) 
   return <AppIcon name={name} size={size} />;
 }
 
-function Option({ selected, icon, title, description, onClick, disabled = false }: Readonly<{ selected: boolean; icon: IconName; title: string; description: string; onClick: () => void; disabled?: boolean }>) {
-  return <button type="button" className="owner-wizard-option" role="radio" aria-checked={selected} aria-disabled={disabled || undefined} disabled={disabled} onClick={onClick}><span className="owner-wizard-option__icon"><Icon name={icon} /></span><span><b>{title}</b><small>{description}</small></span><span className="owner-wizard-option__check"><Icon name="check" /></span></button>;
+/**
+ * `nota` es una línea aparte bajo la descripción. Con `nota: null` la línea queda reservada pero vacía:
+ * sirve para un dato que todavía se está trayendo, así la tarjeta no crece cuando llega.
+ */
+function Option({ selected, icon, title, description, nota, onClick, disabled = false }: Readonly<{ selected: boolean; icon: IconName; title: string; description: string; nota?: string | null; onClick: () => void; disabled?: boolean }>) {
+  const lineaDeNota = nota === null ? <small className="owner-wizard-option__nota" aria-hidden="true">{"\u00a0"}</small> : nota && <small className="owner-wizard-option__nota">{nota}</small>;
+  return <button type="button" className="owner-wizard-option" role="radio" aria-checked={selected} aria-disabled={disabled || undefined} disabled={disabled} onClick={onClick}><span className="owner-wizard-option__icon"><Icon name={icon} /></span><span><b>{title}</b><small>{description}</small>{lineaDeNota}</span><span className="owner-wizard-option__check"><Icon name="check" /></span></button>;
 }
 
 /** El aviso de un dato que el backend rechazó, junto a su campo. El texto de él está en inglés: sólo se usa para saber dónde. */
@@ -463,15 +468,22 @@ function cuotaDeLecturas(respuesta: { used: number; limit: number; available: bo
 function descripcionDeSubirPdf(cuota: CuotaDeLecturas): string {
   if (cuota.estado === "agotada") return "Ya usó todas las lecturas que tiene disponibles. Puede cargar el contrato a mano.";
   if (cuota.estado === "apagada") return "La lectura de contratos no está disponible en este momento. Puede cargar el contrato a mano.";
-  const base = "Completamos los datos desde el PDF. Usted los revisa antes de guardar.";
-  if (cuota.estado !== "disponible") return base;
-  const quedan = cuota.restantes === 1 ? "Le queda 1 lectura." : `Le quedan ${cuota.restantes} lecturas.`;
-  return `${base} ${quedan}`;
+  return "Completamos los datos desde el PDF. Usted los revisa antes de guardar.";
+}
+
+/**
+ * Cuántas lecturas le quedan, en su propia línea. Mientras se pregunta, la línea queda reservada
+ * (`null`): la cuota llega un momento después de abrir y, si se sumara al texto, la tarjeta crecería.
+ */
+function notaDeSubirPdf(cuota: CuotaDeLecturas): string | null | undefined {
+  if (cuota.estado === "cargando") return null;
+  if (cuota.estado !== "disponible") return undefined;
+  return cuota.restantes === 1 ? "Le queda 1 lectura." : `Le quedan ${cuota.restantes} lecturas.`;
 }
 
 function ContractModeStep({ selected, onSelect, cuota }: Readonly<{ selected: ModoContrato | null; onSelect: (modo: ModoContrato) => void; cuota: CuotaDeLecturas }>) {
   const sinLecturas = cuota.estado === "agotada" || cuota.estado === "apagada";
-  return <><h1>¿Cómo quiere cargar el contrato?</h1><p>Si ya lo tiene firmado, lo leemos por usted y le mostramos los datos para que los revise.</p><div className="owner-wizard-options" role="radiogroup" aria-label="Cómo cargar el contrato"><Option selected={selected === "pdf"} icon="file" title="Subir el contrato firmado" description={descripcionDeSubirPdf(cuota)} disabled={sinLecturas} onClick={() => onSelect("pdf")} /><Option selected={selected === "manual"} icon="edit" title="Cargarlo a mano" description="Le pedimos los datos de a uno, en 7 pasos." onClick={() => onSelect("manual")} /></div></>;
+  return <><h1>¿Cómo quiere cargar el contrato?</h1><p>Si ya lo tiene firmado, lo leemos por usted y le mostramos los datos para que los revise.</p><div className="owner-wizard-options" role="radiogroup" aria-label="Cómo cargar el contrato"><Option selected={selected === "pdf"} icon="file" title="Subir el contrato firmado" description={descripcionDeSubirPdf(cuota)} nota={notaDeSubirPdf(cuota)} disabled={sinLecturas} onClick={() => onSelect("pdf")} /><Option selected={selected === "manual"} icon="edit" title="Cargarlo a mano" description="Le pedimos los datos de a uno, en 7 pasos." onClick={() => onSelect("manual")} /></div></>;
 }
 
 type Conflicto = { tipo: "inquilino"; id: number; porTelefono: boolean } | { tipo: "propiedad"; contratoId: number | null };

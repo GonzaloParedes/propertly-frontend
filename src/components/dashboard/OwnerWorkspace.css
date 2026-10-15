@@ -331,12 +331,16 @@
    pensado para separar items entre sí, no una sección de la anterior. */
 .owner-nav__links > .owner-nav__group{margin-top:24px}
 
-/* Cambio de tema (ALQ-38): a la derecha del perfil en el sidebar, y junto al
-   avatar/cierre en la barra y el cajón móviles. */
-.owner-nav__profile-end{flex:none;margin-left:auto}
-/* El texto del perfil cede el ancho: sin min-width:0 el ítem flex no se achica
-   por debajo del email y Safari empuja el botón de tema fuera del sidebar. */
-.owner-nav__profile-text{flex:1;min-width:0;overflow-wrap:anywhere}
+/* Cambio de tema (ALQ-38): en el sidebar comparte fila con «Cerrar sesión»,
+   así el perfil tiene todo el ancho para el nombre; en la barra y el cajón
+   móviles va junto al avatar/cierre. */
+.owner-nav__footer{display:flex;align-items:center;gap:var(--esp-8);margin-top:var(--esp-12)}
+.owner-nav__footer .owner-nav__logout{flex:1;min-width:0;margin-top:0}
+.owner-nav__footer .owner-icon-button{flex:none}
+/* El texto del perfil cede el ancho (min-width:0): si no, el email no se
+   achica y Safari desborda el sidebar. Nombre y email se cortan con «…». */
+.owner-nav__profile-text{flex:1;min-width:0}
+.owner-nav__profile .owner-nav__profile-text strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .owner-nav__profile .owner-nav__profile-text small{max-width:none}
 .owner-mobile-header__end,.owner-drawer__top-end{display:flex;align-items:center;gap:var(--esp-8)}
 
@@ -826,3 +830,7 @@
 /* <fieldset> como agrupador accesible: sin el borde, el relleno ni el ancho mínimo del navegador.
    Con :where() no pesa más que la clase propia de cada uso (p. ej. .owner-garantia, que trae su relleno y borde). */
 :where(.owner-fieldset){min-width:0;margin-inline:0;padding:0;border:0}
+
+/* Línea aparte de una opción del asistente (las lecturas que quedan): se
+   reserva mientras carga para que la tarjeta no crezca al llegar el dato. */
+.owner-wizard-option .owner-wizard-option__nota{margin-top:var(--esp-2)}
