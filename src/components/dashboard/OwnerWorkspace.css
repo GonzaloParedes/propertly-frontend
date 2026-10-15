@@ -830,3 +830,7 @@
 /* <fieldset> como agrupador accesible: sin el borde, el relleno ni el ancho mínimo del navegador.
    Con :where() no pesa más que la clase propia de cada uso (p. ej. .owner-garantia, que trae su relleno y borde). */
 :where(.owner-fieldset){min-width:0;margin-inline:0;padding:0;border:0}
+
+/* Línea aparte de una opción del asistente (las lecturas que quedan): se
+   reserva mientras carga para que la tarjeta no crezca al llegar el dato. */
+.owner-wizard-option .owner-wizard-option__nota{margin-top:var(--esp-2)}
