@@ -932,6 +932,13 @@ function CollectionsView({
   </>;
 }
 
+/** La proyección de Inicio: calculada, con error, o todavía en camino. */
+type ProyeccionDeInicio = Proyeccion | "error" | null;
+/** Los contratos a medio cargar: la lista, "error" si no se pudieron traer, o null mientras se traen. */
+type BorradoresDeInicio = FilaDeBorrador[] | "error" | null;
+/** Los aumentos de un contrato: la lista, con error, o todavía en camino. */
+type CargaDeAumentos = RentIncrementResponse[] | "error" | null;
+
 type OverviewData = Readonly<{
   cobranza: ResumenCobranza;
   cartera: ResumenCartera;
@@ -948,9 +955,9 @@ type OverviewProps = Readonly<{
   nextMonth: string;
   data: OverviewData | null;
   hasError: boolean;
-  projection: Proyeccion | "error" | null;
+  projection: ProyeccionDeInicio;
   /** Los contratos a medio cargar; "error" si no se pudieron traer; null mientras se traen. */
-  borradores: FilaDeBorrador[] | "error" | null;
+  borradores: BorradoresDeInicio;
   onCreateProperty: () => void;
   onCreateContract: () => void;
   onOpenCollections: () => void;
@@ -960,7 +967,7 @@ type OverviewProps = Readonly<{
   onRetryDrafts: () => void;
 }>;
 
-function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: Proyeccion | "error" | null; nextMonth: string }>) {
+function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: ProyeccionDeInicio; nextMonth: string }>) {
   if (projection === "error") return null;
 
   if (projection === null) {
@@ -1001,7 +1008,7 @@ function NoActiveContracts({ hasContracts, onCreateContract }: Readonly<{ hasCon
  */
 function ActionsSection({ avisos, borradores, hayContratos, onOpenCollections, onResumeDraft, onDiscardDraft, onRetryDrafts }: Readonly<{
   avisos: Aviso[];
-  borradores: FilaDeBorrador[] | "error" | null;
+  borradores: BorradoresDeInicio;
   hayContratos: boolean;
   onOpenCollections: () => void;
   onResumeDraft: (draftId: number) => void;
@@ -1400,7 +1407,7 @@ function ContractAdjustmentHistory({
   lines,
   contract,
 }: Readonly<{
-  increments: RentIncrementResponse[] | "error" | null;
+  increments: CargaDeAumentos;
   lines: ReturnType<typeof historialDeAumentos>;
   contract: ContractResponse;
 }>) {
@@ -1418,7 +1425,7 @@ type ContractDetailProps = Readonly<{
   demo: boolean;
   demoContract: (typeof contracts)[number];
   contractLoad: ContractLoad;
-  increments: RentIncrementResponse[] | "error" | null;
+  increments: CargaDeAumentos;
   scheduledContract: ContractResponse | null;
   successorId: number | null;
   unconfirmedInvoices: FilaCobranza[];
@@ -1583,7 +1590,7 @@ function useContractDetailLoad({ enabled, selectedId, refreshKey, setContract, s
   selectedId: string;
   refreshKey: number;
   setContract: React.Dispatch<React.SetStateAction<ContractDetailLoad>>;
-  setIncrements: React.Dispatch<React.SetStateAction<RentIncrementResponse[] | "error" | null>>;
+  setIncrements: React.Dispatch<React.SetStateAction<CargaDeAumentos>>;
 }>) {
   useEffect(() => {
     if (!enabled) return;
@@ -1626,7 +1633,7 @@ function useScheduledContractLoad({ successorId, refreshKey, setScheduled }: Rea
 function useOverviewLoad({ enabled, setOverview, setProjection }: Readonly<{
   enabled: boolean;
   setOverview: React.Dispatch<React.SetStateAction<OverviewData | LoadFailure | null>>;
-  setProjection: React.Dispatch<React.SetStateAction<Proyeccion | "error" | null>>;
+  setProjection: React.Dispatch<React.SetStateAction<ProyeccionDeInicio>>;
 }>) {
   useEffect(() => {
     if (!enabled) return;
@@ -1929,7 +1936,7 @@ function overviewCalendar(demo: boolean) {
   return { hoy: hoyEnLetras(), mesActual: mesActualEnLetras(), mesSiguiente: mesSiguienteEnLetras() };
 }
 
-function borradoresVisibles(demo: boolean, carga: { ok: FilaDeBorrador[] } | LoadFailure | null): FilaDeBorrador[] | "error" | null {
+function borradoresVisibles(demo: boolean, carga: { ok: FilaDeBorrador[] } | LoadFailure | null): BorradoresDeInicio {
   if (demo) return [];
   if (carga === null) return null;
   return "error" in carga ? "error" : carga.ok;
@@ -1989,7 +1996,7 @@ function demoSelection<T extends { id: string }>(items: T[], selectedId: string)
   return items.find((item) => item.id === selectedId) ?? items[0];
 }
 
-function overviewProjection(demo: boolean, projection: Proyeccion | "error" | null) {
+function overviewProjection(demo: boolean, projection: ProyeccionDeInicio) {
   return demo ? proyeccionDemo : projection;
 }
 
@@ -2174,7 +2181,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   >(null);
   // El historial va aparte: es la tarjeta menos crítica y su fallo no debería
   // tapar el alquiler vigente ni el documento.
-  const [aumentos, setAumentos] = useState<RentIncrementResponse[] | "error" | null>(null);
+  const [aumentos, setAumentos] = useState<CargaDeAumentos>(null);
   const [recargaContrato, setRecargaContrato] = useState(0);
   const [cuotasSinConfirmar, setCuotasSinConfirmar] = useState<FilaCobranza[]>([]);
   const [finalizando, setFinalizando] = useState(false);
@@ -2194,7 +2201,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   >(null);
   // La proyección va en su propio estado: si `/pre-invoices` falla —o no existe,
   // contra un build viejo— se cae esa tarjeta sola y el resto de Inicio sirve.
-  const [proyeccion, setProyeccion] = useState<Proyeccion | "error" | null>(null);
+  const [proyeccion, setProyeccion] = useState<ProyeccionDeInicio>(null);
   const [errorArchivar, setErrorArchivar] = useState<string | null>(null);
   const [guardandoArchivado, setGuardandoArchivado] = useState(false);
   const [cargaCobranzas, setCargaCobranzas] = useState<
@@ -2748,7 +2755,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   const calendarioDeInicio = overviewCalendar(demo);
-  const borradoresDeInicio: FilaDeBorrador[] | "error" | null = borradoresVisibles(demo, cargaBorradores);
+  const borradoresDeInicio: BorradoresDeInicio = borradoresVisibles(demo, cargaBorradores);
   const borradoresDeContratos = Array.isArray(borradoresDeInicio) ? borradoresDeInicio : [];
   const overviewData = overviewWorkspaceData(demo, cargaInicio);
   const datosDeInicio = overviewData.data;

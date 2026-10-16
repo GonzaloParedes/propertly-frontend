@@ -9,7 +9,9 @@ import { formatearBytes } from "@/lib/importacion-pdf";
  * El PDF firmado, opcional, en la revisión del contrato. Queda guardado tal cual: no se lee solo ni
  * gasta lecturas. Con un borrador guardado se sube enseguida; si no, espera al contrato.
  */
-export default function PdfDelContrato({ documento, ocupado, error, onElegir, onQuitar }: Readonly<{
+export default function PdfDelContrato({ habilitado, documento, ocupado, error, onElegir, onQuitar }: Readonly<{
+  /** Sólo «Nuevo contrato» con sesión guarda un PDF: en el prototipo no se muestra. */
+  habilitado: boolean;
   documento: { nombre: string; tamano: number } | null;
   ocupado: boolean;
   error: string | null;
@@ -17,6 +19,7 @@ export default function PdfDelContrato({ documento, ocupado, error, onElegir, on
   onQuitar: () => void;
 }>) {
   const input = useRef<HTMLInputElement>(null);
+  if (!habilitado) return null;
   return <section className="owner-pdf-opcional" aria-label="Contrato firmado">
     <h2>El contrato firmado <small>(opcional)</small></h2>
     <p className="owner-wizard-help">Si tiene el PDF, adjúntelo y queda guardado con el contrato. Se guarda tal cual: no lo leemos automáticamente.</p>

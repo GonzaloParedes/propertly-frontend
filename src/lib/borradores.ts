@@ -120,9 +120,15 @@ function sanearOtras(valor: unknown): OtrasCondiciones | null {
   };
 }
 
+/** El id de lo elegido: un número, o null si no había; undefined si no es ninguna de las dos cosas. */
+function idGuardado(valor: unknown): number | null | undefined {
+  if (valor === null) return null;
+  return esEntero(valor) ? valor : undefined;
+}
+
 function sanearElegido<T>(valor: unknown, esPedido: (pedido: Objeto) => boolean): ElegidoEnBorrador<T> | null {
   if (!esObjeto(valor) || typeof valor.nuevo !== "boolean") return null;
-  const id = valor.id === null ? null : esEntero(valor.id) ? valor.id : undefined;
+  const id = idGuardado(valor.id);
   if (id === undefined) return null;
   let borrador: NuevoEnBorrador<T> | null = null;
   if (valor.borrador !== null) {
@@ -186,7 +192,7 @@ export function venceProximamente(expiresAt: string, ahora: Date): boolean {
 function ordenarClaves(valor: unknown): unknown {
   if (Array.isArray(valor)) return valor.map(ordenarClaves);
   if (!esObjeto(valor)) return valor;
-  return Object.fromEntries(Object.keys(valor).sort().map((clave) => [clave, ordenarClaves(valor[clave])]));
+  return Object.fromEntries(Object.keys(valor).sort((a, b) => a.localeCompare(b)).map((clave) => [clave, ordenarClaves(valor[clave])]));
 }
 
 /**
