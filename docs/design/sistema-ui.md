@@ -656,10 +656,63 @@ los desvíos guardaban solos:
   el inquilino que ya existe con ese CUIT o teléfono («Usar a Diego Ferrari»
   reenvía con su id; «Corregir los datos» reabre el formulario) y la propiedad
   que ya tiene contrato vigente (con el enlace a ese contrato).
-- **Salir se confirma sólo si hay algo cargado,** con un diálogo propio de la app
-  que dice que no se guardó nada. Es el mismo `Dialog` del resto de la app
-  (`src/components/ui/Dialog.tsx`). Los asistentes sueltos de propiedad e
-  inquilino salen directo, como siempre.
+- **Salir se confirma sólo si hay algo cargado y todavía no es un borrador,** con
+  un diálogo propio de la app que dice que no se guardó nada. Es el mismo `Dialog`
+  del resto de la app (`src/components/ui/Dialog.tsx`). Una vez que el contrato es
+  un borrador (ver «Contratos a medio cargar») salir no pregunta nada. Los
+  asistentes sueltos de propiedad e inquilino salen directo, como siempre.
+
+### Contratos a medio cargar
+
+**Cambio `contract-drafts`.** El propietario muchas veces tiene el contrato
+impreso o en un mail y no conoce todos los datos (la actualización, los
+punitorios). «Nuevo contrato» se guarda solo en el servidor, así que se puede
+retomar después y desde otro dispositivo.
+
+- **Nace al salir del primer paso,** no al abrir el asistente. Abrirlo por error
+  y cerrarlo no deja nada: los borradores son pocos (3) y no conviene gastarlos
+  en un asistente que nadie empezó.
+- **Se guarda solo:** en cada cambio de paso, a los 2 s de que se deja de
+  escribir y una última vez al cerrar la pestaña. Un guardado a la vez, siempre
+  con lo más nuevo.
+- **El estado va junto al título,** con ícono y palabra («Guardando…»,
+  «Guardado», «No se pudo guardar. Reintentando…»). Sólo los fallos se anuncian a
+  los lectores de pantalla; un guardado exitoso no. El contenido queda en
+  pantalla pase lo que pase, y al fallar reintenta con espera creciente.
+- **Salir de un borrador no pregunta:** ya está guardado, y preguntar «¿guardar?»
+  obligaría a elegir algo que el propietario no tiene motivo para dudar. Se sale,
+  y un toast dice que quedó como borrador y dónde encontrarlo. Si justo ese
+  último guardado falla, ahí sí se avisa antes de irse, porque se pierde algo.
+- **«Descartar borrador»** vive en el encabezado del asistente con ícono de
+  papelera (no la «x», que ya es salir) y siempre pide confirmación con el
+  `DescartarBorrador` compartido, en `danger` con cuerpo: se pierden los datos y
+  el PDF y no hay vuelta atrás.
+- **«Completar después»** aparece al lado de «Seguir» cuando falta un dato del
+  paso. Deja avanzar sin marcar nada: los pasos pendientes se **derivan** de lo
+  cargado, así completarlos los saca de la lista solos. La revisión los nombra
+  («Falta completar» en la fila, y un aviso neutro con un acceso a cada paso) y
+  «Crear contrato» no se habilita hasta que no queda ninguno.
+- **El PDF firmado es opcional** y se adjunta en la revisión. Se guarda tal cual,
+  no se lee solo ni gasta lecturas, y con un borrador guardado viaja enseguida.
+- **En Inicio y Contratos** cada borrador es un aviso (en Inicio, dentro de
+  «Requieren su acción», después de las cuotas) con **dos** acciones, «Descartar»
+  y «Continuar», las dos `secondary` por la regla 7: el peso lo fija el lugar. La
+  confirmación es la que lleva el `danger`. Un borrador cuenta como pendiente: la
+  sección sólo dice «Nada pendiente» cuando tampoco hay ninguno, y mientras no sabe
+  si hay borradores no lo afirma.
+- **«Nuevo contrato» ofrece seguir uno** antes de empezar otro. Con el máximo de
+  borradores no se puede empezar otro hasta terminar o descartar uno, y el
+  diálogo lo explica en vez de dejar que falle el guardado.
+- **Caduca a los 90 días** sin tocarlo (cada guardado reinicia el plazo). Desde 15
+  días antes el aviso dice el día en que se descarta, con tono de advertencia.
+- **Si otro dispositivo guardó antes,** el guardado se frena y un `Dialog` sin
+  botón de cerrar obliga a elegir: «Guardar esta versión» pisa la otra, «Cargar la
+  otra versión» descarta lo de acá. No se pisa nada en silencio.
+
+*Rechazado:* un botón «Guardar borrador» (depende de que se acuerde de tocarlo y
+se pierde con la pestaña, que es justo el caso a evitar); mandar al propietario al
+borrador al iniciar sesión (le quita el control de a dónde ir); un aviso «ocultar»
+sin descartar (un tercer estado que habría que explicar).
 
 ### Cargar un contrato desde el PDF
 

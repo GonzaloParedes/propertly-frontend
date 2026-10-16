@@ -3,17 +3,19 @@ vi.mock("@/lib/api", () => ({
   apiPost: vi.fn(),
   apiPostForm: vi.fn(),
   apiPut: vi.fn(),
+  apiPutForm: vi.fn(),
   apiDelete: vi.fn(),
   apiGetBlob: vi.fn(),
 }));
 
-import { apiGet, apiPost, apiPostForm, apiPut, apiDelete, apiGetBlob } from "@/lib/api";
+import { apiGet, apiPost, apiPostForm, apiPut, apiPutForm, apiDelete, apiGetBlob } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 
 const mockGet = vi.mocked(apiGet);
 const mockPost = vi.mocked(apiPost);
 const mockPostForm = vi.mocked(apiPostForm);
 const mockPut = vi.mocked(apiPut);
+const mockPutForm = vi.mocked(apiPutForm);
 const mockDelete = vi.mocked(apiDelete);
 const mockGetBlob = vi.mocked(apiGetBlob);
 
@@ -601,5 +603,70 @@ describe("AlquiaBackendClient.contractImports", () => {
   it("document trae el PDF como blob", async () => {
     await AlquiaBackendClient.contractImports.document(41);
     expect(mockGetBlob).toHaveBeenCalledWith("/contract-imports/41/document");
+  });
+});
+
+describe("AlquiaBackendClient.contractDrafts", () => {
+  it("list pega a GET /contract-drafts", async () => {
+    await AlquiaBackendClient.contractDrafts.list();
+    expect(mockGet).toHaveBeenCalledWith("/contract-drafts");
+  });
+
+  it("get pega a GET /contract-drafts/{id}", async () => {
+    await AlquiaBackendClient.contractDrafts.get(5);
+    expect(mockGet).toHaveBeenCalledWith("/contract-drafts/5");
+  });
+
+  it("create manda la etiqueta y el contenido a POST /contract-drafts", async () => {
+    const body = { label: "Lavalle 950", payload: { paso: 2 } };
+    await AlquiaBackendClient.contractDrafts.create(body);
+    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body);
+  });
+
+  it("update manda la versión vista a PUT /contract-drafts/{id}", async () => {
+    const body = { label: "Lavalle 950", payload: { paso: 3 }, version: 4 };
+    await AlquiaBackendClient.contractDrafts.update(5, body);
+    expect(mockPut).toHaveBeenCalledWith("/contract-drafts/5", body, undefined);
+  });
+
+  it("update reenvía keepalive para el guardado al cerrar la pestaña", async () => {
+    const body = { label: "x", payload: {}, version: 0 };
+    await AlquiaBackendClient.contractDrafts.update(5, body, { keepalive: true });
+    expect(mockPut).toHaveBeenCalledWith("/contract-drafts/5", body, { keepalive: true });
+  });
+
+  it("remove pega a DELETE /contract-drafts/{id}", async () => {
+    await AlquiaBackendClient.contractDrafts.remove(5);
+    expect(mockDelete).toHaveBeenCalledWith("/contract-drafts/5");
+  });
+
+  it("attachDocument manda el PDF como multipart por PUT en el campo file", async () => {
+    const archivo = new File(["%PDF-1.7"], "contrato.pdf", { type: "application/pdf" });
+    await AlquiaBackendClient.contractDrafts.attachDocument(5, archivo);
+    expect(mockPutForm).toHaveBeenCalledTimes(1);
+    const [ruta, form] = mockPutForm.mock.calls[0];
+    expect(ruta).toBe("/contract-drafts/5/document");
+    expect((form as FormData).get("file")).toBe(archivo);
+  });
+
+  it("getDocument trae el PDF como blob", async () => {
+    await AlquiaBackendClient.contractDrafts.getDocument(5);
+    expect(mockGetBlob).toHaveBeenCalledWith("/contract-drafts/5/document");
+  });
+
+  it("removeDocument pega a DELETE /contract-drafts/{id}/document", async () => {
+    await AlquiaBackendClient.contractDrafts.removeDocument(5);
+    expect(mockDelete).toHaveBeenCalledWith("/contract-drafts/5/document");
+  });
+
+  it("el alta de contrato puede llevar el borrador del que sale", async () => {
+    const body = {
+      property: { id: 1 },
+      tenant: { id: 2 },
+      contract: {} as never,
+      draftId: 5,
+    };
+    await AlquiaBackendClient.contracts.onboard(body);
+    expect(mockPost).toHaveBeenCalledWith("/contracts/onboarding", body);
   });
 });

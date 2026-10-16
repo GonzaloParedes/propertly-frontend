@@ -130,7 +130,7 @@ export interface Aviso {
 }
 
 /** «hace 9 días», «hoy», «ayer». Sin fecha devuelve null y el aviso la omite. */
-function hace(desdeISO: string | undefined, hoyISO: string): string | null {
+export function hace(desdeISO: string | undefined, hoyISO: string): string | null {
   if (!desdeISO) return null;
   const dia = (iso: string) => Date.UTC(...(iso.slice(0, 10).split("-").map(Number) as [number, number, number]));
   const dias = Math.round((dia(hoyISO) - dia(desdeISO)) / 86_400_000);
