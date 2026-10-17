@@ -879,3 +879,7 @@
 .owner-borradores-elegir b,.owner-borradores-elegir small{display:block}
 .owner-borradores-elegir small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}
 
+/* El <dialog> trae el negro del navegador (CanvasText) y el panel no definía color: en modo oscuro el
+   título quedaba negro sobre fondo oscuro. El texto del panel toma siempre el de la app. */
+.owner-dialog__panel{color:var(--tinta)}
+
