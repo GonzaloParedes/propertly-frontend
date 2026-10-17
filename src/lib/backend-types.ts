@@ -253,6 +253,8 @@ export interface ContractOnboardingRequest {
   tenant: TenantSelection;
   contract: ContractTerms;
   elapsed?: ElapsedDecision;
+  /** El borrador del que sale el contrato: el backend lo borra y pasa su PDF al contrato. */
+  draftId?: number;
 }
 
 /** Hasta qué mes se cobraron las cuotas transcurridas. */
@@ -620,4 +622,44 @@ export interface ContractImportQuotaResponse {
   used: number;
   limit: number;
   available: boolean;
+}
+
+// --- Borradores de contrato ---
+
+/** El PDF guardado junto a un borrador. */
+export interface ContractDraftDocument {
+  fileName: string;
+  sizeBytes: number;
+  pages: number;
+  uploadedAt: string;
+}
+
+/**
+ * Un borrador como se lista: todo menos el contenido. `version` es la que hay que devolver al
+ * guardar; `expiresAt` es cuándo se descarta si nadie lo toca (90 días desde la última edición).
+ */
+export interface ContractDraftSummary {
+  id: number;
+  label: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  document: ContractDraftDocument | null;
+}
+
+/** El borrador completo. El `payload` es del front: el backend lo guarda sin leerlo. */
+export interface ContractDraft extends ContractDraftSummary {
+  payload: Record<string, unknown>;
+}
+
+export interface ContractDraftRequest {
+  /** Cómo se lista: «Lavalle 950 · Pérez». Hasta 160 caracteres. */
+  label: string;
+  payload: Record<string, unknown>;
+}
+
+export interface ContractDraftUpdateRequest extends ContractDraftRequest {
+  /** La versión que el cliente vio por última vez. */
+  version: number;
 }

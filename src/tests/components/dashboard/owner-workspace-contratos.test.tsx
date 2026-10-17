@@ -1,5 +1,8 @@
-import { render, screen, within } from "@/tests/render";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
+import { resumenDeBorrador } from "@/tests/borradores";
+import { serializar } from "@/lib/borradores";
+import { SIN_OTRAS_CONDICIONES } from "@/lib/otras-condiciones";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
 import type { ContractResponse } from "@/lib/backend-types";
@@ -17,11 +20,13 @@ vi.mock("@/lib/backend-client", () => ({
     properties: { list: vi.fn(), create: vi.fn(), archive: vi.fn() },
     invoices: { list: vi.fn(), confirm: vi.fn() },
     payments: { create: vi.fn(), confirm: vi.fn(), reject: vi.fn(), getReceipt: vi.fn() },
+    contractDrafts: { list: vi.fn(), get: vi.fn(), remove: vi.fn(), create: vi.fn(), update: vi.fn() },
   },
 }));
 
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
+const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
 
 // El componente calcula «hoy» con el reloj real, así que las fechas de los
 // fixtures se apoyan en un reloj congelado para que los estados no cambien
@@ -49,6 +54,7 @@ function conContratos(contratos: ContractResponse[]) {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
+  mockBorradores.list.mockResolvedValue([]);
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(HOY);
 });
@@ -326,5 +332,188 @@ describe("inquilino nuevo desde el asistente de contrato", () => {
 
     const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
     expect(within(contrato).getByText("Paso 2 de 7")).toBeInTheDocument();
+  });
+});
+
+// --- Contratos a medio cargar ---
+
+describe("borradores en Contratos", () => {
+  const borrador = (cambios: Parameters<typeof resumenDeBorrador>[0] = {}) => resumenDeBorrador({ ahora: HOY, ...cambios });
+  const grupo = async () => (await screen.findByRole("region", { name: "Borradores" }));
+
+  it("los lista arriba de los contratos, con hace cuánto se editó, si traen PDF y las dos acciones", async () => {
+    mockBorradores.list.mockResolvedValue([borrador({ label: "Lavalle 950 · Pérez", editadoHaceDias: 3, conPdf: true })]);
+    conContratos([contract()]);
+
+    const seccion = await grupo();
+    expect(within(seccion).getByRole("heading", { name: "Borradores" })).toBeInTheDocument();
+    expect(within(seccion).getByText("Lavalle 950 · Pérez")).toBeInTheDocument();
+    expect(within(seccion).getByText(/Editado hace 3 días · con PDF/)).toBeInTheDocument();
+    expect(within(seccion).getByRole("button", { name: "Continuar" })).toBeInTheDocument();
+    expect(within(seccion).getByRole("button", { name: "Descartar" })).toBeInTheDocument();
+    const lista = await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+    expect(seccion.compareDocumentPosition(lista[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("sin borradores no aparece el grupo", async () => {
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.queryByRole("region", { name: "Borradores" })).not.toBeInTheDocument();
+  });
+
+  it("cerca del vencimiento dice el día en que se descarta", async () => {
+    mockBorradores.list.mockResolvedValue([borrador({ venceEnDias: 5 })]);
+    conContratos([contract()]);
+
+    expect(within(await grupo()).getByText(/se descarta el 12\/09\/2026 si no lo retoma/)).toBeInTheDocument();
+  });
+
+  it("aparece también cuando todavía no hay contratos", async () => {
+    mockBorradores.list.mockResolvedValue([borrador()]);
+    conContratos([]);
+
+    expect(await grupo()).toBeInTheDocument();
+    expect(await screen.findByText("Todavía no tiene contratos")).toBeInTheDocument();
+  });
+
+  it("«Continuar» abre el asistente con ese borrador", async () => {
+    mockBorradores.list.mockResolvedValue([borrador({ id: 9 })]);
+    mockBorradores.get.mockResolvedValue({
+      ...borrador({ id: 9 }),
+      payload: serializar({
+        paso: 3, propiedad: { id: 10, nuevo: false, borrador: null }, inquilino: { id: 1, nuevo: false, borrador: null },
+        alquiler: "450000", diaVencimiento: 10, plazo: 24, inicio: "2026-09-01", metodo: "FIXED_PERCENTAGE",
+        porcentaje: "8", frecuencia: 6, otras: SIN_OTRAS_CONDICIONES, pagadoHasta: "",
+      }),
+    });
+    conContratos([contract()]);
+
+    await userEvent.click(within(await grupo()).getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+    expect(mockBorradores.get).toHaveBeenCalledWith(9);
+  });
+
+  it("«Descartar» pide confirmar y al confirmar lo saca del grupo", async () => {
+    mockBorradores.list.mockResolvedValueOnce([borrador({ id: 9, label: "Mitre 78" })]);
+    mockBorradores.remove.mockResolvedValue(undefined);
+    conContratos([contract()]);
+
+    await userEvent.click(within(await grupo()).getByRole("button", { name: "Descartar" }));
+    expect(mockBorradores.remove).not.toHaveBeenCalled();
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() => expect(mockBorradores.remove).toHaveBeenCalledWith(9));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Borradores" })).not.toBeInTheDocument());
+    expect(await screen.findByText("Borrador descartado.")).toBeInTheDocument();
+  });
+});
+
+describe("«Nuevo contrato» con borradores guardados", () => {
+  const borrador = (cambios: Parameters<typeof resumenDeBorrador>[0] = {}) => resumenDeBorrador({ ahora: HOY, ...cambios });
+  const nuevoContrato = () => userEvent.click(screen.getByRole("button", { name: "Nuevo contrato" }));
+
+  it("ofrece seguir uno antes de empezar otro", async () => {
+    mockBorradores.list.mockResolvedValue([borrador({ label: "Lavalle 950 · Pérez", editadoHaceDias: 3 })]);
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+
+    await nuevoContrato();
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText("Tiene contratos a medio cargar")).toBeInTheDocument();
+    expect(within(dialogo).getByText("Lavalle 950 · Pérez")).toBeInTheDocument();
+    expect(within(dialogo).getByText("Editado hace 3 días")).toBeInTheDocument();
+    expect(within(dialogo).getByRole("button", { name: "Continuar" })).toBeInTheDocument();
+    expect(within(dialogo).getByRole("button", { name: "Empezar uno nuevo" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Asistente de nuevo contrato" })).not.toBeInTheDocument();
+  });
+
+  it("«Empezar uno nuevo» abre el asistente desde cero, preguntando cómo cargarlo", async () => {
+    mockBorradores.list.mockResolvedValue([borrador()]);
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+    await nuevoContrato();
+
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Empezar uno nuevo" }));
+
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "¿Cómo quiere cargar el contrato?" })).toBeInTheDocument();
+    expect(mockBorradores.get).not.toHaveBeenCalled();
+  });
+
+  it("«Continuar» abre ese borrador, no un contrato nuevo", async () => {
+    mockBorradores.list.mockResolvedValue([borrador({ id: 9 })]);
+    mockBorradores.get.mockRejectedValue(new Error("no importa: sólo importa a cuál se pidió"));
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+    await nuevoContrato();
+
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Continuar" }));
+
+    await waitFor(() => expect(mockBorradores.get).toHaveBeenCalledWith(9));
+    expect(screen.queryByRole("heading", { name: "¿Cómo quiere cargar el contrato?" })).not.toBeInTheDocument();
+  });
+
+  it("con el máximo de borradores sólo ofrece seguir uno, y explica por qué", async () => {
+    mockBorradores.list.mockResolvedValue([borrador({ id: 1, label: "Uno" }), borrador({ id: 2, label: "Dos" }), borrador({ id: 3, label: "Tres" })]);
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+
+    await nuevoContrato();
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText(/Tiene 3 borradores, el máximo/)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/termine o descarte uno/)).toBeInTheDocument();
+    expect(within(dialogo).getAllByRole("button", { name: "Continuar" })).toHaveLength(3);
+    expect(within(dialogo).queryByRole("button", { name: "Empezar uno nuevo" })).not.toBeInTheDocument();
+  });
+
+  it("cerrar el diálogo no abre nada", async () => {
+    mockBorradores.list.mockResolvedValue([borrador()]);
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+    await nuevoContrato();
+
+    await userEvent.click(within(await screen.findByRole("dialog")).getAllByRole("button", { name: "Cerrar" })[1]);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Asistente de nuevo contrato" })).not.toBeInTheDocument();
+  });
+
+  it("si no se pudieron traer los borradores, abre un contrato nuevo igual", async () => {
+    mockBorradores.list.mockResolvedValueOnce([]).mockRejectedValue(new Error("boom"));
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+
+    await nuevoContrato();
+
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("sin borradores abre el asistente directo", async () => {
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+
+    await nuevoContrato();
+
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+    expect(screen.queryByText("Tiene contratos a medio cargar")).not.toBeInTheDocument();
+  });
+
+  it("al cerrar el asistente la lista de borradores se vuelve a leer", async () => {
+    conContratos([contract()]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+    await nuevoContrato();
+    await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
+    const antes = mockBorradores.list.mock.calls.length;
+    mockBorradores.list.mockResolvedValue([borrador({ label: "Recién guardado" })]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
+
+    expect(await screen.findByText("Recién guardado")).toBeInTheDocument();
+    expect(mockBorradores.list.mock.calls.length).toBeGreaterThan(antes);
   });
 });

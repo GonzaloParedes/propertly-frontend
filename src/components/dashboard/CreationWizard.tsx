@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { ERROR, copyDeError, idDelContratoActivo, idDelInquilinoExistente } from "@/lib/error-codes";
 import { AlquiaBackendClient } from "@/lib/backend-client";
-import type { AddressSuggestionResponse, PropertyCategory, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
+import type { AddressSuggestionResponse, ContractDraft, PropertyCategory, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
 import Counter from "@/components/ui/Counter";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
@@ -19,6 +20,12 @@ import { formatearDireccion } from "@/lib/tenant-rows";
 import ContractFromPdf from "@/components/dashboard/ContractFromPdf";
 import OtrasCondiciones from "@/components/dashboard/OtrasCondiciones";
 import Dialog from "@/components/ui/Dialog";
+import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
+import PdfDelContrato from "@/components/dashboard/PdfDelContrato";
+import { useAutoguardado, type EstadoDeGuardado } from "@/hooks/useAutoguardado";
+import { LIMITE_DE_BORRADORES, armarContenido, deserializar, type ContenidoDeBorrador, type EstadoDelBorrador, type MetodoDeActualizacion } from "@/lib/borradores";
+import { usePdfDelBorrador } from "@/hooks/usePdfDelBorrador";
+import { crearContratoDesdeBorrador, type ResultadoDelAlta } from "@/lib/crear-contrato";
 import { armarOtrasCondiciones, hayOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
 import { avisoDeCampo, ubicacionDeErrores, type Ubicacion } from "@/lib/errores-de-alta";
 
@@ -302,9 +309,11 @@ function datosDeActualizacion(
 
 // `sinPropiedades`: no tiene ninguna cargada (distinto de tenerlas todas alquiladas).
 type ContractLists = { propiedades: Opcion[]; inquilinos: Opcion[]; sinPropiedades?: boolean };
-type ContractMethod = "FIXED_PERCENTAGE" | "ICL" | "IPC";
+/** Las listas del alta: cargadas, con error, o todavía en camino. */
+type CargaDeListas = ContractLists | "error" | null;
+type ContractMethod = MetodoDeActualizacion;
 
-function listasDisponibles(demo: boolean, loadState: ContractLists | "error" | null): ContractLists | null {
+function listasDisponibles(demo: boolean, loadState: CargaDeListas): ContractLists | null {
   if (demo) return { propiedades: PROPIEDADES_DEMO, inquilinos: INQUILINOS_DEMO };
   if (loadState === null || loadState === "error") return null;
   return loadState;
@@ -368,6 +377,8 @@ type SeleccionDeContrato = {
   onElegirBorrador: () => void;
   /** Abre la carga de datos: vacía la primera vez, con lo ya cargado si se está cambiando. */
   onNueva: () => void;
+  /** Por qué se vació la elección de un borrador retomado (ya no está disponible). */
+  aviso?: string;
 };
 
 function ContractOptions({
@@ -378,7 +389,7 @@ function ContractOptions({
   empty,
   nueva,
 }: Readonly<{
-  loadState: ContractLists | "error" | null;
+  loadState: CargaDeListas;
   options: Opcion[];
   seleccion: SeleccionDeContrato;
   icon: "building" | "users";
@@ -391,6 +402,7 @@ function ContractOptions({
   if (loadState === null) return <Cargando>Cargando…</Cargando>;
 
   return <>
+    {seleccion.aviso && <aside className="owner-wizard-note"><Icon name="alert" />{seleccion.aviso}</aside>}
     {options.length === 0 && empty}
     <div className="owner-wizard-options" role="radiogroup">
       {options.map((option) => <Option key={option.id} selected={!seleccion.borradorElegido && seleccion.id === option.id} icon={icon} title={option.titulo} description={option.detalle} onClick={() => seleccion.onElegir(option.id)} />)}
@@ -402,12 +414,12 @@ function ContractOptions({
   </>;
 }
 
-function ContractPropertyStep({ lists, seleccion }: Readonly<{ lists: ContractLists | "error" | null; seleccion: SeleccionDeContrato }>) {
+function ContractPropertyStep({ lists, seleccion }: Readonly<{ lists: CargaDeListas; seleccion: SeleccionDeContrato }>) {
   const options = typeof lists === "object" && lists !== null ? lists.propiedades : [];
   return <><h1>¿Qué propiedad va a alquilar?</h1><p>Elija una de sus propiedades sin contrato vigente, o cargue una nueva acá mismo. Después le pedimos el inquilino.</p><ContractOptions loadState={lists} options={options} seleccion={seleccion} icon="building" nueva={{ titulo: "Una propiedad nueva", detalle: "La carga acá y se guarda junto con el contrato.", tituloBorrador: "Propiedad nueva" }} empty={<p className="owner-wizard-help">{typeof lists === "object" && lists?.sinPropiedades ? "Todavía no cargó ninguna propiedad." : "Todas sus propiedades ya tienen un contrato vigente."}</p>} /></>;
 }
 
-function ContractTenantStep({ lists, seleccion }: Readonly<{ lists: ContractLists | "error" | null; seleccion: SeleccionDeContrato }>) {
+function ContractTenantStep({ lists, seleccion }: Readonly<{ lists: CargaDeListas; seleccion: SeleccionDeContrato }>) {
   const options = typeof lists === "object" && lists !== null ? lists.inquilinos : [];
   return <><h1>¿A quién se la alquila?</h1><p>El inquilino va a figurar en el contrato y recibir los avisos de vencimiento. Elija uno cargado o cargue uno nuevo acá mismo.</p><ContractOptions loadState={lists} options={options} seleccion={seleccion} icon="users" nueva={{ titulo: "Un inquilino nuevo", detalle: "Lo carga acá y se guarda junto con el contrato.", tituloBorrador: "Inquilino nuevo" }} empty={<p className="owner-wizard-help">Todavía no cargó ningún inquilino.</p>} /></>;
 }
@@ -424,7 +436,7 @@ function ContractIndexStep({ method, percentage, frequency, erroresBackend, onMe
   return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" placeholder="Ej. 8" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementMethod", "incrementValue", "incrementIndexName")} /><p className="owner-wizard-label">Cada cuánto se actualiza</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div><Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementFrequencyMonths")} />{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
 }
 
-function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, startDate, method, percentage, frequency, otras, error, cantidadErrores, conflictSection, elapsedSection, onCambiar }: Readonly<{ lists: ContractLists | "error" | null; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; error: string | null; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; onCambiar: (paso: number) => void }>) {
+function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, startDate, method, percentage, frequency, otras, pendientes, error, cantidadErrores, conflictSection, elapsedSection, pdfSection, onCambiar }: Readonly<{ lists: CargaDeListas; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; pendientes: number[]; error: string | null; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; pdfSection: React.ReactNode; onCambiar: (paso: number) => void }>) {
   const loadedLists = typeof lists === "object" && lists !== null ? lists : null;
   const propertyName = propiedad.borradorElegido && propiedad.borrador !== null
     ? `Propiedad nueva: ${propiedad.borrador}`
@@ -433,11 +445,18 @@ function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, s
     ? `Inquilino nuevo: ${inquilino.borrador}`
     : loadedLists?.inquilinos.find((option) => option.id === inquilino.id)?.titulo ?? "Sin cargar";
   const adjustment = method === "FIXED_PERCENTAGE" ? `${percentage} % cada ${frequency} meses` : `Según el ${method} · cada ${frequency} meses`;
-  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, use «Cambiar» en la sección correspondiente. Recién al crear el contrato se guarda todo junto.</p>{cantidadErrores > 0 && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{cantidadErrores === 1 ? "Hay 1 dato para corregir." : `Hay ${cantidadErrores} datos para corregir.`} Use «Cambiar» en cada sección para llegar a ellos.</p>}<Summary rows={[["Propiedad", propertyName, () => onCambiar(1)], ["Inquilino", tenantName, () => onCambiar(2)], ["Alquiler inicial", `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`, () => onCambiar(3)], ["Plazo", `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`, () => onCambiar(4)], ["Actualización", adjustment, () => onCambiar(5)], ["Otras condiciones", resumenDeOtrasCondiciones(otras), () => onCambiar(6)]]} />{conflictSection}{elapsedSection}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}<aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
+  // Lo que falta no se muestra con valores a medias («$ por mes · vence el día 1»): se dice que falta.
+  const valor = (paso: number, texto: string) => pendientes.includes(paso) ? "Falta completar" : texto;
+  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, use «Cambiar» en la sección correspondiente. Recién al crear el contrato se guarda todo junto.</p>{cantidadErrores > 0 && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{cantidadErrores === 1 ? "Hay 1 dato para corregir." : `Hay ${cantidadErrores} datos para corregir.`} Use «Cambiar» en cada sección para llegar a ellos.</p>}<Summary rows={[["Propiedad", valor(1, propertyName), () => onCambiar(1)], ["Inquilino", valor(2, tenantName), () => onCambiar(2)], ["Alquiler inicial", valor(3, `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`), () => onCambiar(3)], ["Plazo", valor(4, `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`), () => onCambiar(4)], ["Actualización", valor(5, adjustment), () => onCambiar(5)], ["Otras condiciones", valor(6, resumenDeOtrasCondiciones(otras)), () => onCambiar(6)]]} />{pendientes.length > 0 && <FaltaCompletar pendientes={pendientes} onCambiar={onCambiar} />}{conflictSection}{elapsedSection}{pdfSection}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}<aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
+}
+
+/** Lo que impide crear el contrato todavía, con un acceso directo a cada paso. */
+function FaltaCompletar({ pendientes, onCambiar }: Readonly<{ pendientes: number[]; onCambiar: (paso: number) => void }>) {
+  return <aside className="owner-wizard-note owner-wizard-pending"><Icon name="alert" /><div><p>Para crear el contrato falta completar:</p><ul>{pendientes.map((paso) => <li key={paso}><button type="button" className="owner-wizard-quiet" onClick={() => onCambiar(paso)}>{NOMBRE_DEL_PASO[paso]}</button></li>)}</ul></div></aside>;
 }
 
 function ContractWizardStep(props: Readonly<{
-  step: number; lists: ContractLists | "error" | null; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; mostrarErroresDeOtras: boolean; error: string | null; erroresBackend: Record<string, string>; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onOtrasChange: (value: Condiciones) => void; onSaltearOtras: () => void; onCambiar: (paso: number) => void;
+  step: number; lists: CargaDeListas; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; pendientes: number[]; mostrarErroresDeOtras: boolean; error: string | null; erroresBackend: Record<string, string>; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; pdfSection: React.ReactNode; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onOtrasChange: (value: Condiciones) => void; onSaltearOtras: () => void; onCambiar: (paso: number) => void;
 }>) {
   const { step, ...stepProps } = props;
   const steps: Record<number, React.ReactNode> = {
@@ -448,7 +467,7 @@ function ContractWizardStep(props: Readonly<{
     5: <ContractIndexStep method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} erroresBackend={stepProps.erroresBackend} onMethodChange={stepProps.onMethodChange} onPercentageChange={stepProps.onPercentageChange} onFrequencyChange={stepProps.onFrequencyChange} />,
     6: <OtrasCondiciones value={stepProps.otras} onChange={stepProps.onOtrasChange} onSkip={stepProps.onSaltearOtras} mostrarErrores={stepProps.mostrarErroresDeOtras} erroresDelBackend={stepProps.erroresBackend} />,
   };
-  return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propiedad={stepProps.propiedad} inquilino={stepProps.inquilino} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} otras={stepProps.otras} error={stepProps.error} cantidadErrores={stepProps.cantidadErrores} conflictSection={stepProps.conflictSection} elapsedSection={stepProps.elapsedSection} onCambiar={stepProps.onCambiar} />;
+  return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propiedad={stepProps.propiedad} inquilino={stepProps.inquilino} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} otras={stepProps.otras} pendientes={stepProps.pendientes} error={stepProps.error} cantidadErrores={stepProps.cantidadErrores} conflictSection={stepProps.conflictSection} elapsedSection={stepProps.elapsedSection} pdfSection={stepProps.pdfSection} onCambiar={stepProps.onCambiar} />;
 }
 
 type ModoContrato = "pdf" | "manual";
@@ -552,8 +571,8 @@ function useCuotaDeLecturas(ofrecePdf: boolean, setModoElegido: (cambio: (actual
  * no se piden: esa ruta no tiene sesión y las dos llamadas darían 401. En demo las listas son
  * constantes y se derivan aparte: pasarlas por el estado dispararía un render en cascada.
  */
-function useListasDeContrato(activo: boolean): ContractLists | "error" | null {
-  const [cargaListas, setCargaListas] = useState<ContractLists | "error" | null>(null);
+function useListasDeContrato(activo: boolean): CargaDeListas {
+  const [cargaListas, setCargaListas] = useState<CargaDeListas>(null);
   useEffect(() => {
     if (!activo) return;
     let cancelado = false;
@@ -601,15 +620,15 @@ function useListasDeContrato(activo: boolean): ContractLists | "error" | null {
  * contrato en curso (elecciones, paso) queda guardado y se retoma al volver. Si el contrato se abre
  * desde una propiedad, ya se sabe cuál es: arranca en el paso del inquilino (se puede volver al 1).
  */
-function useNavegacion(tipo: WizardKind, initialPropertyId: number | undefined) {
+function useNavegacion(tipo: WizardKind, initialPropertyId: number | undefined, pasoInicial?: number) {
   const [desvio, setDesvio] = useState<"tenant" | "property" | null>(null);
   const [pasoDesvio, setPasoDesvio] = useState(1);
   const preseleccionada = tipo === "contract" && initialPropertyId !== undefined;
-  const [pasoContrato, setPasoContrato] = useState(preseleccionada ? 2 : 1);
+  const [pasoContrato, setPasoContrato] = useState(pasoInicial ?? (preseleccionada ? 2 : 1));
   const kind: WizardKind = tipo === "contract" && desvio ? desvio : tipo;
   const step = desvio ? pasoDesvio : pasoContrato;
   const setStep = desvio ? setPasoDesvio : setPasoContrato;
-  return { desvio, setDesvio, setPasoDesvio, setPasoContrato, preseleccionada, kind, step, setStep };
+  return { desvio, setDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep };
 }
 
 function validarDatosDelContrato({ alquiler, inicio, method, porcentaje }: Readonly<{
@@ -658,7 +677,7 @@ function pasoAlVolverDelDesvio(siguiente: Ubicacion | undefined, total: number):
   return siguiente.seccion === "tenant" ? 2 : siguiente.paso;
 }
 
-function nombreDelInquilinoExistente(conflicto: Conflicto | null, listas: ContractLists | "error" | null): string | null {
+function nombreDelInquilinoExistente(conflicto: Conflicto | null, listas: CargaDeListas): string | null {
   if (conflicto?.tipo !== "inquilino" || typeof listas !== "object" || listas === null) return null;
   return listas.inquilinos.find((o) => o.id === conflicto.id)?.titulo ?? null;
 }
@@ -688,6 +707,19 @@ function contratoBloqueado(step: number, { propiedadSinElegir, inquilinoSinElegi
   }
 }
 
+type BanderasDelContrato = Parameters<typeof contratoBloqueado>[1];
+
+/**
+ * Los pasos del contrato que todavía no se pueden dar por completos. Se derivan de lo cargado en
+ * vez de anotarse: completar un paso lo saca solo de la lista, y un borrador retomado la recalcula.
+ */
+function pasosPendientes(banderas: BanderasDelContrato, otrasValidas: boolean): number[] {
+  const pendientes = [1, 2, 3, 4, 5].filter((paso) => contratoBloqueado(paso, banderas));
+  return otrasValidas ? pendientes : [...pendientes, 6];
+}
+
+const NOMBRE_DEL_PASO: Record<number, string> = { 1: "Propiedad", 2: "Inquilino", 3: "Alquiler inicial", 4: "Plazo", 5: "Actualización", 6: "Otras condiciones" };
+
 function propiedadBloqueada(step: number, direccion: Direccion | null, categoria: PropertyCategory | null): boolean {
   if (step === 1) return !direccion || [direccion.street, direccion.number, direccion.city, direccion.province].some((campo) => !campo.trim());
   return step === 2 && categoria === null;
@@ -698,7 +730,8 @@ function hayTrabajoDelContrato(campos: readonly unknown[]): boolean {
   return campos.some((campo) => campo !== null && campo !== "" && campo !== false);
 }
 
-function seleccionDe<T>({ id, borrador, esNuevo, elegir, elegirBorrador, crear }: Readonly<{
+function seleccionDe<T>({ id, borrador, esNuevo, elegir, elegirBorrador, crear, aviso }: Readonly<{
+  aviso?: string;
   id: number | null;
   borrador: { pedido: T; etiqueta: string } | null;
   esNuevo: boolean;
@@ -713,6 +746,7 @@ function seleccionDe<T>({ id, borrador, esNuevo, elegir, elegirBorrador, crear }
     onElegir: elegir,
     onElegirBorrador: elegirBorrador,
     onNueva: crear,
+    aviso,
   };
 }
 
@@ -883,62 +917,361 @@ function PropertyWizardStep({
     </>;
 }
 
-export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpenContract, demo = false, initialPropertyId }: Readonly<{ kind: WizardKind; onClose: () => void; onComplete: () => void; /** Abre un contrato que ya existe: lo usa el aviso de «esa propiedad ya tiene un contrato vigente». */ onOpenContract?: (contractId: number) => void; demo?: boolean; initialPropertyId?: number }>) {
-  const { desvio, setDesvio, setPasoDesvio, setPasoContrato, preseleccionada, kind, step, setStep } = useNavegacion(tipo, initialPropertyId);
+export type { ResultadoDelAlta } from "@/lib/crear-contrato";
+
+type PropsDelAsistente = Readonly<{
+  kind: WizardKind;
+  onClose: () => void;
+  onComplete: (resultado?: ResultadoDelAlta) => void;
+  /** Abre un contrato que ya existe: lo usa el aviso de «esa propiedad ya tiene un contrato vigente». */
+  onOpenContract?: (contractId: number) => void;
+  demo?: boolean;
+  initialPropertyId?: number;
+  /** Retoma este borrador de contrato en vez de empezar uno nuevo. */
+  draftId?: number;
+  /** Se salió dejando el contrato como borrador: el panel lo avisa y actualiza sus listas. */
+  onDraftKept?: () => void;
+  /** Se descartó el borrador desde el asistente. */
+  onDraftDiscarded?: () => void;
+}>;
+
+type BorradorRetomado = { draft: ContractDraft; estado: EstadoDelBorrador };
+
+/** Los campos de la carga de una propiedad, rearmados desde el pedido que quedó en el borrador. */
+function formularioDePropiedad(pedido: PropertyRequest | undefined) {
+  const direccion: Direccion | null = pedido
+    ? { street: pedido.street, number: pedido.number, city: pedido.city, province: pedido.province, postalCode: pedido.postalCode ?? "", latitude: pedido.latitude ?? null, longitude: pedido.longitude ?? null }
+    : null;
+  return {
+    direccion,
+    unidad: pedido?.floorUnit ?? "",
+    categoria: pedido?.category ?? null,
+    bedrooms: pedido?.bedrooms ?? null,
+    bathrooms: pedido?.bathrooms ?? null,
+    superficie: pedido?.coveredArea === undefined ? "" : String(pedido.coveredArea),
+    mascotas: pedido?.petsAllowed ?? false,
+    amoblada: pedido?.furnished ?? false,
+  };
+}
+
+function formularioDeInquilino(pedido: TenantRequest | undefined) {
+  return {
+    nombre: pedido?.firstName ?? "",
+    apellido: pedido?.lastName ?? "",
+    cuit: pedido ? formatearCuit(pedido.taxId) : "",
+    correo: pedido?.email ?? "",
+    telefono: pedido?.phoneNumber ?? "",
+  };
+}
+
+/** Cómo se nombra lo elegido: null si no hay nada elegido, undefined si todavía no se sabe (las listas no llegaron). */
+function nombreElegido(nuevo: boolean, borrador: { etiqueta: string } | null, id: number | null, opciones: Opcion[] | undefined): string | null | undefined {
+  if (nuevo && borrador) return borrador.etiqueta;
+  if (id === null) return null;
+  return opciones?.find((opcion) => opcion.id === id)?.titulo;
+}
+
+/** El estado del guardado, en una palabra con ícono: nunca sólo color. Los fallos se anuncian; un guardado exitoso, no. */
+function IndicadorDeGuardado({ estado }: Readonly<{ estado: EstadoDeGuardado }>) {
+  switch (estado) {
+    case "guardando":
+      return <span className="owner-wizard-guardado"><Spinner />Guardando…</span>;
+    case "guardado":
+      return <span className="owner-wizard-guardado"><Icon name="check" size={16} />Guardado</span>;
+    case "error":
+      return <span className="owner-wizard-guardado owner-wizard-guardado--falla" role="alert"><Icon name="alert" size={16} />No se pudo guardar. Reintentando…</span>;
+    case "limite":
+      return <span className="owner-wizard-guardado owner-wizard-guardado--falla" role="alert"><Icon name="alert" size={16} />No se guarda como borrador: ya tiene {LIMITE_DE_BORRADORES}.</span>;
+    case "conflicto":
+      return <span className="owner-wizard-guardado owner-wizard-guardado--falla" role="alert"><Icon name="alert" size={16} />Cambió en otro dispositivo</span>;
+    case "desaparecido":
+      return <span className="owner-wizard-guardado owner-wizard-guardado--falla" role="alert"><Icon name="alert" size={16} />Este borrador ya no existe</span>;
+    default:
+      return null;
+  }
+}
+
+function PanelDelBorrador({ titulo, children, onClose }: Readonly<{ titulo: string; children: React.ReactNode; onClose: () => void }>) {
+  return <section className="owner-wizard" aria-label="Asistente de nuevo contrato">
+    <header className="owner-wizard__top">
+      <button type="button" aria-label="Salir del asistente" onClick={onClose}><Icon name="x" /></button>
+      <b>{titulo}</b>
+    </header>
+    <main className="owner-wizard__body">{children}</main>
+  </section>;
+}
+
+type CargaDelBorrador =
+  | { fase: "cargando" }
+  | { fase: "error"; mensaje: string }
+  | { fase: "ilegible"; draft: ContractDraft }
+  | { fase: "listo"; draft: ContractDraft; estado: EstadoDelBorrador };
+
+function cargaDe(draft: ContractDraft): CargaDelBorrador {
+  const estado = deserializar(draft.payload);
+  return estado ? { fase: "listo", draft, estado } : { fase: "ilegible", draft };
+}
+
+/**
+ * Trae el borrador y arma el asistente con él. Si no se puede abrir (se descartó, venció o está
+ * dañado) lo dice y ofrece lo que corresponde, sin romper el panel.
+ */
+function RetomarBorrador({ draftId, ...props }: PropsDelAsistente & Readonly<{ draftId: number }>) {
+  const [carga, setCarga] = useState<CargaDelBorrador>({ fase: "cargando" });
+  const [intento, setIntento] = useState(0);
+  const [descartando, setDescartando] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    AlquiaBackendClient.contractDrafts.get(draftId)
+      .then((draft) => { if (!cancelado) setCarga(cargaDe(draft)); })
+      .catch((err: unknown) => {
+        if (!cancelado) setCarga({ fase: "error", mensaje: copyDeError(err, { fallback: "No pudimos abrir el borrador. Inténtelo de nuevo." }) });
+      });
+    return () => { cancelado = true; };
+  }, [draftId, intento]);
+
+  if (carga.fase === "cargando") {
+    return <PanelDelBorrador titulo="Nuevo contrato" onClose={props.onClose}><Cargando>Abriendo el borrador…</Cargando></PanelDelBorrador>;
+  }
+  if (carga.fase === "error") {
+    return <PanelDelBorrador titulo="Nuevo contrato" onClose={props.onClose}>
+      <h1>No pudimos abrir el borrador</h1>
+      <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{carga.mensaje}</p>
+      <div className="owner-wizard-acciones">
+        <button type="button" className="owner-button owner-button--quiet" onClick={props.onClose}>Volver</button>
+        <button type="button" className="owner-button owner-button--secondary" onClick={() => { setCarga({ fase: "cargando" }); setIntento((n) => n + 1); }}>Reintentar</button>
+      </div>
+    </PanelDelBorrador>;
+  }
+  if (carga.fase === "ilegible") {
+    const { draft } = carga;
+    return <PanelDelBorrador titulo="Nuevo contrato" onClose={props.onClose}>
+      <h1>No pudimos leer este borrador</h1>
+      <p>Se guardó con una versión que ya no entendemos. Puede descartarlo y empezar el contrato de nuevo.</p>
+      <div className="owner-wizard-acciones">
+        <button type="button" className="owner-button owner-button--quiet" onClick={props.onClose}>Volver</button>
+        <button type="button" className="owner-button owner-button--danger" onClick={() => setDescartando(true)}>Descartar el borrador</button>
+      </div>
+      {descartando && <DescartarBorrador
+        etiqueta={draft.label}
+        conPdf={draft.document !== null}
+        descartar={() => AlquiaBackendClient.contractDrafts.remove(draft.id)}
+        onCancel={() => setDescartando(false)}
+        onDone={() => { props.onDraftDiscarded?.(); props.onClose(); }}
+      />}
+    </PanelDelBorrador>;
+  }
+  return <Asistente key={`${carga.draft.id}-${carga.draft.version}`} {...props} retomando={{ draft: carga.draft, estado: carga.estado }} onReloadDraft={(draft) => setCarga(cargaDe(draft))} />;
+}
+
+export default function CreationWizard(props: PropsDelAsistente) {
+  const { draftId, ...resto } = props;
+  if (draftId === undefined) return <Asistente {...resto} />;
+  return <RetomarBorrador {...resto} draftId={draftId} />;
+}
+
+const ESTADO_VACIO: EstadoDelBorrador = {
+  paso: 1,
+  propiedad: { id: null, nuevo: false, borrador: null },
+  inquilino: { id: null, nuevo: false, borrador: null },
+  alquiler: "", diaVencimiento: 1, plazo: 36, inicio: "", metodo: "FIXED_PERCENTAGE", porcentaje: "", frecuencia: 6,
+  otras: SIN_OTRAS_CONDICIONES, pagadoHasta: "",
+};
+
+/**
+ * Con qué arranca el asistente: lo que tenía el borrador que se retoma, o lo de siempre (la propiedad
+ * desde la que se abrió, si la hay, y hoy como inicio). Los campos de la carga de una propiedad o de
+ * un inquilino nuevos se rearman desde los pedidos que quedaron en el borrador.
+ */
+function valoresIniciales(guardado: EstadoDelBorrador | undefined, tipo: WizardKind, propiedadPreseleccionada: number | undefined) {
+  const estado: EstadoDelBorrador = {
+    ...ESTADO_VACIO,
+    propiedad: { ...ESTADO_VACIO.propiedad, id: tipo === "contract" ? propiedadPreseleccionada ?? null : null },
+    inicio: hoyISO(),
+    ...guardado,
+  };
+  return {
+    estado,
+    propiedad: formularioDePropiedad(estado.propiedad.borrador?.pedido),
+    inquilino: formularioDeInquilino(estado.inquilino.borrador?.pedido),
+  };
+}
+
+/**
+ * Un borrador retomado puede apuntar a algo que cambió: una propiedad que ahora tiene contrato
+ * vigente, un inquilino archivado. Eso se trata como no elegido y el paso lo explica.
+ */
+function elegidosVigentes(retomando: boolean, listas: ContractLists | null, elegidos: Readonly<{
+  propiedadId: number | null; propiedadNueva: boolean; inquilinoId: number | null; inquilinoNuevo: boolean;
+}>) {
+  const falta = (id: number | null, nuevo: boolean, opciones: Opcion[] | undefined) =>
+    retomando && id !== null && !nuevo && opciones !== undefined && !opciones.some((opcion) => opcion.id === id);
+  const propiedadPerdida = falta(elegidos.propiedadId, elegidos.propiedadNueva, listas?.propiedades);
+  const inquilinoPerdido = falta(elegidos.inquilinoId, elegidos.inquilinoNuevo, listas?.inquilinos);
+  return {
+    propiedadPerdida,
+    inquilinoPerdido,
+    propiedadElegida: propiedadPerdida ? null : elegidos.propiedadId,
+    inquilinoElegido: inquilinoPerdido ? null : elegidos.inquilinoId,
+  };
+}
+
+/** El contenido que se guarda. Mientras las listas no llegaron no se sabe cómo se llama lo elegido: se conserva la etiqueta que ya tenía. */
+function contenidoDelBorradorDe(estado: EstadoDelBorrador, listas: ContractLists | null, etiquetaGuardada: string | undefined) {
+  const propiedad = nombreElegido(estado.propiedad.nuevo, estado.propiedad.borrador, estado.propiedad.id, listas?.propiedades);
+  const inquilino = nombreElegido(estado.inquilino.nuevo, estado.inquilino.borrador, estado.inquilino.id, listas?.inquilinos);
+  const contenido = armarContenido(estado, propiedad ?? null, inquilino ?? null);
+  const sinNombres = propiedad === undefined || inquilino === undefined;
+  return sinNombres && etiquetaGuardada !== undefined ? { ...contenido, label: etiquetaGuardada } : contenido;
+}
+
+/** Cuándo y con qué guarda solo el borrador: sólo en «Nuevo contrato» y con sesión, y desde que se sale del primer paso. */
+function opcionesDeAutoguardado(args: Readonly<{
+  guardaBorrador: boolean; retomando: BorradorRetomado | undefined; pasoContrato: number; preseleccionada: boolean;
+  contenido: ContenidoDeBorrador;
+}>) {
+  const { guardaBorrador, retomando, pasoContrato, preseleccionada, contenido } = args;
+  const borrador = retomando?.draft;
+  // Con la propiedad ya elegida (se abrió desde ella) el primer paso es el 2: recién al salir de él nace el borrador.
+  const pasoInicial = preseleccionada ? 2 : 1;
+  return {
+    activo: guardaBorrador && (borrador !== undefined || pasoContrato > pasoInicial),
+    contenido,
+    paso: pasoContrato,
+    inicial: borrador ? { id: borrador.id, version: borrador.version, contenido: { label: borrador.label, payload: borrador.payload } } : null,
+  };
+}
+
+/** Sólo «Nuevo contrato» y con sesión guarda borradores: el prototipo y los asistentes sueltos no. */
+function guardaComoBorrador(tipo: WizardKind, demo: boolean): boolean {
+  return tipo === "contract" && !demo;
+}
+
+/** «Completar después» se ofrece en el contrato, en un paso que todavía no está completo. */
+function puedeCompletarDespues(kind: WizardKind, eligiendo: boolean, guardando: boolean, pendientes: number[], step: number): boolean {
+  return kind === "contract" && !eligiendo && !guardando && pendientes.includes(step);
+}
+
+/** En la revisión, «Crear contrato» espera a que no quede ningún paso por completar. */
+function contratoBloqueadoEn(step: number, banderas: BanderasDelContrato, pendientes: number[]): boolean {
+  return contratoBloqueado(step, banderas) || (step === 7 && pendientes.length > 0);
+}
+
+function BotonDescartarBorrador({ visible, deshabilitado, onClick }: Readonly<{ visible: boolean; deshabilitado: boolean; onClick: () => void }>) {
+  if (!visible) return null;
+  return <button type="button" className="owner-wizard-quiet owner-wizard-descartar" onClick={onClick} disabled={deshabilitado}>
+    <Trash2 aria-hidden="true" size={18} /><span>Descartar borrador</span>
+  </button>;
+}
+
+function BotonCompletarDespues({ visible, onClick }: Readonly<{ visible: boolean; onClick: () => void }>) {
+  if (!visible) return null;
+  return <button type="button" className="owner-wizard-quiet owner-wizard-later" onClick={onClick}>Completar después</button>;
+}
+
+type SalidaPendiente = { salir: () => void; sinGuardar: boolean };
+
+/** Salir de un contrato que todavía no es un borrador, o cuyo último guardado falló, pide confirmar. */
+function DialogoDeSalida({ salida, onSeguir, onSalir }: Readonly<{ salida: SalidaPendiente | null; onSeguir: () => void; onSalir: (salir: () => void) => void }>) {
+  if (salida === null) return null;
+  const { sinGuardar } = salida;
+  const titulo = sinGuardar ? "No pudimos guardar los últimos cambios" : "¿Salir sin crear el contrato?";
+  const texto = sinGuardar
+    ? "Lo que cambió desde el último guardado se pierde si sale ahora. El borrador queda como estaba."
+    : "No se guardó nada: ni la propiedad, ni el inquilino, ni el contrato. Si sale ahora, lo que cargó se pierde.";
+  return <Dialog title={titulo} onClose={onSeguir}>
+    <div className="owner-dialog__body"><p>{texto}</p></div>
+    <div className="owner-dialog__foot">
+      <button type="button" className="owner-button owner-button--quiet" onClick={onSeguir}>Seguir cargando</button>
+      <button type="button" className="owner-button owner-button--danger" onClick={() => onSalir(salida.salir)}>{sinGuardar ? "Salir igual" : "Salir"}</button>
+    </div>
+  </Dialog>;
+}
+
+/** Otro dispositivo guardó antes: hay que elegir cuál versión conservar, no se pisa nada en silencio. */
+/** Confirma y borra el borrador desde el propio asistente; al terminar, el asistente se cierra. */
+function DescartarDesdeElAsistente({ abierto, etiqueta, conPdf, descartar, onCancel }: Readonly<{
+  abierto: boolean; etiqueta: string; conPdf: boolean; descartar: () => Promise<void>; onCancel: () => void;
+}>) {
+  if (!abierto) return null;
+  return <DescartarBorrador etiqueta={etiqueta} conPdf={conPdf} descartar={descartar} onCancel={onCancel} onDone={() => {}} />;
+}
+
+function DialogoDeConflicto({ abierto, onCargarLaOtra, onConservarEsta }: Readonly<{ abierto: boolean; onCargarLaOtra: () => void; onConservarEsta: () => void }>) {
+  if (!abierto) return null;
+  return <Dialog title="Este borrador cambió en otro dispositivo">
+    <div className="owner-dialog__body"><p>Se guardó otra versión mientras lo editaba acá. Elija cuál conservar: la que tiene en pantalla reemplaza a la otra, y si carga la otra pierde lo que cambió acá.</p></div>
+    <div className="owner-dialog__foot">
+      <button type="button" className="owner-button owner-button--secondary" onClick={onCargarLaOtra}>Cargar la otra versión</button>
+      <button type="button" className="owner-button owner-button--primary" onClick={onConservarEsta}>Guardar esta versión</button>
+    </div>
+  </Dialog>;
+}
+
+function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = false, initialPropertyId, retomando, onReloadDraft, onDraftKept, onDraftDiscarded }: Omit<PropsDelAsistente, "draftId"> & Readonly<{
+  /** El borrador con el que se retoma: el asistente arranca con lo que tenía. */
+  retomando?: BorradorRetomado;
+  /** Cargar la versión de otro dispositivo: vuelve a armar el asistente con ella. */
+  onReloadDraft?: (draft: ContractDraft) => void;
+}>) {
+  const guardado = retomando?.estado;
+  const { estado: inicial, propiedad: formularioPropiedad, inquilino: formularioInquilino } = valoresIniciales(guardado, tipo, initialPropertyId);
+  const { desvio, setDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep } = useNavegacion(tipo, initialPropertyId, guardado?.paso);
   const total = cantidadPasos(kind);
-  const [propiedadId, setPropiedadId] = useState<number | null>(preseleccionada ? initialPropertyId ?? null : null);
-  const [inquilinoId, setInquilinoId] = useState<number | null>(null);
+  const [propiedadId, setPropiedadId] = useState<number | null>(inicial.propiedad.id);
+  const [inquilinoId, setInquilinoId] = useState<number | null>(inicial.inquilino.id);
   // Lo que se carga en un desvío no se guarda: queda acá como borrador hasta «Crear contrato».
   // `…Nueva` dice si la elegida es el borrador y no un registro que ya existe.
-  const [borradorPropiedad, setBorradorPropiedad] = useState<{ pedido: PropertyRequest; etiqueta: string } | null>(null);
-  const [propiedadNueva, setPropiedadNueva] = useState(false);
-  const [borradorInquilino, setBorradorInquilino] = useState<{ pedido: TenantRequest; etiqueta: string } | null>(null);
-  const [inquilinoNuevo, setInquilinoNuevo] = useState(false);
-  const [method, setMethod] = useState<ContractMethod>("FIXED_PERCENTAGE");
-  const [term, setTerm] = useState(36);
-  const [alquiler, setAlquiler] = useState("");
-  const [inicio, setInicio] = useState(hoyISO);
-  const [diaVencimiento, setDiaVencimiento] = useState(1);
-  const [porcentaje, setPorcentaje] = useState("");
-  const [frecuencia, setFrecuencia] = useState(6);
+  const [borradorPropiedad, setBorradorPropiedad] = useState<{ pedido: PropertyRequest; etiqueta: string } | null>(inicial.propiedad.borrador);
+  const [propiedadNueva, setPropiedadNueva] = useState(inicial.propiedad.nuevo);
+  const [borradorInquilino, setBorradorInquilino] = useState<{ pedido: TenantRequest; etiqueta: string } | null>(inicial.inquilino.borrador);
+  const [inquilinoNuevo, setInquilinoNuevo] = useState(inicial.inquilino.nuevo);
+  const [method, setMethod] = useState<ContractMethod>(inicial.metodo);
+  const [term, setTerm] = useState(inicial.plazo);
+  const [alquiler, setAlquiler] = useState(inicial.alquiler);
+  const [inicio, setInicio] = useState(inicial.inicio);
+  const [diaVencimiento, setDiaVencimiento] = useState(inicial.diaVencimiento);
+  const [porcentaje, setPorcentaje] = useState(inicial.porcentaje);
+  const [frecuencia, setFrecuencia] = useState(inicial.frecuencia);
   // «¿Hasta qué mes le pagaron?»: vacío hasta que el propietario contesta. Si el backend corrige la
   // lista de meses (un contrato por índice no genera todas las cuotas), su lista vale mientras no
   // cambien el inicio, el plazo o el vencimiento que la originaron.
-  const [pagadoHasta, setPagadoHasta] = useState<RespuestaPagadoHasta>("");
+  const [pagadoHasta, setPagadoHasta] = useState<RespuestaPagadoHasta>(inicial.pagadoHasta);
   const [periodosBackend, setPeriodosBackend] = useState<{ clave: string; meses: string[] } | null>(null);
   // null = todavía no lo cargó. El paso es opcional, así que no puede arrancar
   // con un número puesto por nosotros: se guardaría como si lo hubiera elegido.
-  const [bedrooms, setBedrooms] = useState<number | null>(null);
-  const [bathrooms, setBathrooms] = useState<number | null>(null);
-  const [superficie, setSuperficie] = useState("");
-  const [direccion, setDireccion] = useState<Direccion | null>(null);
-  const [unidad, setUnidad] = useState("");
-  const [categoria, setCategoria] = useState<PropertyCategory | null>(null);
+  const [bedrooms, setBedrooms] = useState<number | null>(formularioPropiedad.bedrooms);
+  const [bathrooms, setBathrooms] = useState<number | null>(formularioPropiedad.bathrooms);
+  const [superficie, setSuperficie] = useState(formularioPropiedad.superficie);
+  const [direccion, setDireccion] = useState<Direccion | null>(formularioPropiedad.direccion);
+  const [unidad, setUnidad] = useState(formularioPropiedad.unidad);
+  const [categoria, setCategoria] = useState<PropertyCategory | null>(formularioPropiedad.categoria);
   // Los dos extras arrancan apagados y, si quedan así, no se mandan: el paso es
   // opcional, y un `false` afirmaría «no acepta mascotas», que no es lo que el
   // propietario dijo. Ver `guardarPropiedad`.
-  const [mascotas, setMascotas] = useState(false);
-  const [amoblada, setAmoblada] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
-  const [cuit, setCuit] = useState("");
+  const [mascotas, setMascotas] = useState(formularioPropiedad.mascotas);
+  const [amoblada, setAmoblada] = useState(formularioPropiedad.amoblada);
+  const [nombre, setNombre] = useState(formularioInquilino.nombre);
+  const [apellido, setApellido] = useState(formularioInquilino.apellido);
+  const [cuit, setCuit] = useState(formularioInquilino.cuit);
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
   // «Otras condiciones»: depósito, comisión, punitorios y garantías. Lo que queda vacío no viaja.
-  const [otras, setOtras] = useState<Condiciones>(SIN_OTRAS_CONDICIONES);
+  const [otras, setOtras] = useState<Condiciones>(inicial.otras);
   const [intentoOtras, setIntentoOtras] = useState(false);
   // Los errores del backend, por su ruta (`property.street`), hasta el próximo intento de crear.
   const [erroresBackend, setErroresBackend] = useState<Record<string, string>>({});
   // Un 409 que el propietario resuelve con una elección: usar al inquilino que ya existe, o ver el contrato vigente.
   const [conflicto, setConflicto] = useState<Conflicto | null>(null);
   // Salir con algo cargado pide confirmación: guarda qué hacer si el propietario confirma.
-  const [confirmandoSalida, setConfirmandoSalida] = useState<(() => void) | null>(null);
-  const [correo, setCorreo] = useState("");
-  const [telefono, setTelefono] = useState("");
+  const [confirmandoSalida, setConfirmandoSalida] = useState<SalidaPendiente | null>(null);
+  const [correo, setCorreo] = useState(formularioInquilino.correo);
+  const [telefono, setTelefono] = useState(formularioInquilino.telefono);
   // Antes del primer paso del contrato se elige cómo cargarlo. Con una propiedad ya elegida
   // (se abrió desde ella) se va directo a mano: el contrato leído no la tendría en cuenta. En
   // /prototipo (`demo`) no hay sesión ni backend que lea el PDF, así que tampoco se ofrece.
-  const ofrecePdf = tipo === "contract" && !preseleccionada && !demo;
+  const ofrecePdf = tipo === "contract" && !preseleccionada && !demo && !retomando;
   const [modo, setModo] = useState<ModoContrato | "elegir">(ofrecePdf ? "elegir" : "manual");
   const [modoElegido, setModoElegido] = useState<ModoContrato | null>(null);
   const eligiendo = modo === "elegir";
@@ -966,6 +1299,7 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
     onPhoneChange={setTelefono}
   />;
   const listas = listasDisponibles(demo, cargaListas);
+  const { propiedadPerdida, inquilinoPerdido, propiedadElegida, inquilinoElegido } = elegidosVigentes(retomando !== undefined, listas, { propiedadId, propiedadNueva, inquilinoId, inquilinoNuevo });
   const { alquilerOk, inicioOk, porcentajeOk } = validarDatosDelContrato({ alquiler, inicio, method, porcentaje });
   const hoyArgentina = hoyEnArgentina();
   const claveDeFechas = `${inicio}|${term}|${diaVencimiento}`;
@@ -976,19 +1310,39 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
 
   const finish = step === total;
   // No se puede avanzar con datos que el backend rechazaría (@NotBlank / @ValidTaxId / @Email)
+  const banderas: BanderasDelContrato = {
+    propiedadSinElegir: faltaElegir(propiedadElegida, propiedadNueva, borradorPropiedad),
+    inquilinoSinElegir: faltaElegir(inquilinoElegido, inquilinoNuevo, borradorInquilino),
+    alquilerOk,
+    inicioOk,
+    porcentajeOk,
+    faltaRespuesta: faltaResponder(respuestaVigente, mesesPorPagar),
+  };
+  const pendientes = pasosPendientes(banderas, otrasCondicionesValidas(otras));
   const bloqueadoPorTipo: Record<WizardKind, boolean> = {
     tenant: faltanDatosDelInquilino({ nombre, apellido, cuitOk, correoOk, telefonoOk }),
     property: propiedadBloqueada(step, direccion, categoria),
-    contract: contratoBloqueado(step, {
-      propiedadSinElegir: faltaElegir(propiedadId, propiedadNueva, borradorPropiedad),
-      inquilinoSinElegir: faltaElegir(inquilinoId, inquilinoNuevo, borradorInquilino),
-      alquilerOk,
-      inicioOk,
-      porcentajeOk,
-      faltaRespuesta: faltaResponder(respuestaVigente, mesesPorPagar),
-    }),
+    contract: contratoBloqueadoEn(step, banderas, pendientes),
   };
   const bloqueado = guardando || (eligiendo ? modoElegido === null : bloqueadoPorTipo[kind]);
+
+  // --- El contrato como borrador ---
+  // Nace al salir del primer paso; desde ahí se guarda solo. Sólo en «Nuevo contrato» y con sesión.
+  const estadoDelBorrador: EstadoDelBorrador = {
+    paso: pasoContrato,
+    propiedad: { id: propiedadElegida, nuevo: propiedadNueva, borrador: borradorPropiedad },
+    inquilino: { id: inquilinoElegido, nuevo: inquilinoNuevo, borrador: borradorInquilino },
+    alquiler, diaVencimiento, plazo: term, inicio, metodo: method, porcentaje, frecuencia, otras, pagadoHasta,
+  };
+  const contenidoDelBorrador = contenidoDelBorradorDe(estadoDelBorrador, listas, retomando?.draft.label);
+  const guardaBorrador = guardaComoBorrador(tipo, demo);
+  const auto = useAutoguardado(opcionesDeAutoguardado({ guardaBorrador, retomando, pasoContrato, preseleccionada, contenido: contenidoDelBorrador }));
+  const esBorrador = auto.id !== null;
+
+  // El PDF del contrato, opcional. Con un borrador guardado viaja enseguida; sin él, espera al contrato.
+  const pdf = usePdfDelBorrador(auto, retomando?.draft.document);
+  const [descartandoBorrador, setDescartandoBorrador] = useState(false);
+  const [saliendo, setSaliendo] = useState(false);
   function volverAlContrato() {
     setGuardando(false);
     setDesvio(null);
@@ -1128,9 +1482,9 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
   }
 
   async function guardarContrato(inquilinoExistente?: number) {
-    const propiedad = referenciaDe(propiedadNueva, borradorPropiedad, propiedadId);
+    const propiedad = referenciaDe(propiedadNueva, borradorPropiedad, propiedadElegida);
     const inquilino = inquilinoExistente === undefined
-      ? referenciaDe(inquilinoNuevo, borradorInquilino, inquilinoId)
+      ? referenciaDe(inquilinoNuevo, borradorInquilino, inquilinoElegido)
       : { id: inquilinoExistente };
     if (propiedad === null || inquilino === null) return;
     if (demo) return onComplete();
@@ -1138,27 +1492,33 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
     setErroresBackend({});
     setConflicto(null);
     setGuardando(true);
+    // Que ningún guardado del borrador viaje a la vez que el alta: se cancela lo que esperaba y se
+    // aguarda el que está en camino.
+    await auto.congelar();
+    const pedido = {
+      property: propiedad,
+      tenant: inquilino,
+      contract: {
+        initialRentAmount: Number(alquiler),
+        startDate: inicio,
+        termMonths: term,
+        dueDay: diaVencimiento,
+        incrementFrequencyMonths: frecuencia,
+        // El backend separa el cómo del qué, y es excluyente: FIXED_PERCENTAGE
+        // exige incrementValue y prohíbe incrementIndexName, INDEX al revés.
+        // Mandar los dos, o ninguno, es un 400.
+        ...datosDeActualizacion(method, porcentaje),
+        ...armarOtrasCondiciones(otras),
+      },
+      elapsed: paidThroughDe(respuestaVigente, mesesPorPagar),
+    };
     try {
       // Un solo pedido con todo: o se crea todo, o nada. Los borradores recién se guardan acá.
-      await AlquiaBackendClient.contracts.onboard({
-        property: propiedad,
-        tenant: inquilino,
-        contract: {
-          initialRentAmount: Number(alquiler),
-          startDate: inicio,
-          termMonths: term,
-          dueDay: diaVencimiento,
-          incrementFrequencyMonths: frecuencia,
-          // El backend separa el cómo del qué, y es excluyente: FIXED_PERCENTAGE
-          // exige incrementValue y prohíbe incrementIndexName, INDEX al revés.
-          // Mandar los dos, o ninguno, es un 400.
-          ...datosDeActualizacion(method, porcentaje),
-          ...armarOtrasCondiciones(otras),
-        },
-        elapsed: paidThroughDe(respuestaVigente, mesesPorPagar),
-      });
-      onComplete();
+      const resultado = await crearContratoDesdeBorrador(pedido, auto.id, { enElBorrador: pdf.documento !== null, archivoLocal: pdf.archivoLocal });
+      auto.detener();
+      onComplete(resultado);
     } catch (err) {
+      auto.descongelar();
       mostrarErrorDeAlta(err);
     }
   }
@@ -1168,9 +1528,25 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
   const hayAlgoCargado = tipo === "contract" && hayTrabajoDelContrato([
     borradorPropiedad, borradorInquilino, direccion, hayOtrasCondiciones(otras), alquiler, porcentaje, nombre, apellido, cuit, correo, telefono,
   ]);
+  // Un borrador no pide confirmar: ya se guarda solo. Se guarda lo último y se sale; si esa última
+  // vez falla, se avisa antes de irse, porque ahí sí se pierde algo.
+  async function salirConservandoBorrador(salir: () => void) {
+    setSaliendo(true);
+    const quedoGuardado = await auto.guardarAhora();
+    setSaliendo(false);
+    if (!quedoGuardado) return setConfirmandoSalida({ salir, sinGuardar: true });
+    onDraftKept?.();
+    salir();
+  }
   function pedirSalir(salir: () => void) {
-    if (hayAlgoCargado) setConfirmandoSalida(() => salir);
+    if (esBorrador) return void salirConservandoBorrador(salir);
+    if (hayAlgoCargado) setConfirmandoSalida({ salir, sinGuardar: false });
     else salir();
+  }
+  async function descartarBorrador() {
+    await auto.descartar();
+    onDraftDiscarded?.();
+    onClose();
   }
 
   const next = () => {
@@ -1215,13 +1591,15 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
     setDesvio(cual);
   }
   const seleccionDePropiedad = seleccionDe({
-    id: propiedadId, borrador: borradorPropiedad, esNuevo: propiedadNueva,
+    id: propiedadElegida, borrador: borradorPropiedad, esNuevo: propiedadNueva,
+    aviso: propiedadPerdida ? "La propiedad que había elegido ya no está disponible: puede tener un contrato vigente. Elija otra." : undefined,
     elegir: (id) => { setPropiedadId(id); setPropiedadNueva(false); },
     elegirBorrador: () => { setPropiedadNueva(true); setPropiedadId(null); },
     crear: () => abrirDesvio("property"),
   });
   const seleccionDeInquilino = seleccionDe({
-    id: inquilinoId, borrador: borradorInquilino, esNuevo: inquilinoNuevo,
+    id: inquilinoElegido, borrador: borradorInquilino, esNuevo: inquilinoNuevo,
+    aviso: inquilinoPerdido ? "El inquilino que había elegido ya no está disponible. Elija otro." : undefined,
     elegir: (id) => { setInquilinoId(id); setInquilinoNuevo(false); },
     elegirBorrador: () => { setInquilinoNuevo(true); setInquilinoId(null); },
     crear: () => abrirDesvio("tenant"),
@@ -1251,12 +1629,14 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
     percentage={porcentaje}
     frequency={frecuencia}
     otras={otras}
+    pendientes={pendientes}
     mostrarErroresDeOtras={intentoOtras}
     error={errorGuardado}
     erroresBackend={erroresBackend}
     cantidadErrores={Object.keys(erroresBackend).length}
     conflictSection={conflictSection}
     elapsedSection={<PagosTranscurridos meses={mesesPorPagar} value={respuestaVigente} onChange={setPagadoHasta} inicioISO={inicio} alquiler={Number(alquiler)} frecuenciaMeses={frecuencia} tieneRecargo={punitoriosCargados(otras.punitorios)} hoyISO={hoyArgentina} />}
+    pdfSection={<PdfDelContrato habilitado={guardaBorrador} documento={pdf.documento} ocupado={pdf.ocupado} error={pdf.error} onElegir={(archivo) => void pdf.adjuntar(archivo)} onQuitar={() => void pdf.quitar()} />}
     onRentChange={setAlquiler}
     onDueDayChange={setDiaVencimiento}
     onTermChange={setTerm}
@@ -1294,33 +1674,32 @@ export default function CreationWizard({ kind: tipo, onClose, onComplete, onOpen
   return (
     <section className="owner-wizard" aria-label={ariaAsistente}>
       <header className="owner-wizard__top">
-        <button type="button" aria-label="Salir del asistente" onClick={() => pedirSalir(onClose)} disabled={guardando}>
+        <button type="button" aria-label="Salir del asistente" onClick={() => pedirSalir(onClose)} disabled={guardando || saliendo}>
           <Icon name="x" />
         </button>
         <b>{tituloAsistente}</b>
+        <IndicadorDeGuardado estado={auto.estado} />
         {total > 1 && !eligiendo && (
           <>
             <progress className="owner-wizard__progress" value={step} max={total} aria-label="Progreso del asistente" />
             <span>Paso {step} de {total}</span>
           </>
         )}
+        <BotonDescartarBorrador visible={esBorrador} deshabilitado={guardando || saliendo} onClick={() => setDescartandoBorrador(true)} />
       </header>
       <main className="owner-wizard__body">{stepContent}</main>
       <footer className="owner-wizard__footer">
         <button type="button" className="owner-wizard-quiet" onClick={atras} disabled={atrasDeshabilitado}>
           Atrás
         </button>
+        <BotonCompletarDespues visible={puedeCompletarDespues(kind, eligiendo, guardando, pendientes, step)} onClick={() => setStep((current) => current + 1)} />
         <button type="button" className="owner-wizard-next" onClick={next} disabled={bloqueado}>
           <ContenidoDelBoton eligiendo={eligiendo} guardando={guardando} finish={finish} etiquetaDeCierre={finishLabel} />
         </button>
       </footer>
-      {confirmandoSalida && <Dialog title="¿Salir sin crear el contrato?" onClose={() => setConfirmandoSalida(null)}>
-        <div className="owner-dialog__body"><p>No se guardó nada: ni la propiedad, ni el inquilino, ni el contrato. Si sale ahora, lo que cargó se pierde.</p></div>
-        <div className="owner-dialog__foot">
-          <button type="button" className="owner-button owner-button--quiet" onClick={() => setConfirmandoSalida(null)}>Seguir cargando</button>
-          <button type="button" className="owner-button owner-button--danger" onClick={() => { const salir = confirmandoSalida; setConfirmandoSalida(null); salir(); }}>Salir</button>
-        </div>
-      </Dialog>}
+      <DialogoDeSalida salida={confirmandoSalida} onSeguir={() => setConfirmandoSalida(null)} onSalir={(salir) => { setConfirmandoSalida(null); salir(); }} />
+      <DescartarDesdeElAsistente abierto={descartandoBorrador} etiqueta={contenidoDelBorrador.label} conPdf={pdf.documento !== null} descartar={descartarBorrador} onCancel={() => setDescartandoBorrador(false)} />
+      <DialogoDeConflicto abierto={auto.estado === "conflicto"} onCargarLaOtra={() => void auto.cargarLaOtra().then((otro) => onReloadDraft?.(otro))} onConservarEsta={() => void auto.conservarEsta()} />
     </section>
   );
 }

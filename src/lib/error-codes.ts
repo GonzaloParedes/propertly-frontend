@@ -37,6 +37,11 @@ export const ERROR = {
   IMPORT_ALREADY_COMPLETED: "urn:alquia:error:import-already-completed",
   IMPORT_QUOTA_EXCEEDED: "urn:alquia:error:import-quota-exceeded",
   AI_IMPORTS_UNAVAILABLE: "urn:alquia:error:ai-imports-unavailable",
+  CONTRACT_DRAFT_LIMIT_REACHED: "urn:alquia:error:contract-draft-limit-reached",
+  CONTRACT_DRAFT_VERSION_CONFLICT: "urn:alquia:error:contract-draft-version-conflict",
+  CONTRACT_DRAFT_TOO_LARGE: "urn:alquia:error:contract-draft-too-large",
+  CONTRACT_DRAFT_PAYLOAD_INVALID: "urn:alquia:error:contract-draft-payload-invalid",
+  CONTRACT_DRAFT_NOT_FOUND: "urn:alquia:error:contract-draft-not-found",
 } as const;
 
 export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
@@ -81,6 +86,12 @@ const COPY: Record<string, string> = {
   [ERROR.IMPORT_ALREADY_COMPLETED]: "Este contrato ya se creó desde esa lectura.",
   [ERROR.IMPORT_QUOTA_EXCEEDED]: "Ya usó todas las lecturas de contratos que tiene disponibles. Puede cargar el contrato a mano.",
   [ERROR.AI_IMPORTS_UNAVAILABLE]: "La lectura de contratos no está disponible en este momento. Puede cargar el contrato a mano.",
+  [ERROR.CONTRACT_DRAFT_LIMIT_REACHED]:
+    "Ya tiene el máximo de borradores guardados. Termine o descarte uno para empezar otro contrato.",
+  [ERROR.CONTRACT_DRAFT_VERSION_CONFLICT]: "Este borrador cambió en otro dispositivo.",
+  [ERROR.CONTRACT_DRAFT_TOO_LARGE]: "El borrador es demasiado grande para guardarlo.",
+  [ERROR.CONTRACT_DRAFT_PAYLOAD_INVALID]: "No pudimos guardar el borrador. Inténtelo de nuevo.",
+  [ERROR.CONTRACT_DRAFT_NOT_FOUND]: "Ese borrador ya no existe. Puede que se haya descartado o vencido.",
 };
 
 export const FALLBACK = "No se pudo completar la acción. Inténtelo de nuevo más tarde.";
@@ -116,4 +127,14 @@ export function idDelInquilinoExistente(err: unknown): number | null {
 /** El contrato vigente de la propiedad, en un 409 del alta de contrato. */
 export function idDelContratoActivo(err: unknown): number | null {
   return idDeExtension(err, "activeContractId");
+}
+
+/** La versión que tiene el backend de un borrador, en un 409 de guardado. */
+export function versionActualDelBorrador(err: unknown): number | null {
+  return idDeExtension(err, "currentVersion");
+}
+
+/** Cuántos borradores admite el backend, en un 409 al crear uno de más. */
+export function limiteDeBorradores(err: unknown): number | null {
+  return idDeExtension(err, "limit");
 }

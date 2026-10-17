@@ -5,6 +5,7 @@ import {
   apiPost,
   apiPostForm,
   apiPut,
+  apiPutForm,
   apiDelete,
   apiGetBlob,
 } from "@/lib/api";
@@ -165,6 +166,36 @@ describe("apiPut", () => {
       "/test",
       expect.objectContaining({ method: "PUT", body: undefined })
     );
+  });
+});
+
+describe("apiPut con keepalive", () => {
+  it("manda keepalive cuando se pide, para que el guardado sobreviva al cierre de la página", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPut("/test", { a: 1 }, { keepalive: true });
+    expect(fetch).toHaveBeenCalledWith("/test", expect.objectContaining({ method: "PUT", keepalive: true }));
+  });
+
+  it("no manda keepalive si no se pide", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPut("/test", { a: 1 });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.keepalive).toBeUndefined();
+  });
+});
+
+describe("apiPutForm", () => {
+  it("envía PUT con el FormData como body y sin pisar el Content-Type", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({ id: 1 }));
+    const form = new FormData();
+    form.append("file", new File(["hello"], "test.pdf"));
+    const result = await apiPutForm<{ id: number }>("/test", form);
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.method).toBe("PUT");
+    expect(init.body).toBe(form);
+    expect((init.headers as Record<string, string> | undefined)?.["Content-Type"]).toBeUndefined();
+    expect((init.headers as Record<string, string>)["X-Requested-With"]).toBe("XMLHttpRequest");
+    expect(result).toEqual({ id: 1 });
   });
 });
 

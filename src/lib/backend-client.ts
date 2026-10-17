@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPostForm, apiPut, apiDelete, apiGetBlob } from "@/lib/api";
+import { apiGet, apiPost, apiPostForm, apiPut, apiPutForm, apiDelete, apiGetBlob } from "@/lib/api";
 import type {
   LoginRequest,
   RegisterRequest,
@@ -38,6 +38,10 @@ import type {
   ContractImportResponse,
   ContractImportCompletionRequest,
   ContractImportQuotaResponse,
+  ContractDraft,
+  ContractDraftSummary,
+  ContractDraftRequest,
+  ContractDraftUpdateRequest,
 } from "@/lib/backend-types";
 
 /**
@@ -187,6 +191,33 @@ export const AlquiaBackendClient = {
     // Descarta la lectura y borra el archivo: 204 sin cuerpo.
     discard: (id: number): Promise<void> => apiDelete(`/contract-imports/${id}`),
     document: (id: number): Promise<Blob> => apiGetBlob(`/contract-imports/${id}/document`),
+  },
+
+  // El contrato a medio cargar. El backend guarda el contenido sin leerlo y no crea nada: el
+  // contrato se crea con `contracts.onboard` mandando el `draftId`, y ahí el borrador desaparece.
+  contractDrafts: {
+    list: (): Promise<ContractDraftSummary[]> =>
+      apiGet<ContractDraftSummary[]>("/contract-drafts"),
+    get: (id: number): Promise<ContractDraft> => apiGet<ContractDraft>(`/contract-drafts/${id}`),
+    create: (body: ContractDraftRequest): Promise<ContractDraft> =>
+      apiPost<ContractDraft>("/contract-drafts", body),
+    // `keepalive`: el guardado al cerrar la pestaña tiene que terminar aunque la página no.
+    update: (
+      id: number,
+      body: ContractDraftUpdateRequest,
+      options?: { keepalive?: boolean }
+    ): Promise<ContractDraft> => apiPut<ContractDraft>(`/contract-drafts/${id}`, body, options),
+    // Borra el borrador y su PDF: 204 sin cuerpo.
+    remove: (id: number): Promise<void> => apiDelete(`/contract-drafts/${id}`),
+    // Guardar, reemplazar o quitar el PDF cambia la versión del borrador: el alta devuelve el
+    // resumen nuevo; quitarlo no devuelve nada y hay que volver a leer el borrador.
+    attachDocument: (id: number, file: File): Promise<ContractDraftSummary> => {
+      const form = new FormData();
+      form.append("file", file);
+      return apiPutForm<ContractDraftSummary>(`/contract-drafts/${id}/document`, form);
+    },
+    getDocument: (id: number): Promise<Blob> => apiGetBlob(`/contract-drafts/${id}/document`),
+    removeDocument: (id: number): Promise<void> => apiDelete(`/contract-drafts/${id}/document`),
   },
 
   payments: {

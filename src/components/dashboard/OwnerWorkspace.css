@@ -834,3 +834,52 @@
 /* Línea aparte de una opción del asistente (las lecturas que quedan): se
    reserva mientras carga para que la tarjeta no crezca al llegar el dato. */
 .owner-wizard-option .owner-wizard-option__nota{margin-top:var(--esp-2)}
+
+/* «Completar después»: junto al botón principal, no al «Atrás». */
+.owner-wizard__footer .owner-wizard-later{margin-left:auto}
+.owner-wizard-later+.owner-wizard-next{margin-left:0}
+
+/* Lo que falta para crear el contrato: una nota neutra con un acceso a cada paso. */
+.owner-wizard-pending{margin-bottom:var(--esp-20)}
+.owner-wizard-pending p{margin:0 0 var(--esp-6);font-weight:600}
+.owner-wizard-pending ul{display:flex;flex-wrap:wrap;gap:var(--esp-6) var(--esp-8);margin:0;padding:0;list-style:none}
+.owner-wizard-pending .owner-wizard-quiet{margin:0;box-shadow:inset 0 0 0 1.5px var(--borde)}
+
+/* El estado del guardado del borrador, junto al título del asistente: ícono y palabra, nunca sólo color. */
+.owner-wizard__top>.owner-wizard-guardado{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px;font-weight:600;white-space:nowrap}
+.owner-wizard-guardado svg{flex:none}
+.owner-wizard__top>.owner-wizard-guardado--falla{color:var(--tinta)}
+.owner-wizard-guardado--falla svg{color:var(--error)}
+/* «Descartar borrador»: al final del encabezado; en celular queda sólo el ícono (el nombre sigue para lectores). */
+.owner-wizard__top>.owner-wizard-descartar{display:inline-flex;width:auto;height:auto;min-height:40px;margin:0 0 0 var(--esp-12);padding:0 var(--esp-10);border-radius:10px;background:transparent;color:var(--gris);gap:var(--esp-6)}
+.owner-wizard__top>.owner-wizard-descartar:hover{background:var(--indigo-suave);color:var(--indigo)}
+@media(max-width:560px){.owner-wizard-descartar>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.owner-wizard__top>.owner-wizard-descartar{min-width:40px;justify-content:center;margin-left:var(--esp-6)}}
+
+/* El PDF opcional de la revisión. */
+.owner-pdf-opcional{margin:var(--esp-26) 0}
+.owner-pdf-opcional h2{margin:0 0 var(--esp-6);font:700 17px var(--font-quicksand),sans-serif}
+.owner-pdf-opcional h2 small{color:var(--gris);font:600 14px var(--font-nunito-sans),sans-serif}
+.owner-pdf-opcional .owner-wizard-help{margin:0 0 var(--esp-10)}
+.owner-pdf-opcional__adjuntar{margin-top:0;box-shadow:inset 0 0 0 1.5px var(--borde)}
+
+/* Acciones al pie de los paneles del borrador (no se pudo abrir, ilegible). */
+.owner-wizard-acciones{display:flex;flex-wrap:wrap;gap:var(--esp-12);margin-top:var(--esp-26)}
+
+/* Contratos a medio cargar: dos acciones por fila o por aviso, siempre a la vista. */
+.owner-section--borradores{margin-top:var(--esp-26);margin-bottom:var(--esp-32)}
+.owner-row--borrador{grid-template-columns:44px minmax(0,1fr) auto}
+.owner-row__acciones{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--esp-8)}
+.owner-notice__action:has(>.owner-button+.owner-button){display:flex;flex-wrap:wrap;gap:var(--esp-8)}
+@media(max-width:620px){.owner-row--borrador{grid-template-columns:44px minmax(0,1fr)}.owner-row--borrador .owner-row__acciones{grid-column:2;justify-content:flex-start}}
+
+/* La lista de borradores del diálogo «Tiene contratos a medio cargar». */
+.owner-borradores-elegir{display:grid;gap:var(--esp-10);margin:var(--esp-16) 0 0;padding:0;list-style:none}
+.owner-borradores-elegir li{display:flex;align-items:center;gap:var(--esp-14);padding:var(--esp-12) var(--esp-14);border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-borradores-elegir li>span:nth-child(2){min-width:0;flex:1}
+.owner-borradores-elegir b,.owner-borradores-elegir small{display:block}
+.owner-borradores-elegir small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}
+
+/* El <dialog> trae el negro del navegador (CanvasText) y el panel no definía color: en modo oscuro el
+   título quedaba negro sobre fondo oscuro. El texto del panel toma siempre el de la app. */
+.owner-dialog__panel{color:var(--tinta)}
+

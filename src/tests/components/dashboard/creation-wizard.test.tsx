@@ -3,13 +3,16 @@ import userEvent from "@testing-library/user-event";
 import CreationWizard from "@/components/dashboard/CreationWizard";
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { ERROR } from "@/lib/error-codes";
+import { serializar, type EstadoDelBorrador } from "@/lib/borradores";
+import { SIN_OTRAS_CONDICIONES } from "@/lib/otras-condiciones";
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { create: vi.fn(), list: vi.fn() },
     properties: { list: vi.fn(), create: vi.fn() },
-    contracts: { list: vi.fn(), create: vi.fn(), onboard: vi.fn() },
+    contracts: { list: vi.fn(), create: vi.fn(), onboard: vi.fn(), attachDocument: vi.fn() },
     contractImports: { quota: vi.fn(), upload: vi.fn(), get: vi.fn(), retry: vi.fn(), complete: vi.fn(), discard: vi.fn(), document: vi.fn() },
+    contractDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(), attachDocument: vi.fn(), getDocument: vi.fn(), removeDocument: vi.fn() },
     addressLookup: { autocomplete: vi.fn(), resolve: vi.fn() },
   },
 }));
@@ -24,6 +27,12 @@ const mockAutocompletar = vi.mocked(AlquiaBackendClient.addressLookup.autocomple
 const mockResolver = vi.mocked(AlquiaBackendClient.addressLookup.resolve);
 const mockCrearContrato = vi.mocked(AlquiaBackendClient.contracts.onboard);
 const mockCuota = vi.mocked(AlquiaBackendClient.contractImports.quota);
+const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
+
+/** Un borrador como lo devuelve el backend. */
+function borradorGuardado(cuerpo: { label: string; payload: Record<string, unknown> }, id = 5, version = 0) {
+  return { id, version, ...cuerpo, createdAt: "2026-08-15T15:00:00Z", updatedAt: "2026-08-15T15:00:00Z", expiresAt: "2026-11-13T15:00:00Z", document: null };
+}
 
 const MITRE = {
   id: 10, street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires",
@@ -59,6 +68,8 @@ beforeEach(() => {
   mockInquilinos.mockResolvedValue([DIEGO]);
   mockContratos.mockResolvedValue([]);
   mockCuota.mockResolvedValue({ used: 0, limit: 5, available: true });
+  mockBorradores.create.mockImplementation(async (cuerpo) => borradorGuardado(cuerpo));
+  mockBorradores.update.mockImplementation(async (id, cuerpo) => borradorGuardado(cuerpo, id, cuerpo.version + 1));
   mockAutocompletar.mockResolvedValue([{ reference: "ref-lavalle", label: "Lavalle 950" }]);
   mockResolver.mockResolvedValue({
     street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires",
@@ -399,6 +410,8 @@ describe("asistente de contrato", () => {
       expect(mockCrearContrato).toHaveBeenCalledWith({
         property: { id: 10 },
         tenant: { id: 20 },
+        // Desde el segundo paso el contrato es un borrador: al crearlo, el backend lo consume.
+        draftId: 5,
         contract: {
           initialRentAmount: 620000,
           startDate: "2026-09-01",
@@ -1265,10 +1278,10 @@ describe("asistente de contrato · revisión y errores del alta", () => {
   }
 
   /** Revisión con propiedad e inquilino nuevos, sólo en borrador. */
-  async function irALaRevisionConBorradores() {
+  async function irALaRevisionConBorradores(props: Partial<React.ComponentProps<typeof CreationWizard>> = {}) {
     mockPropiedades.mockResolvedValue([]);
     mockInquilinos.mockResolvedValue([]);
-    renderContratoAMano();
+    renderContratoAMano(props);
     await userEvent.click(await screen.findByRole("radio", { name: /Una propiedad nueva/ }));
     await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
     await userEvent.click(await screen.findByText(/Lavalle 950/));
@@ -1450,9 +1463,9 @@ describe("asistente de contrato · revisión y errores del alta", () => {
 
       expect(await screen.findByText(/Esa propiedad ya tiene un contrato vigente/)).toBeInTheDocument();
       await userEvent.click(screen.getByRole("button", { name: "Ver ese contrato" }));
-      // Salir con lo cargado pide confirmación
-      await userEvent.click(await screen.findByRole("button", { name: "Salir" }));
-      expect(onOpenContract).toHaveBeenCalledWith(55);
+      // Lo cargado ya es un borrador: se guarda y se sale sin preguntar.
+      await waitFor(() => expect(onOpenContract).toHaveBeenCalledWith(55));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("sin el id del contrato no ofrece el enlace, pero sí elegir otra propiedad", async () => {
@@ -1477,24 +1490,61 @@ describe("asistente de contrato · revisión y errores del alta", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("con borradores pide confirmación, dice que no se guardó nada, y al confirmar no deja nada en el servidor", async () => {
-      await irALaRevisionConBorradores();
+    it("con el contrato ya como borrador sale sin preguntar, guarda lo último y avisa que lo conservó", async () => {
+      const onDraftKept = vi.fn();
+      await irALaRevisionConBorradores({ onDraftKept });
       await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
 
-      expect(onClose).not.toHaveBeenCalled();
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onDraftKept).toHaveBeenCalledTimes(1);
+      expect(mockBorradores.remove).not.toHaveBeenCalled();
+      expect(mockCrearPropiedad).not.toHaveBeenCalled();
+      expect(mockCreate).not.toHaveBeenCalled();
+      expect(mockCrearContrato).not.toHaveBeenCalled();
+    });
+
+    it("antes de salir del primer paso todavía no es un borrador: pide confirmación y dice que no se guardó nada", async () => {
+      mockPropiedades.mockResolvedValue([]);
+      renderContratoAMano();
+      await userEvent.click(await screen.findByRole("radio", { name: /Una propiedad nueva/ }));
+      await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+      await userEvent.click(await screen.findByText(/Lavalle 950/));
+      await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
+
       const dialogo = await screen.findByRole("dialog");
       expect(within(dialogo).getByText(/No se guardó nada/)).toBeInTheDocument();
-
+      expect(onClose).not.toHaveBeenCalled();
       await userEvent.click(within(dialogo).getByRole("button", { name: "Seguir cargando" }));
       expect(onClose).not.toHaveBeenCalled();
-      expect(screen.getByText("Paso 7 de 7")).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
       await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Salir" }));
       expect(onClose).toHaveBeenCalledTimes(1);
+      expect(mockBorradores.create).not.toHaveBeenCalled();
       expect(mockCrearPropiedad).not.toHaveBeenCalled();
-      expect(mockCreate).not.toHaveBeenCalled();
-      expect(mockCrearContrato).not.toHaveBeenCalled();
+    });
+
+    it("si no se pudo guardar lo último avisa antes de salir, y deja elegir", async () => {
+      const onDraftKept = vi.fn();
+      await irALaRevisionConBorradores({ onDraftKept });
+      await userEvent.click(screen.getByRole("button", { name: "Cambiar alquiler inicial" }));
+      mockBorradores.update.mockRejectedValue(new TypeError("Failed to fetch"));
+      await userEvent.type(screen.getByLabelText("Alquiler mensual"), "0");
+
+      await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
+
+      const dialogo = await screen.findByRole("dialog");
+      expect(within(dialogo).getByText("No pudimos guardar los últimos cambios")).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(onDraftKept).not.toHaveBeenCalled();
+
+      await userEvent.click(within(dialogo).getByRole("button", { name: "Seguir cargando" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
+      await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Salir igual" }));
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     it("el asistente suelto de inquilino sigue saliendo directo", async () => {
@@ -1504,5 +1554,628 @@ describe("asistente de contrato · revisión y errores del alta", () => {
 
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+// --- «Completar después»: el contrato se puede seguir cargando con un dato que falta ---
+
+describe("asistente de contrato · pasos para completar después", () => {
+  beforeEach(() => fijarHoy("2026-08-15T15:00:00Z"));
+  afterEach(() => vi.useRealTimers());
+
+  const seguir = () => userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+  const completarDespues = () => screen.queryByRole("button", { name: "Completar después" });
+
+  /** Elige propiedad e inquilino y carga el alquiler y la fecha; deja la actualización sin definir. */
+  async function llegarAActualizacion() {
+    renderContratoAMano();
+    await userEvent.click(await screen.findByRole("radio", { name: /Mitre 78/ }));
+    await seguir();
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
+    await seguir();
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-09-01" } });
+    await seguir();
+  }
+
+  it("no se ofrece mientras el paso está completo", async () => {
+    renderContratoAMano();
+    await userEvent.click(await screen.findByRole("radio", { name: /Mitre 78/ }));
+
+    expect(completarDespues()).not.toBeInTheDocument();
+  });
+
+  it("se ofrece cuando falta un dato y lleva al paso siguiente sin perder lo cargado", async () => {
+    renderContratoAMano();
+    await screen.findByRole("radio", { name: /Mitre 78/ });
+
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+    await userEvent.click(completarDespues()!);
+
+    expect(screen.getByRole("heading", { name: "¿A quién se la alquila?" })).toBeInTheDocument();
+  });
+
+  it("la revisión lista lo pendiente con un acceso a cada paso y no deja crear el contrato", async () => {
+    await llegarAActualizacion();
+    await userEvent.click(completarDespues()!);
+    await seguir();
+
+    expect(screen.getByRole("heading", { name: "Revise que esté todo bien" })).toBeInTheDocument();
+    const faltante = screen.getByText("Para crear el contrato falta completar:").closest("aside")!;
+    expect(within(faltante).getAllByRole("button")).toHaveLength(1);
+    expect(within(faltante).getByRole("button", { name: "Actualización" })).toBeInTheDocument();
+    expect(screen.getByText("Falta completar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear contrato" })).toBeDisabled();
+    expect(mockCrearContrato).not.toHaveBeenCalled();
+  });
+
+  it("completar el paso desde el acceso de la revisión habilita «Crear contrato»", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await llegarAActualizacion();
+    await userEvent.click(completarDespues()!);
+    await seguir();
+
+    await userEvent.click(screen.getByRole("button", { name: "Actualización" }));
+    await userEvent.type(screen.getByLabelText("Porcentaje de aumento"), "8");
+    await seguir();
+    await seguir();
+
+    expect(screen.queryByText("Para crear el contrato falta completar:")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalledTimes(1));
+  });
+
+  it("varios pasos pendientes se listan todos, en orden", async () => {
+    renderContratoAMano();
+    await screen.findByRole("radio", { name: /Mitre 78/ });
+    for (let paso = 1; paso <= 3; paso += 1) await userEvent.click(completarDespues()!);
+    // El paso 4 trae la fecha de hoy, así que está completo; el 5 sin porcentaje no.
+    await seguir();
+    await userEvent.click(completarDespues()!);
+    await seguir();
+
+    const faltante = screen.getByText("Para crear el contrato falta completar:").closest("aside")!;
+    expect(within(faltante).getAllByRole("button").map((boton) => boton.textContent)).toEqual([
+      "Propiedad", "Inquilino", "Alquiler inicial", "Actualización",
+    ]);
+  });
+
+  it("en «Otras condiciones» con algo incompleto también se puede dejar para después", async () => {
+    await llegarAActualizacion();
+    await userEvent.type(screen.getByLabelText("Porcentaje de aumento"), "8");
+    await seguir();
+    await userEvent.click(screen.getByRole("button", { name: /Comisión/ }));
+    await userEvent.type(screen.getByLabelText("Porcentaje de comisión"), "150");
+    expect(completarDespues()).toBeInTheDocument();
+
+    await userEvent.click(completarDespues()!);
+
+    const faltante = screen.getByText("Para crear el contrato falta completar:").closest("aside")!;
+    expect(within(faltante).getByRole("button", { name: "Otras condiciones" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear contrato" })).toBeDisabled();
+  });
+});
+
+// --- El contrato como borrador: nace al salir del primer paso y se guarda solo ---
+
+describe("asistente de contrato · borrador que se guarda solo", () => {
+  beforeEach(() => fijarHoy("2026-08-15T15:00:00Z"));
+  afterEach(() => vi.useRealTimers());
+
+  const seguir = () => userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+
+  async function elegirMitreYDiego(props: Partial<React.ComponentProps<typeof CreationWizard>> = {}) {
+    renderContratoAMano(props);
+    await userEvent.click(await screen.findByRole("radio", { name: /Mitre 78/ }));
+  }
+
+  it("no crea nada mientras sigue en el primer paso, aunque haya elegido la propiedad", async () => {
+    await elegirMitreYDiego();
+    await new Promise((resolver) => setTimeout(resolver, 50));
+
+    expect(mockBorradores.create).not.toHaveBeenCalled();
+    expect(screen.queryByText("Guardando…")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Descartar borrador" })).not.toBeInTheDocument();
+  });
+
+  it("al pasar al segundo paso crea el borrador con la etiqueta de la propiedad y el paso en que va", async () => {
+    await elegirMitreYDiego();
+    await seguir();
+
+    await waitFor(() => expect(mockBorradores.create).toHaveBeenCalledTimes(1));
+    const [cuerpo] = mockBorradores.create.mock.calls[0];
+    expect(cuerpo.label).toBe("Mitre 78");
+    expect(cuerpo.payload).toMatchObject({ schemaVersion: 1, paso: 2, propiedad: { id: 10, nuevo: false, borrador: null } });
+    expect(await screen.findByText("Guardado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Descartar borrador" })).toBeInTheDocument();
+  });
+
+  it("«Completar después» en el primer paso también lo crea, sin propiedad ni inquilino", async () => {
+    renderContratoAMano();
+    await screen.findByRole("radio", { name: /Mitre 78/ });
+
+    await userEvent.click(screen.getByRole("button", { name: "Completar después" }));
+
+    await waitFor(() => expect(mockBorradores.create).toHaveBeenCalledTimes(1));
+    expect(mockBorradores.create.mock.calls[0][0].label).toBe("Contrato sin propiedad ni inquilino");
+  });
+
+  it("guarda en cada cambio de paso y la etiqueta sigue a la propiedad y al inquilino", async () => {
+    await elegirMitreYDiego();
+    await seguir();
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+
+    await waitFor(() => expect(mockBorradores.update).toHaveBeenCalled());
+    const [id, cuerpo] = mockBorradores.update.mock.calls.at(-1)!;
+    expect(id).toBe(5);
+    expect(cuerpo.label).toBe("Mitre 78 · Diego Ferrari");
+    expect(cuerpo.payload).toMatchObject({ paso: 3, inquilino: { id: 20 } });
+    expect(cuerpo.version).toBeGreaterThanOrEqual(0);
+  });
+
+  it("guardar el borrador no crea la propiedad, el inquilino ni el contrato", async () => {
+    await elegirMitreYDiego();
+    await seguir();
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
+    await seguir();
+    await waitFor(() => expect(mockBorradores.update).toHaveBeenCalled());
+
+    expect(mockCrearContrato).not.toHaveBeenCalled();
+    expect(mockCrearPropiedad).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("un guardado exitoso no se anuncia a los lectores de pantalla", async () => {
+    await elegirMitreYDiego();
+    await seguir();
+
+    await screen.findByText("Guardado");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("si falla, lo dice como alerta, deja lo escrito en pantalla y se recupera solo", async () => {
+    await elegirMitreYDiego();
+    mockBorradores.create.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await seguir();
+
+    expect(await screen.findByText("No se pudo guardar. Reintentando…")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo guardar");
+    expect(screen.getByRole("heading", { name: "¿A quién se la alquila?" })).toBeInTheDocument();
+  });
+
+  it("con el máximo de borradores lo dice, sigue cargando y crea el contrato sin borrador", async () => {
+    mockBorradores.create.mockRejectedValue(new ApiError(409, "x", ERROR.CONTRACT_DRAFT_LIMIT_REACHED, null, { limit: 3 }));
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await elegirMitreYDiego();
+    await seguir();
+
+    expect(await screen.findByText(/No se guarda como borrador: ya tiene 3/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
+    await seguir();
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-09-01" } });
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Porcentaje de aumento"), "8");
+    await seguir();
+    await seguir();
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalledTimes(1));
+    expect(mockCrearContrato.mock.calls[0][0]).not.toHaveProperty("draftId");
+    expect(mockBorradores.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("el prototipo (demo) no guarda ningún borrador", async () => {
+    render(<CreationWizard kind="contract" demo onClose={onClose} onComplete={onComplete} />);
+    await userEvent.click(await screen.findByRole("radio", { name: /Mitre 78/ }));
+    await seguir();
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+
+    expect(mockBorradores.create).not.toHaveBeenCalled();
+    expect(screen.queryByText("Guardado")).not.toBeInTheDocument();
+  });
+
+  it("los asistentes sueltos de propiedad e inquilino no guardan borradores", async () => {
+    renderWizard();
+    await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
+    await new Promise((resolver) => setTimeout(resolver, 50));
+
+    expect(mockBorradores.create).not.toHaveBeenCalled();
+  });
+
+  // --- descartar desde el asistente ---
+
+  it("«Descartar borrador» pide confirmar, nombra el borrador y no borra si se vuelve", async () => {
+    await elegirMitreYDiego();
+    await seguir();
+    await screen.findByText("Guardado");
+
+    await userEvent.click(screen.getByRole("button", { name: "Descartar borrador" }));
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText("¿Descartar este borrador?")).toBeInTheDocument();
+    expect(within(dialogo).getByText("Mitre 78")).toBeInTheDocument();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Volver" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockBorradores.remove).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("al confirmar borra el borrador, avisa y cierra el asistente", async () => {
+    const onDraftDiscarded = vi.fn();
+    mockBorradores.remove.mockResolvedValue(undefined);
+    await elegirMitreYDiego({ onDraftDiscarded });
+    await seguir();
+    await screen.findByText("Guardado");
+
+    await userEvent.click(screen.getByRole("button", { name: "Descartar borrador" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(mockBorradores.remove).toHaveBeenCalledWith(5);
+    expect(onDraftDiscarded).toHaveBeenCalledTimes(1);
+  });
+
+  it("si no se pudo borrar, lo dice dentro del diálogo y el asistente sigue abierto", async () => {
+    mockBorradores.remove.mockRejectedValue(new TypeError("Failed to fetch"));
+    await elegirMitreYDiego();
+    await seguir();
+    await screen.findByText("Guardado");
+
+    await userEvent.click(screen.getByRole("button", { name: "Descartar borrador" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent(/No pudimos descartar el borrador/);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  // --- crear el contrato desde el borrador ---
+
+  async function irALaRevisionDelBorrador(props: Partial<React.ComponentProps<typeof CreationWizard>> = {}) {
+    await elegirMitreYDiego(props);
+    await seguir();
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
+    await seguir();
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-09-01" } });
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Porcentaje de aumento"), "8");
+    await seguir();
+    await seguir();
+  }
+
+  it("crear el contrato manda el id del borrador y no vuelve a guardarlo ni a borrarlo", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevisionDelBorrador();
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+    expect(mockCrearContrato.mock.calls[0][0]).toMatchObject({ draftId: 5 });
+    expect(mockBorradores.remove).not.toHaveBeenCalled(); // lo borra el backend al crear el contrato
+  });
+
+  it("si el alta falla, el borrador sigue ahí y el asistente vuelve a guardar", async () => {
+    mockCrearContrato.mockRejectedValueOnce(new ApiError(400, "x", null, { "contract.dueDay": "invalid" }));
+    await irALaRevisionDelBorrador();
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(screen.getByText("Paso 3 de 7")).toBeInTheDocument());
+    expect(mockBorradores.remove).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText("Alquiler mensual"), "0");
+    await seguir();
+    await waitFor(() => expect(mockBorradores.update.mock.calls.at(-1)![1].payload).toMatchObject({ alquiler: "4500000" }));
+  });
+
+  it("si el borrador ya no existe, crea el contrato igual y avisa que el PDF no llegó", async () => {
+    mockCrearContrato
+      .mockRejectedValueOnce(new ApiError(404, "x", ERROR.CONTRACT_DRAFT_NOT_FOUND))
+      .mockResolvedValueOnce({ id: 9 } as never);
+    mockBorradores.attachDocument.mockResolvedValueOnce({ ...borradorGuardado({ label: "x", payload: {} }), version: 1, document: { fileName: "contrato.pdf", sizeBytes: 100, pages: 2, uploadedAt: "2026-08-15T15:00:00Z" } });
+    await irALaRevisionDelBorrador();
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), new File(["%PDF-1.7"], "contrato.pdf", { type: "application/pdf" }));
+    await screen.findByText("contrato.pdf");
+
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ pdfPerdido: true }));
+    expect(mockCrearContrato).toHaveBeenCalledTimes(2);
+    expect(mockCrearContrato.mock.calls[0][0]).toHaveProperty("draftId", 5);
+    expect(mockCrearContrato.mock.calls[1][0]).not.toHaveProperty("draftId");
+  });
+
+  // --- el PDF ---
+
+  const archivo = () => new File(["%PDF-1.7"], "contrato firmado.pdf", { type: "application/pdf" });
+  const resumenConPdf = (version: number) => ({
+    ...borradorGuardado({ label: "Mitre 78 · Diego Ferrari", payload: {} }, 5, version),
+    document: { fileName: "contrato firmado.pdf", sizeBytes: 8, pages: 3, uploadedAt: "2026-08-15T15:00:00Z" },
+  });
+
+  it("adjuntar el PDF lo sube enseguida al borrador y muestra su nombre", async () => {
+    mockBorradores.attachDocument.mockResolvedValueOnce(resumenConPdf(7));
+    await irALaRevisionDelBorrador();
+
+    await userEvent.click(screen.getByRole("button", { name: "Adjuntar el PDF" }));
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), archivo());
+
+    expect(await screen.findByText("contrato firmado.pdf")).toBeInTheDocument();
+    expect(mockBorradores.attachDocument).toHaveBeenCalledWith(5, expect.any(File));
+    expect(screen.getByText(/no lo leemos automáticamente/)).toBeInTheDocument();
+  });
+
+  it("el guardado que sigue usa la versión que subió el PDF", async () => {
+    mockBorradores.attachDocument.mockResolvedValueOnce(resumenConPdf(7));
+    await irALaRevisionDelBorrador();
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), archivo());
+    await screen.findByText("contrato firmado.pdf");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cambiar alquiler inicial" }));
+
+    await waitFor(() => expect(mockBorradores.update.mock.calls.at(-1)![1].version).toBe(7));
+  });
+
+  it("un PDF con contraseña se rechaza con el mensaje de siempre y el borrador no se toca", async () => {
+    mockBorradores.attachDocument.mockRejectedValueOnce(new ApiError(400, "x", ERROR.IMPORT_FILE_ENCRYPTED));
+    await irALaRevisionDelBorrador();
+
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), archivo());
+
+    expect(await screen.findByText(/El PDF tiene contraseña/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Adjuntar el PDF" })).toBeInTheDocument();
+    expect(mockBorradores.remove).not.toHaveBeenCalled();
+  });
+
+  it("un archivo que no es PDF ni siquiera sale del navegador", async () => {
+    await irALaRevisionDelBorrador();
+
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), new File(["x"], "foto.png", { type: "image/png" }), { applyAccept: false });
+
+    expect(await screen.findByText(/no es un PDF/)).toBeInTheDocument();
+    expect(mockBorradores.attachDocument).not.toHaveBeenCalled();
+  });
+
+  it("quitar el PDF lo borra del borrador y vuelve a leer la versión", async () => {
+    mockBorradores.attachDocument.mockResolvedValueOnce(resumenConPdf(7));
+    mockBorradores.removeDocument.mockResolvedValueOnce(undefined);
+    mockBorradores.get.mockResolvedValueOnce({ ...borradorGuardado({ label: "x", payload: {} }, 5, 8), document: null });
+    await irALaRevisionDelBorrador();
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), archivo());
+    await screen.findByText("contrato firmado.pdf");
+
+    await userEvent.click(screen.getByRole("button", { name: "Quitar" }));
+
+    expect(await screen.findByRole("button", { name: "Adjuntar el PDF" })).toBeInTheDocument();
+    expect(mockBorradores.removeDocument).toHaveBeenCalledWith(5);
+    await userEvent.click(screen.getByRole("button", { name: "Cambiar alquiler inicial" }));
+    await waitFor(() => expect(mockBorradores.update.mock.calls.at(-1)![1].version).toBe(8));
+  });
+
+  it("sin borrador (tope alcanzado) el PDF espera en pantalla y se adjunta al contrato ya creado", async () => {
+    mockBorradores.create.mockRejectedValue(new ApiError(409, "x", ERROR.CONTRACT_DRAFT_LIMIT_REACHED, null, { limit: 3 }));
+    mockCrearContrato.mockResolvedValueOnce({ id: 33 } as never);
+    vi.mocked(AlquiaBackendClient.contracts.attachDocument).mockResolvedValueOnce({ id: 33 } as never);
+    await irALaRevisionDelBorrador();
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), archivo());
+    expect(await screen.findByText("contrato firmado.pdf")).toBeInTheDocument();
+    expect(mockBorradores.attachDocument).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(undefined));
+    expect(AlquiaBackendClient.contracts.attachDocument).toHaveBeenCalledWith(33, expect.any(File));
+  });
+
+  it("si el PDF no se pudo adjuntar al contrato creado, el contrato queda y se avisa", async () => {
+    mockBorradores.create.mockRejectedValue(new ApiError(409, "x", ERROR.CONTRACT_DRAFT_LIMIT_REACHED, null, { limit: 3 }));
+    mockCrearContrato.mockResolvedValueOnce({ id: 33 } as never);
+    vi.mocked(AlquiaBackendClient.contracts.attachDocument).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await irALaRevisionDelBorrador();
+    await userEvent.upload(screen.getByLabelText("Archivo del contrato firmado"), archivo());
+    await screen.findByText("contrato firmado.pdf");
+
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ pdfSinAdjuntar: true }));
+  });
+
+  // --- conflicto entre dispositivos ---
+
+  it("si otro dispositivo guardó antes, deja elegir y «guardar esta versión» pisa la otra", async () => {
+    await elegirMitreYDiego();
+    await seguir();
+    await screen.findByText("Guardado");
+    mockBorradores.update.mockRejectedValueOnce(new ApiError(409, "x", ERROR.CONTRACT_DRAFT_VERSION_CONFLICT, null, { currentVersion: 4 }));
+    await userEvent.click(screen.getByRole("radio", { name: /Diego Ferrari/ }));
+    await seguir();
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText("Este borrador cambió en otro dispositivo")).toBeInTheDocument();
+    expect(within(dialogo).queryByRole("button", { name: "Cerrar" })).not.toBeInTheDocument();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar esta versión" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(mockBorradores.update.mock.calls.at(-1)![1].version).toBe(4);
+  });
+});
+
+// --- Retomar un borrador ---
+
+describe("asistente de contrato · retomar un borrador", () => {
+  beforeEach(() => fijarHoy("2026-08-15T15:00:00Z"));
+  afterEach(() => vi.useRealTimers());
+
+  function estado(cambios: Partial<EstadoDelBorrador> = {}): EstadoDelBorrador {
+    return {
+      paso: 5,
+      propiedad: { id: 10, nuevo: false, borrador: null },
+      inquilino: { id: 20, nuevo: false, borrador: null },
+      alquiler: "450000", diaVencimiento: 10, plazo: 24, inicio: "2026-09-01",
+      metodo: "FIXED_PERCENTAGE", porcentaje: "8", frecuencia: 4,
+      otras: SIN_OTRAS_CONDICIONES, pagadoHasta: "",
+      ...cambios,
+    };
+  }
+
+  function retomar(cambios: Partial<EstadoDelBorrador> = {}, extra: Partial<React.ComponentProps<typeof CreationWizard>> = {}) {
+    mockBorradores.get.mockResolvedValue(borradorGuardado({ label: "Mitre 78 · Diego Ferrari", payload: serializar(estado(cambios)) }, 7, 3));
+    render(<CreationWizard kind="contract" draftId={7} onClose={onClose} onComplete={onComplete} {...extra} />);
+  }
+
+  it("trae el borrador, salta la elección PDF o a mano y abre en el paso donde quedó", async () => {
+    retomar();
+
+    expect(await screen.findByRole("heading", { name: "¿Cómo se actualiza el alquiler?" })).toBeInTheDocument();
+    expect(screen.getByText("Paso 5 de 7")).toBeInTheDocument();
+    expect(screen.getByLabelText("Porcentaje de aumento")).toHaveValue("8");
+    expect(mockBorradores.get).toHaveBeenCalledWith(7);
+    expect(screen.queryByRole("radio", { name: /Cargarlo a mano/ })).not.toBeInTheDocument();
+  });
+
+  it("vuelve a tener lo cargado en cada paso", async () => {
+    retomar();
+    await screen.findByRole("heading", { name: "¿Cómo se actualiza el alquiler?" });
+
+    await userEvent.click(screen.getByRole("button", { name: /Atrás/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Atrás/ }));
+    expect(screen.getByLabelText("Alquiler mensual")).toHaveValue("450.000");
+    await userEvent.click(screen.getByRole("button", { name: /Atrás/ }));
+    expect(screen.getByRole("radio", { name: /Diego Ferrari/ })).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: /Atrás/ }));
+    expect(screen.getByRole("radio", { name: /Mitre 78/ })).toBeChecked();
+  });
+
+  it("no guarda nada al abrirlo, y sí lo que cambie después, con la versión con que se abrió", async () => {
+    retomar();
+    await screen.findByRole("heading", { name: "¿Cómo se actualiza el alquiler?" });
+    await new Promise((resolver) => setTimeout(resolver, 100));
+    expect(mockBorradores.update).not.toHaveBeenCalled();
+    expect(mockBorradores.create).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+
+    await waitFor(() => expect(mockBorradores.update).toHaveBeenCalled());
+    expect(mockBorradores.update.mock.calls[0][0]).toBe(7);
+    expect(mockBorradores.update.mock.calls[0][1].version).toBe(3);
+  });
+
+  it("una propiedad y un inquilino nuevos del borrador vuelven como borradores, con sus datos para cambiar", async () => {
+    retomar({
+      paso: 7,
+      propiedad: { id: null, nuevo: true, borrador: { pedido: { street: "Lavalle", number: "950", city: "CABA", province: "Buenos Aires", category: "HOUSE" }, etiqueta: "Lavalle 950" } },
+      inquilino: { id: null, nuevo: true, borrador: { pedido: { firstName: "Ana", lastName: "Gómez", taxId: CUIT_VALIDO, email: "ana@ejemplo.com", phoneNumber: "1144552210" }, etiqueta: "Ana Gómez" } },
+    });
+
+    expect(await screen.findByText("Propiedad nueva: Lavalle 950")).toBeInTheDocument();
+    expect(screen.getByText("Inquilino nuevo: Ana Gómez")).toBeInTheDocument();
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
+    expect(mockCrearContrato.mock.calls[0][0]).toMatchObject({
+      property: { new: expect.objectContaining({ street: "Lavalle", category: "HOUSE" }) },
+      tenant: { new: expect.objectContaining({ firstName: "Ana", taxId: CUIT_VALIDO }) },
+      draftId: 7,
+    });
+  });
+
+  it("un inquilino que ya no está disponible deja ese paso pendiente y lo explica", async () => {
+    mockInquilinos.mockResolvedValue([]);
+    retomar({ paso: 7 });
+
+    expect(await screen.findByText("Falta completar")).toBeInTheDocument();
+    const faltante = screen.getByText("Para crear el contrato falta completar:").closest("aside")!;
+    expect(within(faltante).getByRole("button", { name: "Inquilino" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear contrato" })).toBeDisabled();
+
+    await userEvent.click(within(faltante).getByRole("button", { name: "Inquilino" }));
+    expect(await screen.findByText(/El inquilino que había elegido ya no está disponible/)).toBeInTheDocument();
+  });
+
+  it("una propiedad que ahora tiene un contrato vigente deja de estar elegida", async () => {
+    mockContratos.mockResolvedValue([{ id: 99, status: "ACTIVE", property: { id: 10 } } as never]);
+    retomar({ paso: 1 });
+
+    expect(await screen.findByText(/La propiedad que había elegido ya no está disponible/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
+  });
+
+  it("si ya pasó el mes de la respuesta guardada, vuelve a preguntar", async () => {
+    fijarHoy("2026-10-10T15:00:00Z");
+    retomar({ paso: 7, inicio: "2026-08-01", pagadoHasta: "2026-01" });
+
+    expect(await screen.findByRole("radiogroup", { name: "¿Hasta qué mes le pagaron?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear contrato" })).toBeDisabled();
+  });
+
+  it("si el borrador no se puede abrir lo dice y deja reintentar", async () => {
+    mockBorradores.get.mockRejectedValueOnce(new ApiError(404, "x", ERROR.CONTRACT_DRAFT_NOT_FOUND));
+    render(<CreationWizard kind="contract" draftId={7} onClose={onClose} onComplete={onComplete} />);
+
+    expect(await screen.findByText(/Ese borrador ya no existe/)).toBeInTheDocument();
+    mockBorradores.get.mockResolvedValue(borradorGuardado({ label: "x", payload: serializar(estado()) }, 7, 3));
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByRole("heading", { name: "¿Cómo se actualiza el alquiler?" })).toBeInTheDocument();
+  });
+
+  it("un borrador que no se puede leer ofrece descartarlo y no rompe", async () => {
+    const onDraftDiscarded = vi.fn();
+    mockBorradores.get.mockResolvedValue(borradorGuardado({ label: "Mitre 78", payload: { schemaVersion: 99 } }, 7, 3));
+    mockBorradores.remove.mockResolvedValue(undefined);
+    render(<CreationWizard kind="contract" draftId={7} onClose={onClose} onComplete={onComplete} onDraftDiscarded={onDraftDiscarded} />);
+
+    expect(await screen.findByRole("heading", { name: "No pudimos leer este borrador" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Descartar el borrador" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(mockBorradores.remove).toHaveBeenCalledWith(7);
+    expect(onDraftDiscarded).toHaveBeenCalledTimes(1);
+  });
+
+  it("el PDF que ya tenía el borrador figura adjunto", async () => {
+    mockBorradores.get.mockResolvedValue({
+      ...borradorGuardado({ label: "x", payload: serializar(estado({ paso: 7 })) }, 7, 3),
+      document: { fileName: "contrato firmado.pdf", sizeBytes: 2048, pages: 5, uploadedAt: "2026-08-15T15:00:00Z" },
+    });
+    render(<CreationWizard kind="contract" draftId={7} onClose={onClose} onComplete={onComplete} />);
+
+    expect(await screen.findByText("contrato firmado.pdf")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Quitar" })).toBeInTheDocument();
+  });
+
+  it("«cargar la otra versión» vuelve a armar el asistente con lo que guardó el otro dispositivo", async () => {
+    retomar({ paso: 5 });
+    await screen.findByRole("heading", { name: "¿Cómo se actualiza el alquiler?" });
+    mockBorradores.update.mockRejectedValueOnce(new ApiError(409, "x", ERROR.CONTRACT_DRAFT_VERSION_CONFLICT, null, { currentVersion: 4 }));
+    mockBorradores.get.mockResolvedValue(borradorGuardado({ label: "Mitre 78 · Diego Ferrari", payload: serializar(estado({ paso: 3, alquiler: "999000" })) }, 7, 4));
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cargar la otra versión" }));
+
+    expect(await screen.findByLabelText("Alquiler mensual")).toHaveValue("999.000");
+    expect(screen.getByText("Paso 3 de 7")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("salir de un borrador retomado lo conserva sin preguntar", async () => {
+    const onDraftKept = vi.fn();
+    retomar({}, { onDraftKept });
+    await screen.findByRole("heading", { name: "¿Cómo se actualiza el alquiler?" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onDraftKept).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockBorradores.remove).not.toHaveBeenCalled();
   });
 });

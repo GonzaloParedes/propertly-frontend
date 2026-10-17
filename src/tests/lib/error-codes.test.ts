@@ -1,5 +1,13 @@
 import { ApiError } from "@/lib/api";
-import { ERROR, FALLBACK, copyDeError, idDelContratoActivo, idDelInquilinoExistente } from "@/lib/error-codes";
+import {
+  ERROR,
+  FALLBACK,
+  copyDeError,
+  idDelContratoActivo,
+  idDelInquilinoExistente,
+  limiteDeBorradores,
+  versionActualDelBorrador,
+} from "@/lib/error-codes";
 
 function errorConType(type: string | null): ApiError {
   return new ApiError(409, "English detail from backend", type);
@@ -85,5 +93,34 @@ describe("rechazos de la lectura de un contrato", () => {
 
   it("al archivo con contraseña le dice qué hacer", () => {
     expect(copyDeError(errorConType(ERROR.IMPORT_FILE_ENCRYPTED))).toMatch(/contraseña/i);
+  });
+});
+
+describe("errores de los borradores de contrato", () => {
+  const tipos = [
+    ERROR.CONTRACT_DRAFT_LIMIT_REACHED,
+    ERROR.CONTRACT_DRAFT_VERSION_CONFLICT,
+    ERROR.CONTRACT_DRAFT_TOO_LARGE,
+    ERROR.CONTRACT_DRAFT_PAYLOAD_INVALID,
+    ERROR.CONTRACT_DRAFT_NOT_FOUND,
+  ];
+
+  it.each(tipos)("%s tiene un texto propio en español, no el genérico", (type) => {
+    const copy = copyDeError(errorConType(type));
+    expect(copy).not.toBe(FALLBACK);
+    expect(copy).not.toMatch(/draft|English/i);
+  });
+
+  it("lee la versión actual y el límite que manda el backend", () => {
+    const conflicto = new ApiError(409, "x", ERROR.CONTRACT_DRAFT_VERSION_CONFLICT, null, { currentVersion: 4 });
+    const tope = new ApiError(409, "x", ERROR.CONTRACT_DRAFT_LIMIT_REACHED, null, { limit: 3 });
+    expect(versionActualDelBorrador(conflicto)).toBe(4);
+    expect(limiteDeBorradores(tope)).toBe(3);
+  });
+
+  it("sin la extensión, o con otra cosa que un número, devuelve null", () => {
+    expect(versionActualDelBorrador(new ApiError(409, "x", null, null, null))).toBeNull();
+    expect(versionActualDelBorrador(new ApiError(409, "x", null, null, { currentVersion: "4" }))).toBeNull();
+    expect(limiteDeBorradores(new Error("otro"))).toBeNull();
   });
 });

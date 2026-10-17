@@ -177,16 +177,27 @@ export function apiPostForm<T>(
 export function apiPut<T>(
   path: string,
   body?: unknown,
-  options?: { retry?: boolean }
+  options?: { retry?: boolean; keepalive?: boolean }
 ): Promise<T> {
   return request<T>(
     path,
     {
       method: "PUT",
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      // Deja que el pedido termine aunque la página se cierre: es lo que usa el guardado del
+      // borrador al salir. El navegador acota el cuerpo a 64 KB, el mismo tope que el backend.
+      ...(options?.keepalive ? { keepalive: true } : {}),
     },
     options?.retry ?? true
   );
+}
+
+export function apiPutForm<T>(
+  path: string,
+  formData: FormData,
+  options?: { retry?: boolean }
+): Promise<T> {
+  return request<T>(path, { method: "PUT", body: formData }, options?.retry ?? true);
 }
 
 export function apiDelete<T>(path: string, options?: { retry?: boolean }): Promise<T> {
