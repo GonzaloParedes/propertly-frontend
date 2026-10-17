@@ -23,10 +23,10 @@ import Dialog from "@/components/ui/Dialog";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import PdfDelContrato from "@/components/dashboard/PdfDelContrato";
 import { useAutoguardado, type EstadoDeGuardado } from "@/hooks/useAutoguardado";
-import { LIMITE_DE_BORRADORES, armarContenido, deserializar, type ContenidoDeBorrador, type EstadoDelBorrador, type MetodoDeActualizacion } from "@/lib/borradores";
+import { LIMITE_DE_BORRADORES, armarContenido, deserializar, etiquetaDePropiedad, nombreDePropiedadDelBorrador, ubicacionCompleta, type ContenidoDeBorrador, type Direccion, type EstadoDelBorrador, type FormularioDeInquilino, type FormularioDePropiedad, type MetodoDeActualizacion } from "@/lib/borradores";
 import { usePdfDelBorrador } from "@/hooks/usePdfDelBorrador";
 import { crearContratoDesdeBorrador, type ResultadoDelAlta } from "@/lib/crear-contrato";
-import { armarOtrasCondiciones, hayOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
+import { armarOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
 import { avisoDeCampo, ubicacionDeErrores, type Ubicacion } from "@/lib/errores-de-alta";
 
 /**
@@ -69,14 +69,7 @@ function mensajeDeErrorPropiedad(err: unknown): string {
 type WizardKind = "property" | "contract" | "tenant";
 
 
-/** Los campos salen con los mismos nombres que `PropertyRequest`. */
-// El código postal es opcional y se puede cargar a mano; las coordenadas sólo
-// vienen del buscador y viajan juntas o no viajan.
-type Direccion = {
-  street: string; number: string; city: string; province: string;
-  postalCode: string; latitude: number | null; longitude: number | null;
-};
-
+/** `Direccion` (en `borradores.ts`) tiene los mismos campos que `PropertyRequest`. */
 const etiquetaDireccion = (d: Direccion) => `${d.street} ${d.number}`;
 
 /** Sólo para /prototipo: sin sesión `/address-lookup` daría 401. */
@@ -619,16 +612,17 @@ function useListasDeContrato(activo: boolean): CargaDeListas {
  * Crear un inquilino o una propiedad desde el contrato es un desvío dentro del mismo asistente: el
  * contrato en curso (elecciones, paso) queda guardado y se retoma al volver. Si el contrato se abre
  * desde una propiedad, ya se sabe cuál es: arranca en el paso del inquilino (se puede volver al 1).
+ * Un borrador retomado reabre justo donde estaba, también dentro del desvío.
  */
-function useNavegacion(tipo: WizardKind, initialPropertyId: number | undefined, pasoInicial?: number) {
-  const [desvio, setDesvio] = useState<"tenant" | "property" | null>(null);
-  const [pasoDesvio, setPasoDesvio] = useState(1);
+function useNavegacion(tipo: WizardKind, initialPropertyId: number | undefined, guardado?: EstadoDelBorrador) {
+  const [desvio, setDesvio] = useState<"tenant" | "property" | null>(guardado?.desvio?.tipo ?? null);
+  const [pasoDesvio, setPasoDesvio] = useState(guardado?.desvio?.paso ?? 1);
   const preseleccionada = tipo === "contract" && initialPropertyId !== undefined;
-  const [pasoContrato, setPasoContrato] = useState(pasoInicial ?? (preseleccionada ? 2 : 1));
+  const [pasoContrato, setPasoContrato] = useState(guardado?.paso ?? (preseleccionada ? 2 : 1));
   const kind: WizardKind = tipo === "contract" && desvio ? desvio : tipo;
   const step = desvio ? pasoDesvio : pasoContrato;
   const setStep = desvio ? setPasoDesvio : setPasoContrato;
-  return { desvio, setDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep };
+  return { desvio, setDesvio, pasoDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep };
 }
 
 function validarDatosDelContrato({ alquiler, inicio, method, porcentaje }: Readonly<{
@@ -721,13 +715,8 @@ function pasosPendientes(banderas: BanderasDelContrato, otrasValidas: boolean): 
 const NOMBRE_DEL_PASO: Record<number, string> = { 1: "Propiedad", 2: "Inquilino", 3: "Alquiler inicial", 4: "Plazo", 5: "Actualización", 6: "Otras condiciones" };
 
 function propiedadBloqueada(step: number, direccion: Direccion | null, categoria: PropertyCategory | null): boolean {
-  if (step === 1) return !direccion || [direccion.street, direccion.number, direccion.city, direccion.province].some((campo) => !campo.trim());
+  if (step === 1) return !ubicacionCompleta(direccion);
   return step === 2 && categoria === null;
-}
-
-/** ¿Hay algo cargado? Un texto vacío, `null` o `false` es que no. */
-function hayTrabajoDelContrato(campos: readonly unknown[]): boolean {
-  return campos.some((campo) => campo !== null && campo !== "" && campo !== false);
 }
 
 function seleccionDe<T>({ id, borrador, esNuevo, elegir, elegirBorrador, crear, aviso }: Readonly<{
@@ -748,11 +737,6 @@ function seleccionDe<T>({ id, borrador, esNuevo, elegir, elegirBorrador, crear, 
     onNueva: crear,
     aviso,
   };
-}
-
-function etiquetaDePropiedad(direccion: Direccion, unidad: string): string {
-  const sufijo = unidad.trim() ? `, ${unidad.trim()}` : "";
-  return `${direccion.street.trim()} ${direccion.number.trim()}${sufijo}`;
 }
 
 function tituloDelAsistente(kind: WizardKind): string {
@@ -937,33 +921,6 @@ type PropsDelAsistente = Readonly<{
 
 type BorradorRetomado = { draft: ContractDraft; estado: EstadoDelBorrador };
 
-/** Los campos de la carga de una propiedad, rearmados desde el pedido que quedó en el borrador. */
-function formularioDePropiedad(pedido: PropertyRequest | undefined) {
-  const direccion: Direccion | null = pedido
-    ? { street: pedido.street, number: pedido.number, city: pedido.city, province: pedido.province, postalCode: pedido.postalCode ?? "", latitude: pedido.latitude ?? null, longitude: pedido.longitude ?? null }
-    : null;
-  return {
-    direccion,
-    unidad: pedido?.floorUnit ?? "",
-    categoria: pedido?.category ?? null,
-    bedrooms: pedido?.bedrooms ?? null,
-    bathrooms: pedido?.bathrooms ?? null,
-    superficie: pedido?.coveredArea === undefined ? "" : String(pedido.coveredArea),
-    mascotas: pedido?.petsAllowed ?? false,
-    amoblada: pedido?.furnished ?? false,
-  };
-}
-
-function formularioDeInquilino(pedido: TenantRequest | undefined) {
-  return {
-    nombre: pedido?.firstName ?? "",
-    apellido: pedido?.lastName ?? "",
-    cuit: pedido ? formatearCuit(pedido.taxId) : "",
-    correo: pedido?.email ?? "",
-    telefono: pedido?.phoneNumber ?? "",
-  };
-}
-
 /** Cómo se nombra lo elegido: null si no hay nada elegido, undefined si todavía no se sabe (las listas no llegaron). */
 function nombreElegido(nuevo: boolean, borrador: { etiqueta: string } | null, id: number | null, opciones: Opcion[] | undefined): string | null | undefined {
   if (nuevo && borrador) return borrador.etiqueta;
@@ -1073,6 +1030,9 @@ export default function CreationWizard(props: PropsDelAsistente) {
 
 const ESTADO_VACIO: EstadoDelBorrador = {
   paso: 1,
+  desvio: null,
+  formularioPropiedad: { direccion: null, unidad: "", categoria: null, bedrooms: null, bathrooms: null, superficie: "", mascotas: false, amoblada: false },
+  formularioInquilino: { nombre: "", apellido: "", cuit: "", correo: "", telefono: "" },
   propiedad: { id: null, nuevo: false, borrador: null },
   inquilino: { id: null, nuevo: false, borrador: null },
   alquiler: "", diaVencimiento: 1, plazo: 36, inicio: "", metodo: "FIXED_PERCENTAGE", porcentaje: "", frecuencia: 6,
@@ -1082,7 +1042,7 @@ const ESTADO_VACIO: EstadoDelBorrador = {
 /**
  * Con qué arranca el asistente: lo que tenía el borrador que se retoma, o lo de siempre (la propiedad
  * desde la que se abrió, si la hay, y hoy como inicio). Los campos de la carga de una propiedad o de
- * un inquilino nuevos se rearman desde los pedidos que quedaron en el borrador.
+ * un inquilino nuevos vuelven como estaban escritos, estén confirmados o no.
  */
 function valoresIniciales(guardado: EstadoDelBorrador | undefined, tipo: WizardKind, propiedadPreseleccionada: number | undefined) {
   const estado: EstadoDelBorrador = {
@@ -1091,11 +1051,7 @@ function valoresIniciales(guardado: EstadoDelBorrador | undefined, tipo: WizardK
     inicio: hoyISO(),
     ...guardado,
   };
-  return {
-    estado,
-    propiedad: formularioDePropiedad(estado.propiedad.borrador?.pedido),
-    inquilino: formularioDeInquilino(estado.inquilino.borrador?.pedido),
-  };
+  return { estado, propiedad: estado.formularioPropiedad, inquilino: estado.formularioInquilino };
 }
 
 /**
@@ -1119,26 +1075,55 @@ function elegidosVigentes(retomando: boolean, listas: ContractLists | null, eleg
 
 /** El contenido que se guarda. Mientras las listas no llegaron no se sabe cómo se llama lo elegido: se conserva la etiqueta que ya tenía. */
 function contenidoDelBorradorDe(estado: EstadoDelBorrador, listas: ContractLists | null, etiquetaGuardada: string | undefined) {
-  const propiedad = nombreElegido(estado.propiedad.nuevo, estado.propiedad.borrador, estado.propiedad.id, listas?.propiedades);
+  const propiedad = nombreDePropiedadDelBorrador(
+    nombreElegido(estado.propiedad.nuevo, estado.propiedad.borrador, estado.propiedad.id, listas?.propiedades),
+    estado.formularioPropiedad,
+  );
   const inquilino = nombreElegido(estado.inquilino.nuevo, estado.inquilino.borrador, estado.inquilino.id, listas?.inquilinos);
   const contenido = armarContenido(estado, propiedad ?? null, inquilino ?? null);
   const sinNombres = propiedad === undefined || inquilino === undefined;
   return sinNombres && etiquetaGuardada !== undefined ? { ...contenido, label: etiquetaGuardada } : contenido;
 }
 
-/** Cuándo y con qué guarda solo el borrador: sólo en «Nuevo contrato» y con sesión, y desde que se sale del primer paso. */
+/**
+ * ¿El propietario ya cargó algo propio? Es lo que hace nacer el borrador, y lo que decide si salir pregunta algo.
+ * Cuenta completar la ubicación de una propiedad nueva, escribir cualquier dato de un inquilino nuevo y
+ * pasar del primer paso con «Seguir»; también lo que ya quedó confirmado en un
+ * desvío. No cuenta abrir el asistente, elegir una propiedad o un inquilino que ya tiene, ni lo que se
+ * escribe en el buscador de direcciones sin elegir un resultado (eso no sale de ese campo).
+ */
+function hayAlgoPropio(args: Readonly<{
+  formularioPropiedad: FormularioDePropiedad; formularioInquilino: FormularioDeInquilino;
+  borradorPropiedad: unknown; borradorInquilino: unknown; pasoContrato: number; preseleccionada: boolean;
+}>): boolean {
+  const { formularioPropiedad, formularioInquilino, borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada } = args;
+  // Con la propiedad ya elegida (se abrió desde ella) el primer paso es el 2.
+  const pasoInicial = preseleccionada ? 2 : 1;
+  return ubicacionCompleta(formularioPropiedad.direccion)
+    || Object.values(formularioInquilino).some((campo) => campo.trim() !== "")
+    || borradorPropiedad !== null
+    || borradorInquilino !== null
+    || pasoContrato > pasoInicial;
+}
+
+/** Dónde está el propietario. Cada cambio guarda enseguida en vez de esperar a que deje de escribir. */
+function posicionDelAsistente(args: Readonly<{ pasoContrato: number; desvio: "property" | "tenant" | null; pasoDesvio: number; direccion: Direccion | null }>): string {
+  const { pasoContrato, desvio, pasoDesvio, direccion } = args;
+  // Sólo si la ubicación está completa, no cada letra: completarla guarda enseguida, escribirla no.
+  return `${pasoContrato}|${desvio ?? "-"}|${pasoDesvio}|${ubicacionCompleta(direccion) ? "ubicacion" : "-"}`;
+}
+
+/** Cuándo y con qué guarda solo el borrador: sólo en «Nuevo contrato» y con sesión, y desde lo primero que carga el propietario. */
 function opcionesDeAutoguardado(args: Readonly<{
-  guardaBorrador: boolean; retomando: BorradorRetomado | undefined; pasoContrato: number; preseleccionada: boolean;
+  guardaBorrador: boolean; retomando: BorradorRetomado | undefined; hayAlgoPropio: boolean; posicion: string;
   contenido: ContenidoDeBorrador;
 }>) {
-  const { guardaBorrador, retomando, pasoContrato, preseleccionada, contenido } = args;
+  const { guardaBorrador, retomando, hayAlgoPropio, posicion, contenido } = args;
   const borrador = retomando?.draft;
-  // Con la propiedad ya elegida (se abrió desde ella) el primer paso es el 2: recién al salir de él nace el borrador.
-  const pasoInicial = preseleccionada ? 2 : 1;
   return {
-    activo: guardaBorrador && (borrador !== undefined || pasoContrato > pasoInicial),
+    activo: guardaBorrador && (borrador !== undefined || hayAlgoPropio),
     contenido,
-    paso: pasoContrato,
+    posicion,
     inicial: borrador ? { id: borrador.id, version: borrador.version, contenido: { label: borrador.label, payload: borrador.payload } } : null,
   };
 }
@@ -1146,11 +1131,6 @@ function opcionesDeAutoguardado(args: Readonly<{
 /** Sólo «Nuevo contrato» y con sesión guarda borradores: el prototipo y los asistentes sueltos no. */
 function guardaComoBorrador(tipo: WizardKind, demo: boolean): boolean {
   return tipo === "contract" && !demo;
-}
-
-/** «Completar después» se ofrece en el contrato, en un paso que todavía no está completo. */
-function puedeCompletarDespues(kind: WizardKind, eligiendo: boolean, guardando: boolean, pendientes: number[], step: number): boolean {
-  return kind === "contract" && !eligiendo && !guardando && pendientes.includes(step);
 }
 
 /** En la revisión, «Crear contrato» espera a que no quede ningún paso por completar. */
@@ -1165,26 +1145,36 @@ function BotonDescartarBorrador({ visible, deshabilitado, onClick }: Readonly<{ 
   </button>;
 }
 
-function BotonCompletarDespues({ visible, onClick }: Readonly<{ visible: boolean; onClick: () => void }>) {
-  if (!visible) return null;
-  return <button type="button" className="owner-wizard-quiet owner-wizard-later" onClick={onClick}>Completar después</button>;
-}
+/** Por qué salir pregunta: el último guardado falló, el borrador no se pudo crear, o ya tiene el máximo. */
+type SalidaPendiente = { salir: () => void; motivo: "fallo" | "sin-borrador" | "limite" };
 
-type SalidaPendiente = { salir: () => void; sinGuardar: boolean };
+const TEXTOS_DE_SALIDA: Record<SalidaPendiente["motivo"], { titulo: string; texto: string; salir: string }> = {
+  fallo: {
+    titulo: "No pudimos guardar los últimos cambios",
+    texto: "Lo que cambió desde el último guardado se pierde si sale ahora. El borrador queda como estaba.",
+    salir: "Salir igual",
+  },
+  "sin-borrador": {
+    titulo: "No pudimos guardar el borrador",
+    texto: "El contrato no quedó guardado como borrador, así que lo que cargó se pierde si sale ahora.",
+    salir: "Salir igual",
+  },
+  limite: {
+    titulo: "No se guardó como borrador",
+    texto: `Ya tiene ${LIMITE_DE_BORRADORES} borradores, el máximo, así que lo que cargó se pierde si sale ahora. Para conservarlo, termine o descarte uno de los otros.`,
+    salir: "Salir",
+  },
+};
 
-/** Salir de un contrato que todavía no es un borrador, o cuyo último guardado falló, pide confirmar. */
+/** Salir pregunta sólo cuando lo cargado no quedó guardado: lo explica y deja elegir. */
 function DialogoDeSalida({ salida, onSeguir, onSalir }: Readonly<{ salida: SalidaPendiente | null; onSeguir: () => void; onSalir: (salir: () => void) => void }>) {
   if (salida === null) return null;
-  const { sinGuardar } = salida;
-  const titulo = sinGuardar ? "No pudimos guardar los últimos cambios" : "¿Salir sin crear el contrato?";
-  const texto = sinGuardar
-    ? "Lo que cambió desde el último guardado se pierde si sale ahora. El borrador queda como estaba."
-    : "No se guardó nada: ni la propiedad, ni el inquilino, ni el contrato. Si sale ahora, lo que cargó se pierde.";
+  const { titulo, texto, salir } = TEXTOS_DE_SALIDA[salida.motivo];
   return <Dialog title={titulo} onClose={onSeguir}>
     <div className="owner-dialog__body"><p>{texto}</p></div>
     <div className="owner-dialog__foot">
       <button type="button" className="owner-button owner-button--quiet" onClick={onSeguir}>Seguir cargando</button>
-      <button type="button" className="owner-button owner-button--danger" onClick={() => onSalir(salida.salir)}>{sinGuardar ? "Salir igual" : "Salir"}</button>
+      <button type="button" className="owner-button owner-button--danger" onClick={() => onSalir(salida.salir)}>{salir}</button>
     </div>
   </Dialog>;
 }
@@ -1217,7 +1207,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
 }>) {
   const guardado = retomando?.estado;
   const { estado: inicial, propiedad: formularioPropiedad, inquilino: formularioInquilino } = valoresIniciales(guardado, tipo, initialPropertyId);
-  const { desvio, setDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep } = useNavegacion(tipo, initialPropertyId, guardado?.paso);
+  const { desvio, setDesvio, pasoDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep } = useNavegacion(tipo, initialPropertyId, guardado);
   const total = cantidadPasos(kind);
   const [propiedadId, setPropiedadId] = useState<number | null>(inicial.propiedad.id);
   const [inquilinoId, setInquilinoId] = useState<number | null>(inicial.inquilino.id);
@@ -1327,16 +1317,24 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   const bloqueado = guardando || (eligiendo ? modoElegido === null : bloqueadoPorTipo[kind]);
 
   // --- El contrato como borrador ---
-  // Nace al salir del primer paso; desde ahí se guarda solo. Sólo en «Nuevo contrato» y con sesión.
+  // Nace con lo primero que carga el propietario; desde ahí se guarda solo. Sólo en «Nuevo contrato» y con sesión.
   const estadoDelBorrador: EstadoDelBorrador = {
     paso: pasoContrato,
+    desvio: desvio ? { tipo: desvio, paso: pasoDesvio } : null,
+    formularioPropiedad: { direccion, unidad, categoria, bedrooms, bathrooms, superficie, mascotas, amoblada },
+    formularioInquilino: { nombre, apellido, cuit, correo, telefono },
     propiedad: { id: propiedadElegida, nuevo: propiedadNueva, borrador: borradorPropiedad },
     inquilino: { id: inquilinoElegido, nuevo: inquilinoNuevo, borrador: borradorInquilino },
     alquiler, diaVencimiento, plazo: term, inicio, metodo: method, porcentaje, frecuencia, otras, pagadoHasta,
   };
   const contenidoDelBorrador = contenidoDelBorradorDe(estadoDelBorrador, listas, retomando?.draft.label);
   const guardaBorrador = guardaComoBorrador(tipo, demo);
-  const auto = useAutoguardado(opcionesDeAutoguardado({ guardaBorrador, retomando, pasoContrato, preseleccionada, contenido: contenidoDelBorrador }));
+  const algoPropio = guardaBorrador && hayAlgoPropio({
+    formularioPropiedad: estadoDelBorrador.formularioPropiedad, formularioInquilino: estadoDelBorrador.formularioInquilino,
+    borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada,
+  });
+  const posicion = posicionDelAsistente({ pasoContrato, desvio, pasoDesvio, direccion });
+  const auto = useAutoguardado(opcionesDeAutoguardado({ guardaBorrador, retomando, hayAlgoPropio: algoPropio, posicion, contenido: contenidoDelBorrador }));
   const esBorrador = auto.id !== null;
 
   // El PDF del contrato, opcional. Con un borrador guardado viaja enseguida; sin él, espera al contrato.
@@ -1523,25 +1521,22 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     }
   }
 
-  // Un contrato a medias no deja nada en el servidor, pero sí trabajo del propietario: si hay algo
-  // cargado, salir se confirma. Un asistente suelto de propiedad o inquilino sale como siempre.
-  const hayAlgoCargado = tipo === "contract" && hayTrabajoDelContrato([
-    borradorPropiedad, borradorInquilino, direccion, hayOtrasCondiciones(otras), alquiler, porcentaje, nombre, apellido, cuit, correo, telefono,
-  ]);
-  // Un borrador no pide confirmar: ya se guarda solo. Se guarda lo último y se sale; si esa última
-  // vez falla, se avisa antes de irse, porque ahí sí se pierde algo.
+  // Lo propio ya se guarda solo, así que salir no pregunta nada: se guarda lo último y se sale. Sólo se
+  // pregunta cuando algo propio no se pudo guardar, porque ahí sí se pierde: el último guardado falló, el
+  // borrador no se pudo crear, o el propietario ya tiene el máximo. Sin nada propio, o en un asistente
+  // suelto de propiedad o inquilino, se sale directo.
   async function salirConservandoBorrador(salir: () => void) {
     setSaliendo(true);
     const quedoGuardado = await auto.guardarAhora();
     setSaliendo(false);
-    if (!quedoGuardado) return setConfirmandoSalida({ salir, sinGuardar: true });
+    if (!quedoGuardado) return setConfirmandoSalida({ salir, motivo: esBorrador ? "fallo" : "sin-borrador" });
     onDraftKept?.();
     salir();
   }
   function pedirSalir(salir: () => void) {
-    if (esBorrador) return void salirConservandoBorrador(salir);
-    if (hayAlgoCargado) setConfirmandoSalida({ salir, sinGuardar: false });
-    else salir();
+    if (auto.estado === "limite" && !esBorrador) return setConfirmandoSalida({ salir, motivo: "limite" });
+    if (esBorrador || algoPropio) return void salirConservandoBorrador(salir);
+    salir();
   }
   async function descartarBorrador() {
     await auto.descartar();
@@ -1692,7 +1687,6 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
         <button type="button" className="owner-wizard-quiet" onClick={atras} disabled={atrasDeshabilitado}>
           Atrás
         </button>
-        <BotonCompletarDespues visible={puedeCompletarDespues(kind, eligiendo, guardando, pendientes, step)} onClick={() => setStep((current) => current + 1)} />
         <button type="button" className="owner-wizard-next" onClick={next} disabled={bloqueado}>
           <ContenidoDelBoton eligiendo={eligiendo} guardando={guardando} finish={finish} etiquetaDeCierre={finishLabel} />
         </button>

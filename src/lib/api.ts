@@ -154,13 +154,16 @@ export function apiGet<T>(path: string, options?: { retry?: boolean }): Promise<
 export function apiPost<T>(
   path: string,
   body?: unknown,
-  options?: { retry?: boolean }
+  options?: { retry?: boolean; keepalive?: boolean; headers?: Record<string, string> }
 ): Promise<T> {
   return request<T>(
     path,
     {
       method: "POST",
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      // Igual que en `apiPut`: deja que el pedido termine aunque la página se cierre.
+      ...(options?.keepalive ? { keepalive: true } : {}),
+      ...(options?.headers ? { headers: options.headers } : {}),
     },
     options?.retry ?? true
   );

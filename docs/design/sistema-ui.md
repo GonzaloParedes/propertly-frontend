@@ -656,11 +656,14 @@ los desvíos guardaban solos:
   el inquilino que ya existe con ese CUIT o teléfono («Usar a Diego Ferrari»
   reenvía con su id; «Corregir los datos» reabre el formulario) y la propiedad
   que ya tiene contrato vigente (con el enlace a ese contrato).
-- **Salir se confirma sólo si hay algo cargado y todavía no es un borrador,** con
-  un diálogo propio de la app que dice que no se guardó nada. Es el mismo `Dialog`
-  del resto de la app (`src/components/ui/Dialog.tsx`). Una vez que el contrato es
-  un borrador (ver «Contratos a medio cargar») salir no pregunta nada. Los
-  asistentes sueltos de propiedad e inquilino salen directo, como siempre.
+- **Salir no pregunta mientras lo cargado quede guardado.** Lo que el propietario
+  carga ya se guarda solo como borrador (ver «Contratos a medio cargar»), así que
+  no hay un «¿Salir sin crear el contrato?»: con algo propio cargado se sale y un
+  toast avisa que quedó como borrador; sin nada propio cargado se sale directo.
+  El único diálogo que queda es el de lo que *no* se pudo guardar, y dice por qué
+  (ver «Contratos a medio cargar»). Es el mismo `Dialog` del resto de la app
+  (`src/components/ui/Dialog.tsx`). Los asistentes sueltos de propiedad e inquilino
+  salen directo, como siempre.
 
 ### Contratos a medio cargar
 
@@ -669,9 +672,20 @@ impreso o en un mail y no conoce todos los datos (la actualización, los
 punitorios). «Nuevo contrato» se guarda solo en el servidor, así que se puede
 retomar después y desde otro dispositivo.
 
-- **Nace al salir del primer paso,** no al abrir el asistente. Abrirlo por error
-  y cerrarlo no deja nada: los borradores son pocos (3) y no conviene gastarlos
-  en un asistente que nadie empezó.
+- **Nace con lo primero que carga el propietario,** no al abrir el asistente:
+  completar la ubicación de una propiedad nueva (calle, número, ciudad y provincia,
+  vengan del buscador o completadas a mano), escribir cualquier dato de un
+  inquilino nuevo, o pasar del primer paso. Abrirlo por error, elegir una
+  propiedad o un inquilino que ya tiene, escribir en el buscador sin elegir un
+  resultado, o dejar la ubicación a medias no deja nada: los borradores son pocos
+  (3) y no conviene gastarlos en un asistente que nadie empezó. Antes nacía recién
+  al salir del primer paso, y todo lo escrito al cargar una propiedad nueva se
+  perdía si el propietario se iba antes; de ahí que existiera el diálogo de «no se
+  guardó nada», que ya no tiene razón de ser.
+- **Guarda dónde estaba.** Si cargaba una propiedad o un inquilino nuevos, el
+  borrador guarda cuál y en qué paso, con lo escrito aunque no lo haya confirmado,
+  y «Continuar» reabre la carga ahí. Cada cambio de paso, también dentro de la
+  carga, guarda enseguida.
 - **Se guarda solo:** en cada cambio de paso, a los 2 s de que se deja de
   escribir y una última vez al cerrar la pestaña. Un guardado a la vez, siempre
   con lo más nuevo.
@@ -681,15 +695,25 @@ retomar después y desde otro dispositivo.
   pantalla pase lo que pase, y al fallar reintenta con espera creciente.
 - **Salir de un borrador no pregunta:** ya está guardado, y preguntar «¿guardar?»
   obligaría a elegir algo que el propietario no tiene motivo para dudar. Se sale,
-  y un toast dice que quedó como borrador y dónde encontrarlo. Si justo ese
-  último guardado falla, ahí sí se avisa antes de irse, porque se pierde algo.
+  y un toast dice que quedó como borrador y dónde encontrarlo. Sólo se pregunta
+  cuando algo propio **no** quedó guardado, porque ahí sí se pierde algo, y el
+  texto dice por qué: el último guardado falló («No pudimos guardar los últimos
+  cambios»), el borrador no se pudo crear («No pudimos guardar el borrador»), o
+  ya tiene el máximo («No se guardó como borrador… ya tiene 3»). Es un solo
+  diálogo con tres textos y los mismos botones: «Seguir cargando» y la salida en
+  `danger` («Salir igual», o «Salir» con el máximo).
 - **«Descartar borrador»** vive en el encabezado del asistente con ícono de
   papelera (no la «x», que ya es salir) y siempre pide confirmación con el
   `DescartarBorrador` compartido, en `danger` con cuerpo: se pierden los datos y
   el PDF y no hay vuelta atrás.
-- **«Completar después»** aparece al lado de «Seguir» cuando falta un dato del
-  paso. Deja avanzar sin marcar nada: los pasos pendientes se **derivan** de lo
-  cargado, así completarlos los saca de la lista solos. La revisión los nombra
+- **Un paso incompleto no se saltea.** «Seguir» no se habilita hasta que el paso
+  tiene lo que necesita, y es el único botón que avanza. Quien no tiene un dato
+  a mano sale: el borrador queda en ese paso y se retoma después, sin preguntar.
+  Para eso ya no hace falta un segundo botón (ver *Rechazado*).
+- **La revisión sigue listando lo que quedó incompleto,** porque un borrador
+  retomado puede apuntar a algo que ya no está (un inquilino archivado, una
+  propiedad que ahora tiene contrato vigente). Esos pasos se **derivan** de lo
+  cargado, así que completarlos los saca de la lista solos. La revisión los nombra
   («Falta completar» en la fila, y un aviso neutro con un acceso a cada paso) y
   «Crear contrato» no se habilita hasta que no queda ninguno.
 - **El PDF firmado es opcional** y se adjunta en la revisión. Se guarda tal cual,
@@ -710,7 +734,13 @@ retomar después y desde otro dispositivo.
   otra versión» descarta lo de acá. No se pisa nada en silencio.
 
 *Rechazado:* un botón «Guardar borrador» (depende de que se acuerde de tocarlo y
-se pierde con la pestaña, que es justo el caso a evitar); mandar al propietario al
+se pierde con la pestaña, que es justo el caso a evitar); guardar lo que se escribe
+en el buscador de direcciones sin elegir un resultado (casi siempre es una búsqueda
+que se abandona y gastaría uno de los 3 lugares); un botón «Completar después»
+junto a «Seguir» (había dos botones que avanzan, uno sólo con los datos y otro sin
+ellos, y marea; renombrarlo o mostrar uno por estado no lo arregla, y con el
+borrador guardado desde lo primero que se carga, salir y retomar ya cumple esa
+función); mandar al propietario al
 borrador al iniciar sesión (le quita el control de a dónde ir); un aviso «ocultar»
 sin descartar (un tercer estado que habría que explicar).
 

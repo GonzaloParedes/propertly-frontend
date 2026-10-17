@@ -617,10 +617,22 @@ describe("AlquiaBackendClient.contractDrafts", () => {
     expect(mockGet).toHaveBeenCalledWith("/contract-drafts/5");
   });
 
-  it("create manda la etiqueta y el contenido a POST /contract-drafts", async () => {
+  it("create manda la etiqueta y el contenido a POST /contract-drafts, sin clave si no se da una", async () => {
     const body = { label: "Lavalle 950", payload: { paso: 2 } };
     await AlquiaBackendClient.contractDrafts.create(body);
-    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body);
+    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body, {});
+  });
+
+  it("create manda la clave de idempotencia en el header para poder repetir el alta sin duplicar", async () => {
+    const body = { label: "Lavalle 950", payload: { paso: 2 } };
+    await AlquiaBackendClient.contractDrafts.create(body, { idempotencyKey: "clave-1" });
+    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body, { headers: { "Idempotency-Key": "clave-1" } });
+  });
+
+  it("create reenvía keepalive para el alta al cerrar la pestaña, junto con la clave", async () => {
+    const body = { label: "x", payload: {} };
+    await AlquiaBackendClient.contractDrafts.create(body, { idempotencyKey: "clave-1", keepalive: true });
+    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body, { keepalive: true, headers: { "Idempotency-Key": "clave-1" } });
   });
 
   it("update manda la versión vista a PUT /contract-drafts/{id}", async () => {

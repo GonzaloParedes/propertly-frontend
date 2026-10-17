@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
-import { resumenDeBorrador } from "@/tests/borradores";
+import { SIN_DESVIO, resumenDeBorrador } from "@/tests/borradores";
 import { serializar } from "@/lib/borradores";
 import { SIN_OTRAS_CONDICIONES } from "@/lib/otras-condiciones";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
@@ -476,7 +476,7 @@ describe("borradores en «Requieren su acción»", () => {
     mockBorradores.get.mockResolvedValue({
       ...resumenDeBorrador({ id: 7 }),
       payload: serializar({
-        paso: 3, propiedad: { id: 10, nuevo: false, borrador: null }, inquilino: { id: 1, nuevo: false, borrador: null },
+        paso: 3, ...SIN_DESVIO, propiedad: { id: 10, nuevo: false, borrador: null }, inquilino: { id: 1, nuevo: false, borrador: null },
         alquiler: "450000", diaVencimiento: 10, plazo: 24, inicio: "2026-09-01", metodo: "FIXED_PERCENTAGE",
         porcentaje: "8", frecuencia: 6, otras: SIN_OTRAS_CONDICIONES, pagadoHasta: "",
       }),
