@@ -199,7 +199,7 @@ export default function LoginPage() {
                 </div>
                 <Link
                   href="/olvidar-contrasena"
-                  className="mt-1 self-start text-[15px] underline"
+                  className="inline-flex min-h-12 items-center self-start text-[16px] underline"
                   style={{ color: "var(--primary)" }}
                 >
                   ¿Olvidó su contraseña?

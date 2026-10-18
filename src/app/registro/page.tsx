@@ -419,7 +419,7 @@ export default function RegistroPage() {
                 </p>
                 <Link
                   href="/login"
-                  className="text-[15px] font-bold underline"
+                  className="inline-flex min-h-12 items-center text-[16px] font-bold underline"
                   style={{ color: "var(--primary)" }}
                 >
                   Volver al inicio de sesión

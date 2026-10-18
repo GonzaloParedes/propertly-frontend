@@ -61,7 +61,7 @@ function RestablecerContrasenaForm() {
         <ErrorAlert className="mb-4 w-full">El enlace es inválido o ya expiró.</ErrorAlert>
         <Link
           href="/olvidar-contrasena"
-          className="text-[15px] font-bold underline"
+          className="inline-flex min-h-12 items-center text-[16px] font-bold underline"
           style={{ color: "var(--primary)" }}
         >
           Solicitar un nuevo enlace

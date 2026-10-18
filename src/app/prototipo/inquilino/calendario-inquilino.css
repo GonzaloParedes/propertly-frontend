@@ -96,7 +96,7 @@
 .calinquilino__mes--bad .calinquilino__estado { color: var(--error); }
 .calinquilino__mes--warn .calinquilino__estado { color: var(--adv); }
 .calinquilino__mes--info .calinquilino__estado { color: var(--indigo); }
-.calinquilino__cambio { color: var(--indigo); font-size: 13px; font-weight: 700; }
+.calinquilino__cambio { color: var(--indigo); font-size: 14px; font-weight: 700; }
 .calinquilino__ver { color: var(--indigo); font-size: 15px; font-weight: 700; }
 .calinquilino__mes--vacio { min-height: 112px; justify-content: space-between; background: linear-gradient(135deg, #FBFAFE, var(--superficie)); color: var(--gris); cursor: default; }
 .calinquilino__mes--vacio .calinquilino__mes-nombre { color: var(--tinta); }
