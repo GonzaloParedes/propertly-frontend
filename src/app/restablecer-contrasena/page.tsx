@@ -8,6 +8,7 @@ import { Check, CircleCheck, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const TIPS = [
   "Use al menos 8 caracteres",
@@ -57,13 +58,7 @@ function RestablecerContrasenaForm() {
         <h2 className="font-heading mb-3 text-[22px] font-bold">
           Enlace inválido
         </h2>
-        <p
-          role="alert"
-          className="mb-4 w-full rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-          style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-        >
-          El enlace es inválido o ya expiró.
-        </p>
+        <ErrorAlert className="mb-4 w-full">El enlace es inválido o ya expiró.</ErrorAlert>
         <Link
           href="/olvidar-contrasena"
           className="text-[15px] font-bold underline"
@@ -238,13 +233,7 @@ function RestablecerContrasenaForm() {
         </div>
 
         {error && (
-          <p
-            role="alert"
-            className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-            style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-          >
-            {error}
-          </p>
+          <ErrorAlert className="mb-2">{error}</ErrorAlert>
         )}
 
         <button

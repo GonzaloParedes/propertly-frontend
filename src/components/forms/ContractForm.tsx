@@ -18,6 +18,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import PropertySelector from "./PropertySelector";
 import TenantsField from "./TenantsField";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 type Errors = Record<string, string>;
 
@@ -654,9 +655,7 @@ export default function ContractForm() {
       </SectionCard>
 
       {Object.keys(errors).length > 0 && (
-        <p role="alert" className="rounded-[8px] px-3 py-2 text-[15px] font-semibold" style={{ background: "var(--danger-bg)", color: "var(--danger)" }}>
-          Revise los campos marcados antes de guardar el contrato.
-        </p>
+        <ErrorAlert>Revise los campos marcados antes de guardar el contrato.</ErrorAlert>
       )}
 
       <div className="flex justify-end">

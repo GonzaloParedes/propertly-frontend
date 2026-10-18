@@ -9,6 +9,7 @@ import { ERROR, copyDeError } from "@/lib/error-codes";
 import { Spinner } from "@/components/ui/Spinner";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const BENEFITS = [
   "Configure sus propiedades en minutos",
@@ -557,13 +558,7 @@ export default function RegistroPage() {
                   />
 
                   {error && (
-                    <p
-                      role="alert"
-                      className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-                      style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-                    >
-                      {error}
-                    </p>
+                    <ErrorAlert className="mb-2">{error}</ErrorAlert>
                   )}
 
                   <button

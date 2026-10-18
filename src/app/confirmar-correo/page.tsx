@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { copyDeError, FALLBACK } from "@/lib/error-codes";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const BENEFITS = [
   "Confirmá tu correo para activar tu cuenta",
@@ -86,13 +87,7 @@ function ResendForm() {
       </div>
 
       {error && (
-        <p
-          role="alert"
-          className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-          style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-        >
-          {error}
-        </p>
+        <ErrorAlert className="mb-2">{error}</ErrorAlert>
       )}
 
       <button
@@ -193,13 +188,7 @@ function ConfirmarCorreoContent() {
         <MailIcon />
       </div>
       <h2 className="font-heading mb-2 text-[22px] font-bold">No pudimos verificar tu correo</h2>
-      <p
-        role="alert"
-        className="mb-2 w-full rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-        style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-      >
-        {errorMessage}
-      </p>
+      <ErrorAlert className="mb-2 w-full">{errorMessage}</ErrorAlert>
       <p style={{ color: "var(--text-2)" }}>Ingresá tu correo y te mandamos uno nuevo.</p>
       <div className="w-full">
         <ResendForm />

@@ -9,6 +9,7 @@ import { useAuth } from "@/context/auth-context";
 import { Spinner } from "@/components/ui/Spinner";
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { ERROR, copyDeError } from "@/lib/error-codes";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const BENEFITS = [
   "Sepa al instante qué alquileres están pagos",
@@ -206,13 +207,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <p
-                  role="alert"
-                  className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-                  style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-                >
-                  {error}
-                </p>
+                <ErrorAlert className="mb-2">{error}</ErrorAlert>
               )}
 
               <button
