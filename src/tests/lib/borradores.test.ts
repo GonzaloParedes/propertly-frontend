@@ -1,5 +1,6 @@
 import {
   DIAS_DE_AVISO_DE_VENCIMIENTO,
+  PASOS_DEL_DESVIO,
   SIN_ETIQUETA,
   VERSION_DEL_PAYLOAD,
   armarContenido,
@@ -7,12 +8,19 @@ import {
   deserializar,
   diasParaVencer,
   etiquetaDeBorrador,
+  etiquetaDePropiedad,
+  etiquetaDePropiedadEnCarga,
+  nombreDePropiedadDelBorrador,
   filaDeBorrador,
+  formularioDeInquilino,
+  formularioDePropiedad,
   serializar,
+  ubicacionCompleta,
   venceProximamente,
   type EstadoDelBorrador,
 } from "@/lib/borradores";
 import { garantiaVacia } from "@/lib/garantias";
+import { SIN_DESVIO } from "@/tests/borradores";
 import { SIN_OTRAS_CONDICIONES } from "@/lib/otras-condiciones";
 import type { PropertyRequest } from "@/lib/backend-types";
 
@@ -21,6 +29,7 @@ const PROPIEDAD: PropertyRequest = { street: "Lavalle", number: "950", city: "CA
 function estado(cambios: Partial<EstadoDelBorrador> = {}): EstadoDelBorrador {
   return {
     paso: 5,
+    ...SIN_DESVIO,
     propiedad: { id: null, nuevo: true, borrador: { pedido: PROPIEDAD, etiqueta: "Lavalle 950, 3B" } },
     inquilino: { id: 7, nuevo: false, borrador: null },
     alquiler: "450000",
@@ -102,12 +111,149 @@ describe("serializar y deserializar", () => {
   });
 });
 
+const DIRECCION = { street: "Lavalle", number: "950", city: "CABA", province: "Buenos Aires", postalCode: "C1047", latitude: -34.6, longitude: -58.4 };
+
+describe("el desvío y lo escrito sin confirmar (versión 2)", () => {
+  const abierto = estado({
+    paso: 1,
+    propiedad: { id: null, nuevo: false, borrador: null },
+    desvio: { tipo: "property", paso: 4 },
+    formularioPropiedad: {
+      direccion: DIRECCION, unidad: "3B", categoria: "APARTMENT", bedrooms: 2, bathrooms: 1, superficie: "58", mascotas: true, amoblada: false,
+    },
+    formularioInquilino: { nombre: "Ana", apellido: "", cuit: "20-30115482-9", correo: "", telefono: "" },
+  });
+
+  it("ida y vuelta de una propiedad nueva a medio cargar, en su cuarto paso y sin confirmar", () => {
+    expect(deserializar(porElCable(serializar(abierto)))).toEqual(abierto);
+  });
+
+  it("guarda una dirección que todavía no está completa tal como se escribió", () => {
+    const incompleta = estado({ ...abierto, formularioPropiedad: { ...abierto.formularioPropiedad, direccion: { ...DIRECCION, number: "", city: "" } } });
+    expect(deserializar(porElCable(serializar(incompleta)))?.formularioPropiedad.direccion).toEqual({ ...DIRECCION, number: "", city: "" });
+  });
+
+  it("el desvío del inquilino vuelve con su único paso", () => {
+    const deInquilino = estado({ desvio: { tipo: "tenant", paso: 1 } });
+    expect(deserializar(porElCable(serializar(deInquilino)))?.desvio).toEqual({ tipo: "tenant", paso: 1 });
+  });
+
+  it.each([
+    ["un paso de más", { tipo: "property", paso: 9 }, { tipo: "property", paso: PASOS_DEL_DESVIO.property }],
+    ["un paso de menos", { tipo: "property", paso: 0 }, { tipo: "property", paso: 1 }],
+    ["un paso que no es un número", { tipo: "property", paso: "2" }, { tipo: "property", paso: 1 }],
+    ["un paso de más en el inquilino", { tipo: "tenant", paso: 3 }, { tipo: "tenant", paso: 1 }],
+    ["un tipo desconocido", { tipo: "contract", paso: 1 }, null],
+    ["algo que no es un objeto", "property", null],
+  ])("saneado del desvío con %s", (_motivo, desvio, esperado) => {
+    const payload = { ...(porElCable(serializar(abierto)) as object), desvio };
+    expect(deserializar(payload)?.desvio).toEqual(esperado);
+  });
+
+  it("un campo roto del formulario vuelve vacío y no tira abajo el resto del borrador", () => {
+    const payload = porElCable(serializar(abierto)) as { formularioPropiedad: Record<string, unknown> };
+    const roto = {
+      ...payload,
+      formularioPropiedad: { ...payload.formularioPropiedad, categoria: "CASTILLO", bedrooms: -3, bathrooms: "dos", superficie: 58, mascotas: "sí", direccion: { street: "x" } },
+    };
+    expect(deserializar(roto)?.formularioPropiedad).toEqual({
+      direccion: null, unidad: "3B", categoria: null, bedrooms: null, bathrooms: null, superficie: "", mascotas: false, amoblada: false,
+    });
+    expect(deserializar(roto)?.alquiler).toBe("450000");
+  });
+
+  it("sin formularios en un borrador de la versión actual, se rearman de lo confirmado", () => {
+    const payload = porElCable(serializar(estado())) as Record<string, unknown>;
+    delete payload.formularioPropiedad;
+    delete payload.formularioInquilino;
+    expect(deserializar(payload)?.formularioPropiedad).toEqual(formularioDePropiedad(PROPIEDAD));
+  });
+});
+
+describe("un borrador de la versión 1", () => {
+  /** Tal como lo guardaba la versión anterior: sin el desvío ni los formularios. */
+  function enVersion1(cambios: Partial<EstadoDelBorrador> = {}) {
+    const resto = Object.fromEntries(Object.entries(serializar(estado(cambios))).filter(([clave]) => !["desvio", "formularioPropiedad", "formularioInquilino"].includes(clave)));
+    return porElCable({ ...resto, schemaVersion: 1 });
+  }
+
+  it("se abre en el contrato, sin desvío", () => {
+    expect(deserializar(enVersion1())?.desvio).toBeNull();
+  });
+
+  it("rearma los formularios desde la propiedad y el inquilino confirmados", () => {
+    const inquilino = { firstName: "Pablo", lastName: "Pérez", taxId: "20301154829", email: "p@e.com", phoneNumber: "1155600183" };
+    const leido = deserializar(enVersion1({ inquilino: { id: null, nuevo: true, borrador: { pedido: inquilino, etiqueta: "Pablo Pérez" } } }));
+
+    expect(leido?.formularioPropiedad).toEqual(formularioDePropiedad(PROPIEDAD));
+    expect(leido?.formularioPropiedad.direccion?.street).toBe("Lavalle");
+    expect(leido?.formularioInquilino).toEqual({ nombre: "Pablo", apellido: "Pérez", cuit: "20-30115482-9", correo: "p@e.com", telefono: "1155600183" });
+  });
+
+  it("sin nada confirmado, los formularios quedan vacíos", () => {
+    const leido = deserializar(enVersion1({ propiedad: { id: 3, nuevo: false, borrador: null } }));
+    expect(leido?.formularioPropiedad).toEqual(formularioDePropiedad(undefined));
+    expect(leido?.formularioInquilino).toEqual(formularioDeInquilino(undefined));
+  });
+
+  it("al volver a guardarlo se escribe como versión 2", () => {
+    const leido = deserializar(enVersion1())!;
+    expect(serializar(leido).schemaVersion).toBe(VERSION_DEL_PAYLOAD);
+    expect(VERSION_DEL_PAYLOAD).toBe(2);
+  });
+});
+
+describe("la ubicación de una propiedad nueva", () => {
+  it("está completa con calle, número, ciudad y provincia", () => {
+    expect(ubicacionCompleta(DIRECCION)).toBe(true);
+  });
+
+  it.each([["calle", "street"], ["número", "number"], ["ciudad", "city"], ["provincia", "province"]])("sin %s no está completa, ni con espacios", (_nombre, campo) => {
+    expect(ubicacionCompleta({ ...DIRECCION, [campo]: "" })).toBe(false);
+    expect(ubicacionCompleta({ ...DIRECCION, [campo]: "   " })).toBe(false);
+  });
+
+  it("el código postal y las coordenadas no hacen falta", () => {
+    expect(ubicacionCompleta({ ...DIRECCION, postalCode: "", latitude: null, longitude: null })).toBe(true);
+  });
+
+  it("sin dirección no está completa", () => {
+    expect(ubicacionCompleta(null)).toBe(false);
+  });
+
+  it("la propiedad que se está cargando se nombra por su dirección sólo cuando la ubicación está completa", () => {
+    const formulario = { ...formularioDePropiedad(undefined), direccion: DIRECCION };
+    expect(etiquetaDePropiedadEnCarga(formulario)).toBe("Lavalle 950");
+    expect(etiquetaDePropiedadEnCarga({ ...formulario, unidad: " 3B " })).toBe("Lavalle 950, 3B");
+    expect(etiquetaDePropiedadEnCarga({ ...formulario, direccion: { ...DIRECCION, number: "" } })).toBeNull();
+    expect(etiquetaDePropiedadEnCarga(formularioDePropiedad(undefined))).toBeNull();
+  });
+
+  it("lo confirmado o elegido manda sobre la propiedad que se está cargando", () => {
+    const formulario = { ...formularioDePropiedad(undefined), direccion: DIRECCION };
+    expect(nombreDePropiedadDelBorrador("Mitre 78", formulario)).toBe("Mitre 78");
+    expect(nombreDePropiedadDelBorrador(null, formulario)).toBe("Lavalle 950");
+    expect(nombreDePropiedadDelBorrador(null, { ...formulario, direccion: { ...DIRECCION, province: "" } })).toBeNull();
+  });
+
+  it("mientras no se sabe cómo se llama lo elegido, no se lo reemplaza por lo que se está cargando", () => {
+    const formulario = { ...formularioDePropiedad(undefined), direccion: DIRECCION };
+    expect(nombreDePropiedadDelBorrador(undefined, formulario)).toBeUndefined();
+  });
+
+  it("la etiqueta de una dirección lleva la unidad después de una coma", () => {
+    expect(etiquetaDePropiedad(DIRECCION, "")).toBe("Lavalle 950");
+    expect(etiquetaDePropiedad({ ...DIRECCION, street: " Lavalle ", number: " 950 " }, "3B")).toBe("Lavalle 950, 3B");
+  });
+});
+
 describe("un borrador que no se puede leer", () => {
   it.each([
     ["no es un objeto", "texto"],
     ["es nulo", null],
     ["es una lista", []],
-    ["es de otra versión", { ...serializar(estado()), schemaVersion: 2 }],
+    ["es de otra versión", { ...serializar(estado()), schemaVersion: 3 }],
+    ["es de una versión anterior que nunca existió", { ...serializar(estado()), schemaVersion: 0 }],
     ["no tiene versión", Object.fromEntries(Object.entries(serializar(estado())).filter(([clave]) => clave !== "schemaVersion"))],
     ["tiene el paso fuera de rango", { ...serializar(estado()), paso: 9 }],
     ["tiene el vencimiento fuera de rango", { ...serializar(estado()), diaVencimiento: 31 }],

@@ -184,6 +184,48 @@ describe("apiPut con keepalive", () => {
   });
 });
 
+describe("apiPost con keepalive y headers", () => {
+  it("manda keepalive cuando se pide, para que el alta del borrador sobreviva al cierre de la página", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPost("/test", { a: 1 }, { keepalive: true });
+    expect(fetch).toHaveBeenCalledWith("/test", expect.objectContaining({ method: "POST", keepalive: true }));
+  });
+
+  it("no manda keepalive si no se pide", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPost("/test", { a: 1 });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.keepalive).toBeUndefined();
+  });
+
+  it("suma los headers pedidos a los de siempre, sin perder el anti-CSRF ni el Content-Type", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPost("/test", { a: 1 }, { headers: { "Idempotency-Key": "k1" } });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.headers).toEqual({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "Idempotency-Key": "k1" });
+  });
+
+  it("lee igual un 200 (el borrador que ya existía) que un 201 (el recién creado)", async () => {
+    const borrador = { id: 5, version: 0 };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify(borrador), { status: 201, headers: { "Content-Type": "application/json" } }))
+      .mockResolvedValueOnce(ok(borrador));
+    expect(await apiPost("/test", {}, { headers: { "Idempotency-Key": "k1" } })).toEqual(borrador);
+    expect(await apiPost("/test", {}, { headers: { "Idempotency-Key": "k1" } })).toEqual(borrador);
+  });
+
+  it("repite el header al reintentar tras refrescar la sesión", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(ok({}))
+      .mockResolvedValueOnce(ok({ id: 1 }));
+    await apiPost("/test", { a: 1 }, { headers: { "Idempotency-Key": "k1" }, keepalive: true });
+    const reintento = vi.mocked(fetch).mock.calls[2][1] as RequestInit;
+    expect((reintento.headers as Record<string, string>)["Idempotency-Key"]).toBe("k1");
+    expect(reintento.keepalive).toBe(true);
+  });
+});
+
 describe("apiPutForm", () => {
   it("envía PUT con el FormData como body y sin pisar el Content-Type", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(ok({ id: 1 }));

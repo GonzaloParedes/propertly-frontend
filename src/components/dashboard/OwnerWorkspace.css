@@ -835,10 +835,6 @@
    reserva mientras carga para que la tarjeta no crezca al llegar el dato. */
 .owner-wizard-option .owner-wizard-option__nota{margin-top:var(--esp-2)}
 
-/* «Completar después»: junto al botón principal, no al «Atrás». */
-.owner-wizard__footer .owner-wizard-later{margin-left:auto}
-.owner-wizard-later+.owner-wizard-next{margin-left:0}
-
 /* Lo que falta para crear el contrato: una nota neutra con un acceso a cada paso. */
 .owner-wizard-pending{margin-bottom:var(--esp-20)}
 .owner-wizard-pending p{margin:0 0 var(--esp-6);font-weight:600}

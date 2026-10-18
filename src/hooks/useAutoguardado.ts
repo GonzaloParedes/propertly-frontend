@@ -27,24 +27,38 @@ const REINTENTOS_MS = [2000, 5000, 15000, 30000];
 type Inicial = { id: number; version: number; contenido: ContenidoDeBorrador };
 
 /**
+ * Una clave por sesión del asistente: el backend la usa para no crear dos veces el mismo borrador si el
+ * alta se repite (se perdió la respuesta, se reintenta, o se manda otra vez al cerrar la pestaña).
+ * `randomUUID` sólo existe en contextos seguros; `getRandomValues` está siempre.
+ */
+function nuevaClaveDeAlta(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
  * Guarda solo el contrato a medio cargar como borrador en el backend.
  *
- * - **Nace** cuando `activo` pasa a ser verdadero (el propietario salió del primer paso): antes no
- *   se crea nada, así abrir el asistente por error no ocupa un lugar de los pocos que hay.
- * - **Guarda** de inmediato en cada cambio de `paso`, a los 2 s de que dejó de escribir, y una
+ * - **Nace** cuando `activo` pasa a ser verdadero (el propietario cargó algo propio): antes no
+ *   se crea nada, así abrir el asistente por error no ocupa un lugar de los pocos que hay. Nace
+ *   de inmediato si a la vez cambió la `posicion`, y si no, cuando deja de escribir.
+ * - **Guarda** de inmediato en cada cambio de `posicion`, a los 2 s de que dejó de escribir, y una
  *   última vez al cerrar o esconder la página (`keepalive`, que sí deja mandar el header
- *   anti-CSRF que `sendBeacon` no permite).
+ *   anti-CSRF que `sendBeacon` no permite). Si todavía no nació, esa última vez es el alta.
+ * - **El alta se puede repetir:** lleva siempre la misma clave de idempotencia, así un reintento o el
+ *   alta al cerrar la pestaña no ocupan un segundo lugar. Si el backend contesta con un borrador que
+ *   ya existía, el hook compara con lo que ese borrador tiene, no con lo que mandó, y guarda la diferencia.
  * - **De a un pedido por vez:** si algo cambia mientras viaja otro, al terminar se manda lo más
  *   nuevo con la versión que devolvió, así el hook nunca choca consigo mismo.
  * - **Falla:** reintenta con espera creciente y deja el contenido en pantalla. Un 409 de versión,
  *   de límite o un 404 frenan el guardado: no se insiste contra algo que no va a cambiar solo.
  */
-export function useAutoguardado({ activo, contenido, paso, inicial = null, esperaMs = ESPERA_AL_ESCRIBIR_MS }: Readonly<{
+export function useAutoguardado({ activo, contenido, posicion, inicial = null, esperaMs = ESPERA_AL_ESCRIBIR_MS }: Readonly<{
   /** Si el contrato ya tiene que ser un borrador. */
   activo: boolean;
   contenido: ContenidoDeBorrador;
-  /** Cada cambio de paso guarda enseguida, sin esperar. */
-  paso: number;
+  /** Dónde está el propietario (paso, desvío, ubicación completa…): cada cambio guarda enseguida, sin esperar. */
+  posicion: string;
   /** El borrador que se está retomando, tal como lo devolvió el backend. */
   inicial?: Inicial | null;
   esperaMs?: number;
@@ -67,7 +81,9 @@ export function useAutoguardado({ activo, contenido, paso, inicial = null, esper
   const detenido = useRef(false);
   const congelado = useRef(false);
   const frenado = useRef(false);
-  const pasoAnterior = useRef(paso);
+  const posicionAnterior = useRef(posicion);
+  const claveDeAlta = useRef<string | null>(null);
+  const desmontado = useRef(false);
   const drenarRef = useRef<(keepalive?: boolean) => Promise<void>>(async () => {});
 
   useEffect(() => {
@@ -95,6 +111,9 @@ export function useAutoguardado({ activo, contenido, paso, inicial = null, esper
       if (err.status === 404) return frenar("desaparecido");
     }
     setEstado("error");
+    // El asistente ya se cerró: el último guardado salió una vez y no se sigue insistiendo en segundo plano,
+    // porque quien salió igual, tras el aviso, no espera que el borrador aparezca después.
+    if (desmontado.current) return;
     const demora = REINTENTOS_MS[Math.min(intentos.current, REINTENTOS_MS.length - 1)];
     intentos.current += 1;
     clearTimeout(reintento.current);
@@ -111,10 +130,17 @@ export function useAutoguardado({ activo, contenido, paso, inicial = null, esper
         setEstado("guardando");
         try {
           if (idRef.current === null) {
-            const creado = await AlquiaBackendClient.contractDrafts.create(objetivo);
+            claveDeAlta.current ??= nuevaClaveDeAlta();
+            const creado = await AlquiaBackendClient.contractDrafts.create(objetivo, {
+              idempotencyKey: claveDeAlta.current,
+              ...(keepalive ? { keepalive: true } : {}),
+            });
             idRef.current = creado.id;
             versionRef.current = creado.version;
             setId(creado.id);
+            // Si ya existía (un alta anterior llegó aunque no se vio la respuesta), tiene lo de aquel
+            // pedido, no necesariamente lo de ahora: se compara con lo que realmente guarda.
+            guardado.current = contenidoCanonico({ label: creado.label, payload: creado.payload });
           } else {
             const guardadoAhora = await AlquiaBackendClient.contractDrafts.update(
               idRef.current,
@@ -122,8 +148,8 @@ export function useAutoguardado({ activo, contenido, paso, inicial = null, esper
               keepalive ? { keepalive: true } : undefined
             );
             versionRef.current = guardadoAhora.version;
+            guardado.current = texto;
           }
-          guardado.current = texto;
           intentos.current = 0;
           setEstado("guardado");
         } catch (err) {
@@ -146,26 +172,28 @@ export function useAutoguardado({ activo, contenido, paso, inicial = null, esper
     drenarRef.current = drenar;
   }, [drenar]);
 
-  // Cada cambio: el primero que sale del paso 1 crea el borrador; un cambio de paso guarda ya;
+  // Cada cambio: lo primero propio que se carga crea el borrador; un cambio de posición guarda ya;
   // lo demás espera a que el propietario deje de escribir.
   useEffect(() => {
     clearTimeout(espera.current);
-    const cambioDePaso = pasoAnterior.current !== paso;
-    pasoAnterior.current = paso;
+    const cambioDePosicion = posicionAnterior.current !== posicion;
+    posicionAnterior.current = posicion;
     if (!activo && idRef.current === null) return;
     nacio.current = true;
     if (idRef.current !== null && canonico === guardado.current) return;
-    if (idRef.current === null || cambioDePaso) {
+    if (cambioDePosicion) {
       void drenar();
       return;
     }
     espera.current = setTimeout(() => void drenar(), esperaMs);
-  }, [activo, canonico, paso, id, esperaMs, drenar]);
+  }, [activo, canonico, posicion, id, esperaMs, drenar]);
 
-  // Al cerrar o esconder la página: un último pedido que sobreviva a la página.
+  // Al cerrar o esconder la página: un último pedido que sobreviva a la página. Si el borrador todavía
+  // no nació (el alta esperaba a que el propietario dejara de escribir, o falló), esa vez es el alta.
   useEffect(() => {
     const guardarAlSalir = () => {
-      if (idRef.current !== null && ultimo.current.canonico !== guardado.current) void drenar(true);
+      const sinNacer = idRef.current === null && nacio.current;
+      if (sinNacer || (idRef.current !== null && ultimo.current.canonico !== guardado.current)) void drenar(true);
     };
     const alOcultar = () => {
       if (document.visibilityState === "hidden") guardarAlSalir();
@@ -180,11 +208,17 @@ export function useAutoguardado({ activo, contenido, paso, inicial = null, esper
 
   // Si el asistente se desmonta con cambios sin guardar (el propietario se fue a otra sección), se
   // manda lo último: el temporizador de los 2 s no llegaría a correr.
-  useEffect(() => () => {
-    clearTimeout(espera.current);
-    clearTimeout(reintento.current);
-    const sinGuardar = idRef.current !== null && ultimo.current.canonico !== guardado.current;
-    if (sinGuardar && !detenido.current && !frenado.current) void drenarRef.current(true);
+  useEffect(() => {
+    // En desarrollo React monta, desmonta y vuelve a montar: el montaje tiene que dejarlo en pie.
+    desmontado.current = false;
+    return () => {
+      clearTimeout(espera.current);
+      clearTimeout(reintento.current);
+      const sinNacer = idRef.current === null && nacio.current;
+      const sinGuardar = sinNacer || (idRef.current !== null && ultimo.current.canonico !== guardado.current);
+      desmontado.current = true;
+      if (sinGuardar && !detenido.current && !frenado.current) void drenarRef.current(true);
+    };
   }, []);
 
   /** Guarda lo pendiente y espera a que termine. Devuelve si quedó todo guardado. */

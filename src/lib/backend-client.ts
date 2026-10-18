@@ -199,8 +199,16 @@ export const AlquiaBackendClient = {
     list: (): Promise<ContractDraftSummary[]> =>
       apiGet<ContractDraftSummary[]>("/contract-drafts"),
     get: (id: number): Promise<ContractDraft> => apiGet<ContractDraft>(`/contract-drafts/${id}`),
-    create: (body: ContractDraftRequest): Promise<ContractDraft> =>
-      apiPost<ContractDraft>("/contract-drafts", body),
+    // Con `idempotencyKey` el alta se puede repetir sin duplicar: el backend contesta con el borrador
+    // que ya creó (200) en vez de ocupar otro lugar. `keepalive`: el alta al cerrar la pestaña.
+    create: (
+      body: ContractDraftRequest,
+      { idempotencyKey, keepalive }: { idempotencyKey?: string; keepalive?: boolean } = {}
+    ): Promise<ContractDraft> =>
+      apiPost<ContractDraft>("/contract-drafts", body, {
+        ...(keepalive ? { keepalive } : {}),
+        ...(idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : {}),
+      }),
     // `keepalive`: el guardado al cerrar la pestaña tiene que terminar aunque la página no.
     update: (
       id: number,
