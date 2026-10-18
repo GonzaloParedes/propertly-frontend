@@ -54,14 +54,16 @@ export default function OlvidarContrasenaPage() {
         className="flex items-center px-6 py-5 lg:hidden"
         style={{ background: "var(--primary)" }}
       >
-        <Image
-          src="/logos/lockup-oscuro.svg"
-          alt="Alquia"
-          width={360}
-          height={160}
-          priority
-          className="h-10 w-auto"
-        />
+        <Link href="/">
+          <Image
+            src="/logos/lockup-oscuro.svg"
+            alt="Alquia — volver al inicio"
+            width={360}
+            height={160}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
       </header>
 
       <main
@@ -74,14 +76,16 @@ export default function OlvidarContrasenaPage() {
           style={{ background: "var(--primary)" }}
         >
           <div className="my-auto">
-            <Image
-              src="/logos/lockup-oscuro.svg"
-              alt="Alquia"
-              width={360}
-              height={160}
-              priority
-              className="mb-10 block h-[108px] w-auto"
-            />
+            <Link href="/">
+              <Image
+                src="/logos/lockup-oscuro.svg"
+                alt="Alquia — volver al inicio"
+                width={360}
+                height={160}
+                priority
+                className="mb-10 block h-[108px] w-auto"
+              />
+            </Link>
 
             <h1 className="font-heading mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]">
               Recupere el acceso a su cuenta.

@@ -284,10 +284,16 @@ export default function RegistroPage() {
       return;
     }
     const form = new FormData(e.currentTarget);
-    // Chequeo solo del cliente: que la contraseña y su confirmación coincidan.
-    // El backend no recibe `confirm`; el payload de más abajo no lo incluye.
-    if (form.get("password") !== form.get("confirm")) {
-      setErroresContrasena({ confirm: "Las contraseñas no coinciden." });
+    // Chequeos sólo del cliente, los mismos que en restablecer contraseña. El
+    // largo mínimo lo pide la pantalla; el backend hoy acepta desde 6 (ALQ-110
+    // lo sube a 10 en los dos lados). `confirm` no viaja: el payload de más
+    // abajo no lo incluye.
+    const password = String(form.get("password") ?? "");
+    const errores: Record<string, string> = {};
+    if (password.length < 8) errores.password = "La contraseña debe tener al menos 8 caracteres.";
+    if (password !== form.get("confirm")) errores.confirm = "Las contraseñas no coinciden.";
+    if (Object.keys(errores).length > 0) {
+      setErroresContrasena(errores);
       return;
     }
     setIsPending(true);
@@ -330,14 +336,16 @@ export default function RegistroPage() {
         className="flex items-center px-6 py-5 lg:hidden"
         style={{ background: "var(--primary)" }}
       >
-        <Image
-          src="/logos/lockup-oscuro.svg"
-          alt="Alquia"
-          width={360}
-          height={160}
-          priority
-          className="h-10 w-auto"
-        />
+        <Link href="/">
+          <Image
+            src="/logos/lockup-oscuro.svg"
+            alt="Alquia — volver al inicio"
+            width={360}
+            height={160}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
       </header>
 
       <main

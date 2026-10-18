@@ -12,9 +12,9 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const BENEFITS = [
-  "Confirmá tu correo para activar tu cuenta",
-  "Así recibís avisos de vencimientos y pagos",
-  "Es un solo paso y queda listo para siempre",
+  "Confirme su correo para activar su cuenta",
+  "Así recibe los avisos de vencimientos y pagos",
+  "Es un solo paso y queda hecho",
 ];
 
 function CheckIcon() {
@@ -61,7 +61,7 @@ function ResendForm() {
     // verificados (misma lógica que «olvidé mi contraseña»).
     return (
       <p className="mt-6 text-center text-[15px]" style={{ color: "var(--text-2)" }}>
-        Si tu cuenta todavía no está verificada, te enviamos un enlace nuevo. Revisá tu bandeja de
+        Si su cuenta todavía no está verificada, le enviamos un enlace nuevo. Revise su bandeja de
         entrada y la carpeta de spam.
       </p>
     );
@@ -119,7 +119,7 @@ function ConfirmarCorreoContent() {
 
   const [status, setStatus] = useState<Status>(token ? "pending" : "error");
   const [errorMessage, setErrorMessage] = useState<string>(
-    "El enlace es inválido o está incompleto. Pedí uno nuevo con tu correo."
+    "El enlace es inválido o está incompleto. Pida uno nuevo con su correo."
   );
   const confirmed = useRef(false);
 
@@ -135,7 +135,7 @@ function ConfirmarCorreoContent() {
       .catch((err) => {
         setErrorMessage(
           err instanceof ApiError
-            ? copyDeError(err, { fallback: "El enlace venció o no es válido. Pedí uno nuevo." })
+            ? copyDeError(err, { fallback: "El enlace venció o no es válido. Pida uno nuevo." })
             : FALLBACK
         );
         setStatus("error");
@@ -147,7 +147,7 @@ function ConfirmarCorreoContent() {
       <div className="flex flex-col items-center text-center">
         <Spinner />
         <p className="mt-4" style={{ color: "var(--text-2)" }}>
-          Verificando tu correo…
+          Verificando su correo…
         </p>
       </div>
     );
@@ -162,9 +162,9 @@ function ConfirmarCorreoContent() {
         >
           <CheckCircleIcon />
         </div>
-        <h2 className="font-heading mb-2 text-[22px] font-bold">¡Correo verificado!</h2>
+        <h2 className="font-heading mb-2 text-[22px] font-bold">Correo verificado</h2>
         <p className="mb-6" style={{ color: "var(--text-2)" }}>
-          Tu cuenta quedó activada. Ya podés iniciar sesión.
+          Su cuenta quedó activada. Ya puede iniciar sesión.
         </p>
         <Link
           href="/login"
@@ -187,9 +187,9 @@ function ConfirmarCorreoContent() {
       >
         <MailIcon />
       </div>
-      <h2 className="font-heading mb-2 text-[22px] font-bold">No pudimos verificar tu correo</h2>
+      <h2 className="font-heading mb-2 text-[22px] font-bold">No pudimos verificar su correo</h2>
       <ErrorAlert className="mb-2 w-full">{errorMessage}</ErrorAlert>
-      <p style={{ color: "var(--text-2)" }}>Ingresá tu correo y te mandamos uno nuevo.</p>
+      <p style={{ color: "var(--text-2)" }}>Escriba su correo y le enviamos uno nuevo.</p>
       <div className="w-full">
         <ResendForm />
       </div>
@@ -205,14 +205,16 @@ export default function ConfirmarCorreoPage() {
         className="flex items-center px-6 py-5 lg:hidden"
         style={{ background: "var(--primary)" }}
       >
-        <Image
-          src="/logos/lockup-oscuro.svg"
-          alt="Alquia"
-          width={360}
-          height={160}
-          priority
-          className="h-10 w-auto"
-        />
+        <Link href="/">
+          <Image
+            src="/logos/lockup-oscuro.svg"
+            alt="Alquia — volver al inicio"
+            width={360}
+            height={160}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
       </header>
 
       <main
@@ -225,20 +227,22 @@ export default function ConfirmarCorreoPage() {
           style={{ background: "var(--primary)" }}
         >
           <div className="my-auto">
-            <Image
-              src="/logos/lockup-oscuro.svg"
-              alt="Alquia"
-              width={360}
-              height={160}
-              priority
-              className="mb-10 block h-[108px] w-auto"
-            />
+            <Link href="/">
+              <Image
+                src="/logos/lockup-oscuro.svg"
+                alt="Alquia — volver al inicio"
+                width={360}
+                height={160}
+                priority
+                className="mb-10 block h-[108px] w-auto"
+              />
+            </Link>
 
             <h1 className="font-heading mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]">
-              Confirmá tu correo y activá tu cuenta.
+              Confirme su correo y active su cuenta.
             </h1>
             <p className="max-w-[420px] text-[17.5px] text-[var(--on-dark-secondary)]">
-              Verificamos tu correo para proteger tu cuenta y poder enviarte los avisos importantes.
+              Verificamos su correo para proteger su cuenta y poder enviarle los avisos importantes.
             </p>
 
             <ul className="mt-8 flex flex-col gap-3.5">

@@ -16,7 +16,7 @@ describe("página 404", () => {
 
   it("ofrece escribir al equipo", () => {
     render(<NotFound />);
-    expect(screen.getByRole("link", { name: "Escribinos" })).toHaveAttribute("href");
+    expect(screen.getByRole("link", { name: "Escríbanos" })).toHaveAttribute("href");
   });
 
   it("titula la pestaña «Página no encontrada | Alquia»", () => {

@@ -89,6 +89,16 @@ describe("con token válido", () => {
     expect(mockResetPassword).not.toHaveBeenCalled();
   });
 
+  it("asocia cada error a su campo para lectores de pantalla", async () => {
+    render(<RestablecerContrasenaPage />);
+    await fillAndSubmit({ password: "abc", confirm: "abcd" });
+
+    const campo = screen.getByLabelText("Nueva contraseña");
+    await waitFor(() => expect(campo).toHaveAttribute("aria-invalid", "true"));
+    expect(campo).toHaveAccessibleDescription("La contraseña debe tener al menos 8 caracteres.");
+    expect(screen.getByLabelText("Confirmar contraseña")).toHaveAccessibleDescription("Las contraseñas no coinciden.");
+  });
+
   it("muestra el mensaje de enlace inválido/expirado ante un ApiError 400", async () => {
     mockResetPassword.mockRejectedValueOnce(new ApiError(400, "Bad Request"));
     render(<RestablecerContrasenaPage />);

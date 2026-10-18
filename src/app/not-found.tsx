@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Página no encontrada | Alquia",
 };
 
-// Canal de contacto de «Escribinos». Pendiente de definir: reemplazar por la
+// Canal de contacto de «Escríbanos». Pendiente de definir: reemplazar por la
 // dirección real (o un wa.me) — es el único lugar que lo usa.
 const CONTACTO_HREF = "mailto:hola@alquia.com";
 
@@ -47,7 +47,7 @@ export default function NotFound() {
           href={CONTACTO_HREF}
           className="flex min-h-12 items-center justify-center rounded-[10px] border-2 border-[var(--primary)] bg-[var(--elev)] px-6 text-[17px] font-bold text-[var(--primary)] transition-colors hover:bg-[var(--primary-soft)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--lila)]"
         >
-          Escribinos
+          Escríbanos
         </a>
       </div>
     </main>
