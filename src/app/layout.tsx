@@ -3,6 +3,7 @@ import { Quicksand, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/ui/Toast";
+import { siteUrl } from "@/lib/site-url";
 
 const quicksand = Quicksand({
   variable: "--font-quicksand",
@@ -16,7 +17,11 @@ const nunitoSans = Nunito_Sans({
   weight: ["400", "600", "700", "800"],
 });
 
+const base = siteUrl();
+
 export const metadata: Metadata = {
+  // Sin esto las URLs de la imagen de Open Graph salen relativas o con localhost.
+  ...(base ? { metadataBase: new URL(base) } : {}),
   title: "Alquia | Gestión de alquileres",
   description: "Una mejor manera de gestionar tus alquileres.",
 };
