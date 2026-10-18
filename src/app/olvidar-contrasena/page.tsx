@@ -168,8 +168,8 @@ export default function OlvidarContrasenaPage() {
                       placeholder="ejemplo@ejemplo.com"
                       required
                       disabled={isPending}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                      style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                     />
                   </div>
 

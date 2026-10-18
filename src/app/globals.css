@@ -59,6 +59,13 @@
   --adv: #B26A00;
   --error: #CE3F53;
   --error-bg: #FBE9EC;
+
+  /* Contorno y placeholder de los campos de texto. Van aparte de --borde-campo
+     porque ése es también el anillo de hover de tarjetas y filas, y oscurecerlo
+     cambiaba todo el panel. Medidos contra blanco y superficie: el contorno
+     llega a 3:1 (WCAG 1.4.11) y el placeholder a 4,5:1 (1.4.3). */
+  --borde-control: #8A84A8;
+  --placeholder: #6B6780;
 }
 
 @theme inline {
@@ -123,6 +130,8 @@ html[data-theme="dark"] {
   --adv: #FFD166;
   --error: #F2889A;
   --error-bg: rgba(242,136,154,.16);
+  --borde-control: #7A7590;
+  --placeholder: #9D98AE;
 }
 
 /* Superficies blancas de utilidad (Tailwind) dentro del panel: formularios, el

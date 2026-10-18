@@ -119,8 +119,8 @@ function TaxIdField({
         aria-describedby={invalid ? "rg-tax-id-error" : undefined}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-        style={{ borderColor: invalid ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+        style={{ borderColor: invalid ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
       />
       {invalid && (
         <p id="rg-tax-id-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
@@ -167,8 +167,8 @@ function PhoneField({
         aria-describedby={invalid ? "rg-phone-error" : undefined}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-        style={{ borderColor: invalid ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+        style={{ borderColor: invalid ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
       />
       {invalid && (
         <p id="rg-phone-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
@@ -225,8 +225,8 @@ function PasswordField({
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
           onChange={onChange}
-          className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-          style={{ borderColor: error ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+          className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+          style={{ borderColor: error ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
         />
         <button
           type="button"
@@ -450,8 +450,8 @@ export default function RegistroPage() {
                         placeholder="Ej: María"
                         required
                         disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                        style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                        style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -466,8 +466,8 @@ export default function RegistroPage() {
                         placeholder="Ej: González"
                         required
                         disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                        style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                        style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                       />
                     </div>
                   </div>
@@ -519,8 +519,8 @@ export default function RegistroPage() {
                         setEmail(e.target.value);
                         setErroresDeCampo((prev) => sinCampo(prev, "email"));
                       }}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{ borderColor: erroresDeCampo.email ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                      style={{ borderColor: erroresDeCampo.email ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
                     />
                     {erroresDeCampo.email && (
                       <p id="rg-mail-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
