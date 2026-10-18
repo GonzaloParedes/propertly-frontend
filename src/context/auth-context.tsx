@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ApiError, onAuthExpired } from "@/lib/api";
 import { AlquiaBackendClient, type UserResponse } from "@/lib/backend-client";
 
@@ -30,9 +31,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Sólo el panel necesita saber quién es el usuario al abrirse. Verificarlo en
+// todas las rutas hacía que un visitante anónimo de la home, el login o el
+// registro disparara `/users/me` y `/auth/refresh`, y ambos vuelven 401: dos
+// errores rojos en la consola que el navegador imprime aunque el código los atrape.
+function requiereSesion(pathname: string): boolean {
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Si ya se preguntó al backend por la sesión. Mientras no se pregunte, en una
+  // ruta que la requiere `isLoading` sigue en pie para que el panel espere en
+  // vez de mandar al login a quien sí tiene sesión.
+  const [verificada, setVerificada] = useState(false);
+  const necesitaSesion = requiereSesion(usePathname());
+  const isLoading = necesitaSesion && !verificada;
   // Descarta resultados de una verificación de sesión que quedó pendiente
   // si mientras tanto login()/logout() ya resolvieron un estado más nuevo.
   const authRequestId = useRef(0);
@@ -43,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }), []);
 
   useEffect(() => {
+    if (!necesitaSesion || verificada) return;
     const id = ++authRequestId.current;
     // Un access token puede haber vencido mientras la pestaña estaba cerrada;
     // la cookie de refresh todavía puede mantener la sesión vigente.
@@ -54,14 +69,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         if (authRequestId.current === id) setUser(null);
       })
-      .finally(() => setIsLoading(false));
-  }, []);
+      .finally(() => setVerificada(true));
+  }, [necesitaSesion, verificada]);
 
   const login = useCallback(async (email: string, password: string) => {
     const id = ++authRequestId.current;
     await AlquiaBackendClient.auth.login({ email, password });
     const me = await AlquiaBackendClient.users.getMe();
     if (authRequestId.current === id) setUser(me);
+    // Quien acaba de ingresar ya tiene la respuesta: entrar al panel no la repite.
+    setVerificada(true);
   }, []);
 
   const logout = useCallback(async () => {
