@@ -50,6 +50,14 @@
 .lp-nav__secciones { display: flex; gap: var(--esp-32); }
 .lp-nav__links { display: flex; align-items: center; gap: var(--esp-20); }
 .lp-nav__cta { min-height: 48px; text-decoration: none; }
+.lp-nav__menu { display: none; width: 48px; height: 48px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--tinta); cursor: pointer; }
+.lp-nav__menu:hover { background: var(--indigo-suave); }
+.lp-nav__menu:focus-visible, .lp-menu__link:focus-visible { outline: 3px solid var(--lila); outline-offset: 3px; }
+.lp-menu { position: fixed; inset: var(--lp-nav) 0 0; z-index: 40; overflow-y: auto; overscroll-behavior: contain; background: #fff; }
+.lp-menu[hidden] { display: none; }
+.lp-menu__lista { display: flex; flex-direction: column; padding: var(--esp-12) 0 var(--esp-32); }
+.lp-menu__link { display: flex; min-height: 52px; align-items: center; color: var(--tinta); font-size: 18px; font-weight: 600; text-decoration: none; box-shadow: inset 0 -1px 0 var(--divisor); }
+.lp-menu__cta { min-height: 52px; margin-top: var(--esp-20); text-decoration: none; }
 
 /* Hero ------------------------------------------------------------ */
 /* La pieza baja por debajo del hero y el aviso se superpone a la tarjeta:
@@ -178,7 +186,8 @@
 /* 900: la estructura pasa a una columna y el stack deja de ser fijo. */
 @media (max-width: 900px) {
   .lp { --lp-seccion: 104px; }
-  .lp-nav__secciones { display: none; }
+  .lp-nav__secciones, .lp-nav__links { display: none; }
+  .lp-nav__menu { display: inline-flex; }
   .lp-hero { padding: 64px 0 88px; }
   .lp-hero__grid, .lp-mes__grilla, .lp-momento, .lp-preguntas__grilla, .lp-final__inner, .lp-pie__arriba { grid-template-columns: 1fr; gap: 48px; }
   .lp-pieza__superpuesta { width: auto; margin: var(--esp-12) 0 0; }
@@ -194,7 +203,6 @@
 @media (max-width: 620px) {
   .lp { --lp-seccion: 80px; --lp-nav: 64px; --lp-lead: 18px; }
   .lp-nav__logo img { height: 26px; }
-  .lp-nav__cta { display: none; }
   .lp-hero__texto > p { margin: var(--esp-20) 0 var(--esp-26); }
   .lp-hero__acciones { flex-direction: column; align-items: stretch; gap: var(--esp-8); }
   .lp-hero__acciones .lp-link { justify-content: center; }
