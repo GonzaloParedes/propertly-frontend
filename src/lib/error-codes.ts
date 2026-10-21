@@ -42,6 +42,8 @@ export const ERROR = {
   CONTRACT_DRAFT_TOO_LARGE: "urn:alquia:error:contract-draft-too-large",
   CONTRACT_DRAFT_PAYLOAD_INVALID: "urn:alquia:error:contract-draft-payload-invalid",
   CONTRACT_DRAFT_NOT_FOUND: "urn:alquia:error:contract-draft-not-found",
+  RENT_ESTIMATE_UNAVAILABLE: "urn:alquia:error:rent-estimate-unavailable",
+  RENT_ESTIMATE_NOT_ENOUGH_DATA: "urn:alquia:error:rent-estimate-not-enough-data",
 } as const;
 
 export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
@@ -92,6 +94,10 @@ const COPY: Record<string, string> = {
   [ERROR.CONTRACT_DRAFT_TOO_LARGE]: "El borrador es demasiado grande para guardarlo.",
   [ERROR.CONTRACT_DRAFT_PAYLOAD_INVALID]: "No pudimos guardar el borrador. Inténtelo de nuevo.",
   [ERROR.CONTRACT_DRAFT_NOT_FOUND]: "Ese borrador ya no existe. Puede que se haya descartado o vencido.",
+  [ERROR.RENT_ESTIMATE_UNAVAILABLE]:
+    "El estimador de alquiler no está disponible en este momento. Probá de nuevo en un rato.",
+  [ERROR.RENT_ESTIMATE_NOT_ENOUGH_DATA]:
+    "No hay suficientes propiedades cerca para estimar el alquiler de esta propiedad.",
 };
 
 export const FALLBACK = "No se pudo completar la acción. Inténtelo de nuevo más tarde.";

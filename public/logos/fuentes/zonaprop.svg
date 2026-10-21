@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="30"
+   height="30"
+   viewBox="0 0 30 30"
+   fill="none"
+   version="1.1"
+   id="svg11"
+   sodipodi:docname="zonaprop-logo.svg"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs11" />
+  <sodipodi:namedview
+     id="namedview11"
+     pagecolor="#ffffff"
+     bordercolor="#999999"
+     borderopacity="1"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="10.534866"
+     inkscape:cx="33.792551"
+     inkscape:cy="20.64573"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg11" />
+  <path
+     d="m 8.5630983,23.354337 c -0.6295196,0.231 -0.6676796,1.1181 -0.06055,1.4028 l 2.3961697,1.1256 c 0.18081,0.0849 0.38734,0.0933 0.57476,0.0235 l 5.6906,-2.121 v -3.5834 l -8.6009797,3.1517 z"
+     fill="#ff5500"
+     id="path9" />
+  <path
+     d="m 14.841478,26.327937 c -0.6279,0.2336 -0.6636,1.1198 -0.0556,1.4028 l 2.3746,1.1072 v -3.371 z"
+     fill="#ff5500"
+     id="path10" />
+  <path
+     d="m 21.466478,7.7742373 c 0,-3.3615999 -2.7545,-6.0723 -6.102,-5.943 -3.058,0.1185 -5.5429497,2.6536001 -5.6391597,5.7515001 -0.08792,2.8257996 1.7724597,5.2247996 4.3228597,5.9286996 v 2.5889 l -5.4616397,2.0026 c -0.6295296,0.231 -0.6676796,1.118 -0.06055,1.4028 l 2.3961697,1.1256 c 0.18081,0.0848 0.38734,0.0932 0.57482,0.0235 l 5.6657,-2.1109 v -5.0392 c 2.4816,-0.6947 4.3046,-2.9963 4.3046,-5.7312997 z m -5.8664,2.8013997 c -1.5187,0 -2.7495,-1.2464997 -2.7495,-2.7845997 0,-1.5379999 1.2308,-2.7845999 2.7495,-2.7845999 1.5186,0 2.7495,1.2466 2.7495,2.7845999 0,1.5381 -1.2309,2.7845997 -2.7495,2.7845997 z"
+     fill="#ff5500"
+     id="path11" />
+</svg>

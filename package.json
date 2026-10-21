@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-maplibre-worker.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-maplibre-worker.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -13,12 +15,16 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@maplibre/maplibre-gl-leaflet": "^0.1.4",
     "@sentry/nextjs": "^10.63.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.50.0",
+    "maplibre-gl": "^6.15.0",
     "next": "16.2.9",
     "pdfjs-dist": "5.7.284",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -26,6 +32,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/jsdom": "^21.1.7",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
