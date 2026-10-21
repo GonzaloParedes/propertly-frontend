@@ -151,6 +151,66 @@ export interface PropertyResponse {
   archivedAt?: string | null;
 }
 
+// --- Rent estimate (ALQ-45) ---
+
+// Cuánta confianza da la estimación, según cuántos comparables la respaldan.
+export type PriceConfidence = "LOW" | "MEDIUM" | "HIGH";
+
+// De qué portal salió un comparable. `OTHER` es la red de seguridad para lo que
+// el scraper traiga nuevo. Espeja el enum `ListingSource` del backend.
+export type ListingSource =
+  | "ZONAPROP"
+  | "ARGENPROP"
+  | "MERCADO_LIBRE"
+  | "PROPERATI"
+  | "INMUEBLES24"
+  | "OTHER";
+
+// Un aviso de mercado que respaldó la estimación, tal como se muestra. `comparable`
+// marca el subconjunto que el modelo señala como más parecido a la propiedad (los
+// que el front distingue en la lista y el mapa); el resto viaja igual porque todos
+// se usaron en la predicción. Todo después de `currency` es opcional: una fuente
+// real puede no publicar un campo, y las coordenadas faltan cuando la propiedad no
+// tiene ubicación que las ancle.
+export interface ComparableListing {
+  source: ListingSource;
+  title: string;
+  monthlyRent: number;
+  currency: Currency;
+  coveredArea?: number | null;
+  bedrooms?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  url?: string | null;
+  /** `true` para los más parecidos a la propiedad, que el front resalta. */
+  comparable: boolean;
+}
+
+// Respuesta de `GET /properties/{id}/rent-estimate`. Un alquiler mensual
+// sugerido, con el rango que lo enmarca y cuántos avisos se consideraron. Es
+// una referencia, nunca un precio fijo. Lo produce el servicio predictor.
+export interface RentEstimate {
+  estimatedMonthlyRent: number;
+  currency: Currency;
+  range: { low: number; high: number };
+  /** Cuántos avisos entrenaron el modelo (= `listings.length`). */
+  listingsConsidered: number;
+  /**
+   * Todos los avisos usados en la predicción. Los marcados con `comparable: true`
+   * son los más parecidos a la propiedad; el front los muestra todos y distingue
+   * a los comparables del resto.
+   */
+  listings: ComparableListing[];
+  /**
+   * La ubicación de la propiedad estimada, para anclar el mapa. `null` cuando la
+   * propiedad nunca se geocodificó (ver ALQ-92, que garantiza coordenadas).
+   */
+  subjectLocation: { latitude: number; longitude: number } | null;
+  confidence: PriceConfidence;
+  /** Instante ISO-8601 en que se calculó la estimación. */
+  estimatedAt: string;
+}
+
 // --- Contracts ---
 
 export type IncrementMethod = "FIXED_PERCENTAGE" | "FIXED_AMOUNT" | "INDEX";

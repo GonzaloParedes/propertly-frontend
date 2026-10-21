@@ -680,6 +680,87 @@
   .owner-table td .owner-status,.owner-table td .owner-status + .owner-substatus{box-sizing:border-box;height:34px;padding-top:0;padding-bottom:0;line-height:1}
 }
 
+/* Estimador de alquiler (ALQ-45): botón + animación de espera + resultado.
+   La card es el tercer hijo de .owner-detail-grid, así que ocupa todo el ancho
+   por la regla :nth-child(3){grid-column:1/-1} ya existente. */
+.rent-estimate__lead{margin:var(--esp-8) 0 var(--esp-18);color:var(--gris);font-size:15.5px}
+.rent-estimate .owner-button{margin-top:var(--esp-8)}
+.rent-estimate__progress{display:flex;align-items:center;gap:13px;margin-top:22px;padding:var(--esp-20);border-radius:14px;background:var(--superficie);color:var(--tinta);font:600 16.5px var(--font-nunito-sans),sans-serif}
+.rent-estimate__progress .alquia-spinner{color:var(--indigo)}
+.rent-estimate__error{margin-top:var(--esp-14)}
+.rent-estimate__error>p{margin:0 0 var(--esp-14);color:var(--error)}
+.rent-estimate__result{display:grid;gap:var(--esp-8);margin-top:var(--esp-14)}
+.rent-estimate__ready{display:flex;align-items:center;gap:9px;margin:0 0 var(--esp-8);color:var(--exito);font:700 15px var(--font-nunito-sans),sans-serif}
+.rent-estimate__check{display:grid;width:30px;height:30px;place-items:center;border-radius:999px;background:var(--exito-bg);color:var(--exito);animation:rent-estimate-pop .32s ease}
+@keyframes rent-estimate-pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.rent-estimate__amount{margin:0}
+.rent-estimate__amount b{display:block;font:700 32px/1.1 var(--font-quicksand),sans-serif}
+.rent-estimate__amount small{color:var(--gris)}
+.rent-estimate__range,.rent-estimate__basis{margin:0;color:var(--gris);font-size:15px}
+.rent-estimate__confidence{justify-self:start;margin-top:var(--esp-6);padding:var(--esp-6) var(--esp-12);border-radius:999px;font-size:13.5px;font-weight:700}
+.rent-estimate__confidence--alta{background:var(--exito-bg);color:var(--exito)}
+.rent-estimate__confidence--media{background:var(--indigo-suave);color:var(--indigo-osc)}
+.rent-estimate__confidence--baja{background:var(--warn-bg);color:var(--adv)}
+.rent-estimate__disclaimer{display:flex;align-items:flex-start;gap:7px;margin:var(--esp-8) 0 0;color:var(--gris);font-size:13.5px;line-height:1.4}
+.rent-estimate__disclaimer svg{flex:none;margin-top:2px}
+.rent-estimate__result .owner-button--small{justify-self:start;margin-top:var(--esp-12)}
+@media (prefers-reduced-motion:reduce){.rent-estimate__check{animation:none}}
+
+/* Comparables (ALQ-45) */
+.rent-comparables{margin-top:var(--esp-14)}
+.rent-comparables__title{margin:0 0 var(--esp-10);font:700 15px var(--font-nunito-sans),sans-serif;color:var(--tinta)}
+/* Lista y mapa lado a lado, emparejados (ALQ-45). */
+.rent-cmp-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--esp-12);align-items:stretch}
+.rent-cmp-panel .rent-comparables__list{max-height:360px;overflow:auto}
+@media (max-width:720px){.rent-cmp-panel{grid-template-columns:1fr}}
+.rent-comparables__list{list-style:none;margin:0;padding:0;display:grid;gap:var(--esp-8)}
+.rent-comparable{display:grid;grid-template-columns:auto 100px 1fr auto;align-items:center;gap:var(--esp-12);padding:var(--esp-10) var(--esp-12);border:1px solid var(--borde);border-radius:12px;background:var(--superficie);transition:border-color .15s,background-color .15s,box-shadow .15s}
+.rent-comparable--link{color:inherit;text-decoration:none;cursor:pointer}
+.rent-comparable--link:hover,.rent-comparable.is-active{border-color:var(--indigo);background:var(--indigo-suave);box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.rent-comparable--link:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+.rent-comparable__num{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--gris);color:#fff;font:700 11px var(--font-nunito-sans),sans-serif}
+.rent-comparable.is-comparable .rent-comparable__num{background:var(--indigo)}
+.rent-comparable.is-active .rent-comparable__num{background:#A79AF0}
+/* Fila comparable (ALQ-45): la distingue de las demás propiedades del mercado. */
+.rent-comparable.is-comparable{border-color:var(--border-strong)}
+.rent-comparable__tag{flex:none;padding:1px 7px;border-radius:999px;background:var(--indigo-suave);color:var(--indigo-osc);font:700 10.5px var(--font-nunito-sans),sans-serif;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap}
+.rent-comparable__body{min-width:0}
+.rent-comparable__title{margin:0;display:flex;align-items:center;gap:6px;font-size:14.5px;color:var(--tinta)}
+.rent-comparable__title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rent-comparable__ext{flex:none;color:var(--indigo);opacity:0;transition:opacity .15s}
+.rent-comparable--link:hover .rent-comparable__ext,.rent-comparable--link:focus-visible .rent-comparable__ext,.rent-comparable.is-active .rent-comparable__ext{opacity:1}
+.rent-comparable__meta{margin:2px 0 0;color:var(--gris);font-size:12.5px}
+.rent-comparable__price{margin:0;font:700 14.5px var(--font-quicksand),sans-serif;color:var(--tinta);white-space:nowrap}
+.rent-source{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.rent-source__logo{height:18px;width:auto;max-width:96px;object-fit:contain;display:block}
+.rent-source__label{font:600 11px var(--font-nunito-sans),sans-serif;color:var(--gris);white-space:nowrap}
+.rent-source--chip{justify-self:center;padding:3px 9px;border-radius:999px;background:var(--indigo-suave);color:var(--indigo-osc);font-size:11.5px;font-weight:700;white-space:nowrap}
+
+/* Mapa de comparables — placeholder hasta ALQ-92 (ALQ-45) */
+.rent-map{height:100%;min-height:260px;border:1px solid var(--borde);border-radius:14px;overflow:hidden}
+.rent-map__canvas{height:100%;width:100%}
+.rent-map__loading{display:flex;height:100%;align-items:center;justify-content:center;color:var(--gris);font-size:13.5px;background:var(--superficie)}
+/* Atribución (requerida por la licencia ODbL de OSM): colapsada en una "ⓘ" que se
+   expande al hover o al enfocar un enlace. El crédito sigue siempre en el DOM, así
+   que cumple la licencia sin ocupar espacio. Colores de marca. */
+.rent-map .leaflet-control-attribution{overflow:hidden;white-space:nowrap;max-width:20px;height:20px;display:flex;align-items:center;padding:0;border-radius:999px;background:rgba(246,245,252,.92);color:var(--gris);font-size:10px;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:max-width .22s ease,border-radius .22s ease;cursor:default}
+.rent-map .leaflet-control-attribution::before{content:"\24D8";flex:none;width:20px;text-align:center;font-size:12px;color:var(--gris)}
+.rent-map .leaflet-control-attribution:hover,.rent-map .leaflet-control-attribution:focus-within{max-width:min(360px,calc(100% - 8px));border-radius:10px 0 0 0;padding-right:8px}
+.rent-map .leaflet-control-attribution a{color:var(--gris)}
+/* Pines dibujados con divIcon (ver RentEstimateMapCanvas) */
+.rent-map-pin__dot{display:block;width:100%;height:100%;border-radius:999px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+/* La propiedad estimada: rosa de marca (#DB4C8E), distinto del violeta de los
+   comparables y del gris del resto, con halo para destacar que es la seleccionada. */
+.rent-map-pin--subject .rent-map-pin__dot{background:#DB4C8E;border-width:3px;box-shadow:0 0 0 4px rgba(219,76,142,.22),0 1px 5px rgba(0,0,0,.4)}
+.rent-map-pin__num{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:999px;border:2px solid #fff;background:var(--gris);color:#fff;font:700 11px var(--font-nunito-sans),sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .12s,background-color .12s}
+/* Comparables en color de marca; el resto del mercado, atenuado y más chico. */
+.rent-map-pin--comp .rent-map-pin__num{background:var(--indigo)}
+.rent-map-pin--other .rent-map-pin__num{background:var(--gris);transform:scale(.82);opacity:.9}
+/* Hover: solo cambia el color a lila de marca (#A79AF0), distinto del violeta de
+   los comparables y del gris del resto. No agranda: cada pin mantiene su diámetro
+   de reposo (no se escala como antes). */
+.rent-map-pin--active .rent-map-pin__num{background:#A79AF0;opacity:1}
+
 /* ── Contrato desde el PDF (PROTOTIPO) ─────────────────────────────
    Ver docs/design/propuesta-contrato-desde-pdf.md. Radios y anillos
    copiados de los hermanos: zona de carga = .owner-wizard-field,
@@ -878,4 +959,3 @@
 /* El <dialog> trae el negro del navegador (CanvasText) y el panel no definía color: en modo oscuro el
    título quedaba negro sobre fondo oscuro. El texto del panel toma siempre el de la app. */
 .owner-dialog__panel{color:var(--tinta)}
-

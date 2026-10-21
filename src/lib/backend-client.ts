@@ -12,6 +12,8 @@ import type {
   TenantResponse,
   PropertyRequest,
   PropertyResponse,
+  RentEstimate,
+  Currency,
   ContractRequest,
   ContractOnboardingRequest,
   ContractResponse,
@@ -122,6 +124,10 @@ export const AlquiaBackendClient = {
       apiPost<PropertyResponse>("/properties", body),
     get: (id: number): Promise<PropertyResponse> =>
       apiGet<PropertyResponse>(`/properties/${id}`),
+    // `currency` es obligatorio en el backend (sin default → 400). El toggle de
+    // moneda en la UI es trabajo posterior; por ahora se pide en ARS.
+    getRentEstimate: (id: number, currency: Currency = "ARS"): Promise<RentEstimate> =>
+      apiGet<RentEstimate>(`/properties/${id}/rent-estimate?currency=${currency}`),
     update: (id: number, body: PropertyRequest): Promise<PropertyResponse> =>
       apiPut<PropertyResponse>(`/properties/${id}`, body),
     remove: (id: number): Promise<void> => apiDelete(`/properties/${id}`),
@@ -331,6 +337,9 @@ export type {
   TenantResponse,
   PropertyRequest,
   PropertyResponse,
+  RentEstimate,
+  ComparableListing,
+  ListingSource,
   ContractRequest,
   ContractOnboardingRequest,
   ContractTerms,
@@ -355,6 +364,7 @@ export type {
   TenantCalendarInvoiceResponse,
   TenantCalendarPreInvoiceResponse,
   ActiveContractSummary,
+  PriceConfidence,
   Currency,
   GuaranteeType,
   GuaranteeRequest,

@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { useEffect, useState } from "react";
+import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
 
 // Node 25 trae su propio `localStorage` (Web Storage) y, sin `--localstorage-file`, pisa el de jsdom con
 // un objeto sin métodos. Si pasa, se lo reemplaza por uno en memoria con la misma interfaz.
@@ -20,6 +21,52 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
+
+// Leaflet toca el DOM/`window` del mapa real; en jsdom lo stubbeamos a DOM plano
+// para poder afirmar que el mapa y sus pines se renderizan, sin cargar Leaflet.
+vi.mock("leaflet", () => ({
+  default: { divIcon: () => ({}), latLngBounds: () => ({}) },
+}));
+
+vi.mock("react-leaflet", () => ({
+  MapContainer: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="map">{children}</div>
+  ),
+  TileLayer: () => null,
+  Marker: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="map-marker">{children}</div>
+  ),
+  Popup: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  useMap: () => ({
+    invalidateSize: () => {},
+    fitBounds: () => {},
+    getContainer: () => document.createElement("div"),
+  }),
+}));
+
+// `next/dynamic` carga el canvas del mapa de forma diferida; acá lo resolvemos
+// tras montar para que el test lo vea sin depender del runtime de Next.
+vi.mock("next/dynamic", () => ({
+  default: (loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>) =>
+    function DynamicStub(props: Record<string, unknown>) {
+      // Se guarda el componente envuelto en un objeto (no con el updater funcional
+      // `setComp(() => m.default)`): así se evita una función anidada de más y la
+      // promesa se marca con `void` porque su resultado se ignora a propósito.
+      const [cargado, setCargado] = useState<{
+        Componente: ComponentType<Record<string, unknown>>;
+      } | null>(null);
+      useEffect(() => {
+        let active = true;
+        void loader().then((m) => {
+          if (active) setCargado({ Componente: m.default });
+        });
+        return () => {
+          active = false;
+        };
+      }, []);
+      return cargado ? <cargado.Componente {...props} /> : null;
+    },
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({

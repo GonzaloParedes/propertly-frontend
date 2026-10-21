@@ -5,6 +5,7 @@ import { NAV_RESET_EVENT } from "./DashboardNav";
 import CreationWizard, { type ResultadoDelAlta } from "@/components/dashboard/CreationWizard";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
+import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import Dialog from "@/components/ui/Dialog";
@@ -1186,6 +1187,7 @@ function PropertyDetail({
     <section className="owner-detail-grid">
       <PropertyStatusCard property={property} contractStatusIsUnknown={contractStatusIsUnknown} contractTitle={contractTitle} onCreateContract={onCreateContract} />
       <PropertyCharacteristicsCard address={address} category={category} details={details} preferences={preferences} />
+      <RentEstimateCard propertyId={rawProperty.id} />
     </section>
   </>;
 }
