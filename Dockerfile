@@ -2,14 +2,16 @@
 # Next.js 16 / React 19 production image (deps -> build -> runtime).
 
 # --- deps: resolve node_modules in isolation for layer caching ---------------
-FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat
+# Debian (glibc), not alpine (musl): Next 16 builds with Turbopack, whose native
+# binary mishandles `next/font/google` under musl (the build fails resolving
+# `@vercel/turbopack-next/internal/font/google/font`). glibc builds cleanly.
+FROM node:22-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 # --- build: compile the Next app --------------------------------------------
-FROM node:22-alpine AS build
+FROM node:22-slim AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -21,7 +23,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # --- runner: serve the built app (next start) --------------------------------
-FROM node:22-alpine AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
