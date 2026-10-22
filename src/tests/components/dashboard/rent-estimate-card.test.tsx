@@ -181,6 +181,25 @@ test("tells the user when the predictor is unavailable", async () => {
   ).toBeInTheDocument();
 });
 
+test("tells the user when no market data has been loaded yet", async () => {
+  vi.useFakeTimers();
+  mockGetRentEstimate.mockRejectedValueOnce(
+    new ApiError(409, "Conflict", "urn:alquia:error:rent-estimate-no-data")
+  );
+
+  render(<RentEstimateCard propertyId={7} />);
+  clickButton(/sugerir alquiler/i);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(
+    screen.getByText(
+      "El estimador está disponible, pero todavía no hay propiedades cargadas para estimar."
+    )
+  ).toBeInTheDocument();
+});
+
 test("tells the user when there isn't enough market data", async () => {
   vi.useFakeTimers();
   mockGetRentEstimate.mockRejectedValueOnce(
