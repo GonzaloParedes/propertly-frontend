@@ -1,0 +1,21 @@
+# Keep the build context small and avoid shipping host-built artifacts /
+# platform-specific binaries into the image.
+node_modules
+.next
+out
+build
+coverage
+.git
+.gitignore
+.env*
+Dockerfile
+.dockerignore
+*.tsbuildinfo
+.vercel
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store
+# Regenerated at build time by prebuild (scripts/copy-maplibre-worker.mjs).
+public/vendor
