@@ -24,7 +24,7 @@ import { SIN_DESVIO } from "@/tests/borradores";
 import { SIN_OTRAS_CONDICIONES } from "@/lib/otras-condiciones";
 import type { PropertyRequest } from "@/lib/backend-types";
 
-const PROPIEDAD: PropertyRequest = { street: "Lavalle", number: "950", city: "CABA", province: "Buenos Aires", category: "APARTMENT", floorUnit: "3B" };
+const PROPIEDAD: PropertyRequest = { street: "Lavalle", number: "950", city: "CABA", province: "Buenos Aires", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT", floorUnit: "3B" };
 
 function estado(cambios: Partial<EstadoDelBorrador> = {}): EstadoDelBorrador {
   return {

@@ -47,7 +47,7 @@ function contrato(over: Partial<ContractResponse> = {}): ContractResponse {
       floorUnit: "5.º A",
       city: "CABA",
       province: "CABA",
-      category: "APARTMENT",
+      latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
     },
     tenant: {
       id: 1,

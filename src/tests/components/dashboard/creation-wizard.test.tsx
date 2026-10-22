@@ -37,11 +37,11 @@ function borradorGuardado(cuerpo: { label: string; payload: Record<string, unkno
 
 const MITRE = {
   id: 10, street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires",
-  category: "COMMERCIAL_PREMISES" as const, coveredArea: 52,
+  latitude: -34.6037, longitude: -58.3816, category: "COMMERCIAL_PREMISES" as const, coveredArea: 52,
 };
 const COLON = {
   id: 11, street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López",
-  province: "Buenos Aires", category: "APARTMENT" as const, coveredArea: 58,
+  province: "Buenos Aires", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" as const, coveredArea: 58,
 };
 const DIEGO = {
   id: 20, firstName: "Diego", lastName: "Ferrari", taxId: "20301154829",
@@ -72,9 +72,12 @@ beforeEach(() => {
   mockBorradores.create.mockImplementation(async (cuerpo) => borradorGuardado(cuerpo));
   mockBorradores.update.mockImplementation(async (id, cuerpo) => borradorGuardado(cuerpo, id, cuerpo.version + 1));
   mockAutocompletar.mockResolvedValue([{ reference: "ref-lavalle", label: "Lavalle 950" }]);
+  // Desde ALQ-92 el resolve trae coordenadas (Caso A): el paso de dirección queda
+  // listo para avanzar sin tocar el mapa. Los flujos sin coordenadas (demo, o la
+  // dirección tipeada a mano) siguen necesitando marcar el punto en el mapa.
   mockResolver.mockResolvedValue({
     street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires",
-    postalCode: "C1047", latitude: null, longitude: null,
+    postalCode: "C1047", latitude: -34.6037, longitude: -58.3816,
   });
 });
 
@@ -105,6 +108,15 @@ async function fillAndSave({
   if (correo) await userEvent.type(screen.getByLabelText("Correo electrónico"), correo);
   if (telefono) await userEvent.type(screen.getByLabelText("Teléfono"), telefono);
   await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
+}
+
+/**
+ * Confirma la ubicación tocando el mapa (ALQ-92): desde que las coordenadas son
+ * obligatorias, el paso de dirección no deja avanzar sin un par confirmado. El mapa
+ * mockeado coloca un punto fijo (ver `src/tests/setup.tsx`).
+ */
+async function confirmarUbicacionEnElMapa() {
+  await userEvent.click(await screen.findByTestId("map"));
 }
 
 // --- Guardado exitoso ---
@@ -463,6 +475,7 @@ describe("asistente de propiedad · características", () => {
     render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
     await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
     await userEvent.click(await screen.findByText(/Lavalle 950/));
+    await confirmarUbicacionEnElMapa();
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
     await userEvent.click(screen.getByRole("radio", { name: /Departamento/ }));
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
@@ -505,6 +518,7 @@ describe("asistente de propiedad · tipo y guardado", () => {
     render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
     await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
     await userEvent.click(await screen.findByText(/Lavalle 950/));
+    await confirmarUbicacionEnElMapa();
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
   }
 
@@ -537,7 +551,7 @@ describe("asistente de propiedad · tipo y guardado", () => {
 
     await waitFor(() => expect(mockCrearPropiedad).toHaveBeenCalled());
     expect(mockCrearPropiedad).toHaveBeenCalledWith(
-      expect.objectContaining({ category: "GARAGE" })
+      expect.objectContaining({ latitude: -34.6037, longitude: -58.3816, category: "GARAGE" })
     );
   });
 
@@ -566,9 +580,7 @@ describe("asistente de propiedad · tipo y guardado", () => {
       city: "CABA",
       province: "Ciudad Autónoma de Buenos Aires",
       postalCode: "C1047",
-      latitude: undefined,
-      longitude: undefined,
-      category: "APARTMENT",
+      latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
       bedrooms: undefined,
       bathrooms: undefined,
       coveredArea: undefined,
@@ -591,7 +603,7 @@ describe("asistente de propiedad · tipo y guardado", () => {
     await waitFor(() => expect(mockCrearPropiedad).toHaveBeenCalled());
     expect(mockCrearPropiedad).toHaveBeenCalledWith(
       expect.objectContaining({
-        category: "HOUSE",
+        latitude: -34.6037, longitude: -58.3816, category: "HOUSE",
         bedrooms: 1,
         coveredArea: 92,
         petsAllowed: true,
@@ -656,6 +668,7 @@ describe("asistente de propiedad · tipo y guardado", () => {
     render(<CreationWizard kind="property" demo onClose={onClose} onComplete={onComplete} />);
     await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
     await userEvent.click(await screen.findByText(/Lavalle 950/));
+    await confirmarUbicacionEnElMapa();
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
     await userEvent.click(screen.getByRole("radio", { name: /Departamento/ }));
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
@@ -742,6 +755,7 @@ describe("asistente de propiedad · ciudad y provincia", () => {
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
 
     await userEvent.type(screen.getByLabelText("Provincia"), "Buenos Aires");
+    await confirmarUbicacionEnElMapa();
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
   });
 });
@@ -758,6 +772,7 @@ describe("asistente de propiedad · dirección que el buscador no encuentra", ()
     await userEvent.type(screen.getByLabelText("Ciudad"), "Chivilcoy");
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Provincia"), "Buenos Aires");
+    await confirmarUbicacionEnElMapa();
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
     // El código postal es opcional.
     expect(screen.getByLabelText("Código postal")).not.toBeRequired();
@@ -776,6 +791,7 @@ describe("asistente de propiedad · corregir la dirección elegida", () => {
     await userEvent.type(screen.getByLabelText("Número"), "1200");
 
     expect(screen.getByText("Corrientes 1200")).toBeInTheDocument();
+    await confirmarUbicacionEnElMapa();
     expect(screen.getByRole("button", { name: /Seguir/ })).toBeEnabled();
   });
 });
@@ -810,6 +826,7 @@ describe("asistente de contrato · propiedad nueva sobre la marcha", () => {
 
     await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
     await userEvent.click(await screen.findByText(/Lavalle 950/));
+    await confirmarUbicacionEnElMapa();
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
     await userEvent.click(await screen.findByText("Casa"));
     await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
@@ -895,7 +912,7 @@ describe("asistente de contrato · borradores y un solo guardado", () => {
 
     await waitFor(() => expect(mockCrearContrato).toHaveBeenCalledTimes(1));
     const pedido = mockCrearContrato.mock.calls[0][0];
-    expect(pedido.property).toEqual({ new: expect.objectContaining({ street: "Lavalle", number: "950", category: "HOUSE" }) });
+    expect(pedido.property).toEqual({ new: expect.objectContaining({ street: "Lavalle", number: "950", latitude: -34.6037, longitude: -58.3816, category: "HOUSE" }) });
     expect(pedido.tenant).toEqual({
       new: { firstName: "Ana", lastName: "Gómez", taxId: CUIT_VALIDO, email: "ana@ejemplo.com", phoneNumber: "1144552210" },
     });
@@ -2432,7 +2449,7 @@ describe("asistente de contrato · retomar un borrador", () => {
   it("una propiedad y un inquilino nuevos del borrador vuelven como borradores, con sus datos para cambiar", async () => {
     retomar({
       paso: 7,
-      propiedad: { id: null, nuevo: true, borrador: { pedido: { street: "Lavalle", number: "950", city: "CABA", province: "Buenos Aires", category: "HOUSE" }, etiqueta: "Lavalle 950" } },
+      propiedad: { id: null, nuevo: true, borrador: { pedido: { street: "Lavalle", number: "950", city: "CABA", province: "Buenos Aires", latitude: -34.6037, longitude: -58.3816, category: "HOUSE" }, etiqueta: "Lavalle 950" } },
       inquilino: { id: null, nuevo: true, borrador: { pedido: { firstName: "Ana", lastName: "Gómez", taxId: CUIT_VALIDO, email: "ana@ejemplo.com", phoneNumber: "1144552210" }, etiqueta: "Ana Gómez" } },
     });
 
@@ -2442,7 +2459,7 @@ describe("asistente de contrato · retomar un borrador", () => {
     await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
     await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
     expect(mockCrearContrato.mock.calls[0][0]).toMatchObject({
-      property: { new: expect.objectContaining({ street: "Lavalle", category: "HOUSE" }) },
+      property: { new: expect.objectContaining({ street: "Lavalle", latitude: -34.6037, longitude: -58.3816, category: "HOUSE" }) },
       tenant: { new: expect.objectContaining({ firstName: "Ana", taxId: CUIT_VALIDO }) },
       draftId: 7,
     });

@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { CENTRO_DE_ARGENTINA } from "@/lib/geo";
 import type {
   ContractImportCompletionRequest,
   ContractImportResponse,
@@ -637,6 +638,11 @@ function armarPropiedad(b: Borrador): PropertyRequest {
     city: b.ciudad.trim(),
     province: b.provincia.trim(),
     postalCode: b.codigoPostal.trim() || undefined,
+    // La importación por PDF no trae coordenadas ni tiene mapa todavía: cae al
+    // centro del país (la ubicación "desconocida" canónica, igual que el backfill
+    // del backend), para corregirla después editando la propiedad. ALQ-92.
+    latitude: CENTRO_DE_ARGENTINA.latitude,
+    longitude: CENTRO_DE_ARGENTINA.longitude,
     category: b.categoria!,
   };
 }

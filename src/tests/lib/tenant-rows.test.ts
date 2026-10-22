@@ -23,7 +23,7 @@ function tenant(over: Partial<TenantResponse> = {}): TenantResponse {
 function property(over: Partial<PropertyResponse> = {}): PropertyResponse {
   return {
     id: 10, street: "Av. Rivadavia", number: "2340", city: "CABA", province: "CABA",
-    category: "APARTMENT", ...over,
+    latitude: -34.6037, longitude: -58.3816, category: "APARTMENT", ...over,
   };
 }
 

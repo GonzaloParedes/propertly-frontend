@@ -28,9 +28,19 @@ vi.mock("leaflet", () => ({
   default: { divIcon: () => ({}), latLngBounds: () => ({}) },
 }));
 
+// El mapa de ubicación (ALQ-92) coloca el pin tocando el mapa. En jsdom no hay mapa
+// real, así que el `MapContainer` mockeado dispara el `click` que registró
+// `useMapEvents` con un punto fijo: un test «toca» el mapa con `click` en el `map`.
+const mapaMock = vi.hoisted(() => ({
+  onClick: undefined as undefined | ((e: { latlng: { lat: number; lng: number } }) => void),
+}));
+const PUNTO_DE_PRUEBA = { lat: -34.6037, lng: -58.3816 };
+
 vi.mock("react-leaflet", () => ({
   MapContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="map">{children}</div>
+    <div data-testid="map" onClick={() => mapaMock.onClick?.({ latlng: PUNTO_DE_PRUEBA })}>
+      {children}
+    </div>
   ),
   TileLayer: () => null,
   Marker: ({ children }: { children?: ReactNode }) => (
@@ -40,8 +50,13 @@ vi.mock("react-leaflet", () => ({
   useMap: () => ({
     invalidateSize: () => {},
     fitBounds: () => {},
+    setView: () => {},
     getContainer: () => document.createElement("div"),
   }),
+  useMapEvents: (handlers: { click?: (e: { latlng: { lat: number; lng: number } }) => void }) => {
+    mapaMock.onClick = handlers.click;
+    return {};
+  },
 }));
 
 // `next/dynamic` carga el canvas del mapa de forma diferida; acá lo resolvemos

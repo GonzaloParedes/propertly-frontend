@@ -24,6 +24,7 @@ import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import PdfDelContrato from "@/components/dashboard/PdfDelContrato";
 import { useAutoguardado, type EstadoDeGuardado } from "@/hooks/useAutoguardado";
 import { LIMITE_DE_BORRADORES, armarContenido, deserializar, etiquetaDePropiedad, nombreDePropiedadDelBorrador, ubicacionCompleta, type ContenidoDeBorrador, type Direccion, type EstadoDelBorrador, type FormularioDeInquilino, type FormularioDePropiedad, type MetodoDeActualizacion } from "@/lib/borradores";
+import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import { usePdfDelBorrador } from "@/hooks/usePdfDelBorrador";
 import { crearContratoDesdeBorrador, type ResultadoDelAlta } from "@/lib/crear-contrato";
 import { armarOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
@@ -715,7 +716,8 @@ function pasosPendientes(banderas: BanderasDelContrato, otrasValidas: boolean): 
 const NOMBRE_DEL_PASO: Record<number, string> = { 1: "Propiedad", 2: "Inquilino", 3: "Alquiler inicial", 4: "Plazo", 5: "Actualización", 6: "Otras condiciones" };
 
 function propiedadBloqueada(step: number, direccion: Direccion | null, categoria: PropertyCategory | null): boolean {
-  if (step === 1) return !ubicacionCompleta(direccion);
+  // Desde ALQ-92 toda propiedad tiene coordenadas: no se avanza sin un par confirmado en el mapa.
+  if (step === 1) return !ubicacionCompleta(direccion) || direccion.latitude == null || direccion.longitude == null;
   return step === 2 && categoria === null;
 }
 
@@ -858,6 +860,11 @@ function PropertyWizardStep({
               onChange={(e) => setUnidad(e.target.value)} />
           </label>
           <Aviso texto={avisoDeCampo(erroresBackend, "property", "floorUnit")} />
+          <PropertyLocationMap
+            latitude={direccion.latitude}
+            longitude={direccion.longitude}
+            onChange={({ latitude, longitude }) => setDireccion({ ...direccion, latitude, longitude })}
+          />
         </>)}
       </div>
       </>;
@@ -1364,6 +1371,13 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     };
   }
   function armarPropiedad(direccionElegida: Direccion, categoriaElegida: PropertyCategory): PropertyRequest {
+    const { latitude, longitude } = direccionElegida;
+    // El paso de ubicación no deja avanzar sin coordenadas confirmadas; si faltaran
+    // acá sería un bug. Preferimos fallar a la vista antes que guardar la propiedad
+    // sin ubicación (o en una inventada).
+    if (latitude == null || longitude == null) {
+      throw new Error("No se puede armar la propiedad sin coordenadas confirmadas.");
+    }
     return {
       street: direccionElegida.street.trim(),
       number: direccionElegida.number.trim(),
@@ -1372,8 +1386,8 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
       city: direccionElegida.city.trim(),
       province: direccionElegida.province.trim(),
       postalCode: direccionElegida.postalCode.trim() || undefined,
-      latitude: direccionElegida.latitude ?? undefined,
-      longitude: direccionElegida.longitude ?? undefined,
+      latitude,
+      longitude,
       category: categoriaElegida,
       // Lo que el propietario no cargó no se manda: el paso es opcional y un
       // cero o un false serían un dato que él nunca dio.

@@ -160,7 +160,7 @@ describe("AlquiaBackendClient.properties", () => {
   });
 
   it("create pega a POST /properties", async () => {
-    const body = { street: "Main", number: "123", city: "CABA", province: "BA", category: "APARTMENT" as const };
+    const body = { street: "Main", number: "123", city: "CABA", province: "BA", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" as const };
     await AlquiaBackendClient.properties.create(body);
     expect(mockPost).toHaveBeenCalledWith("/properties", body);
   });
@@ -171,7 +171,7 @@ describe("AlquiaBackendClient.properties", () => {
   });
 
   it("update pega a PUT /properties/{id}", async () => {
-    const body = { street: "Main", number: "123", city: "CABA", province: "BA", category: "APARTMENT" as const };
+    const body = { street: "Main", number: "123", city: "CABA", province: "BA", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" as const };
     await AlquiaBackendClient.properties.update(3, body);
     expect(mockPut).toHaveBeenCalledWith("/properties/3", body);
   });

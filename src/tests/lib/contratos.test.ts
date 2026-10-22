@@ -14,7 +14,7 @@ function contract(over: Partial<ContractResponse> = {}): ContractResponse {
   return {
     id: 100,
     property: { id: 10, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A",
-      city: "CABA", province: "CABA", category: "APARTMENT" },
+      city: "CABA", province: "CABA", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" },
     tenant: { id: 1, firstName: "Jorge", lastName: "Paletta", taxId: "20224567899",
       email: "jorge@ejemplo.com", phoneNumber: "+5491144552210" },
     initialRentAmount: 400000, startDate: "2025-03-01", termMonths: 36, dueDay: 1,

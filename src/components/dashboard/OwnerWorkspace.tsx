@@ -6,6 +6,7 @@ import CreationWizard, { type ResultadoDelAlta } from "@/components/dashboard/Cr
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
+import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import Dialog from "@/components/ui/Dialog";
@@ -1814,6 +1815,8 @@ function ArchiveTenantDialog({ tenant, error, isBusy, onClose, onArchive }: Read
 
 function isPropertyValid(property: PropertyRequest | null): boolean {
   if (!property) return false;
+  // Desde ALQ-92 la propiedad no se guarda sin un par de coordenadas confirmado en el mapa.
+  if (property.latitude == null || property.longitude == null) return false;
   return [property.street, property.number, property.city, property.province].every((value) => value.trim());
 }
 
@@ -1843,6 +1846,7 @@ function PropertyEditDialog({ property, error, isBusy, isValid, onClose, onChang
       <button type="button" aria-pressed={Boolean(property.petsAllowed)} onClick={() => onChange({ ...property, petsAllowed: !property.petsAllowed })}>Acepta mascotas</button>
       <button type="button" aria-pressed={Boolean(property.furnished)} onClick={() => onChange({ ...property, furnished: !property.furnished })}>Amoblado</button>
     </div>
+    <PropertyLocationMap latitude={property.latitude} longitude={property.longitude} onChange={({ latitude, longitude }) => onChange({ ...property, latitude, longitude })} />
   </div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
