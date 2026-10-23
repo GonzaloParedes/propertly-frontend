@@ -18,7 +18,7 @@ const SOURCES: ListingSource[] = [
   "ARGENPROP",
   "MERCADO_LIBRE",
   "PROPERATI",
-  "INMUEBLES24",
+  "REMAX",
 ];
 
 // Las primeras tres son comparables (las más parecidas); el resto son parte del

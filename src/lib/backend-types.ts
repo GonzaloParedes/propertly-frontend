@@ -164,7 +164,7 @@ export type ListingSource =
   | "ARGENPROP"
   | "MERCADO_LIBRE"
   | "PROPERATI"
-  | "INMUEBLES24"
+  | "REMAX"
   | "OTHER";
 
 // Un aviso de mercado que respaldó la estimación, tal como se muestra. `comparable`
