@@ -6,9 +6,9 @@ import { Icon } from "@/components/ui/Icon";
 import { Spinner } from "@/components/ui/Spinner";
 import RentComparablesPanel from "@/components/dashboard/RentComparablesPanel";
 import { AlquiaBackendClient } from "@/lib/backend-client";
-import type { PriceConfidence, RentEstimate } from "@/lib/backend-types";
+import type { Currency, PriceConfidence, RentEstimate } from "@/lib/backend-types";
 import { copyDeError } from "@/lib/error-codes";
-import { formatearMonto } from "@/lib/formato";
+import { formatearImporte } from "@/lib/formato";
 
 /**
  * Botón «Sugerir alquiler» en el detalle de una propiedad (ALQ-45). Pide la
@@ -33,8 +33,16 @@ const CONFIANZA: Record<PriceConfidence, { label: string; mod: string }> = {
 
 type Estado = "idle" | "loading" | "done" | "error";
 
+// La moneda se elige antes de estimar: el backend calcula la predicción en la
+// moneda pedida (`?currency=`), así que no es una conversión en el front.
+const MONEDAS: ReadonlyArray<readonly [Currency, string]> = [
+  ["ARS", "En pesos"],
+  ["USD", "En dólares"],
+];
+
 export default function RentEstimateCard({ propertyId }: Readonly<{ propertyId: number }>) {
   const [estado, setEstado] = useState<Estado>("idle");
+  const [moneda, setMoneda] = useState<Currency>("ARS");
   const [estimate, setEstimate] = useState<RentEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +71,7 @@ export default function RentEstimateCard({ propertyId }: Readonly<{ propertyId: 
         timeouts.current.push(window.setTimeout(resolve, MIN_MS));
       });
       const [data] = await Promise.all([
-        AlquiaBackendClient.properties.getRentEstimate(propertyId),
+        AlquiaBackendClient.properties.getRentEstimate(propertyId, moneda),
         piso,
       ]);
       if (!montado.current) return;
@@ -76,6 +84,16 @@ export default function RentEstimateCard({ propertyId }: Readonly<{ propertyId: 
     }
   }
 
+  // Vuelve al inicio (con el toggle de moneda) para poder elegir otra moneda y
+  // estimar de nuevo, en vez de repetir el pedido con la moneda anterior.
+  function volver() {
+    timeouts.current.forEach(clearTimeout);
+    timeouts.current = [];
+    setEstimate(null);
+    setError(null);
+    setEstado("idle");
+  }
+
   return (
     <div className="owner-card rent-estimate">
       <h2>Sugerir alquiler</h2>
@@ -86,6 +104,20 @@ export default function RentEstimateCard({ propertyId }: Readonly<{ propertyId: 
             Estimá a cuánto alquilar esta propiedad según el mercado. Útil al terminar un contrato,
             para fijar el nuevo alquiler.
           </p>
+          <p className="owner-eyebrow rent-estimate__moneda-label">MONEDA</p>
+          <fieldset className="owner-fieldset owner-wizard-chips rent-estimate__moneda">
+            <legend className="sr-only">Moneda de la estimación</legend>
+            {MONEDAS.map(([valor, etiqueta]) => (
+              <button
+                key={valor}
+                type="button"
+                aria-pressed={moneda === valor}
+                onClick={() => setMoneda(valor)}
+              >
+                {etiqueta}
+              </button>
+            ))}
+          </fieldset>
           <button type="button" className="owner-button owner-button--secondary" onClick={estimar}>
             <Icon name="trend" size={18} />
             Sugerir alquiler
@@ -120,12 +152,12 @@ export default function RentEstimateCard({ propertyId }: Readonly<{ propertyId: 
           </p>
           <p className="owner-eyebrow">ALQUILER SUGERIDO</p>
           <p className="rent-estimate__amount">
-            <b>{formatearMonto(estimate.estimatedMonthlyRent)}</b>
+            <b>{formatearImporte(estimate.estimatedMonthlyRent, estimate.currency)}</b>
             <small>por mes</small>
           </p>
           <p className="rent-estimate__range">
-            Rango estimado: {formatearMonto(estimate.range.low)} –{" "}
-            {formatearMonto(estimate.range.high)}
+            Rango estimado: {formatearImporte(estimate.range.low, estimate.currency)} –{" "}
+            {formatearImporte(estimate.range.high, estimate.currency)}
           </p>
           <p className="rent-estimate__basis">
             Basado en {estimate.listingsConsidered} propiedades del mercado
@@ -150,7 +182,7 @@ export default function RentEstimateCard({ propertyId }: Readonly<{ propertyId: 
           <button
             type="button"
             className="owner-button owner-button--quiet owner-button--small"
-            onClick={estimar}
+            onClick={volver}
           >
             Volver a estimar
           </button>

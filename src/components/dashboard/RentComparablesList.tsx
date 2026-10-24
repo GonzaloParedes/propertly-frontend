@@ -3,7 +3,7 @@
 import { ExternalLink } from "lucide-react";
 import SourceBadge from "@/components/dashboard/SourceBadge";
 import type { ComparableListing } from "@/lib/backend-types";
-import { formatearMonto } from "@/lib/formato";
+import { formatearImporte } from "@/lib/formato";
 
 /**
  * Lista de las propiedades que respaldaron la estimación (ALQ-45). Se muestran
@@ -66,7 +66,9 @@ export default function RentComparablesList({
               </p>
               {meta && <p className="rent-comparable__meta">{meta}</p>}
             </div>
-            <p className="rent-comparable__price">{formatearMonto(listing.monthlyRent)}</p>
+            <p className="rent-comparable__price">
+              {formatearImporte(listing.monthlyRent, listing.currency)}
+            </p>
           </>
         );
 

@@ -1,4 +1,4 @@
-import type { PropertyResponse } from "@/lib/backend-types";
+import type { Currency, PropertyResponse } from "@/lib/backend-types";
 
 export function formatearDireccion(property: PropertyResponse): string {
   const base = `${property.street} ${property.number}`.trim();
@@ -7,6 +7,17 @@ export function formatearDireccion(property: PropertyResponse): string {
 
 export function formatearMonto(monto: number): string {
   return `$ ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+}
+
+/**
+ * Como `formatearMonto`, pero respeta la moneda: `US$` para dólares y `$` para
+ * pesos. `moneda` ausente significa pesos (las cuotas heredan la del contrato y
+ * el backend no la exige). Lo usan el detalle de contrato, la importación de PDF
+ * y la predicción de alquiler.
+ */
+export function formatearImporte(monto: number, moneda: Currency | undefined): string {
+  const simbolo = moneda === "USD" ? "US$" : "$";
+  return `${simbolo} ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 }
 
 const MESES = [
