@@ -31,7 +31,7 @@ const MARTA = { id: 2, firstName: "Marta", lastName: "Suárez", taxId: "27248910
 
 const CONTRATO_JORGE = {
   id: 100,
-  property: { id: 10, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A", city: "CABA", province: "CABA", category: "APARTMENT" as const },
+  property: { id: 10, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A", city: "CABA", province: "CABA", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" as const },
   tenant: JORGE,
   initialRentAmount: 400000, startDate: "2025-03-01", termMonths: 36, endDate: "2028-02-29",
   status: "ACTIVE" as const, incrementMethod: "FIXED_PERCENTAGE" as const,

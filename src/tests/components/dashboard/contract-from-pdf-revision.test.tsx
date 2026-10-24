@@ -341,7 +341,7 @@ describe("la propiedad y el inquilino que ya tiene", () => {
   const coincidencias = { property: { id: 12, by: "ADDRESS" as const }, tenant: { id: 7, by: "TAX_ID" as const } };
 
   beforeEach(() => {
-    mockPropiedad.mockResolvedValue({ id: 12, street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López", province: "Buenos Aires", category: "APARTMENT" });
+    mockPropiedad.mockResolvedValue({ id: 12, street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López", province: "Buenos Aires", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" });
     mockInquilino.mockResolvedValue({ id: 7, firstName: "Lucía", lastName: "Benítez Paz", taxId: "27334567899", email: "l@x.com", phoneNumber: "1144552210" });
   });
 
@@ -564,7 +564,7 @@ describe("crear el contrato", () => {
     expect(mockOnboard).toHaveBeenCalledTimes(1);
     const pedido = mockOnboard.mock.calls[0][0];
     expect(pedido.property).toEqual({
-      new: { street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López", province: "Buenos Aires", postalCode: undefined, category: "APARTMENT" },
+      new: { street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López", province: "Buenos Aires", postalCode: undefined, latitude: -34.6989, longitude: -64.7597, category: "APARTMENT" },
     });
     expect(pedido.tenant).toEqual({ new: { firstName: "Lucía", lastName: "Benítez", taxId: "27334567899", email: "lucia@correo.com", phoneNumber: "1144552210" } });
     expect(pedido.contract).toMatchObject({

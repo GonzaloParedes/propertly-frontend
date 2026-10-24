@@ -43,6 +43,7 @@ export const ERROR = {
   CONTRACT_DRAFT_PAYLOAD_INVALID: "urn:alquia:error:contract-draft-payload-invalid",
   CONTRACT_DRAFT_NOT_FOUND: "urn:alquia:error:contract-draft-not-found",
   RENT_ESTIMATE_UNAVAILABLE: "urn:alquia:error:rent-estimate-unavailable",
+  RENT_ESTIMATE_NO_DATA: "urn:alquia:error:rent-estimate-no-data",
   RENT_ESTIMATE_NOT_ENOUGH_DATA: "urn:alquia:error:rent-estimate-not-enough-data",
 } as const;
 
@@ -96,6 +97,8 @@ const COPY: Record<string, string> = {
   [ERROR.CONTRACT_DRAFT_NOT_FOUND]: "Ese borrador ya no existe. Puede que se haya descartado o vencido.",
   [ERROR.RENT_ESTIMATE_UNAVAILABLE]:
     "El estimador de alquiler no está disponible en este momento. Probá de nuevo en un rato.",
+  [ERROR.RENT_ESTIMATE_NO_DATA]:
+    "El estimador está disponible, pero todavía no hay propiedades cargadas para estimar.",
   [ERROR.RENT_ESTIMATE_NOT_ENOUGH_DATA]:
     "No hay suficientes propiedades cerca para estimar el alquiler de esta propiedad.",
 };

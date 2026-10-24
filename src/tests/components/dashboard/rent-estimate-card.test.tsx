@@ -18,7 +18,7 @@ const SOURCES: ListingSource[] = [
   "ARGENPROP",
   "MERCADO_LIBRE",
   "PROPERATI",
-  "INMUEBLES24",
+  "REMAX",
 ];
 
 // Las primeras tres son comparables (las más parecidas); el resto son parte del
@@ -177,6 +177,25 @@ test("tells the user when the predictor is unavailable", async () => {
   expect(
     screen.getByText(
       "El estimador de alquiler no está disponible en este momento. Probá de nuevo en un rato."
+    )
+  ).toBeInTheDocument();
+});
+
+test("tells the user when no market data has been loaded yet", async () => {
+  vi.useFakeTimers();
+  mockGetRentEstimate.mockRejectedValueOnce(
+    new ApiError(409, "Conflict", "urn:alquia:error:rent-estimate-no-data")
+  );
+
+  render(<RentEstimateCard propertyId={7} />);
+  clickButton(/sugerir alquiler/i);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(
+    screen.getByText(
+      "El estimador está disponible, pero todavía no hay propiedades cargadas para estimar."
     )
   ).toBeInTheDocument();
 });

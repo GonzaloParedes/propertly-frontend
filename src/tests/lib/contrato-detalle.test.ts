@@ -17,7 +17,7 @@ const CONTRATO: ContractResponse = {
     number: "2340",
     city: "CABA",
     province: "CABA",
-    category: "APARTMENT",
+    latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
   },
   tenant: {
     id: 1,

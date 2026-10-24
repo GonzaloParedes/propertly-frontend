@@ -105,12 +105,12 @@ export interface PropertyRequest {
   province: string;
   postalCode?: string;
   /**
-   * Las dos van juntas o no va ninguna: el backend valida rango en cada una por
-   * separado, pero media coordenada no ubica nada. `/address-lookup/resolve` las
-   * devuelve juntas, así que en la práctica sale de ahí o no sale.
+   * Obligatorias desde ALQ-92: toda propiedad tiene ubicación. El propietario la
+   * verifica/corrige en el mapa del alta/edición, así que el par siempre viaja.
+   * El backend valida el rango de cada una por separado ([-90,90] / [-180,180]).
    */
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
   tenantId?: number;
   bedrooms?: number;
   bathrooms?: number;
@@ -128,8 +128,9 @@ export interface PropertyResponse {
   city: string;
   province: string;
   postalCode?: string;
-  latitude?: number;
-  longitude?: number;
+  /** Obligatorias desde ALQ-92: toda propiedad tiene ubicación. */
+  latitude: number;
+  longitude: number;
   /** Decoración heredada: no se sincroniza con nada. El inquilino sale del
    *  contrato. Confirmado por el backend el 17/09/2026. */
   tenant?: TenantResponse;
@@ -163,7 +164,7 @@ export type ListingSource =
   | "ARGENPROP"
   | "MERCADO_LIBRE"
   | "PROPERATI"
-  | "INMUEBLES24"
+  | "REMAX"
   | "OTHER";
 
 // Un aviso de mercado que respaldó la estimación, tal como se muestra. `comparable`

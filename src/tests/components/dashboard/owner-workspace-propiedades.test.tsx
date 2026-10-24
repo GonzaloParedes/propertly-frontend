@@ -28,7 +28,7 @@ const RIVADAVIA: PropertyResponse = {
   floorUnit: "5.º A",
   city: "CABA",
   province: "Ciudad Autónoma de Buenos Aires",
-  category: "APARTMENT",
+  latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
   bedrooms: 2,
   coveredArea: 68,
   activeContract: { id: 100, currentRent: 478691, status: "ACTIVE" },
@@ -40,7 +40,7 @@ const MITRE: PropertyResponse = {
   number: "78",
   city: "San Isidro",
   province: "Buenos Aires",
-  category: "COMMERCIAL_PREMISES",
+  latitude: -34.6037, longitude: -58.3816, category: "COMMERCIAL_PREMISES",
   coveredArea: 52,
   activeContract: null,
 };
@@ -301,7 +301,7 @@ describe("detalle", () => {
   });
 
   it("nombra la categoría en castellano, incluidas las nuevas", async () => {
-    await abrirDetalle([{ ...RIVADAVIA, category: "GARAGE" }]);
+    await abrirDetalle([{ ...RIVADAVIA, latitude: -34.6037, longitude: -58.3816, category: "GARAGE" }]);
 
     // Aparece en la bajada del encabezado y en la ficha de características.
     expect(await screen.findAllByText(/Cochera/)).toHaveLength(2);
@@ -419,7 +419,7 @@ describe("editar", () => {
     await userEvent.type(within(dialogo).getByLabelText("Número"), "80");
     await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
 
-    expect(mockUpdate).toHaveBeenCalledWith(2, expect.objectContaining({ street: "Mitre", number: "80", city: "San Isidro", province: "Buenos Aires", category: "COMMERCIAL_PREMISES", coveredArea: 52 }));
+    expect(mockUpdate).toHaveBeenCalledWith(2, expect.objectContaining({ street: "Mitre", number: "80", city: "San Isidro", province: "Buenos Aires", latitude: -34.6037, longitude: -58.3816, category: "COMMERCIAL_PREMISES", coveredArea: 52 }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(await screen.findByText(/Propiedad actualizada/)).toBeInTheDocument();
   });

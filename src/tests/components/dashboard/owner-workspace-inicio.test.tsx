@@ -44,7 +44,7 @@ const PROPIEDAD: PropertyResponse = {
   floorUnit: "5.º A",
   city: "CABA",
   province: "CABA",
-  category: "APARTMENT",
+  latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
   activeContract: { id: 100, currentRent: 478691, status: "ACTIVE" },
 };
 

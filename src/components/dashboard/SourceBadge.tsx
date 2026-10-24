@@ -21,7 +21,7 @@ const META: Record<ListingSource, { label: string; file: string }> = {
   ARGENPROP: { label: "Argenprop", file: "argenprop" },
   MERCADO_LIBRE: { label: "MercadoLibre", file: "mercado-libre" },
   PROPERATI: { label: "Properati", file: "properati" },
-  INMUEBLES24: { label: "Inmuebles24", file: "inmuebles24" },
+  REMAX: { label: "RE/MAX", file: "remax" },
   OTHER: { label: "Otra fuente", file: "" },
 };
 

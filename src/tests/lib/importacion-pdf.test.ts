@@ -365,7 +365,7 @@ describe("armarAlta", () => {
     const { borrador } = pendientesDe(respuesta);
     const pedido = armarAlta(borrador, {}, { paidThrough: "2026-08" });
     expect(pedido.property).toEqual({
-      new: { street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López", province: "Buenos Aires", postalCode: undefined, category: "APARTMENT" },
+      new: { street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López", province: "Buenos Aires", postalCode: undefined, latitude: -34.6989, longitude: -64.7597, category: "APARTMENT" },
     });
     expect(pedido.tenant).toEqual({ new: { firstName: "Lucía", lastName: "Benítez", taxId: "27334567899", email: "lucia@correo.com", phoneNumber: "1144552210" } });
     expect(pedido.contract).toMatchObject({
