@@ -101,7 +101,11 @@ export function buildFilasInquilino(
     periodoISO: invoice.period.slice(0, 7),
     vencimiento: formatearFecha(invoice.dueDate),
     vencimientoISO: invoice.dueDate,
-    monto: formatearMonto(invoice.amountDue),
+    // `amountDue` lo agregó la feature de recargos; un backend anterior a ella no
+    // lo manda. Sin recargo, lo que se adeuda es el total —así lo define el propio
+    // backend (`amountDue = total` cuando no hay `lateFee`)—, así que caer al total
+    // deja la pantalla correcta en vez de romperla con `undefined.toLocaleString`.
+    monto: formatearMonto(invoice.amountDue ?? invoice.total),
     recargo: vistaDeRecargo(invoice, "inquilino"),
     recargoEnCurso: recargoEnCurso(invoice),
     importeBase: formatearMonto(invoice.baseAmount),
