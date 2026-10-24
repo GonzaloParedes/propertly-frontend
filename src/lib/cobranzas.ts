@@ -132,7 +132,8 @@ export function buildFilasCobranza(
         direccion: contrato ? formatearDireccion(contrato.property) : "—",
         inquilino: contrato ? `${contrato.tenant.firstName} ${contrato.tenant.lastName}` : "—",
         periodo: formatearPeriodo(invoice.period),
-        monto: formatearMonto(invoice.amountDue),
+        // Fallback al total si el backend es anterior a los recargos (sin `amountDue`).
+        monto: formatearMonto(invoice.amountDue ?? invoice.total),
         recargo: vistaDeRecargo(invoice, "propietario"),
         recargoEditable: recargoEditable(invoice),
         sinConfirmar: avisoSinConfirmar(invoice, hoyISO),
