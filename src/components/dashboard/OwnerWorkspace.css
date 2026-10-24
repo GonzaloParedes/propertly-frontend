@@ -684,6 +684,8 @@
    La card es el tercer hijo de .owner-detail-grid, así que ocupa todo el ancho
    por la regla :nth-child(3){grid-column:1/-1} ya existente. */
 .rent-estimate__lead{margin:var(--esp-8) 0 var(--esp-18);color:var(--gris);font-size:15.5px}
+.rent-estimate__moneda-label{margin:0 0 var(--esp-8)}
+.rent-estimate__moneda{margin:0}
 .rent-estimate .owner-button{margin-top:var(--esp-8)}
 .rent-estimate__progress{display:flex;align-items:center;gap:13px;margin-top:22px;padding:var(--esp-20);border-radius:14px;background:var(--superficie);color:var(--tinta);font:600 16.5px var(--font-nunito-sans),sans-serif}
 .rent-estimate__progress .alquia-spinner{color:var(--indigo)}

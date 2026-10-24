@@ -124,8 +124,8 @@ export const AlquiaBackendClient = {
       apiPost<PropertyResponse>("/properties", body),
     get: (id: number): Promise<PropertyResponse> =>
       apiGet<PropertyResponse>(`/properties/${id}`),
-    // `currency` es obligatorio en el backend (sin default → 400). El toggle de
-    // moneda en la UI es trabajo posterior; por ahora se pide en ARS.
+    // `currency` es obligatorio en el backend (sin default → 400). La UI la elige
+    // con el toggle de la tarjeta de estimación; ARS es el default.
     getRentEstimate: (id: number, currency: Currency = "ARS"): Promise<RentEstimate> =>
       apiGet<RentEstimate>(`/properties/${id}/rent-estimate?currency=${currency}`),
     update: (id: number, body: PropertyRequest): Promise<PropertyResponse> =>

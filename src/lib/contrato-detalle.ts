@@ -1,4 +1,4 @@
-import { formatearFecha } from "@/lib/formato";
+import { formatearFecha, formatearImporte } from "@/lib/formato";
 import { describirGarantia } from "@/lib/garantias";
 import type {
   ContractResponse,
@@ -6,15 +6,10 @@ import type {
   RentIncrementResponse,
 } from "@/lib/backend-types";
 
-/**
- * Los importes del contrato pueden estar pactados en dólares. `currency` es
- * opcional y ausente significa pesos: el backend no la exige y las cuotas
- * heredan la del contrato.
- */
-export function formatearImporte(monto: number, moneda: Currency | undefined): string {
-  const simbolo = moneda === "USD" ? "US$" : "$";
-  return `${simbolo} ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-}
+// `formatearImporte` vive ahora en `@/lib/formato` (junto a los demás
+// formateadores). Se re-exporta acá para no romper a quienes lo importaban
+// desde este módulo.
+export { formatearImporte };
 
 // --- Vigencia ---
 

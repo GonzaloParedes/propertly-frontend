@@ -47,6 +47,16 @@ const ESTIMATE: RentEstimate = {
   estimatedAt: "2026-10-12T15:00:00Z",
 };
 
+// Misma estimación pero en dólares: el predictor devuelve los montos en la
+// moneda pedida, así que acá cambian los valores y `currency`.
+const ESTIMATE_USD: RentEstimate = {
+  ...ESTIMATE,
+  estimatedMonthlyRent: 650,
+  currency: "USD",
+  range: { low: 580, high: 720 },
+  listings: COMPARABLES.map((c, i) => ({ ...c, currency: "USD", monthlyRent: 500 + i })),
+};
+
 function clickButton(name: RegExp) {
   fireEvent.click(screen.getByRole("button", { name }));
 }
@@ -98,7 +108,46 @@ test("shows the loading state and then the estimate with its disclaimer", async 
   expect(await screen.findByText("Esta propiedad")).toBeInTheDocument();
   expect(screen.getAllByTestId("map-marker")).toHaveLength(1 + COMPARABLES.length);
 
-  expect(mockGetRentEstimate).toHaveBeenCalledWith(7);
+  expect(mockGetRentEstimate).toHaveBeenCalledWith(7, "ARS");
+});
+
+test("lets the user pick dollars before estimating and shows the amount in US$", async () => {
+  vi.useFakeTimers();
+  mockGetRentEstimate.mockResolvedValue(ESTIMATE_USD);
+
+  render(<RentEstimateCard propertyId={7} />);
+
+  // El toggle vive en el estado inicial: se elige la moneda antes de estimar.
+  clickButton(/en dólares/i);
+  clickButton(/sugerir alquiler/i);
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2200);
+  });
+
+  expect(mockGetRentEstimate).toHaveBeenCalledWith(7, "USD");
+  expect(screen.getByText("US$ 650")).toBeInTheDocument();
+  expect(screen.getByText(/US\$ 580/)).toBeInTheDocument();
+  expect(screen.getByText(/US\$ 720/)).toBeInTheDocument();
+});
+
+test("«Volver a estimar» returns to the start so the currency can be re-picked", async () => {
+  vi.useFakeTimers();
+  mockGetRentEstimate.mockResolvedValue(ESTIMATE);
+
+  render(<RentEstimateCard propertyId={7} />);
+  clickButton(/sugerir alquiler/i);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2200);
+  });
+  expect(screen.getByText("Predicción lista.")).toBeInTheDocument();
+
+  clickButton(/volver a estimar/i);
+
+  // Vuelve al inicio: desaparece el resultado y reaparece el toggle de moneda.
+  expect(screen.queryByText("Predicción lista.")).not.toBeInTheDocument();
+  expect(screen.getByText("MONEDA")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /sugerir alquiler/i })).toBeInTheDocument();
 });
 
 test("works under StrictMode's mount/unmount/remount cycle", async () => {
