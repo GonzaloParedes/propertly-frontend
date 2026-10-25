@@ -5,6 +5,7 @@ import {
   apiPost,
   apiPostForm,
   apiPut,
+  apiPutForm,
   apiDelete,
   apiGetBlob,
 } from "@/lib/api";
@@ -23,12 +24,22 @@ beforeEach(() => {
 // --- Clases de error ---
 
 describe("ApiError", () => {
-  it("almacena status y message", () => {
+  it("almacena status y message, con type y fieldErrors nulos por defecto", () => {
     const e = new ApiError(400, "Bad request");
     expect(e.status).toBe(400);
     expect(e.message).toBe("Bad request");
+    expect(e.type).toBeNull();
+    expect(e.fieldErrors).toBeNull();
     expect(e.name).toBe("ApiError");
     expect(e).toBeInstanceOf(Error);
+  });
+
+  it("almacena type y fieldErrors cuando se pasan", () => {
+    const e = new ApiError(409, "Tax ID already registered", "urn:alquia:error:duplicate-tax-id", {
+      taxId: "Tax ID already registered",
+    });
+    expect(e.type).toBe("urn:alquia:error:duplicate-tax-id");
+    expect(e.fieldErrors).toEqual({ taxId: "Tax ID already registered" });
   });
 });
 
@@ -158,6 +169,78 @@ describe("apiPut", () => {
   });
 });
 
+describe("apiPut con keepalive", () => {
+  it("manda keepalive cuando se pide, para que el guardado sobreviva al cierre de la página", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPut("/test", { a: 1 }, { keepalive: true });
+    expect(fetch).toHaveBeenCalledWith("/test", expect.objectContaining({ method: "PUT", keepalive: true }));
+  });
+
+  it("no manda keepalive si no se pide", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPut("/test", { a: 1 });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.keepalive).toBeUndefined();
+  });
+});
+
+describe("apiPost con keepalive y headers", () => {
+  it("manda keepalive cuando se pide, para que el alta del borrador sobreviva al cierre de la página", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPost("/test", { a: 1 }, { keepalive: true });
+    expect(fetch).toHaveBeenCalledWith("/test", expect.objectContaining({ method: "POST", keepalive: true }));
+  });
+
+  it("no manda keepalive si no se pide", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPost("/test", { a: 1 });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.keepalive).toBeUndefined();
+  });
+
+  it("suma los headers pedidos a los de siempre, sin perder el anti-CSRF ni el Content-Type", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({}));
+    await apiPost("/test", { a: 1 }, { headers: { "Idempotency-Key": "k1" } });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.headers).toEqual({ "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "Idempotency-Key": "k1" });
+  });
+
+  it("lee igual un 200 (el borrador que ya existía) que un 201 (el recién creado)", async () => {
+    const borrador = { id: 5, version: 0 };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify(borrador), { status: 201, headers: { "Content-Type": "application/json" } }))
+      .mockResolvedValueOnce(ok(borrador));
+    expect(await apiPost("/test", {}, { headers: { "Idempotency-Key": "k1" } })).toEqual(borrador);
+    expect(await apiPost("/test", {}, { headers: { "Idempotency-Key": "k1" } })).toEqual(borrador);
+  });
+
+  it("repite el header al reintentar tras refrescar la sesión", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(ok({}))
+      .mockResolvedValueOnce(ok({ id: 1 }));
+    await apiPost("/test", { a: 1 }, { headers: { "Idempotency-Key": "k1" }, keepalive: true });
+    const reintento = vi.mocked(fetch).mock.calls[2][1] as RequestInit;
+    expect((reintento.headers as Record<string, string>)["Idempotency-Key"]).toBe("k1");
+    expect(reintento.keepalive).toBe(true);
+  });
+});
+
+describe("apiPutForm", () => {
+  it("envía PUT con el FormData como body y sin pisar el Content-Type", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(ok({ id: 1 }));
+    const form = new FormData();
+    form.append("file", new File(["hello"], "test.pdf"));
+    const result = await apiPutForm<{ id: number }>("/test", form);
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.method).toBe("PUT");
+    expect(init.body).toBe(form);
+    expect((init.headers as Record<string, string> | undefined)?.["Content-Type"]).toBeUndefined();
+    expect((init.headers as Record<string, string>)["X-Requested-With"]).toBe("XMLHttpRequest");
+    expect(result).toEqual({ id: 1 });
+  });
+});
+
 // --- apiDelete ---
 
 describe("apiDelete", () => {
@@ -202,12 +285,15 @@ describe("apiGetBlob", () => {
 
   it("lanza ApiError con el status correcto en respuesta no-OK", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ message: "Not found" }), { status: 404 })
+      new Response(JSON.stringify({ type: "urn:alquia:error:resource-not-found", detail: "Not found" }), {
+        status: 404,
+      })
     );
     const error = (await apiGetBlob("/test", { retry: false }).catch((e) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(404);
     expect(error.message).toBe("Not found");
+    expect(error.type).toBe("urn:alquia:error:resource-not-found");
   });
 
   it("reintenta una vez en 401 y retorna el Blob del reintento", async () => {
@@ -254,23 +340,72 @@ describe("manejo de errores HTTP", () => {
     expect(error.status).toBe(500);
   });
 
-  it("usa body.message cuando el servidor lo incluye", async () => {
+  it("parsea el cuerpo RFC 9457: detail → message, type y errors → fieldErrors", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ message: "Error personalizado" }), {
-        status: 422,
-        statusText: "Unprocessable",
+      new Response(
+        JSON.stringify({
+          type: "urn:alquia:error:duplicate-tax-id",
+          title: "Tax ID already registered",
+          status: 409,
+          detail: "Tax ID already registered",
+          errors: { taxId: "Tax ID already registered" },
+        }),
+        { status: 409, statusText: "Conflict", headers: { "Content-Type": "application/problem+json" } }
+      )
+    );
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
+    expect(error.status).toBe(409);
+    expect(error.type).toBe("urn:alquia:error:duplicate-tax-id");
+    expect(error.message).toBe("Tax ID already registered");
+    expect(error.fieldErrors).toEqual({ taxId: "Tax ID already registered" });
+  });
+
+  it("conserva las propiedades extra del problema, como existingTenantId, y no repite las estándar", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          type: "urn:alquia:error:duplicate-tax-id",
+          title: "Tax ID already registered",
+          status: 409,
+          detail: "Tax ID already registered",
+          errors: { "tenant.taxId": "Tax ID already registered" },
+          existingTenantId: 7,
+        }),
+        { status: 409, statusText: "Conflict", headers: { "Content-Type": "application/problem+json" } }
+      )
+    );
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
+    expect(error.extensions).toEqual({ existingTenantId: 7 });
+  });
+
+  it("sin propiedades extra, extensions queda en null", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ type: "urn:alquia:error:validation", title: "Validation failed", status: 400 }), { status: 400, statusText: "Bad Request" })
+    );
+    const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
+    expect(error.extensions).toBeNull();
+  });
+
+  it("usa title como message cuando no hay detail", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ type: "urn:alquia:error:validation", title: "Validation failed" }), {
+        status: 400,
+        statusText: "Bad Request",
       })
     );
     const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
-    expect(error.message).toBe("Error personalizado");
+    expect(error.message).toBe("Validation failed");
+    expect(error.type).toBe("urn:alquia:error:validation");
   });
 
-  it("usa statusText cuando el body no tiene message", async () => {
+  it("usa statusText y deja type/fieldErrors nulos cuando el body no es JSON", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({}), { status: 400, statusText: "Bad Request" })
+      new Response("", { status: 400, statusText: "Bad Request" })
     );
     const error = (await apiGet("/test", { retry: false }).catch((e) => e)) as ApiError;
     expect(error.message).toBe("Bad Request");
+    expect(error.type).toBeNull();
+    expect(error.fieldErrors).toBeNull();
   });
 });
 
@@ -316,10 +451,19 @@ describe("lógica de reintento en 401", () => {
     fetchMock.mockResolvedValueOnce(new Response("", { status: 200 })); // refresh: ok
     fetchMock.mockResolvedValueOnce(new Response("", { status: 401 })); // reintento: 401 de nuevo
 
+    const error = await apiGet("/test").catch((e) => e);
+    expect(error).toBeInstanceOf(AuthExpiredError);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("no cierra la sesión por un fallo temporal del servicio de renovación", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 401 }));
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
+
     const error = (await apiGet("/test").catch((e) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
-    expect(error.status).toBe(401);
-    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(error.status).toBe(500);
   });
 });
 

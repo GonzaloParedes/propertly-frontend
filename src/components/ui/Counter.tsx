@@ -7,6 +7,8 @@
  * cargó. El «−» queda deshabilitado ahí, porque no hay nada que bajar, y el «+»
  * arranca en `min + step`.
  */
+import { Minus, Plus } from "lucide-react";
+
 export default function Counter({
   label,
   value,
@@ -27,12 +29,6 @@ export default function Counter({
   const vacio = value === null;
   const tope = (v: number) => (max === undefined ? v : Math.min(max, v));
   const enElTope = max !== undefined && !vacio && (value as number) >= max;
-  const glifo = (d: string) => (
-    <svg aria-hidden="true" width={21} height={21} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
-  );
 
   return (
     <div className="owner-wizard-counter">
@@ -40,14 +36,14 @@ export default function Counter({
       <div>
         <button type="button" aria-label={`Restar ${label?.toLowerCase() ?? unit}`}
           disabled={vacio} onClick={() => onChange(Math.max(min, (value ?? min) - step))}>
-          {glifo("M5 12h14")}
+          <Minus aria-hidden="true" size={21} />
         </button>
         <strong>{vacio ? "—" : value}</strong>
         {unit && <span>{unit}</span>}
         <button type="button" aria-label={`Sumar ${label?.toLowerCase() ?? unit}`}
           disabled={enElTope}
           onClick={() => onChange(vacio ? tope(min + step) : tope((value as number) + step))}>
-          {glifo("M12 5v14M5 12h14")}
+          <Plus aria-hidden="true" size={21} />
         </button>
       </div>
     </div>

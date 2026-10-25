@@ -1,31 +1,10 @@
 import { formatearMonto } from "@/lib/formato";
-import type { AdjustmentKind, AdjustmentResponse } from "@/lib/backend-types";
-
-/**
- * Lo que hay que mandarle al backend para llegar al importe que el propietario
- * escribió. `null` cuando no hay diferencia: guardar un ajuste de cero ensucia
- * la cuota con una línea que no cambia nada.
- *
- * Siempre monto fijo, aunque la API acepte porcentaje: el propietario fijó un
- * importe final, y convertir esa diferencia a porcentaje daría un número
- * arbitrario que además se recalcularía sobre el importe base si alguien lo
- * edita después.
- */
-export interface Delta {
-  kind: AdjustmentKind;
-  valueType: "FIXED_AMOUNT";
-  value: number;
-}
-
-export function calcularDelta(importeFinal: number, totalVigente: number): Delta | null {
-  const diferencia = Math.round((importeFinal - totalVigente) * 100) / 100;
-  if (diferencia === 0) return null;
-  return {
-    kind: diferencia > 0 ? "SURCHARGE" : "DISCOUNT",
-    valueType: "FIXED_AMOUNT",
-    value: Math.abs(diferencia),
-  };
-}
+import type {
+  AdjustmentKind,
+  AdjustmentResponse,
+  AdjustmentValueType,
+  InvoiceAdjustmentRequest,
+} from "@/lib/backend-types";
 
 /**
  * Cuánto pesa un ajuste sobre esta cuota, en plata. Un porcentual se calcula
@@ -62,10 +41,73 @@ export function describirAjuste(
   };
 }
 
-/** Cómo se anuncia el cambio antes de guardarlo. */
-export function describirDelta(delta: Delta | null): string {
-  if (!delta) return "El importe no cambia: no se va a guardar ningún ajuste.";
-  return delta.kind === "DISCOUNT"
-    ? `Se va a guardar un descuento de ${formatearMonto(delta.value)}.`
-    : `Se va a guardar un recargo de ${formatearMonto(delta.value)}.`;
+/**
+ * Lo que el propietario está cargando en el editor de ítems, antes de mandarlo.
+ * `kind` dice si suma (recargo) o resta (descuento); `valueType` si el valor es
+ * un monto fijo o un porcentaje del importe base.
+ */
+export interface FormularioItem {
+  nombre: string;
+  kind: AdjustmentKind;
+  valueType: AdjustmentValueType;
+  value: number;
+}
+
+export const FORM_ITEM_VACIO: FormularioItem = {
+  nombre: "",
+  kind: "SURCHARGE",
+  valueType: "FIXED_AMOUNT",
+  value: 0,
+};
+
+/** El request que espera el backend, con el nombre ya recortado. */
+export function itemARequest(form: FormularioItem): InvoiceAdjustmentRequest {
+  return {
+    name: form.nombre.trim(),
+    kind: form.kind,
+    valueType: form.valueType,
+    value: form.value,
+  };
+}
+
+/** El efecto con signo de un ítem todavía no guardado, sobre el importe base. */
+export function efectoDeFormulario(form: FormularioItem, importeBase: number): number {
+  return efectoDeAjuste(
+    { id: -1, name: form.nombre, kind: form.kind, valueType: form.valueType, value: form.value },
+    importeBase
+  );
+}
+
+/**
+ * El total que quedaría si se guardara el ítem en edición: importe base + los
+ * ajustes ya cargados (excluyendo el que se está editando, para no contarlo dos
+ * veces) + el ítem del formulario. Redondeado a centavos para que un arrastre de
+ * coma flotante no muestre un total raro ni dispare el piso en cero por error.
+ */
+export function totalPrevisualizado(
+  importeBase: number,
+  existentes: AdjustmentResponse[],
+  form: FormularioItem,
+  editandoId: number | null
+): number {
+  const conExistentes = existentes
+    .filter((a) => a.id !== editandoId)
+    .reduce((acc, a) => acc + efectoDeAjuste(a, importeBase), importeBase);
+  return Math.round((conExistentes + efectoDeFormulario(form, importeBase)) * 100) / 100;
+}
+
+/**
+ * Si el ítem del formulario se puede guardar: tiene nombre, un valor mayor a
+ * cero, y no deja el total de la cuota negativo (el backend rechaza eso igual —
+ * NFR-6 —, pero deshabilitar el botón antes evita el viaje perdido).
+ */
+export function itemValido(
+  form: FormularioItem,
+  importeBase: number,
+  existentes: AdjustmentResponse[],
+  editandoId: number | null
+): boolean {
+  if (!form.nombre.trim()) return false;
+  if (!(form.value > 0)) return false;
+  return totalPrevisualizado(importeBase, existentes, form, editandoId) >= 0;
 }

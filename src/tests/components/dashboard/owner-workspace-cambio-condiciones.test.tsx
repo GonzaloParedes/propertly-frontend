@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse } from "@/lib/backend-types";
 
 vi.mock("@/context/auth-context", () => ({
@@ -39,7 +40,7 @@ function contrato(over: Partial<ContractResponse> = {}): ContractResponse {
       floorUnit: "5.º A",
       city: "CABA",
       province: "CABA",
-      category: "APARTMENT",
+      latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
     },
     tenant: {
       id: 1,
@@ -86,7 +87,9 @@ describe("cambiar condiciones · acción", () => {
     mockList.mockResolvedValue([contrato({ status: "TERMINATED" })]);
     mockGet.mockResolvedValue(contrato({ status: "TERMINATED" }));
     render(<OwnerWorkspace initialView="contratos" />);
-    await userEvent.click(await screen.findByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     await userEvent.click(await screen.findByRole("button", { name: /Av\. Rivadavia/ }));
     await screen.findByText(/Contrato con Jorge Paletta/);
     expect(screen.queryByRole("button", { name: "Cambiar condiciones" })).not.toBeInTheDocument();
@@ -132,6 +135,7 @@ describe("cambiar condiciones · programar", () => {
       incrementValue: 8,
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByText(/Cambio programado desde/)).toBeInTheDocument();
   });
 
   it("no manda nada si falta el porcentaje y lo dice en el campo", async () => {
@@ -146,7 +150,11 @@ describe("cambiar condiciones · programar", () => {
 
   it("si el backend rechaza por una cuota paga, dice el motivo y conserva lo escrito", async () => {
     mockSchedule.mockRejectedValue(
-      new ApiError(400, "Cannot schedule a schema change over a paid predecessor invoice")
+      new ApiError(
+        409,
+        "Cannot schedule a schema change over a paid predecessor invoice",
+        ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE
+      )
     );
     await hastaLaRevision();
     await userEvent.click(screen.getByRole("button", { name: "Programar cambio" }));
@@ -193,7 +201,8 @@ describe("lista de contratos", () => {
     ]);
     render(<OwnerWorkspace initialView="contratos" />);
 
-    expect(await screen.findByRole("button", { name: /Vigentes 1/ })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    expect(screen.getByRole("button", { name: /Vigentes 1/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Programados 1/ }));
     expect(screen.getByText("Programado")).toBeInTheDocument();
   });

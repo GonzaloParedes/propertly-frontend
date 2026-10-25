@@ -37,6 +37,9 @@ export interface ResumenCobranza {
  * que es el módulo que ya define esos criterios: replicarlos acá haría que
  * Inicio y Cobranzas pudieran discrepar sobre la misma cuota.
  *
+ * Los importes son los que se adeudan hoy (`amountDue`): incluyen el recargo
+ * por atraso, que sigue siendo plata que el propietario cobra.
+ *
  * Una cuota con el pago esperando confirmación **no** está cobrada —todavía
  * falta que el propietario lo acepte—, así que cuenta según su vencimiento.
  */
@@ -51,20 +54,20 @@ export function resumenDeCobranza(invoices: InvoiceResponse[]): ResumenCobranza 
   };
 
   for (const invoice of invoices) {
-    resumen.emitido += invoice.total;
+    resumen.emitido += invoice.amountDue;
     const estado: EstadoCuota = estadoDeCuota(invoice);
     if (estado === "Pagada") {
-      resumen.cobrado += invoice.total;
+      resumen.cobrado += invoice.amountDue;
       resumen.cobradas += 1;
     } else if (estado === "Vencida") {
-      resumen.vencido += invoice.total;
+      resumen.vencido += invoice.amountDue;
     } else if (estado === "Pago a confirmar") {
       // El pago está cargado pero sin aceptar: se ubica por su vencimiento, que
       // es lo que determina si ya debería estar cobrada.
-      if (invoice.status === "DUE") resumen.vencido += invoice.total;
-      else resumen.aVencer += invoice.total;
+      if (invoice.status === "DUE") resumen.vencido += invoice.amountDue;
+      else resumen.aVencer += invoice.amountDue;
     } else {
-      resumen.aVencer += invoice.total;
+      resumen.aVencer += invoice.amountDue;
     }
   }
 
@@ -127,7 +130,7 @@ export interface Aviso {
 }
 
 /** «hace 9 días», «hoy», «ayer». Sin fecha devuelve null y el aviso la omite. */
-function hace(desdeISO: string | undefined, hoyISO: string): string | null {
+export function hace(desdeISO: string | undefined, hoyISO: string): string | null {
   if (!desdeISO) return null;
   const dia = (iso: string) => Date.UTC(...(iso.slice(0, 10).split("-").map(Number) as [number, number, number]));
   const dias = Math.round((dia(hoyISO) - dia(desdeISO)) / 86_400_000);
@@ -172,7 +175,7 @@ export function avisosPendientes(
       tono: "info",
       titulo: `${inquilinoDe(invoice)} cargó un pago y espera su confirmación`,
       cuerpo: [
-        `${direccionDe(invoice)} · ${formatearMonto(invoice.total)}`,
+        `${direccionDe(invoice)} · ${formatearMonto(invoice.amountDue)}`,
         cuando && `Subió el comprobante ${cuando}.`,
       ]
         .filter(Boolean)
@@ -194,7 +197,7 @@ export function avisosPendientes(
 
   const vencidas = invoices.filter((i) => estadoDeCuota(i) === "Vencida");
   if (vencidas.length > 0) {
-    const total = vencidas.reduce((suma, i) => suma + i.total, 0);
+    const total = vencidas.reduce((suma, i) => suma + i.amountDue, 0);
     // La más vieja fija el «desde cuándo»: es la que mide el atraso real.
     const masVieja = vencidas.reduce((a, b) => (a.dueDate <= b.dueDate ? a : b), vencidas[0]);
     const cuando = hace(masVieja.dueDate, hoyISO);

@@ -1,6 +1,14 @@
+import { describirAjuste, type LineaAjuste } from "@/lib/ajustes";
 import { estadoDeCuota, type EstadoCuota } from "@/lib/cobranzas";
 import { formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
-import type { InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
+import { recargoEnCurso, vistaDeRecargo, type RecargoVista } from "@/lib/recargo";
+import type {
+  InvoiceResponse,
+  PaymentResponse,
+  TenantCalendarCoverage,
+  TenantCalendarInvoiceResponse,
+  TenantCalendarPreInvoiceResponse,
+} from "@/lib/backend-types";
 
 /**
  * La misma cuota vista del otro lado. El estado sale de `estadoDeCuota`
@@ -11,15 +19,57 @@ import type { InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
 export interface FilaCuotaInquilino {
   invoiceId: number;
   periodo: string;
+  /** Mes ISO que ubica la cuota en el calendario, no el vencimiento. */
+  periodoISO: string;
   vencimiento: string;
   vencimientoISO: string;
+  /** Lo que se adeuda hoy: el total de la cuota más el recargo por atraso. */
   monto: string;
+  recargo: RecargoVista | null;
+  /** El recargo cambia a la medianoche: la pantalla tiene que releerlo. */
+  recargoEnCurso: boolean;
+  /** El importe antes de ajustes; sólo importa si hay ajustes que lo expliquen. */
+  importeBase: string;
+  /**
+   * Cada ajuste con el motivo que escribió el propietario (`name`). Sin esto el
+   * inquilino ve un total distinto al de su contrato y no sabe por qué.
+   */
+  ajustes: LineaAjuste[];
   estado: EstadoCuota;
   confirmada: boolean;
   /** El pago sobre el que el inquilino puede actuar o mirar, si hay alguno. */
   pago: PaymentResponse | null;
   puedeSubirComprobante: boolean;
 }
+
+/** Un importe conocido para el mes, aún no emitido como cuota ni confirmado. */
+export interface ImportePendienteInquilino {
+  contractId: number;
+  periodoISO: string;
+  monto: string;
+}
+
+export type EstadoMesCalendario =
+  | "cuota"
+  | "importe-pendiente-confirmacion"
+  | "antes-del-contrato"
+  | "sin-cuota-generada"
+  | "sin-contrato-vigente"
+  | "despues-del-contrato";
+
+export interface MesCalendarioInquilino {
+  periodoISO: string;
+  nombre: string;
+  estado: EstadoMesCalendario;
+  cuotas: FilaCuotaInquilino[];
+  importesPendientes: ImportePendienteInquilino[];
+  cambioDeCondiciones: boolean;
+}
+
+const NOMBRES_MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
 
 /**
  * Sube comprobante cuando la cuota está confirmada —regla ya decidida en
@@ -42,18 +92,118 @@ function pagoRelevante(invoice: InvoiceResponse): PaymentResponse | null {
   return [...invoice.payments].sort((a, b) => b.id - a.id)[0];
 }
 
-export function buildFilasInquilino(invoices: InvoiceResponse[]): FilaCuotaInquilino[] {
+export function buildFilasInquilino(
+  invoices: (InvoiceResponse | TenantCalendarInvoiceResponse)[]
+): FilaCuotaInquilino[] {
   return invoices.map((invoice) => ({
     invoiceId: invoice.id,
     periodo: formatearPeriodo(invoice.period),
+    periodoISO: invoice.period.slice(0, 7),
     vencimiento: formatearFecha(invoice.dueDate),
     vencimientoISO: invoice.dueDate,
-    monto: formatearMonto(invoice.total),
+    // `amountDue` lo agregó la feature de recargos; un backend anterior a ella no
+    // lo manda. Sin recargo, lo que se adeuda es el total —así lo define el propio
+    // backend (`amountDue = total` cuando no hay `lateFee`)—, así que caer al total
+    // deja la pantalla correcta en vez de romperla con `undefined.toLocaleString`.
+    monto: formatearMonto(invoice.amountDue ?? invoice.total),
+    recargo: vistaDeRecargo(invoice, "inquilino"),
+    recargoEnCurso: recargoEnCurso(invoice),
+    importeBase: formatearMonto(invoice.baseAmount),
+    ajustes: invoice.adjustments.map((a) => describirAjuste(a, invoice.baseAmount)),
     estado: estadoDeCuota(invoice),
     confirmada: invoice.confirmed,
     pago: pagoRelevante(invoice),
-    puedeSubirComprobante: puedeSubirComprobante(invoice),
+    // En el calendario real la autorización viene del backend. El fallback se
+    // conserva para el prototipo y los consumidores históricos de esta función.
+    puedeSubirComprobante:
+      "canSubmitPayment" in invoice ? invoice.canSubmitPayment : puedeSubirComprobante(invoice),
   }));
+}
+
+export function buildImportesPendientesInquilino(
+  preInvoices: TenantCalendarPreInvoiceResponse[] | undefined
+): ImportePendienteInquilino[] {
+  return (preInvoices ?? []).map((preInvoice) => ({
+    contractId: preInvoice.contractId,
+    periodoISO: preInvoice.period.slice(0, 7),
+    monto: formatearMonto(preInvoice.amount),
+  }));
+}
+
+function mesISO(fecha: string): string {
+  return fecha.slice(0, 7);
+}
+
+function estaCubierto(periodo: string, coverage: TenantCalendarCoverage[]): boolean {
+  return coverage.some(({ startDate, effectiveEndDate }) => {
+    return periodo >= mesISO(startDate) && periodo <= mesISO(effectiveEndDate);
+  });
+}
+
+/** Años que el selector debe poder mostrar: vigencia e historial de cuotas. */
+export function aniosDelCalendario(
+  coverage: TenantCalendarCoverage[],
+  filas: FilaCuotaInquilino[],
+  importesPendientes: ImportePendienteInquilino[] = []
+): number[] {
+  const anios = new Set<number>();
+  for (const intervalo of coverage) {
+    for (let anio = Number(intervalo.startDate.slice(0, 4)); anio <= Number(intervalo.effectiveEndDate.slice(0, 4)); anio += 1) {
+      anios.add(anio);
+    }
+  }
+  for (const fila of filas) anios.add(Number(fila.periodoISO.slice(0, 4)));
+  for (const importe of importesPendientes) anios.add(Number(importe.periodoISO.slice(0, 4)));
+  return [...anios].sort((a, b) => a - b);
+}
+
+/**
+ * Clasifica los 12 meses de un año a partir de los intervalos del backend. La
+ * existencia de una cuota siempre gana: un dato histórico inconsistente sigue
+ * siendo consultable y nunca desaparece por la etiqueta de vigencia.
+ */
+export function mesesDelCalendario(
+  anio: number,
+  coverage: TenantCalendarCoverage[],
+  filas: FilaCuotaInquilino[],
+  importesPendientes: ImportePendienteInquilino[] = []
+): MesCalendarioInquilino[] {
+  const porPeriodo = new Map<string, FilaCuotaInquilino[]>();
+  for (const fila of filas) {
+    const existentes = porPeriodo.get(fila.periodoISO) ?? [];
+    existentes.push(fila);
+    porPeriodo.set(fila.periodoISO, existentes);
+  }
+  const pendientesPorPeriodo = new Map<string, ImportePendienteInquilino[]>();
+  for (const importe of importesPendientes) {
+    const existentes = pendientesPorPeriodo.get(importe.periodoISO) ?? [];
+    existentes.push(importe);
+    pendientesPorPeriodo.set(importe.periodoISO, existentes);
+  }
+  const inicio = coverage[0] ? mesISO(coverage[0].startDate) : undefined;
+  const fin = coverage.at(-1) ? mesISO(coverage.at(-1)!.effectiveEndDate) : undefined;
+  const iniciosSucesores = new Set(coverage.slice(1).map((intervalo) => mesISO(intervalo.startDate)));
+
+  return NOMBRES_MESES.map((nombre, indice) => {
+    const periodoISO = `${anio}-${String(indice + 1).padStart(2, "0")}`;
+    const cuotas = porPeriodo.get(periodoISO) ?? [];
+    const pendientes = pendientesPorPeriodo.get(periodoISO) ?? [];
+    let estado: EstadoMesCalendario;
+    if (cuotas.length > 0) estado = "cuota";
+    else if (pendientes.length > 0) estado = "importe-pendiente-confirmacion";
+    else if (inicio && periodoISO < inicio) estado = "antes-del-contrato";
+    else if (fin && periodoISO > fin) estado = "despues-del-contrato";
+    else if (estaCubierto(periodoISO, coverage)) estado = "sin-cuota-generada";
+    else estado = "sin-contrato-vigente";
+    return {
+      periodoISO,
+      nombre,
+      estado,
+      cuotas,
+      importesPendientes: pendientes,
+      cambioDeCondiciones: iniciosSucesores.has(periodoISO),
+    };
+  });
 }
 
 /**

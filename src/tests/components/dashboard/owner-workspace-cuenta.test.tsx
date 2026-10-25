@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "@/tests/render";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 
 const mockUseAuth = vi.fn();

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import PropertyForm from "@/components/forms/PropertyForm";
 
 export default function NuevoInmueblePage() {
@@ -11,9 +12,7 @@ export default function NuevoInmueblePage() {
         className="mb-4 inline-flex items-center gap-1.5 text-[15px] font-bold"
         style={{ color: "var(--primary)" }}
       >
-        <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
+        <ChevronLeft aria-hidden="true" className="size-4" strokeWidth={2.5} />
         Volver al panel
       </Link>
 

@@ -7,7 +7,7 @@ const BASE: PropertyResponse = {
   number: "950",
   city: "CABA",
   province: "Ciudad Autónoma de Buenos Aires",
-  category: "APARTMENT",
+  latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
 };
 
 describe("CATEGORIAS", () => {

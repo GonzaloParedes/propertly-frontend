@@ -7,11 +7,43 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 // que cambian estado, pero mandarlo siempre evita tener que decidirlo acá.
 const CSRF_HEADER = { "X-Requested-With": "XMLHttpRequest" } as const;
 
+// El backend responde los errores en formato RFC 9457 (application/problem+json):
+// `type` es un identificador estable (URN) por condición, `detail` el texto de la
+// ocurrencia, y `errors` (extensión) un mapa campo → mensaje para validación inline.
+// El front decide por `type`, no por el texto: ver src/lib/error-codes.ts.
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+    public type: string | null = null,
+    public fieldErrors: Record<string, string> | null = null,
+    /** Propiedades extra del problema (RFC 9457), como `existingTenantId` en un 409. */
+    public extensions: Record<string, unknown> | null = null
+  ) {
     super(message);
     this.name = "ApiError";
   }
+}
+
+// El cuerpo trae `detail`/`title` en inglés: se guardan en `message` sólo como
+// respaldo técnico (logs), nunca para mostrar crudo. La UI resuelve por `type`.
+async function apiErrorFromResponse(res: Response): Promise<ApiError> {
+  let message = res.statusText;
+  let type: string | null = null;
+  let fieldErrors: Record<string, string> | null = null;
+  let extensions: Record<string, unknown> | null = null;
+  try {
+    const body = await res.json();
+    message = body.detail ?? body.title ?? message;
+    type = body.type ?? null;
+    fieldErrors = body.errors ?? null;
+    const resto: Record<string, unknown> = { ...body };
+    for (const campo of ["type", "title", "status", "detail", "instance", "errors"]) delete resto[campo];
+    extensions = Object.keys(resto).length > 0 ? resto : null;
+  } catch {
+    // use statusText as fallback
+  }
+  return new ApiError(res.status, message, type, fieldErrors, extensions);
 }
 
 export class AuthExpiredError extends Error {
@@ -21,10 +53,23 @@ export class AuthExpiredError extends Error {
   }
 }
 
+const authExpiredListeners = new Set<() => void>();
+
+export function onAuthExpired(listener: () => void): () => void {
+  authExpiredListeners.add(listener);
+  return () => authExpiredListeners.delete(listener);
+}
+
+function authExpired(): never {
+  authExpiredListeners.forEach((listener) => listener());
+  throw new AuthExpiredError();
+}
+
 async function fetchWithAuth(
   path: string,
   init: RequestInit = {},
-  retry = true
+  retry = true,
+  retried = false
 ): Promise<Response> {
   // Un body FormData no lleva Content-Type propio: fetch calcula el boundary
   // multipart solo cuando arma el header él mismo.
@@ -51,20 +96,16 @@ async function fetchWithAuth(
       headers: { ...CSRF_HEADER },
     });
     if (refreshRes.ok) {
-      return fetchWithAuth(path, init, false);
+      return fetchWithAuth(path, init, false, true);
     }
-    throw new AuthExpiredError();
+    if (refreshRes.status === 401 || refreshRes.status === 403) authExpired();
+    throw await apiErrorFromResponse(refreshRes);
   }
 
+  if (res.status === 401 && retried) authExpired();
+
   if (!res.ok) {
-    let message = res.statusText;
-    try {
-      const body = await res.json();
-      message = body.message ?? message;
-    } catch {
-      // use statusText as fallback
-    }
-    throw new ApiError(res.status, message);
+    throw await apiErrorFromResponse(res);
   }
 
   return res;
@@ -84,6 +125,28 @@ async function request<T>(
   return JSON.parse(text) as T;
 }
 
+/** URL absoluta para los casos que no pasan por fetch, como EventSource. */
+export function apiUrl(path: string): string {
+  return `${BASE_URL}${path}`;
+}
+
+/**
+ * Renueva el access token sin disparar `authExpired`: un stream que no logra
+ * reconectarse decide qué hacer con el resultado, y no debe redirigir solo.
+ */
+export async function renovarSesion(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { ...CSRF_HEADER },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function apiGet<T>(path: string, options?: { retry?: boolean }): Promise<T> {
   return request<T>(path, { method: "GET" }, options?.retry ?? true);
 }
@@ -91,13 +154,16 @@ export function apiGet<T>(path: string, options?: { retry?: boolean }): Promise<
 export function apiPost<T>(
   path: string,
   body?: unknown,
-  options?: { retry?: boolean }
+  options?: { retry?: boolean; keepalive?: boolean; headers?: Record<string, string> }
 ): Promise<T> {
   return request<T>(
     path,
     {
       method: "POST",
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      // Igual que en `apiPut`: deja que el pedido termine aunque la página se cierre.
+      ...(options?.keepalive ? { keepalive: true } : {}),
+      ...(options?.headers ? { headers: options.headers } : {}),
     },
     options?.retry ?? true
   );
@@ -114,16 +180,27 @@ export function apiPostForm<T>(
 export function apiPut<T>(
   path: string,
   body?: unknown,
-  options?: { retry?: boolean }
+  options?: { retry?: boolean; keepalive?: boolean }
 ): Promise<T> {
   return request<T>(
     path,
     {
       method: "PUT",
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      // Deja que el pedido termine aunque la página se cierre: es lo que usa el guardado del
+      // borrador al salir. El navegador acota el cuerpo a 64 KB, el mismo tope que el backend.
+      ...(options?.keepalive ? { keepalive: true } : {}),
     },
     options?.retry ?? true
   );
+}
+
+export function apiPutForm<T>(
+  path: string,
+  formData: FormData,
+  options?: { retry?: boolean }
+): Promise<T> {
+  return request<T>(path, { method: "PUT", body: formData }, options?.retry ?? true);
 }
 
 export function apiDelete<T>(path: string, options?: { retry?: boolean }): Promise<T> {

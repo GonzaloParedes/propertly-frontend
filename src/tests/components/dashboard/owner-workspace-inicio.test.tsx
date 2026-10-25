@@ -1,4 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
+import userEvent from "@testing-library/user-event";
+import { SIN_DESVIO, resumenDeBorrador } from "@/tests/borradores";
+import { serializar } from "@/lib/borradores";
+import { SIN_OTRAS_CONDICIONES } from "@/lib/otras-condiciones";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import type {
   ContractResponse,
@@ -21,6 +25,8 @@ vi.mock("@/lib/backend-client", () => ({
     properties: { list: vi.fn() },
     invoices: { list: vi.fn() },
     preInvoices: { list: vi.fn() },
+    contractImports: { quota: vi.fn() },
+    contractDrafts: { list: vi.fn(), get: vi.fn(), remove: vi.fn(), create: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -29,6 +35,7 @@ const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
 const mockProperties = vi.mocked(AlquiaBackendClient.properties.list);
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockPreInvoices = vi.mocked(AlquiaBackendClient.preInvoices.list);
+const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
 
 const PROPIEDAD: PropertyResponse = {
   id: 10,
@@ -37,7 +44,7 @@ const PROPIEDAD: PropertyResponse = {
   floorUnit: "5.º A",
   city: "CABA",
   province: "CABA",
-  category: "APARTMENT",
+  latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
   activeContract: { id: 100, currentRent: 478691, status: "ACTIVE" },
 };
 
@@ -70,7 +77,7 @@ function cuota(extra: Partial<InvoiceResponse> = {}): InvoiceResponse {
     period: "2026-09-01",
     dueDate: "2026-09-10",
     baseAmount: 100000,
-    total: 100000,
+    total: 100000, amountDue: 100000, lateFee: null,
     status: "PENDING",
     confirmed: true,
     adjustments: [],
@@ -81,6 +88,8 @@ function cuota(extra: Partial<InvoiceResponse> = {}): InvoiceResponse {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
+  mockBorradores.list.mockResolvedValue([]);
 });
 
 function conDatos({
@@ -105,7 +114,7 @@ describe("carga", () => {
     mockPreInvoices.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="inicio" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando su panel…")).toBeInTheDocument();
   });
 
   it("acota las cuotas al mes corriente, como fecha completa", async () => {
@@ -140,7 +149,7 @@ describe("carga", () => {
     render(<OwnerWorkspace initialView="inicio" demo />);
 
     expect(mockInvoices).not.toHaveBeenCalled();
-    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cargando su panel…")).not.toBeInTheDocument();
   });
 });
 
@@ -150,9 +159,9 @@ describe("cobranza del mes", () => {
   it("reparte los tres montos y dice el total emitido", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 430000, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "PENDING", total: 505000 }),
-        cuota({ id: 3, status: "DUE", total: 478691 }),
+        cuota({ id: 1, status: "PAID", total: 430000, amountDue: 430000, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "PENDING", total: 505000, amountDue: 505000 }),
+        cuota({ id: 3, status: "DUE", total: 478691, amountDue: 478691 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -167,8 +176,8 @@ describe("cobranza del mes", () => {
   it("la barra describe los mismos porcentajes que muestra", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "PAID", total: 500, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
-        cuota({ id: 2, status: "DUE", total: 500 }),
+        cuota({ id: 1, status: "PAID", total: 500, amountDue: 500, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500, amountDue: 500 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -178,12 +187,33 @@ describe("cobranza del mes", () => {
     ).toBeInTheDocument();
   });
 
+  it("un monto en cero no ocupa lugar en la barra", async () => {
+    conDatos({
+      invoices: [
+        cuota({ id: 1, status: "PAID", total: 500, amountDue: 500, lateFee: null, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+        cuota({ id: 2, status: "DUE", total: 500, amountDue: 500 }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const barra = await screen.findByLabelText("50% cobrado, 0% por vencer y 50% vencido");
+    expect(barra.children).toHaveLength(2);
+  });
+
+  it("con cuotas pero todo en cero, la barra queda neutra", async () => {
+    conDatos({ invoices: [cuota({ id: 1, status: "PENDING", total: 0, amountDue: 0 })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const barra = await screen.findByLabelText("Sin montos emitidos");
+    expect(barra.children).toHaveLength(0);
+  });
+
   it("un mes sin cuotas lo dice en vez de mostrar ceros", async () => {
     conDatos({ invoices: [] });
     render(<OwnerWorkspace initialView="inicio" />);
 
     expect(
-      await screen.findByText("Todavía no hay cuotas emitidas este mes.")
+      await screen.findByText("Todavía no hay cuotas emitidas este mes")
     ).toBeInTheDocument();
   });
 });
@@ -256,7 +286,7 @@ describe("requieren su acción", () => {
     conDatos({
       invoices: [
         cuota({
-          total: 520000,
+          total: 520000, amountDue: 520000, lateFee: null,
           payments: [
             {
               id: 9,
@@ -279,8 +309,8 @@ describe("requieren su acción", () => {
   it("agrupa las vencidas con su total", async () => {
     conDatos({
       invoices: [
-        cuota({ id: 1, status: "DUE", total: 478691 }),
-        cuota({ id: 2, status: "DUE", total: 520000 }),
+        cuota({ id: 1, status: "DUE", total: 478691, amountDue: 478691 }),
+        cuota({ id: 2, status: "DUE", total: 520000, amountDue: 520000 }),
       ],
     });
     render(<OwnerWorkspace initialView="inicio" />);
@@ -313,5 +343,194 @@ describe("contratos vigentes", () => {
     render(<OwnerWorkspace initialView="inicio" />);
 
     expect(await screen.findByText("Todavía no tiene contratos vigentes")).toBeInTheDocument();
+  });
+
+  it("sin ningún contrato, la acción principal es «Cargar mi primer contrato» y abre el asistente", async () => {
+    conDatos({ properties: [], contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = (await screen.findByText("Todavía no tiene contratos")).closest("section")!;
+    expect(within(seccion).getByText(/Los carga juntos, en un solo recorrido/)).toBeInTheDocument();
+    const accion = within(seccion).getByRole("button", { name: "Cargar mi primer contrato" });
+    expect(accion).toHaveClass("owner-button--primary");
+    expect(within(seccion).queryByRole("button", { name: "Agregar propiedad" })).not.toBeInTheDocument();
+
+    await userEvent.click(accion);
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+  });
+
+  it("con propiedades pero sin contratos, también es el primer contrato", async () => {
+    conDatos({ contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByRole("button", { name: "Cargar mi primer contrato" })).toBeInTheDocument();
+  });
+
+  it("con contratos que ya terminaron no es el primero: ofrece «Nuevo contrato»", async () => {
+    conDatos({ contracts: [{ ...CONTRATO, status: "TERMINATED" }] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = (await screen.findByText("Todavía no tiene contratos vigentes")).closest("section")!;
+    expect(within(seccion).getByRole("button", { name: "Nuevo contrato" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cargar mi primer contrato" })).not.toBeInTheDocument();
+  });
+
+  it("sin contratos no afirma que las cuotas están al día", async () => {
+    conDatos({ contracts: [], invoices: [] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByText(/Cuando tenga contratos, acá le avisamos/)).toBeInTheDocument();
+    expect(screen.queryByText("Sus cuotas están al día.")).not.toBeInTheDocument();
+  });
+});
+
+// --- Contratos a medio cargar ---
+
+describe("borradores en «Requieren su acción»", () => {
+  const seccionDeAcciones = async () => (await screen.findByRole("heading", { name: "Requieren su acción" })).closest("section")!;
+
+  it("cada borrador es un aviso con su nombre, hace cuánto se editó y las acciones Continuar y Descartar", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradores.list.mockResolvedValue([resumenDeBorrador({ label: "Lavalle 950 · Pérez", editadoHaceDias: 3 })]);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAcciones();
+    expect(await within(seccion).findByText("Contrato en borrador: Lavalle 950 · Pérez")).toBeInTheDocument();
+    expect(within(seccion).getByText(/Editado hace 3 días/)).toBeInTheDocument();
+    expect(within(seccion).getByRole("button", { name: "Continuar" })).toHaveClass("owner-button--secondary");
+    expect(within(seccion).getByRole("button", { name: "Descartar" })).toHaveClass("owner-button--secondary");
+  });
+
+  it("con sólo un borrador pendiente no dice que no hay nada pendiente ni ofrece ir a cobranzas", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradores.list.mockResolvedValue([resumenDeBorrador()]);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAcciones();
+    await within(seccion).findByText(/Contrato en borrador/);
+    expect(screen.queryByText(/Nada pendiente por ahora/)).not.toBeInTheDocument();
+    expect(within(seccion).queryByRole("button", { name: "Ir a cobranzas" })).not.toBeInTheDocument();
+  });
+
+  it("los borradores van después de las cuotas que esperan al propietario", async () => {
+    conDatos({ invoices: [cuota({ status: "DUE" })] });
+    mockBorradores.list.mockResolvedValue([resumenDeBorrador()]);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAcciones();
+    await within(seccion).findByText(/Contrato en borrador/);
+    const avisos = within(seccion).getAllByRole("article");
+    expect(avisos.at(-1)).toHaveTextContent("Contrato en borrador");
+    expect(avisos.length).toBeGreaterThan(1);
+    expect(within(seccion).getByRole("button", { name: "Ir a cobranzas" })).toBeInTheDocument();
+  });
+
+  it("lejos del vencimiento no habla de vencimiento; desde los 15 días dice el día en que se descarta", async () => {
+    conDatos();
+    mockBorradores.list.mockResolvedValue([
+      resumenDeBorrador({ id: 1, label: "Lejos", venceEnDias: 60 }),
+      resumenDeBorrador({ id: 2, label: "Cerca", venceEnDias: 10 }),
+    ]);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAcciones();
+    const lejos = (await within(seccion).findByText("Contrato en borrador: Lejos")).closest("article")!;
+    const cerca = within(seccion).getByText("Contrato en borrador: Cerca").closest("article")!;
+    expect(lejos).not.toHaveTextContent(/se descarta/i);
+    expect(cerca).toHaveTextContent(/Se descarta el \d{2}\/\d{2}\/\d{4} si no lo retoma/);
+  });
+
+  it("sin borradores y sin cuotas pendientes lo dice igual que antes", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByText(/Nada pendiente por ahora/)).toBeInTheDocument();
+  });
+
+  it("mientras no sabe si hay borradores no afirma que no hay nada pendiente", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradores.list.mockImplementation(() => new Promise(() => {}));
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await screen.findByText("Contratos activos");
+    expect(screen.queryByText(/Nada pendiente por ahora/)).not.toBeInTheDocument();
+  });
+
+  it("si no se pudieron traer lo dice y deja reintentar, sin romper el resto de Inicio", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradores.list.mockRejectedValueOnce(new Error("boom"));
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByText("No pudimos revisar sus borradores")).toBeInTheDocument();
+    expect(screen.queryByText(/Nada pendiente por ahora/)).not.toBeInTheDocument();
+    expect(screen.getByText("Contratos activos")).toBeInTheDocument();
+
+    mockBorradores.list.mockResolvedValue([resumenDeBorrador({ label: "Recuperado" })]);
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("Contrato en borrador: Recuperado")).toBeInTheDocument();
+  });
+
+  it("«Continuar» abre el asistente con ese borrador", async () => {
+    conDatos();
+    mockBorradores.list.mockResolvedValue([resumenDeBorrador({ id: 7 })]);
+    mockBorradores.get.mockResolvedValue({
+      ...resumenDeBorrador({ id: 7 }),
+      payload: serializar({
+        paso: 3, ...SIN_DESVIO, propiedad: { id: 10, nuevo: false, borrador: null }, inquilino: { id: 1, nuevo: false, borrador: null },
+        alquiler: "450000", diaVencimiento: 10, plazo: 24, inicio: "2026-09-01", metodo: "FIXED_PERCENTAGE",
+        porcentaje: "8", frecuencia: 6, otras: SIN_OTRAS_CONDICIONES, pagadoHasta: "",
+      }),
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByRole("region", { name: "Asistente de nuevo contrato" })).toBeInTheDocument();
+    expect(await screen.findByLabelText("Alquiler mensual")).toHaveValue("450.000");
+    expect(mockBorradores.get).toHaveBeenCalledWith(7);
+  });
+
+  it("«Descartar» pide confirmar, no borra si se vuelve, y al confirmar borra, avisa y lo saca de la lista", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradores.list.mockResolvedValueOnce([resumenDeBorrador({ id: 7, label: "Lavalle 950 · Pérez", conPdf: true })]);
+    mockBorradores.remove.mockResolvedValue(undefined);
+    render(<OwnerWorkspace initialView="inicio" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Descartar" }));
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText("¿Descartar este borrador?")).toBeInTheDocument();
+    expect(within(dialogo).getByText("Lavalle 950 · Pérez")).toBeInTheDocument();
+    expect(within(dialogo).getByText(/y el PDF que adjuntó/)).toBeInTheDocument();
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Volver" }));
+    expect(mockBorradores.remove).not.toHaveBeenCalled();
+    expect(screen.getByText("Contrato en borrador: Lavalle 950 · Pérez")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Descartar" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() => expect(mockBorradores.remove).toHaveBeenCalledWith(7));
+    expect(await screen.findByText("Borrador descartado.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Contrato en borrador: Lavalle 950 · Pérez")).not.toBeInTheDocument());
+    expect(await screen.findByText(/Nada pendiente por ahora/)).toBeInTheDocument();
+  });
+
+  it("si no se pudo descartar, el diálogo lo dice y el borrador sigue", async () => {
+    conDatos();
+    mockBorradores.list.mockResolvedValue([resumenDeBorrador({ id: 7 })]);
+    mockBorradores.remove.mockRejectedValue(new Error("boom"));
+    render(<OwnerWorkspace initialView="inicio" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Descartar" }));
+
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent(/No pudimos descartar el borrador/);
+    expect(screen.getByText(/Contrato en borrador/)).toBeInTheDocument();
+  });
+
+  it("el prototipo (demo) no pide borradores", async () => {
+    render(<OwnerWorkspace initialView="inicio" demo />);
+
+    await screen.findByText("Requieren su acción");
+    expect(mockBorradores.list).not.toHaveBeenCalled();
   });
 });

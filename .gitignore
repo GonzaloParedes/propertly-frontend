@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# Worker de MapLibre auto-hosteado (ALQ-45): lo regenera predev/prebuild desde
+# node_modules, no se versiona. Ver scripts/copy-maplibre-worker.mjs.
+/public/vendor/
+
 # production
 /build
 # misc
@@ -47,3 +51,5 @@ docs/brand/logos/eps/
 docs/brand/logos/pdf/
 docs/brand/logos/png/
 
+# Local working notes — intentionally not versioned
+docs/local/

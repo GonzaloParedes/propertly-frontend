@@ -1,8 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
-import type { ContractResponse, RentIncrementResponse } from "@/lib/backend-types";
+import type { ContractResponse, InvoiceResponse, RentIncrementResponse } from "@/lib/backend-types";
 
 vi.mock("@/context/auth-context", () => ({
   useAuth: () => ({ user: null, isLoading: false }),
@@ -29,6 +29,7 @@ vi.mock("@/lib/backend-client", () => ({
 
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockList = vi.mocked(AlquiaBackendClient.contracts.list);
+const mockCuotas = vi.mocked(AlquiaBackendClient.invoices.list);
 const mockGet = vi.mocked(AlquiaBackendClient.contracts.get);
 const mockIncrements = vi.mocked(AlquiaBackendClient.contracts.rentIncrements);
 const mockAccess = vi.mocked(AlquiaBackendClient.contracts.getTenantAccess);
@@ -46,7 +47,7 @@ function contrato(over: Partial<ContractResponse> = {}): ContractResponse {
       floorUnit: "5.º A",
       city: "CABA",
       province: "CABA",
-      category: "APARTMENT",
+      latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
     },
     tenant: {
       id: 1,
@@ -86,7 +87,9 @@ async function abrir(c = contrato(), incrementos: RentIncrementResponse[] = []) 
   mockIncrements.mockResolvedValue(incrementos);
   render(<OwnerWorkspace initialView="contratos" />);
   if (c.status !== "ACTIVE") {
-    await userEvent.click(await screen.findByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
+    await userEvent.click(screen.getByRole("button", { name: /Finalizados/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
   }
   await userEvent.click(await screen.findByRole("button", { name: /Av\. Rivadavia/ }));
   await screen.findByText(/Contrato con Jorge Paletta/);
@@ -102,7 +105,7 @@ describe("carga", () => {
     render(<OwnerWorkspace initialView="contratos" />);
     await userEvent.click(await screen.findByRole("button", { name: /Av\. Rivadavia/ }));
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando el contrato…")).toBeInTheDocument();
   });
 
   it("avisa si el contrato no se pudo cargar", async () => {
@@ -178,10 +181,12 @@ describe("próxima actualización", () => {
 describe("condiciones pactadas", () => {
   it("las muestra cuando el contrato las tiene", async () => {
     await abrir(
-      contrato({ depositAmount: 478691, depositType: "CASH", commissionPercent: 5, commissionPayer: "TENANT" })
+      contrato({ depositAmount: 478691, guarantees: [{ type: "SURETY_INSURANCE", insurerName: "Aseguradora Sur", policyNumber: "4411" }], commissionPercent: 5, commissionPayer: "TENANT" })
     );
     expect(screen.getByText("Condiciones pactadas")).toBeInTheDocument();
-    expect(screen.getByText("$ 478.691 · Depósito en efectivo")).toBeInTheDocument();
+    const tarjeta = within(screen.getByText("Condiciones pactadas").closest(".owner-card") as HTMLElement);
+    expect(tarjeta.getByText("$ 478.691")).toBeInTheDocument();
+    expect(tarjeta.getByText("Seguro de caución: Aseguradora Sur, póliza 4411")).toBeInTheDocument();
     expect(screen.getByText("5 % · la paga el inquilino")).toBeInTheDocument();
   });
 
@@ -224,7 +229,8 @@ describe("acceso del inquilino", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Copiar enlace/ }));
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /Copiado/ })).toBeInTheDocument());
+    expect(await screen.findByText(/Enlace copiado/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copiar enlace/ })).toBeInTheDocument();
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       "http://localhost:3000/tenant-portal?token=abc"
     );
@@ -237,8 +243,8 @@ describe("acceso del inquilino", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Copiar enlace/ }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos obtener el enlace");
-    expect(screen.queryByRole("button", { name: /Copiado/ })).not.toBeInTheDocument();
+    expect(await screen.findByText(/No pudimos obtener el enlace/)).toBeInTheDocument();
+    expect(screen.queryByText(/Enlace copiado/)).not.toBeInTheDocument();
   });
 
   it("reenviar el correo es otra acción", async () => {
@@ -249,6 +255,23 @@ describe("acceso del inquilino", () => {
 
     expect(mockResend).toHaveBeenCalledWith(100);
     expect(mockAccess).not.toHaveBeenCalled();
+    // Es un éxito: no sale con estilo ni rol de error.
+    expect(await screen.findByText(/Le reenviamos el enlace por correo/)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reenviar el correo queda ocupado mientras espera al servidor", async () => {
+    let terminar: () => void = () => {};
+    mockResend.mockReturnValue(new Promise<void>((resolver) => { terminar = resolver; }));
+    await abrir();
+
+    await userEvent.click(screen.getByRole("button", { name: /Reenviar por correo/ }));
+
+    const ocupado = screen.getByRole("button", { name: /Reenviar por correo/ });
+    expect(ocupado).toBeDisabled();
+    expect(ocupado).toHaveAttribute("aria-busy", "true");
+    terminar();
+    await waitFor(() => expect(screen.getByRole("button", { name: /Reenviar por correo/ })).toBeEnabled());
   });
 
   // Hoy el token vence a fin de mes (S-1), así que afirmar una vigencia sería falso.
@@ -294,6 +317,19 @@ describe("documento firmado", () => {
 
     expect(await screen.findByText("Todavía no cargó el contrato")).toBeInTheDocument();
     expect(mockRemoveDoc).toHaveBeenCalledWith(100);
+    expect(await screen.findByText(/Documento quitado/)).toBeInTheDocument();
+  });
+
+  it("quitar el documento queda ocupado mientras espera al servidor", async () => {
+    let terminar: () => void = () => {};
+    mockRemoveDoc.mockReturnValue(new Promise<void>((resolver) => { terminar = resolver; }));
+    await abrir(conDocumento);
+
+    await userEvent.click(screen.getByRole("button", { name: "Quitar" }));
+
+    expect(screen.getByRole("button", { name: "Quitar" })).toHaveAttribute("aria-busy", "true");
+    terminar();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Quitar" })).toBeEnabled());
   });
 
   it("avisa si quitar falla", async () => {
@@ -302,7 +338,7 @@ describe("documento firmado", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Quitar" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos quitar el documento");
+    expect(await screen.findByText(/No pudimos quitar el documento/)).toBeInTheDocument();
   });
 });
 
@@ -333,6 +369,7 @@ describe("finalizar el contrato", () => {
     await waitFor(() =>
       expect(mockTerminate).toHaveBeenCalledWith(100, { terminationDate: "2026-10-31" })
     );
+    expect(await screen.findByText(/Contrato finalizado/)).toBeInTheDocument();
   });
 
   it("explica el rechazo y el contrato sigue vigente", async () => {
@@ -350,5 +387,50 @@ describe("finalizar el contrato", () => {
   it("no se ofrece sobre un contrato que ya terminó", async () => {
     await abrir(contrato({ status: "TERMINATED", actualEndDate: "2027-06-30" }));
     expect(screen.queryByRole("button", { name: "Finalizar contrato" })).not.toBeInTheDocument();
+  });
+});
+
+
+// --- Cuotas sin confirmar ---
+
+describe("cuotas sin confirmar", () => {
+  const cuotaSinConfirmar = (over: Partial<InvoiceResponse> = {}): InvoiceResponse => ({
+    id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-10",
+    baseAmount: 478691, total: 478691, amountDue: 485441, status: "DUE", confirmed: false,
+    adjustments: [], payments: [],
+    lateFee: { method: "FIXED_PER_DAY", value: 1250, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
+      amount: 6750, nextDayAmount: 8000, state: "ACCRUING", overridden: false },
+    ...over,
+  });
+
+  it("avisa la cuota vencida sin confirmar, con el recargo que corre, y deja confirmarla", async () => {
+    mockCuotas.mockResolvedValue([cuotaSinConfirmar()]);
+    await abrir();
+
+    const aviso = (await screen.findByRole("heading", { name: "Cuotas sin confirmar" })).closest(".owner-card") as HTMLElement;
+    expect(within(aviso).getByText("agosto 2026")).toBeInTheDocument();
+    expect(within(aviso).getByText(/no puede pagarla en el portal/)).toHaveTextContent(
+      "El recargo por atraso corre igual, según el contrato: hoy suma $ 6.750."
+    );
+    expect(mockCuotas).toHaveBeenCalledWith({ contractId: 100 });
+
+    await userEvent.click(within(aviso).getByRole("button", { name: "Confirmar" }));
+    expect(within(screen.getByRole("dialog")).getByText(/ya no se puede ajustar/)).toBeInTheDocument();
+  });
+
+  it("si todas las cuotas están confirmadas, no hay aviso", async () => {
+    mockCuotas.mockResolvedValue([cuotaSinConfirmar({ confirmed: true })]);
+    await abrir();
+
+    await waitFor(() => expect(mockCuotas).toHaveBeenCalled());
+    expect(screen.queryByRole("heading", { name: "Cuotas sin confirmar" })).not.toBeInTheDocument();
+  });
+
+  it("si las cuotas no cargan, el detalle se muestra igual", async () => {
+    mockCuotas.mockRejectedValue(new ApiError(500, "Boom"));
+    await abrir();
+
+    expect(screen.getByText(/Contrato con Jorge Paletta/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Cuotas sin confirmar" })).not.toBeInTheDocument();
   });
 });

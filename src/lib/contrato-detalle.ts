@@ -1,19 +1,15 @@
-import { formatearFecha } from "@/lib/formato";
+import { formatearFecha, formatearImporte } from "@/lib/formato";
+import { describirGarantia } from "@/lib/garantias";
 import type {
   ContractResponse,
   Currency,
   RentIncrementResponse,
 } from "@/lib/backend-types";
 
-/**
- * Los importes del contrato pueden estar pactados en dólares. `currency` es
- * opcional y ausente significa pesos: el backend no la exige y las cuotas
- * heredan la del contrato.
- */
-export function formatearImporte(monto: number, moneda: Currency | undefined): string {
-  const simbolo = moneda === "USD" ? "US$" : "$";
-  return `${simbolo} ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-}
+// `formatearImporte` vive ahora en `@/lib/formato` (junto a los demás
+// formateadores). Se re-exporta acá para no romper a quienes lo importaban
+// desde este módulo.
+export { formatearImporte };
 
 // --- Vigencia ---
 
@@ -77,17 +73,85 @@ export interface Condicion {
   valor: string;
 }
 
-const DEPOSITO: Record<string, string> = {
-  CASH: "Depósito en efectivo",
-  SURETY_INSURANCE: "Seguro de caución",
-  PROPERTY_GUARANTEE: "Garantía propietaria",
-};
-
 const PAGADOR: Record<string, string> = {
   LANDLORD: "la paga el propietario",
   TENANT: "la paga el inquilino",
   SHARED: "compartida",
 };
+
+function agregarDeposito(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
+  if (!contract.depositAmount) return;
+  condiciones.push({ etiqueta: "Depósito", valor: formatearImporte(contract.depositAmount, moneda) });
+}
+
+/** Una línea por garantía: «Garantía» si hay una sola, «Garantía 1», «Garantía 2»… si hay varias. */
+function agregarGarantias(condiciones: Condicion[], contract: ContractResponse) {
+  const garantias = contract.guarantees ?? [];
+  garantias.forEach((garantia, indice) => {
+    condiciones.push({
+      etiqueta: garantias.length > 1 ? `Garantía ${indice + 1}` : "Garantía",
+      valor: describirGarantia(garantia),
+    });
+  });
+}
+
+function agregarComision(condiciones: Condicion[], contract: ContractResponse) {
+  if (!contract.commissionPercent) return;
+  condiciones.push({
+    etiqueta: "Comisión",
+    valor: [
+      `${contract.commissionPercent} %`,
+      contract.commissionPayer && PAGADOR[contract.commissionPayer],
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  });
+}
+
+function pluralizar(cantidad: number, singular: string, plural: string): string {
+  return cantidad === 1 ? singular : plural;
+}
+
+function agregarPunitorios(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
+  const { lateFeeMethod: metodo, lateFeeValue: valor } = contract;
+  if (!metodo || valor === undefined || valor === null) return;
+  const porcentaje = `${valor.toLocaleString("es-AR", { maximumFractionDigits: 2 })} %`;
+  const importe = formatearImporte(valor, moneda);
+  const desde = `desde el día ${(contract.lateFeeGraceDays ?? 0) + 1} de atraso`;
+  const tasa = {
+    PERCENT_PER_DAY: `${porcentaje} diario sobre la cuota`,
+    PERCENT_PER_MONTH: `${porcentaje} mensual, cobrado por día de atraso`,
+    PERCENT_PER_YEAR: `${porcentaje} anual, cobrado por día de atraso`,
+    FIXED_PER_DAY: `${importe} por cada día de atraso`,
+    FIXED_ONCE: `Multa única de ${importe}`,
+  }[metodo];
+  condiciones.push({ etiqueta: "Punitorios", valor: `${tasa}, ${desde}` });
+}
+
+function agregarRenovacion(condiciones: Condicion[], contract: ContractResponse) {
+  if (contract.autoRenewal === undefined || contract.autoRenewal === null) return;
+  condiciones.push({
+    etiqueta: "Renovación",
+    valor: contract.autoRenewal ? "Automática" : "No se renueva automáticamente",
+  });
+}
+
+function agregarPreaviso(condiciones: Condicion[], contract: ContractResponse) {
+  if (!contract.terminationNoticeMonths) return;
+  const meses = contract.terminationNoticeMonths;
+  condiciones.push({
+    etiqueta: "Preaviso de rescisión",
+    valor: `${meses} ${pluralizar(meses, "mes", "meses")}`,
+  });
+}
+
+function agregarMulta(condiciones: Condicion[], contract: ContractResponse, moneda: Currency | undefined) {
+  if (!contract.earlyTerminationPenalty) return;
+  condiciones.push({
+    etiqueta: "Multa por rescisión anticipada",
+    valor: formatearImporte(contract.earlyTerminationPenalty, moneda),
+  });
+}
 
 /**
  * Lo que el contrato pactó y hasta ahora no se mostraba en ningún lado. Sólo se
@@ -98,63 +162,13 @@ export function condicionesComerciales(contract: ContractResponse): Condicion[] 
   const condiciones: Condicion[] = [];
   const moneda = contract.currency;
 
-  if (contract.depositAmount) {
-    condiciones.push({
-      etiqueta: "Depósito",
-      valor: [
-        formatearImporte(contract.depositAmount, moneda),
-        contract.depositType && DEPOSITO[contract.depositType],
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    });
-  } else if (contract.depositType) {
-    condiciones.push({ etiqueta: "Depósito", valor: DEPOSITO[contract.depositType] });
-  }
-
-  if (contract.commissionPercent) {
-    condiciones.push({
-      etiqueta: "Comisión",
-      valor: [
-        `${contract.commissionPercent} %`,
-        contract.commissionPayer && PAGADOR[contract.commissionPayer],
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    });
-  }
-
-  if (contract.lateFeeValue) {
-    const valor =
-      contract.lateFeeType === "PERCENTAGE"
-        ? `${contract.lateFeeValue} % por mora`
-        : `${formatearImporte(contract.lateFeeValue, moneda)} por mora`;
-    const gracia = contract.lateFeeGraceDays
-      ? `tras ${contract.lateFeeGraceDays} ${contract.lateFeeGraceDays === 1 ? "día" : "días"} de gracia`
-      : null;
-    condiciones.push({ etiqueta: "Punitorios", valor: [valor, gracia].filter(Boolean).join(" · ") });
-  }
-
-  if (contract.autoRenewal !== undefined && contract.autoRenewal !== null) {
-    condiciones.push({
-      etiqueta: "Renovación",
-      valor: contract.autoRenewal ? "Automática" : "No se renueva automáticamente",
-    });
-  }
-
-  if (contract.terminationNoticeMonths) {
-    condiciones.push({
-      etiqueta: "Preaviso de rescisión",
-      valor: `${contract.terminationNoticeMonths} ${contract.terminationNoticeMonths === 1 ? "mes" : "meses"}`,
-    });
-  }
-
-  if (contract.earlyTerminationPenalty) {
-    condiciones.push({
-      etiqueta: "Multa por rescisión anticipada",
-      valor: formatearImporte(contract.earlyTerminationPenalty, moneda),
-    });
-  }
+  agregarDeposito(condiciones, contract, moneda);
+  agregarGarantias(condiciones, contract);
+  agregarComision(condiciones, contract);
+  agregarPunitorios(condiciones, contract, moneda);
+  agregarRenovacion(condiciones, contract);
+  agregarPreaviso(condiciones, contract);
+  agregarMulta(condiciones, contract, moneda);
 
   // La moneda va sólo si no es la de siempre: decir «Pesos argentinos» en todos
   // los contratos es ruido.
@@ -196,11 +210,7 @@ export function historialDeAumentos(
 
 /** «PDF · 2,4 MB · cargado el 01/03/2025». Sin fecha, se omite esa parte. */
 export function descripcionDocumento(contract: ContractResponse): string {
-  const tipo = contract.documentContentType?.startsWith("image/")
-    ? "Imagen"
-    : contract.documentContentType === "application/pdf"
-      ? "PDF"
-      : "Archivo";
+  const tipo = tipoDeDocumento(contract.documentContentType);
   const mb = contract.documentSizeBytes
     ? `${(contract.documentSizeBytes / 1_048_576).toLocaleString("es-AR", { maximumFractionDigits: 1 })} MB`
     : null;
@@ -208,4 +218,10 @@ export function descripcionDocumento(contract: ContractResponse): string {
     ? `cargado el ${formatearFecha(contract.documentUploadedAt.slice(0, 10))}`
     : null;
   return [tipo, mb, cuando].filter(Boolean).join(" · ");
+}
+
+function tipoDeDocumento(contentType: string | undefined): string {
+  if (contentType?.startsWith("image/")) return "Imagen";
+  if (contentType === "application/pdf") return "PDF";
+  return "Archivo";
 }

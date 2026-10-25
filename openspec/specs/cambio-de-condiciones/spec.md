@@ -44,7 +44,7 @@ El sistema SHALL explicar, antes de confirmar, que las cuotas anteriores al mes 
 
 ### Requirement: Errores del backend
 
-El sistema SHALL mostrar el motivo cuando el backend rechaza el cambio con 400 —fecha inválida, cuota paga desde ese mes, cambio ya programado— y SHALL conservar lo que el propietario escribió.
+El sistema SHALL mostrar el motivo cuando el backend rechaza el cambio —fecha inválida, cuota paga desde ese mes, cambio ya programado— distinguiéndolo por su identificador estable y no por el status, ya que estos motivos no comparten un único status (algunos llegan como 409 y otros como 400), y SHALL conservar lo que el propietario escribió.
 
 #### Scenario: Cuota paga desde el mes elegido
 

@@ -11,53 +11,56 @@
 .owner-button:hover { background:var(--indigo-osc); }
 .owner-button:active { transform:translateY(1px); }
 .owner-button--small { min-height:40px; padding:0 15px; border-radius:10px; font-size:15px; }
-.owner-button--secondary { background:#fff; color:var(--indigo); box-shadow:inset 0 0 0 1.5px var(--borde-campo); }
+.owner-button--secondary { background:var(--elev); color:var(--indigo); box-shadow:inset 0 0 0 1.5px var(--borde-campo); }
 .owner-button--secondary:hover { background:var(--indigo-suave); box-shadow:inset 0 0 0 2px var(--indigo); }
 .owner-button--quiet { background:transparent; color:var(--gris); }.owner-button--quiet:hover { background:var(--superficie); color:var(--tinta); }
-.owner-button--danger { background:#fff; color:var(--error); box-shadow:inset 0 0 0 1.5px rgba(206,63,83,.42); }.owner-button--danger:hover { background:var(--error-bg); box-shadow:inset 0 0 0 2px var(--error); }
+.owner-button--danger { background:var(--elev); color:var(--error); box-shadow:inset 0 0 0 1.5px rgba(206,63,83,.42); }.owner-button--danger:hover { background:var(--error-bg); box-shadow:inset 0 0 0 2px var(--error); }
 .owner-button:focus-visible, .owner-icon-button:focus-visible, .owner-row--button:focus-visible, .owner-filter button:focus-visible, .owner-crumb button:focus-visible, .owner-mode button:focus-visible { outline:3px solid var(--lila); outline-offset:3px; }
 
-.owner-portfolio { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(290px,.9fr); overflow:hidden; border-radius:20px; background:#fff; box-shadow:0 1px 3px rgba(30,27,46,.03),0 14px 34px -12px rgba(30,27,46,.13); }
+.owner-portfolio { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(290px,.9fr); overflow:hidden; border-radius:20px; background:var(--elev); box-shadow:0 1px 3px rgba(30,27,46,.03),0 14px 34px -12px rgba(30,27,46,.13); }
 .owner-portfolio__money, .owner-portfolio__summary { padding:var(--esp-32) 34px; }
 .owner-portfolio__money > strong { display:block; margin-top:15px; font:700 38px/1.05 var(--font-quicksand),sans-serif; letter-spacing:-.03em; }
 .owner-portfolio__money > p:not(.owner-eyebrow), .owner-portfolio__summary small { color:var(--gris); }
-.owner-meter { display:flex; gap:var(--esp-2); height:13px; margin:var(--esp-26) 0 var(--esp-20); overflow:hidden; border-radius:999px; background:var(--superficie); }.owner-meter i { display:block; }.owner-meter__ok{width:22%;background:var(--exito)}.owner-meter__warn{width:26%;background:var(--adv)}.owner-meter__bad{width:52%;background:var(--error)}
+.owner-meter { display:flex; gap:var(--esp-2); height:13px; margin:var(--esp-26) 0 var(--esp-20); overflow:hidden; border-radius:999px; background:var(--superficie); }.owner-meter i { display:block; flex-basis:0; }.owner-meter__ok{background:var(--exito)}.owner-meter__warn{background:var(--adv)}.owner-meter__bad{background:var(--error)}
 .owner-key { display:flex; flex-wrap:wrap; gap:var(--esp-12) 27px; }.owner-key span { display:inline-flex; align-items:center; gap:var(--esp-8); font-size:15.5px; }.owner-key span:nth-child(1) svg{color:var(--exito)}.owner-key span:nth-child(2) svg{color:var(--adv)}.owner-key span:nth-child(3) svg{color:var(--error)}
 .owner-portfolio__summary { display:flex; flex-direction:column; justify-content:center; gap:27px; box-shadow:inset 1px 0 0 var(--divisor); }.owner-portfolio__summary b { display:block; margin-top:var(--esp-6); font:700 25px/1.1 var(--font-quicksand),sans-serif; }.owner-portfolio__summary small { display:block; margin-top:var(--esp-6); font-size:14.5px; }
 
 .owner-section { margin-top:var(--esp-44); }.owner-section__head { align-items:center; justify-content:space-between; margin-bottom:var(--esp-16); }.owner-section__head h2, .owner-card h2 { margin:0; font:700 20px var(--font-quicksand),sans-serif; }
-.owner-notices { display:flex; flex-direction:column; gap:11px; }.owner-notice { display:flex; align-items:flex-start; gap:15px; padding:var(--esp-20) 24px; border-left:4px solid var(--indigo); border-radius:14px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-notice--warn{border-left-color:var(--adv)}.owner-notice--bad{border-left-color:var(--error)}.owner-notice__icon{color:var(--indigo);margin-top:var(--esp-2)}.owner-notice--warn .owner-notice__icon{color:var(--adv)}.owner-notice--bad .owner-notice__icon{color:var(--error)}.owner-notice strong{display:block;font-size:17px}.owner-notice p{margin:3px 0 0;color:var(--gris);font-size:16px}.owner-notice__action{margin-left:auto;padding-left:var(--esp-8);flex:none}
+.owner-notices { display:flex; flex-direction:column; gap:11px; }.owner-notice { display:flex; align-items:flex-start; gap:15px; padding:var(--esp-20) 24px; border-left:4px solid var(--indigo); border-radius:14px; background:var(--elev); box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-notice--warn{border-left-color:var(--adv)}.owner-notice--bad{border-left-color:var(--error)}.owner-notice__icon{color:var(--indigo);margin-top:var(--esp-2)}.owner-notice--warn .owner-notice__icon{color:var(--adv)}.owner-notice--bad .owner-notice__icon{color:var(--error)}.owner-notice strong{display:block;font-size:17px}.owner-notice p{margin:3px 0 0;color:var(--gris);font-size:16px}.owner-notice__action{align-self:center;margin-left:auto;padding-left:var(--esp-8);flex:none}
 
-.owner-list, .owner-table-wrap { overflow:hidden; border-radius:20px; background:#fff; box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-row { display:grid; grid-template-columns:44px minmax(0,1fr) var(--col-monto) var(--col-estado) auto; width:100%; align-items:center; gap:var(--esp-18); padding:var(--esp-18) 24px; color:var(--tinta); text-align:left; }.owner-row+.owner-row{box-shadow:inset 0 1px 0 var(--divisor)}.owner-row--button{border:0;background:transparent;cursor:pointer}.owner-row--button:hover{background:var(--superficie)}.owner-row__icon{display:grid;width:44px;height:44px;place-items:center;flex:none;border-radius:14px;background:var(--superficie);color:var(--gris)}.owner-row--button:hover .owner-row__icon{background:var(--indigo-suave);color:var(--indigo)}.owner-row__body{min-width:0;flex:1}.owner-row__body b,.owner-row__body small,.owner-row__body em{display:block}.owner-row__body b{font-size:17px}.owner-row__body small,.owner-row__body em{margin-top:3px;overflow:hidden;color:var(--gris);font-size:14.5px;font-style:normal;text-overflow:ellipsis;white-space:nowrap}.owner-row__body em{color:var(--tinta);font-weight:600}.owner-row__amount{grid-column:3;text-align:right}.owner-row__amount b{display:block;font:700 19px var(--font-quicksand),sans-serif}.owner-row__amount small{display:block;margin-top:1px;color:var(--gris);font-size:12.5px;line-height:1.3}.owner-row__arrow{grid-column:5;color:var(--gris)}.owner-row>.owner-status{grid-column:4;justify-self:end}
+.owner-list, .owner-table-wrap { overflow:hidden; border-radius:20px; background:var(--elev); box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07); }.owner-row { display:grid; grid-template-columns:44px minmax(0,1fr) var(--col-monto) var(--col-estado) auto; width:100%; align-items:center; gap:var(--esp-18); padding:var(--esp-18) 24px; color:var(--tinta); text-align:left; }.owner-row+.owner-row{box-shadow:inset 0 1px 0 var(--divisor)}.owner-row--button{border:0;background:transparent;cursor:pointer}.owner-row--button:hover{background:var(--superficie)}.owner-row__icon{display:grid;width:44px;height:44px;place-items:center;flex:none;border-radius:14px;background:var(--superficie);color:var(--gris)}.owner-row--button:hover .owner-row__icon{background:var(--indigo-suave);color:var(--indigo)}.owner-row__body{min-width:0;flex:1}.owner-row__body b,.owner-row__body small,.owner-row__body em{display:block}.owner-row__body b{font-size:17px}.owner-row__body small,.owner-row__body em{margin-top:3px;overflow:hidden;color:var(--gris);font-size:14.5px;font-style:normal;text-overflow:ellipsis;white-space:nowrap}.owner-row__body em{color:var(--tinta);font-weight:600}.owner-row__amount{grid-column:3;text-align:right}.owner-row__amount b{display:block;font:700 19px var(--font-quicksand),sans-serif}.owner-row__amount small{display:block;margin-top:1px;color:var(--gris);font-size:12.5px;line-height:1.3}.owner-row__arrow{grid-column:5;color:var(--gris)}.owner-row>.owner-status{grid-column:4;justify-self:end}
 .owner-status { display:inline-flex; flex:none; align-items:center; gap:7px; padding:var(--esp-6) var(--esp-12); border-radius:999px; color:var(--tinta); font-size:14px; font-weight:700; white-space:nowrap; }.owner-status--ok{background:var(--exito-bg)}.owner-status--ok svg{color:var(--exito)}.owner-status--warn{background:var(--warn-bg)}.owner-status--warn svg{color:var(--adv)}.owner-status--bad{background:var(--error-bg)}.owner-status--bad svg{color:var(--error)}.owner-status--info{background:var(--indigo-suave)}.owner-status--info svg{color:var(--indigo)}.owner-status--none{background:var(--superficie);color:var(--gris)}
 
-.owner-filter { display:flex; flex-wrap:wrap; gap:9px; margin:0 0 22px; }.owner-filter button{min-height:40px;padding:0 15px;border:0;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);cursor:pointer;font:700 15px var(--font-nunito-sans),sans-serif}.owner-filter button[aria-pressed="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
-.owner-table-wrap{overflow-x:auto}.owner-table{width:100%;min-width:790px;border-collapse:collapse}.owner-table th,.owner-table td{padding:var(--esp-16) 24px;text-align:left;vertical-align:middle}.owner-table th{padding-top:var(--esp-20);padding-bottom:var(--esp-12);box-shadow:inset 0 -1px 0 var(--divisor);color:var(--gris);font-size:14px;font-weight:600}.owner-table tbody td{box-shadow:inset 0 1px 0 var(--divisor)}.owner-table tbody tr:first-child td{box-shadow:none}.owner-table tbody tr:hover{background:var(--superficie)}.owner-table td b,.owner-table td small{display:block}.owner-table td small{margin-top:var(--esp-2);color:var(--gris);font-size:14.5px}.owner-number{text-align:right!important}.owner-money{font:700 17px var(--font-quicksand),sans-serif}.owner-substatus{margin-top:5px!important}
+.owner-filter { display:flex; flex-wrap:wrap; gap:9px; margin:0 0 22px; }.owner-filter button{min-height:40px;padding:0 15px;border:0;border-radius:999px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);cursor:pointer;font:700 15px var(--font-nunito-sans),sans-serif}.owner-filter button[aria-pressed="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
+.owner-table-wrap{overflow-x:auto}.owner-table{width:100%;min-width:790px;border-collapse:collapse}.owner-table th,.owner-table td{padding:var(--esp-16) 24px;text-align:left;vertical-align:middle}.owner-table th{padding-top:var(--esp-20);padding-bottom:var(--esp-12);box-shadow:inset 0 -1px 0 var(--divisor);color:var(--gris);font-size:14px;font-weight:600}.owner-table tbody td{box-shadow:inset 0 1px 0 var(--divisor)}.owner-table tbody tr:first-child td{box-shadow:none}.owner-table tbody tr:hover{background:var(--superficie)}.owner-table td b,.owner-table td small{display:block}.owner-table td small{margin-top:var(--esp-2);overflow:hidden;color:var(--gris);font-size:14.5px;text-overflow:ellipsis;white-space:nowrap}.owner-number{text-align:right!important}.owner-money{font:700 17px var(--font-quicksand),sans-serif}.owner-substatus{margin-top:5px!important}
 
-.owner-crumb{display:flex;align-items:center;gap:7px;margin:0 0 11px;color:var(--gris);font-size:15px}.owner-crumb button{padding:0;border:0;background:none;color:var(--indigo);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif}.owner-crumb button:hover{text-decoration:underline;text-underline-offset:3px}.owner-detail-grid{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(310px,.82fr);gap:var(--esp-18);align-items:start}.owner-card{padding:var(--esp-26) 28px;border-radius:20px;background:#fff;box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-card+.owner-card{margin-top:var(--esp-18)}.owner-detail-grid>.owner-card:nth-child(3){grid-column:1/-1}.owner-card__top{display:flex;justify-content:space-between;gap:var(--esp-16)}.owner-current-rent{text-align:right}.owner-current-rent b,.owner-detail-money{display:block;margin-top:var(--esp-6);font:700 28px/1.1 var(--font-quicksand),sans-serif}.owner-current-rent small,.owner-card__top small{display:block;margin-top:5px;color:var(--gris)}
-.owner-contract-callout,.owner-empty-callout,.owner-document{display:flex;align-items:center;gap:var(--esp-14);margin-top:22px;padding:17px;border:0;border-radius:14px;background:var(--superficie);color:var(--tinta);text-align:left}.owner-contract-callout{width:100%;cursor:pointer}.owner-contract-callout:hover{background:var(--indigo-suave)}.owner-contract-callout>span,.owner-empty-callout>svg{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:#fff;color:var(--indigo)}.owner-contract-callout div,.owner-empty-callout div,.owner-document>div{flex:1}.owner-contract-callout b,.owner-contract-callout small,.owner-empty-callout b,.owner-empty-callout small,.owner-document b,.owner-document small{display:block}.owner-contract-callout small,.owner-empty-callout small,.owner-document small,.owner-card__copy{margin-top:3px;color:var(--gris);font-size:14.5px}.owner-empty-callout{align-items:flex-start}.owner-empty-callout .owner-button{align-self:center}.owner-definition{margin:var(--esp-18) 0 0}.owner-definition{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr)}.owner-definition>div{display:grid;grid-column:1/-1;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:var(--esp-18);align-items:baseline;padding:13px 0;box-shadow:inset 0 -1px 0 var(--divisor)}.owner-definition>div{grid-template-columns:subgrid}.owner-definition>div:last-child{box-shadow:none}.owner-definition dt{color:var(--gris)}.owner-definition dd{margin:0;font-weight:600}
-.owner-timeline{margin:24px 0 0}.owner-timeline>div{position:relative;display:flex;gap:13px;padding-bottom:var(--esp-20)}.owner-timeline>div:not(:last-child)::before{position:absolute;top:40px;bottom:0;left:18px;width:2px;background:var(--divisor);content:""}.owner-timeline span{position:relative;z-index:1;display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:999px;background:var(--indigo-suave);color:var(--indigo)}.owner-timeline p{margin:3px 0 0}.owner-timeline b,.owner-timeline small{display:block}.owner-timeline small{margin-top:3px;color:var(--gris)}.owner-tenant-card{display:flex;align-items:center;gap:13px;margin-top:17px}.owner-tenant-card b,.owner-tenant-card small{display:block}.owner-tenant-card small{color:var(--gris);font-size:14.5px}.owner-link-box{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-14);margin-top:22px;padding-top:var(--esp-18);box-shadow:inset 0 1px 0 var(--divisor)}.owner-link-box>div{display:flex;align-items:center;gap:11px;color:var(--indigo)}.owner-link-box span{color:var(--tinta)}.owner-link-box b,.owner-link-box small{display:block}.owner-link-box small{margin-top:var(--esp-2);color:var(--gris);font-size:13.5px}
+.owner-crumb{display:flex;align-items:center;gap:7px;margin:0 0 11px;color:var(--gris);font-size:15px}.owner-crumb button{padding:0;border:0;background:none;color:var(--indigo);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif}.owner-crumb button:hover{text-decoration:underline;text-underline-offset:3px}.owner-detail-grid{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(310px,.82fr);gap:var(--esp-18);align-items:start}.owner-card{padding:var(--esp-26) 28px;border-radius:20px;background:var(--elev);box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-card+.owner-card{margin-top:var(--esp-18)}.owner-detail-grid>.owner-card:nth-child(3){grid-column:1/-1}.owner-card__top{display:flex;justify-content:space-between;gap:var(--esp-16)}.owner-current-rent{text-align:right}.owner-current-rent b,.owner-detail-money{display:block;margin-top:var(--esp-6);font:700 28px/1.1 var(--font-quicksand),sans-serif}.owner-current-rent small,.owner-card__top small{display:block;margin-top:5px;color:var(--gris)}
+.owner-contract-callout,.owner-empty-callout,.owner-document{display:flex;align-items:center;gap:var(--esp-14);margin-top:22px;padding:17px;border:0;border-radius:14px;background:var(--superficie);color:var(--tinta);text-align:left}.owner-contract-callout{width:100%;cursor:pointer}.owner-contract-callout:hover{background:var(--indigo-suave)}.owner-contract-callout>span,.owner-empty-callout>svg{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:var(--elev);color:var(--indigo)}.owner-contract-callout div,.owner-empty-callout div,.owner-document>div{flex:1}.owner-contract-callout b,.owner-contract-callout small,.owner-empty-callout b,.owner-empty-callout small,.owner-document b,.owner-document small{display:block}.owner-contract-callout small,.owner-empty-callout small,.owner-document small,.owner-card__copy{margin-top:3px;color:var(--gris);font-size:14.5px}.owner-empty-callout{align-items:flex-start}.owner-empty-callout .owner-button{align-self:center}.owner-definition{display:grid;margin:var(--esp-18) 0 0;grid-template-columns:minmax(0,auto) minmax(0,1fr)}.owner-definition>div{display:grid;grid-column:1/-1;grid-template-columns:subgrid;gap:var(--esp-18);align-items:baseline;padding:13px 0;box-shadow:inset 0 -1px 0 var(--divisor)}.owner-definition>div:last-child{box-shadow:none}.owner-definition dt{color:var(--gris)}.owner-definition dd{margin:0;font-weight:600}
+.owner-timeline{margin:24px 0 0}.owner-timeline>div{position:relative;display:flex;gap:13px;padding-bottom:var(--esp-20)}.owner-timeline>div:not(:last-child)::before{position:absolute;top:40px;bottom:0;left:18px;width:2px;background:var(--divisor);content:""}.owner-timeline span{position:relative;z-index:1;display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:999px;background:var(--indigo-suave);color:var(--indigo)}.owner-timeline p{margin:3px 0 0}.owner-timeline b,.owner-timeline small{display:block}.owner-timeline small{margin-top:3px;color:var(--gris)}.owner-tenant-card{display:flex;align-items:center;gap:13px;margin-top:17px}.owner-tenant-card b,.owner-tenant-card small{display:block}.owner-tenant-card small{color:var(--gris);font-size:14.5px}.owner-link-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--esp-14);margin-top:22px;padding-top:var(--esp-18);box-shadow:inset 0 1px 0 var(--divisor)}.owner-link-box>div{display:flex;align-items:center;gap:11px;color:var(--indigo)}.owner-link-actions{display:flex;flex-wrap:wrap;gap:var(--esp-10);width:100%}.owner-link-box span{color:var(--tinta)}.owner-link-box b,.owner-link-box small{display:block}.owner-link-box small{margin-top:var(--esp-2);color:var(--gris);font-size:13.5px}
 
-.owner-dialog{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:var(--esp-20)}.owner-dialog__backdrop{position:absolute;inset:0;border:0;background:rgba(30,27,46,.55)}.owner-dialog__panel{position:relative;width:min(100%,580px);max-height:calc(100vh - 40px);overflow:auto;border-radius:20px;background:#fff;box-shadow:0 24px 60px -12px rgba(30,27,46,.34)}.owner-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-14);padding:23px var(--esp-26);box-shadow:inset 0 -1px 0 var(--divisor)}.owner-dialog__head h2{margin:0;font:700 22px var(--font-quicksand),sans-serif}.owner-icon-button{display:grid;width:40px;height:40px;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer}.owner-icon-button:hover{background:var(--superficie);color:var(--tinta)}.owner-dialog__body{padding:var(--esp-26)}.owner-dialog__body>p{margin:0;color:var(--gris)}.owner-receipt{display:flex;flex-direction:column;align-items:center;gap:var(--esp-8);margin:22px 0;padding:28px var(--esp-20);border-radius:14px;background:var(--superficie);text-align:center}.owner-receipt>svg{color:var(--indigo)}.owner-receipt small{color:var(--gris)}.owner-dialog__hint{margin-top:var(--esp-16)!important;font-size:15px}.owner-dialog__actions{justify-content:flex-end;margin-top:24px}.owner-mode{display:grid;gap:11px;margin:var(--esp-20) 0}.owner-mode button{display:flex;align-items:center;gap:13px;padding:15px;border:0;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--tinta);cursor:pointer;text-align:left}.owner-mode button[aria-pressed="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-mode button>span{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:var(--superficie);color:var(--indigo)}.owner-mode b,.owner-mode small{display:block}.owner-mode small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}.owner-form-preview{display:grid;gap:15px}.owner-form-preview label{display:grid;gap:7px;font-weight:700}.owner-form-preview input{min-height:52px;padding:0 var(--esp-14);border:0;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--borde-campo);color:var(--tinta);font:400 17px var(--font-nunito-sans),sans-serif}.owner-input-static{display:flex;min-height:52px;align-items:center;padding:0 var(--esp-14);border-radius:10px;background:var(--superficie);color:var(--gris);font-weight:400}
+.owner-dialog{position:fixed;inset:0;z-index:100;display:grid;width:100%;height:100%;max-width:none;max-height:none;place-items:center;margin:0;padding:var(--esp-20);border:0;background:transparent}.owner-dialog__backdrop{position:absolute;inset:0;border:0;background:rgba(30,27,46,.55)}.owner-dialog__panel{position:relative;width:min(100%,580px);max-height:calc(100vh - 40px);overflow:auto;border-radius:20px;background:var(--elev);box-shadow:0 24px 60px -12px rgba(30,27,46,.34)}.owner-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-14);padding:23px var(--esp-26);box-shadow:inset 0 -1px 0 var(--divisor)}.owner-dialog__head h2{margin:0;font:700 22px var(--font-quicksand),sans-serif}.owner-icon-button{display:grid;width:40px;height:40px;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer}.owner-icon-button:hover{background:var(--superficie);color:var(--tinta)}.owner-dialog__body{padding:var(--esp-26)}.owner-dialog__body>p{margin:0;color:var(--gris)}.owner-receipt{display:flex;flex-direction:column;align-items:center;gap:var(--esp-8);margin:22px 0;padding:28px var(--esp-20);border-radius:14px;background:var(--superficie);text-align:center}.owner-receipt>svg{color:var(--indigo)}.owner-receipt small{color:var(--gris)}.owner-dialog__hint{margin-top:var(--esp-16)!important;font-size:15px}.owner-dialog__actions{justify-content:flex-end;margin-top:24px}.owner-mode{display:grid;gap:11px;margin:var(--esp-20) 0}.owner-mode button{display:flex;align-items:center;gap:13px;padding:15px;border:0;border-radius:14px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--tinta);cursor:pointer;text-align:left}.owner-mode button[aria-pressed="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-mode button>span{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:var(--superficie);color:var(--indigo)}.owner-mode b,.owner-mode small{display:block}.owner-mode small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}.owner-form-preview{display:grid;gap:15px}.owner-form-preview label{display:grid;gap:7px;font-weight:700}.owner-form-preview input{min-height:52px;padding:0 var(--esp-14);border:0;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--borde-campo);color:var(--tinta);font:400 17px var(--font-nunito-sans),sans-serif}.owner-input-static{display:flex;min-height:52px;align-items:center;padding:0 var(--esp-14);border-radius:10px;background:var(--superficie);color:var(--gris);font-weight:400}
 
-.owner-nav{position:fixed;inset:0 auto 0 0;z-index:40;display:flex;width:238px;flex-direction:column;padding:var(--esp-26) var(--esp-14);background:#fff;box-shadow:inset -1px 0 0 var(--divisor)}.owner-nav__brand{display:block;margin:0 var(--esp-10) 30px}.owner-nav__brand img{display:block;width:auto;height:29px}.owner-nav__group{margin:0 var(--esp-10) 9px;color:var(--gris);font:700 11px/1 var(--font-nunito-sans),sans-serif;letter-spacing:.12em}.owner-nav__links{display:flex;flex-direction:column;gap:var(--esp-2);margin:0;padding:0;list-style:none}.owner-nav__link,.owner-nav__logout{display:flex;min-height:40px;width:100%;align-items:center;gap:var(--esp-12);padding:var(--esp-10) var(--esp-12);border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer;font:600 16px var(--font-nunito-sans),sans-serif;text-align:left;text-decoration:none}.owner-nav__link:hover,.owner-nav__logout:hover{background:var(--superficie);color:var(--tinta)}.owner-nav__link[aria-current="page"]{background:var(--indigo-suave);color:var(--indigo-osc);font-weight:700}.owner-nav__link[aria-current="page"] svg{color:var(--indigo)}.owner-nav__badge{display:grid;width:24px;height:24px;margin-left:auto;place-items:center;border-radius:999px;background:var(--error);color:#fff;font-size:12.5px}.owner-nav__profile{display:flex;align-items:center;gap:11px;margin-top:auto;padding:var(--esp-14) var(--esp-10) 0;box-shadow:inset 0 1px 0 var(--divisor)}.owner-avatar{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:999px;background:var(--indigo);color:#fff;font-size:14px;font-weight:700}.owner-nav__profile strong,.owner-nav__profile small{display:block}.owner-nav__profile small{max-width:130px;overflow:hidden;color:var(--gris);font-size:12.5px;text-overflow:ellipsis;white-space:nowrap}.owner-nav__logout{margin-top:var(--esp-12)}.owner-mobile-header,.owner-drawer,.owner-drawer-backdrop{display:none}
+.owner-nav{position:fixed;inset:0 auto 0 0;z-index:40;display:flex;width:238px;flex-direction:column;padding:var(--esp-26) var(--esp-14);background:var(--elev);box-shadow:inset -1px 0 0 var(--divisor)}.owner-nav__brand{display:block;margin:0 var(--esp-10) 30px}.owner-nav__brand img{display:block;width:auto;height:29px}.owner-nav__group{margin:0 var(--esp-10) 9px;color:var(--gris);font:700 11px/1 var(--font-nunito-sans),sans-serif;letter-spacing:.12em}.owner-nav__links{display:flex;flex-direction:column;gap:var(--esp-2);margin:0;padding:0;list-style:none}.owner-nav__link,.owner-nav__logout{display:flex;min-height:40px;width:100%;align-items:center;gap:var(--esp-12);padding:var(--esp-10) var(--esp-12);border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer;font:600 16px var(--font-nunito-sans),sans-serif;text-align:left;text-decoration:none}.owner-nav__link:hover,.owner-nav__logout:hover{background:var(--superficie);color:var(--tinta)}.owner-nav__link[aria-current="page"]{background:var(--indigo-suave);color:var(--indigo-osc);font-weight:700}.owner-nav__link[aria-current="page"] svg{color:var(--indigo)}.owner-nav__badge{display:grid;width:24px;height:24px;margin-left:auto;place-items:center;border-radius:999px;background:var(--error);color:#fff;font-size:12.5px}.owner-nav__profile{display:flex;align-items:center;gap:11px;margin-top:auto;padding:var(--esp-14) var(--esp-10) 0;box-shadow:inset 0 1px 0 var(--divisor)}.owner-avatar{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:999px;background:var(--indigo);color:#fff;font-size:14px;font-weight:700}.owner-nav__profile strong,.owner-nav__profile small{display:block}.owner-nav__profile small{max-width:130px;overflow:hidden;color:var(--gris);font-size:12.5px;text-overflow:ellipsis;white-space:nowrap}.owner-nav__logout{margin-top:var(--esp-12)}.owner-mobile-header,.owner-drawer,.owner-drawer-backdrop{display:none}
 
 @media (max-width:1080px){.owner-content{padding:36px var(--esp-32) 68px}.owner-detail-grid{grid-template-columns:1fr}.owner-detail-grid>.owner-card:nth-child(3){grid-column:auto}}
-@media (max-width:900px){.owner-nav{display:none}.owner-mobile-header{position:sticky;top:0;z-index:40;display:flex;height:64px;align-items:center;justify-content:space-between;padding:0 17px;background:#fff;box-shadow:inset 0 -1px 0 var(--divisor)}.owner-mobile-header img{display:block;width:auto;height:27px}.owner-drawer-backdrop[data-open]{position:fixed;inset:0;z-index:49;display:block;background:rgba(30,27,46,.4)}.owner-drawer{position:fixed;inset:0 auto 0 0;z-index:50;display:flex;width:min(84vw,330px);flex-direction:column;padding:var(--esp-20) var(--esp-14);transform:translateX(-100%);background:#fff;box-shadow:10px 0 30px rgba(30,27,46,.18);transition:transform .2s ease}.owner-drawer[data-open]{transform:translateX(0)}.owner-drawer__top{display:flex;align-items:center;justify-content:space-between;margin:0 5px 27px var(--esp-10)}.owner-drawer__top img{width:auto;height:29px}.owner-drawer .owner-nav__logout{margin-top:auto;padding-top:var(--esp-18);box-shadow:inset 0 1px 0 var(--divisor)}.owner-content{margin-left:0;padding:30px var(--esp-20) 56px}.owner-portfolio{grid-template-columns:1fr}.owner-portfolio__summary{display:grid;grid-template-columns:1fr 1fr;box-shadow:inset 0 1px 0 var(--divisor)}.owner-page-head{align-items:flex-start}.owner-page-head h1{font-size:29px}}
+@media (max-width:900px){.owner-nav{display:none}.owner-mobile-header{position:sticky;top:0;z-index:40;display:flex;height:64px;align-items:center;justify-content:space-between;padding:0 17px;background:var(--elev);box-shadow:inset 0 -1px 0 var(--divisor)}.owner-mobile-header img{display:block;width:auto;height:27px}.owner-drawer-backdrop[data-open]{position:fixed;inset:0;z-index:49;display:block;background:rgba(30,27,46,.4)}.owner-drawer{position:fixed;inset:0 auto 0 0;z-index:50;display:flex;width:min(84vw,330px);flex-direction:column;padding:var(--esp-20) var(--esp-14);transform:translateX(-100%);background:var(--elev);box-shadow:10px 0 30px rgba(30,27,46,.18);transition:transform .2s ease}.owner-drawer[data-open]{transform:translateX(0)}.owner-drawer__top{display:flex;align-items:center;justify-content:space-between;margin:0 5px 27px var(--esp-10)}.owner-drawer__top img{width:auto;height:29px}.owner-drawer .owner-nav__logout{margin-top:auto;padding-top:var(--esp-18);box-shadow:inset 0 1px 0 var(--divisor)}.owner-content{margin-left:0;padding:30px var(--esp-20) 56px}.owner-portfolio{grid-template-columns:1fr}.owner-portfolio__summary{display:grid;grid-template-columns:1fr 1fr;box-shadow:inset 0 1px 0 var(--divisor)}.owner-page-head{align-items:flex-start}.owner-page-head h1{font-size:29px}}
 @media (max-width:620px){.owner-portfolio__money,.owner-portfolio__summary,.owner-card{padding:23px var(--esp-20)}.owner-portfolio__money>strong{font-size:34px}.owner-key{gap:9px var(--esp-16)}.owner-key span{font-size:14px}.owner-notice{flex-wrap:wrap;gap:var(--esp-12)}.owner-notice>div:nth-child(2){flex:1 1 calc(100% - 40px)}.owner-notice__action{width:100%;margin-left:38px;padding:0}.owner-row{gap:var(--esp-12);padding:17px}.owner-row__arrow{display:none}.owner-row__amount{display:flex;grid-column:2;align-items:baseline;gap:7px;margin-top:var(--esp-6);text-align:left}.owner-row__amount b{font-size:18px}.owner-row__amount small{margin-top:0}.owner-row__body small{white-space:normal}.owner-status{padding:5px 9px;font-size:12.5px}.owner-definition>div{grid-template-columns:1fr;gap:3px}.owner-empty-callout{flex-wrap:wrap}.owner-empty-callout .owner-button{width:100%}.owner-link-box{align-items:flex-start;flex-direction:column}.owner-dialog{padding:var(--esp-12)}.owner-dialog__head,.owner-dialog__body{padding:var(--esp-20)}.owner-dialog__actions{flex-direction:column-reverse}.owner-dialog__actions .owner-button{width:100%}.owner-portfolio__summary{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--esp-18)}.owner-portfolio__summary b{font-size:20px}.owner-portfolio__summary small{overflow-wrap:anywhere}}
 
-.owner-contract-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--esp-16);margin:0 0 27px}.owner-contract-summary article{min-height:142px;padding:24px var(--esp-26);border-radius:18px;background:#fff;box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-contract-summary strong{display:block;margin-top:var(--esp-8);font:700 27px/1.1 var(--font-quicksand),sans-serif;letter-spacing:-.02em}.owner-contract-summary small{display:block;margin-top:var(--esp-8);color:var(--gris);font-size:14.5px}.owner-contract-next{margin-top:28px}.owner-next-list{display:grid;gap:11px}.owner-next-list article{display:flex;align-items:center;gap:var(--esp-14);padding:17px var(--esp-20);border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-next-list>article>span,.owner-creation-choice>span,.owner-creation-success>span{display:grid;width:40px;height:40px;place-items:center;flex:none;border-radius:11px;background:var(--indigo-suave);color:var(--indigo)}.owner-next-list article>div{flex:1}.owner-next-list b,.owner-next-list small{display:block}.owner-next-list small{margin-top:3px;color:var(--gris);font-size:14.5px}
+.owner-contract-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--esp-16);margin:0 0 27px}.owner-contract-summary article{min-height:142px;padding:24px var(--esp-26);border-radius:18px;background:var(--elev);box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-contract-summary strong{display:block;margin-top:var(--esp-8);font:700 27px/1.1 var(--font-quicksand),sans-serif;letter-spacing:-.02em}.owner-contract-summary small{display:block;margin-top:var(--esp-8);color:var(--gris);font-size:14.5px}.owner-contract-next{margin-top:28px}.owner-next-list{display:grid;gap:11px}.owner-next-list article{display:flex;align-items:center;gap:var(--esp-14);padding:17px var(--esp-20);border-radius:14px;background:var(--elev);box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-next-list>article>span,.owner-creation-choice>span,.owner-creation-success>span{display:grid;width:40px;height:40px;place-items:center;flex:none;border-radius:11px;background:var(--indigo-suave);color:var(--indigo)}.owner-next-list article>div{flex:1}.owner-next-list b,.owner-next-list small{display:block}.owner-next-list small{margin-top:3px;color:var(--gris);font-size:14.5px}
 .owner-creation-form{margin-top:21px}.owner-creation-choice{display:flex;align-items:center;gap:13px;margin-top:15px;padding:var(--esp-14);border-radius:14px;background:var(--superficie)}.owner-creation-choice div{flex:1}.owner-creation-choice b,.owner-creation-choice small{display:block}.owner-creation-choice small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}.owner-creation-success{display:flex;flex-direction:column;align-items:center;padding:var(--esp-12) 0 7px;text-align:center}.owner-creation-success>span{width:56px;height:56px;border-radius:999px;background:var(--exito-bg);color:var(--exito)}.owner-creation-success h3{margin:var(--esp-16) 0 0;font:700 23px var(--font-quicksand),sans-serif}.owner-creation-success p{max-width:390px;margin:7px 0 22px!important}
 @media (max-width:720px){.owner-contract-summary{grid-template-columns:1fr}.owner-contract-summary article{min-height:0}.owner-next-list article{align-items:flex-start;flex-wrap:wrap}.owner-next-list article .owner-button{margin-left:54px}}
 
 /* Asistentes de alta: se replica la composición de alquia-mvp.html. */
-.owner-wizard{position:fixed;inset:0;z-index:90;display:flex;min-height:100vh;flex-direction:column;background:#fff;color:var(--tinta)}.owner-wizard__top{display:flex;align-items:center;gap:var(--esp-20);padding:var(--esp-18) var(--esp-32);box-shadow:inset 0 -1px 0 var(--divisor)}.owner-wizard__top>button{display:grid;width:46px;height:46px;place-items:center;border:0;border-radius:999px;background:var(--superficie);color:var(--gris);cursor:pointer}.owner-wizard__top>button:hover{background:var(--indigo-suave);color:var(--indigo)}.owner-wizard__top>b{font:700 16px var(--font-quicksand),sans-serif}.owner-wizard__top>span{color:var(--gris);font-size:14.5px;font-weight:600;white-space:nowrap}.owner-wizard__progress{height:5px;max-width:300px;flex:1;margin-left:auto;overflow:hidden;border-radius:999px;background:var(--borde)}.owner-wizard__progress i{display:block;height:100%;border-radius:inherit;background:var(--indigo);transition:width .35s ease}.owner-wizard__body{width:min(100% - 40px,620px);margin:auto;padding:var(--esp-44) 0}.owner-wizard__body h1{margin:0 0 var(--esp-12);font:700 32px/1.22 var(--font-quicksand),sans-serif;letter-spacing:-.02em}.owner-wizard__body>p{max-width:48ch;margin:0 0 var(--esp-32);color:var(--gris);font-size:17px}.owner-wizard-stack,.owner-wizard-options{display:grid;gap:11px}.owner-wizard-field{display:flex;align-items:baseline;gap:var(--esp-12);padding:var(--esp-16) var(--esp-20);border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde-campo);font:600 19px var(--font-quicksand),sans-serif}.owner-wizard-field:focus-within{background:#fff;box-shadow:inset 0 0 0 2px var(--indigo)}.owner-wizard-field input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--tinta);font:inherit}.owner-wizard-field input::placeholder{color:var(--gris);opacity:.65;font-weight:400}.owner-wizard-field>span{color:var(--gris);font:600 17px var(--font-nunito-sans),sans-serif;white-space:nowrap}.owner-wizard-field--large{padding:var(--esp-18) 22px;font-size:34px;letter-spacing:-.025em}.owner-wizard-field--medium{margin-bottom:var(--esp-32);font-size:24px;letter-spacing:-.02em}.owner-wizard-field--amount{padding:var(--esp-18) 22px;font-size:34px;letter-spacing:-.025em}.owner-wizard-option{display:flex;width:100%;min-height:52px;align-items:center;gap:15px;padding:15px var(--esp-18);border:0;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--tinta);cursor:pointer;text-align:left}.owner-wizard-option:hover{background:var(--superficie);box-shadow:inset 0 0 0 2px var(--borde-campo)}.owner-wizard-option[aria-checked="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-wizard-option__icon{display:grid;width:42px;height:42px;place-items:center;flex:none;border-radius:14px;background:var(--superficie);color:var(--gris)}.owner-wizard-option[aria-checked="true"] .owner-wizard-option__icon{background:var(--indigo);color:#fff}.owner-wizard-option>span:nth-child(2){flex:1}.owner-wizard-option b,.owner-wizard-option small{display:block}.owner-wizard-option b{font-size:16.5px}.owner-wizard-option small{margin-top:var(--esp-2);color:var(--gris);font-size:14.5px}.owner-wizard-option__check{color:var(--indigo);opacity:0}.owner-wizard-option[aria-checked="true"] .owner-wizard-option__check{opacity:1}.owner-wizard-options--grid{grid-template-columns:1fr 1fr;margin-bottom:var(--esp-26)}.owner-wizard-options--grid .owner-wizard-option:last-child{grid-column:1/-1}.owner-wizard-label{margin:30px 0 var(--esp-20)!important;color:var(--gris)!important;font-size:12px!important;font-weight:700;letter-spacing:.1em}.owner-wizard-counters{display:grid;grid-template-columns:1fr 1fr;gap:30px}.owner-wizard-counter>div{display:flex;align-items:center;gap:var(--esp-16)}.owner-wizard-counter button{display:grid;width:52px;height:52px;place-items:center;border:0;border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde-campo);color:var(--indigo);cursor:pointer}.owner-wizard-counter button:hover{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-wizard-counter strong{min-width:2.6ch;text-align:center;font:700 32px var(--font-quicksand),sans-serif;letter-spacing:-.02em}.owner-wizard-counter span{color:var(--gris);font-size:17px;font-weight:600}.owner-wizard-chips{display:flex;flex-wrap:wrap;gap:9px}.owner-wizard-chips button{min-height:40px;padding:0 17px;border:0;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif}.owner-wizard-chips button[aria-pressed="true"],.owner-wizard-chips button:hover{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}.owner-wizard-help{display:block;margin-top:var(--esp-14);color:var(--gris);font-size:15.5px}.owner-wizard-quiet{display:inline-flex;min-height:40px;align-items:center;gap:var(--esp-8);margin-top:var(--esp-14);padding:0 var(--esp-10);border:0;border-radius:10px;background:transparent;color:var(--indigo);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif}.owner-wizard-quiet:hover{background:var(--indigo-suave)}.owner-wizard-quiet:disabled{visibility:hidden}.owner-wizard-summary{margin-bottom:var(--esp-26)}.owner-wizard-summary>div{display:flex;align-items:baseline;gap:var(--esp-16);padding:var(--esp-14) 0;box-shadow:inset 0 -1px 0 var(--divisor)}.owner-wizard-summary>div:last-child{box-shadow:none}.owner-wizard-summary span{min-width:148px;color:var(--gris);font-size:15.5px}.owner-wizard-summary b{margin-left:auto;text-align:right;font-size:17px}.owner-wizard-note{display:flex;gap:13px;padding:var(--esp-18);border-radius:14px;background:var(--indigo-suave);color:var(--tinta)}.owner-wizard-note svg{flex:none;color:var(--indigo)}.owner-wizard__footer{display:flex;align-items:center;gap:var(--esp-14);padding:var(--esp-18) var(--esp-32);box-shadow:inset 0 1px 0 var(--divisor)}.owner-wizard__footer .owner-wizard-quiet{margin:0}.owner-wizard-next{display:inline-flex;min-height:56px;align-items:center;gap:9px;margin-left:auto;padding:0 30px;border:0;border-radius:14px;background:var(--indigo);color:#fff;cursor:pointer;font:700 17.5px var(--font-nunito-sans),sans-serif}.owner-wizard-next:hover{background:var(--indigo-osc)}
+.owner-wizard{position:fixed;inset:0;z-index:90;display:flex;min-height:100vh;flex-direction:column;background:var(--elev);color:var(--tinta)}.owner-wizard__top{display:flex;align-items:center;gap:var(--esp-20);padding:var(--esp-18) var(--esp-32);box-shadow:inset 0 -1px 0 var(--divisor)}.owner-wizard__top>button{display:grid;width:46px;height:46px;place-items:center;border:0;border-radius:999px;background:var(--superficie);color:var(--gris);cursor:pointer}.owner-wizard__top>button:hover{background:var(--indigo-suave);color:var(--indigo)}.owner-wizard__top>b{font:700 16px var(--font-quicksand),sans-serif}.owner-wizard__top>span{color:var(--gris);font-size:14.5px;font-weight:600;white-space:nowrap}.owner-wizard__progress{height:5px;max-width:300px;flex:1;margin-left:auto;overflow:hidden;border-radius:999px;background:var(--borde)}.owner-wizard__progress i{display:block;height:100%;border-radius:inherit;background:var(--indigo);transition:width .35s ease}.owner-wizard__body{width:min(100% - 40px,620px);margin:auto;padding:var(--esp-44) 0}.owner-wizard__body h1{margin:0 0 var(--esp-12);font:700 32px/1.22 var(--font-quicksand),sans-serif;letter-spacing:-.02em}.owner-wizard__body>p{max-width:48ch;margin:0 0 var(--esp-32);color:var(--gris);font-size:17px}.owner-wizard-stack,.owner-wizard-options{display:grid;gap:11px}.owner-wizard-field{display:flex;align-items:baseline;gap:var(--esp-12);padding:var(--esp-16) var(--esp-20);border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde-campo);font:600 19px var(--font-quicksand),sans-serif}.owner-wizard-field:focus-within{background:var(--elev);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-wizard-field input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--tinta);font:inherit}.owner-wizard-field input::placeholder{color:var(--gris);opacity:.65;font-weight:400}.owner-wizard-field>span{color:var(--gris);font:600 17px var(--font-nunito-sans),sans-serif;white-space:nowrap}.owner-wizard-field--large{padding:var(--esp-18) 22px;font-size:34px;letter-spacing:-.025em}.owner-wizard-field--medium{margin-bottom:var(--esp-32);font-size:24px;letter-spacing:-.02em}.owner-wizard-field--amount{padding:var(--esp-18) 22px;font-size:34px;letter-spacing:-.025em}.owner-wizard-option{display:flex;width:100%;min-height:52px;align-items:center;gap:15px;padding:15px var(--esp-18);border:0;border-radius:14px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--tinta);cursor:pointer;text-align:left}.owner-wizard-option:hover{background:var(--superficie);box-shadow:inset 0 0 0 2px var(--borde-campo)}.owner-wizard-option[aria-checked="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-wizard-option__icon{display:grid;width:42px;height:42px;place-items:center;flex:none;border-radius:14px;background:var(--superficie);color:var(--gris)}.owner-wizard-option[aria-checked="true"] .owner-wizard-option__icon{background:var(--indigo);color:#fff}.owner-wizard-option>span:nth-child(2){flex:1}.owner-wizard-option b,.owner-wizard-option small{display:block}.owner-wizard-option b{font-size:16.5px}.owner-wizard-option small{margin-top:var(--esp-2);color:var(--gris);font-size:14.5px}.owner-wizard-option__check{color:var(--indigo);opacity:0}.owner-wizard-option[aria-checked="true"] .owner-wizard-option__check{opacity:1}.owner-wizard-options--grid{grid-template-columns:1fr 1fr;margin-bottom:var(--esp-26)}.owner-wizard-options--grid .owner-wizard-option:last-child{grid-column:1/-1}.owner-wizard-label{margin:30px 0 var(--esp-20)!important;color:var(--gris)!important;font-size:12px!important;font-weight:700;letter-spacing:.1em}.owner-wizard-counters{display:grid;grid-template-columns:1fr 1fr;gap:30px}.owner-wizard-counter>div{display:flex;align-items:center;gap:var(--esp-16)}.owner-wizard-counter button{display:grid;width:52px;height:52px;place-items:center;border:0;border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde-campo);color:var(--indigo);cursor:pointer}.owner-wizard-counter button:hover{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}.owner-wizard-counter strong{min-width:2.6ch;text-align:center;font:700 32px var(--font-quicksand),sans-serif;letter-spacing:-.02em}.owner-wizard-counter span{color:var(--gris);font-size:17px;font-weight:600}.owner-wizard-chips{display:flex;flex-wrap:wrap;gap:9px}.owner-wizard-chips button{min-height:40px;padding:0 17px;border:0;border-radius:999px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif}.owner-wizard-chips button[aria-pressed="true"],.owner-wizard-chips button:hover{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}.owner-wizard-help{display:block;margin-top:var(--esp-14);color:var(--gris);font-size:15.5px}.owner-wizard-quiet{display:inline-flex;min-height:40px;align-items:center;gap:var(--esp-8);margin-top:var(--esp-14);padding:0 var(--esp-10);border:0;border-radius:10px;background:transparent;color:var(--indigo);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif}.owner-wizard-quiet:hover{background:var(--indigo-suave)}.owner-wizard-quiet:disabled{visibility:hidden}.owner-wizard-summary{margin-bottom:var(--esp-26)}.owner-wizard-summary>div{display:flex;align-items:baseline;gap:var(--esp-16);padding:var(--esp-14) 0;box-shadow:inset 0 -1px 0 var(--divisor)}.owner-wizard-summary>div:last-child{box-shadow:none}.owner-wizard-summary span{min-width:148px;color:var(--gris);font-size:15.5px}.owner-wizard-summary b{margin-left:auto;text-align:right;font-size:17px}.owner-wizard-note{display:flex;gap:13px;padding:var(--esp-18);border-radius:14px;background:var(--indigo-suave);color:var(--tinta)}.owner-wizard-note svg{flex:none;color:var(--indigo)}.owner-wizard__footer{display:flex;align-items:center;gap:var(--esp-14);padding:var(--esp-18) var(--esp-32);box-shadow:inset 0 1px 0 var(--divisor)}.owner-wizard__footer .owner-wizard-quiet{margin:0}.owner-wizard-next{display:inline-flex;min-height:56px;align-items:center;gap:9px;margin-left:auto;padding:0 30px;border:0;border-radius:14px;background:var(--indigo);color:#fff;cursor:pointer;font:700 17.5px var(--font-nunito-sans),sans-serif}.owner-wizard-next:hover{background:var(--indigo-osc)}
 @media(max-width:900px){.owner-wizard__top,.owner-wizard__footer{padding-left:var(--esp-20);padding-right:var(--esp-20)}.owner-wizard__progress{display:none}.owner-wizard__body{padding:34px 0}.owner-wizard__body h1{font-size:26px}.owner-wizard-field--large,.owner-wizard-field--amount{font-size:28px}.owner-wizard-options--grid,.owner-wizard-counters{grid-template-columns:1fr}.owner-wizard-options--grid .owner-wizard-option:last-child{grid-column:auto}}@media(max-width:560px){.owner-wizard__top{gap:var(--esp-12)}.owner-wizard__top>span{font-size:13px}.owner-wizard__body{width:min(100% - 32px,620px)}.owner-wizard__body>p{font-size:16px}.owner-wizard-field--large,.owner-wizard-field--amount{font-size:23px}.owner-wizard-field{padding:15px}.owner-wizard-field>span{font-size:14px}.owner-wizard-summary>div{align-items:flex-start;flex-direction:column;gap:4px}.owner-wizard-summary b{margin-left:0;text-align:left}.owner-wizard__footer{padding:var(--esp-12) var(--esp-16)}.owner-wizard-next{min-height:52px;padding:0 var(--esp-18);font-size:16px}}
 /* Separa los chips del contador cuando lo siguen directamente (paso «Plazo
    del contrato»): sin esto quedan tocando los botones de 52px. En el paso de
    actualización los chips vienen después de un .owner-wizard-label, que ya
    aporta su margen, así que la regla se limita al par contador + chips. */
 .owner-wizard-counter + .owner-wizard-chips{margin-top:var(--esp-26)}
+
+/* Mantiene la barra de avance del asistente nativa y con el acabado de la UI. */
+.owner-wizard__progress{appearance:none;border:0}.owner-wizard__progress::-webkit-progress-bar{background:var(--borde)}.owner-wizard__progress::-webkit-progress-value{border-radius:inherit;background:var(--indigo);transition:width .35s ease}.owner-wizard__progress::-moz-progress-bar{border-radius:inherit;background:var(--indigo);transition:width .35s ease}
 
 /* La ayuda que cierra el bloque cuelga de los chips, no de un campo: los 14px
    de .owner-wizard-help la dejaban tocando las píldoras. */
@@ -90,7 +93,11 @@
   .owner-filter button{flex:0 1 auto;min-width:0;min-height:44px;padding:0 var(--esp-14);font-size:15px}
 }
 
-.owner-wizard{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.owner-wizard:has(.owner-wizard__body){
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
 
 
 /* ── Correcciones de maquetado ─────────────────────────────────────
@@ -115,9 +122,12 @@
    Lo aplicado SIEMPRE se muestra afuera: un filtro activo e invisible es
    la causa número uno de "¿por qué no aparece mi propiedad?".
    ------------------------------------------------------------------ */
-.owner-search-bar{display:flex;gap:var(--esp-12);align-items:center;margin:0 0 var(--esp-16)}
+/* z-index propio: .owner-content anima a sus hijos con transform, y cada uno
+   queda como contexto de apilado. Sin esto el listado, que va después en el
+   DOM, tapa el panel de Filtros. */
+.owner-search-bar{position:relative;z-index:10;display:flex;gap:var(--esp-12);align-items:center;margin:0 0 var(--esp-16)}
 .owner-search{position:relative;display:flex;align-items:center;gap:var(--esp-10);flex:1;min-width:0;
-  min-height:48px;padding:0 var(--esp-14);border-radius:14px;background:#fff;
+  min-height:48px;padding:0 var(--esp-14);border-radius:14px;background:var(--elev);
   box-shadow:inset 0 0 0 1.5px var(--borde);transition:box-shadow .15s}
 .owner-search:focus-within{box-shadow:inset 0 0 0 2px var(--indigo)}
 .owner-search>svg{color:var(--gris);flex:none}
@@ -131,7 +141,7 @@
 
 .owner-filter-anchor{position:relative;flex:none}
 .owner-filter-toggle{display:inline-flex;align-items:center;gap:9px;min-height:48px;padding:0 var(--esp-18);
-  border:0;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--borde);
+  border:0;border-radius:14px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde);
   color:var(--tinta);cursor:pointer;font:700 16px var(--font-nunito-sans),sans-serif;
   transition:box-shadow .15s,background .15s}
 .owner-filter-toggle:hover{box-shadow:inset 0 0 0 1.5px var(--borde-campo);background:var(--superficie)}
@@ -140,8 +150,8 @@
   border-radius:999px;background:var(--indigo);color:#fff;font-size:12.5px;font-variant-numeric:tabular-nums}
 
 .owner-panel__scrim{position:fixed;inset:0;z-index:40;border:0;background:transparent;cursor:default}
-.owner-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:50;width:340px;
-  border-radius:18px;background:#fff;box-shadow:0 1px 3px rgba(30,27,46,.05),0 22px 48px -14px rgba(30,27,46,.28)}
+.owner-panel{position:absolute;top:calc(100% + 10px);right:0;left:auto;max-width:calc(100vw - 32px);z-index:50;width:340px;margin:0;padding:0;
+  border:0;border-radius:18px;background:var(--elev);box-shadow:0 1px 3px rgba(30,27,46,.05),0 22px 48px -14px rgba(30,27,46,.28)}
 .owner-panel__head{display:flex;align-items:center;justify-content:space-between;padding:var(--esp-18) var(--esp-20) 0}
 .owner-panel__head b{font:700 17px var(--font-quicksand),sans-serif}
 .owner-panel__close{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:999px;
@@ -154,7 +164,7 @@
   margin-top:var(--esp-6);padding:var(--esp-14) var(--esp-20) var(--esp-18);box-shadow:inset 0 1px 0 var(--divisor)}
 
 .owner-chips{display:flex;flex-wrap:wrap;gap:var(--esp-8)}
-.owner-chip{min-height:40px;padding:0 15px;border:0;border-radius:999px;background:#fff;
+.owner-chip{min-height:40px;padding:0 15px;border:0;border-radius:999px;background:var(--elev);
   box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);cursor:pointer;
   font:600 15px var(--font-nunito-sans),sans-serif;transition:box-shadow .15s,background .15s,color .15s}
 .owner-chip:hover{box-shadow:inset 0 0 0 1.5px var(--borde-campo);background:var(--superficie);color:var(--tinta)}
@@ -171,12 +181,35 @@
   font:600 14.5px var(--font-nunito-sans),sans-serif;text-decoration:underline;text-underline-offset:3px}
 .owner-applied__clear:hover{color:var(--indigo)}
 
-.owner-result-count{margin:0 0 var(--esp-12);color:var(--gris);font-size:14.5px}
 .owner-empty{display:flex;flex-direction:column;align-items:center;gap:var(--esp-10);padding:56px 24px;
-  border-radius:20px;background:#fff;text-align:center;
+  border-radius:20px;background:var(--elev);text-align:center;
   box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}
 .owner-empty b{font:700 18px var(--font-quicksand),sans-serif}
 .owner-empty span{color:var(--gris)}
+
+/* Estado vacío de un listado sin nada cargado (`EmptyState`): ilustración,
+   qué falta y el paso que sigue. El texto se corta en ~46ch para que no se
+   lea como un renglón de punta a punta. */
+.owner-empty__art{display:block;width:132px;height:auto;flex:none}
+.owner-empty--first{padding:var(--esp-44) var(--esp-26)}
+.owner-empty--first .owner-empty__text{display:flex;flex-direction:column;align-items:center;gap:var(--esp-6);max-width:46ch}
+.owner-empty--first .owner-button{margin-top:var(--esp-10)}
+/* Compacto: un bloque dentro de otra pantalla, en una sola franja. */
+.owner-empty--compact{flex-direction:row;padding:var(--esp-18) var(--esp-26);gap:var(--esp-18);text-align:left}
+.owner-empty--compact .owner-empty__art{width:76px}
+.owner-empty--compact .owner-empty__text{align-items:flex-start;max-width:none}
+.owner-empty--compact b{font-size:17px}
+/* Cobranza del mes sin cuotas: ocupa la tarjeta en vez de dejarla en blanco. */
+.owner-portfolio__empty{display:flex;align-items:center;gap:var(--esp-18);margin-top:var(--esp-20)}
+.owner-portfolio__empty .owner-empty__art{width:96px}
+.owner-portfolio__empty b{display:block;font:700 18px var(--font-quicksand),sans-serif}
+.owner-portfolio__empty span{display:block;margin-top:var(--esp-6);color:var(--gris)}
+@media (max-width:620px){
+  .owner-empty--first{padding:var(--esp-32) var(--esp-20)}
+  .owner-empty--first .owner-button{width:100%}
+  .owner-empty--compact{padding:var(--esp-16)}
+  .owner-empty--compact .owner-empty__art,.owner-portfolio__empty .owner-empty__art{width:64px}
+}
 
 .owner-search-bar :focus-visible,.owner-panel :focus-visible,.owner-applied :focus-visible{
   outline:3px solid var(--lila);outline-offset:3px}
@@ -186,7 +219,7 @@
   .owner-filter-anchor{flex:1}
   .owner-filter-toggle{width:100%;justify-content:center}
   /* En pantalla chica el panel es una hoja anclada abajo: nada de popover diminuto */
-  .owner-panel{position:fixed;inset:auto 0 0 0;width:auto;max-height:82vh;overflow-y:auto;
+  .owner-panel{position:fixed;inset:auto 0 0 0;width:auto;max-width:none;max-height:82vh;overflow-y:auto;
     border-radius:20px 20px 0 0}
   .owner-panel__scrim{background:rgba(30,27,46,.45)}
 }
@@ -200,7 +233,7 @@
 .owner-ac__box{display:flex;align-items:center;gap:var(--esp-12);min-height:64px;padding:0 var(--esp-20);
   border-radius:16px;background:var(--superficie);
   box-shadow:inset 0 0 0 1.5px var(--borde);transition:box-shadow .15s,background .15s}
-.owner-ac__box:focus-within{background:#fff;box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-ac__box:focus-within{background:var(--elev);box-shadow:inset 0 0 0 2px var(--indigo)}
 .owner-ac__box>svg{color:var(--gris);flex:none;width:22px;height:22px}
 .owner-ac__box input{flex:1;min-width:0;border:0;background:transparent;padding:0;color:var(--tinta);
   font:700 24px var(--font-quicksand),sans-serif;letter-spacing:-.02em}
@@ -208,7 +241,7 @@
 .owner-ac__box input::placeholder{color:var(--gris);font-weight:500;opacity:.75}
 
 .owner-ac__list{position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:30;
-  margin:0;padding:var(--esp-6);list-style:none;border-radius:16px;background:#fff;
+  margin:0;padding:var(--esp-6);list-style:none;border-radius:16px;background:var(--elev);
   box-shadow:0 1px 3px rgba(30,27,46,.05),0 20px 44px -14px rgba(30,27,46,.26)}
 .owner-ac__list li{margin:0}
 .owner-ac__list button{display:flex;flex-direction:column;gap:var(--esp-2);width:100%;text-align:left;
@@ -227,7 +260,7 @@
 .owner-ac-chosen__body b{font:700 22px var(--font-quicksand),sans-serif;letter-spacing:-.02em;color:var(--tinta)}
 .owner-ac-chosen__body small{color:var(--gris);font-size:15px}
 .owner-ac-chosen__change{flex:none;min-height:40px;padding:0 var(--esp-16);border:0;border-radius:10px;
-  background:#fff;color:var(--indigo);cursor:pointer;font:700 15px var(--font-nunito-sans),sans-serif}
+  background:var(--elev);color:var(--indigo);cursor:pointer;font:700 15px var(--font-nunito-sans),sans-serif}
 .owner-ac-chosen__change:hover{background:var(--indigo);color:#fff}
 .owner-ac :focus-visible,.owner-ac-chosen :focus-visible{outline:3px solid var(--lila);outline-offset:3px}
 
@@ -240,18 +273,8 @@
 /* Error de validación en el asistente: el mensaje dice qué corregir, no sólo que está mal. */
 .owner-wizard-error{display:flex;align-items:center;gap:var(--esp-8);margin:var(--esp-10) var(--esp-2) 0;
   color:var(--error);font:600 15px var(--font-nunito-sans),sans-serif}
-.owner-wizard-field input[aria-invalid="true"]{box-shadow:inset 0 0 0 2px var(--error)}
+.owner-wizard-field select{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--tinta);cursor:pointer;font:inherit}
 .owner-wizard-next[disabled]{background:var(--indigo-suave);color:#9B95B5;cursor:not-allowed}
-
-/* Guardando: el botón dice qué está pasando y el anillo lo acompaña. El texto
-   es el que informa — el anillo solo, sin rótulo, no dice qué se está haciendo. */
-.owner-wizard-spinner{display:inline-block;width:18px;height:18px;flex:none;border-radius:50%;
-  border:2.5px solid rgba(155,149,181,.35);border-top-color:#9B95B5;
-  animation:owner-wizard-spin .7s linear infinite}
-@keyframes owner-wizard-spin{to{transform:rotate(360deg)}}
-/* Con movimiento reducido no se apaga del todo: gira lento, porque es el único
-   indicio de que la app sigue trabajando. El rótulo "Guardando…" ya está. */
-@media(prefers-reduced-motion:reduce){.owner-wizard-spinner{animation-duration:2.4s}}
 
 /* Error al guardar, distinto del error de un campo: no se corrige tipeando en
    un input, así que va sobre fondo propio y no colgando de una etiqueta. */
@@ -276,7 +299,7 @@
 .owner-row__link:focus-visible::after{outline:3px solid var(--lila);outline-offset:-3px}
 
 /* Estados de carga y vacío del listado. */
-.owner-list-note{padding:var(--esp-32) var(--esp-20);color:var(--gris);text-align:center;
+.owner-list-note{display:block;padding:var(--esp-32) var(--esp-20);color:var(--gris);text-align:center;
   font:600 16px var(--font-nunito-sans),sans-serif}
 .owner-list-note b{display:block;margin-bottom:var(--esp-6);color:var(--tinta);font-size:17px}
 
@@ -295,7 +318,7 @@
    ------------------------------------------------------------------ */
 .owner-table .owner-button--quiet,
 .owner-notices .owner-button--quiet{
-  background:#fff;
+  background:var(--elev);
   box-shadow:inset 0 0 0 1.5px var(--borde-campo);
   color:var(--indigo);
 }
@@ -308,21 +331,19 @@
    pensado para separar items entre sí, no una sección de la anterior. */
 .owner-nav__links > .owner-nav__group{margin-top:24px}
 
-/* ── Altura pareja de filas ────────────────────────────────────────────
-   Una fila más alta rompe el ritmo de lectura de la tabla. En vez de
-   forzar una altura fija (que recortaría contenido), se evita que algo
-   ocupe una línea extra: el sub-estado va al lado de la píldora, no
-   debajo, y los textos secundarios no envuelven.
-   ------------------------------------------------------------------ */
-.owner-table td .owner-status + .owner-substatus{
-  display:inline-block;
-  margin-top:0 !important;
-  margin-left:var(--esp-10);
-  color:var(--gris);
-  font-size:14px;
-  white-space:nowrap;
-  vertical-align:middle;
-}
+/* Cambio de tema (ALQ-38): en el sidebar comparte fila con «Cerrar sesión»,
+   así el perfil tiene todo el ancho para el nombre; en la barra y el cajón
+   móviles va junto al avatar/cierre. */
+.owner-nav__footer{display:flex;align-items:center;gap:var(--esp-8);margin-top:var(--esp-12)}
+.owner-nav__footer .owner-nav__logout{flex:1;min-width:0;margin-top:0}
+.owner-nav__footer .owner-icon-button{flex:none}
+/* El texto del perfil cede el ancho (min-width:0): si no, el email no se
+   achica y Safari desborda el sidebar. Nombre y email se cortan con «…». */
+.owner-nav__profile-text{flex:1;min-width:0}
+.owner-nav__profile .owner-nav__profile-text strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.owner-nav__profile .owner-nav__profile-text small{max-width:none}
+.owner-mobile-header__end,.owner-drawer__top-end{display:flex;align-items:center;gap:var(--esp-8)}
+
 .owner-table td small{
   overflow:hidden;
   text-overflow:ellipsis;
@@ -402,3 +423,548 @@
   .owner-document>div{flex:1 1 calc(100% - 35px);min-width:0}
   .owner-document .owner-button{width:100%;min-height:46px;justify-content:center}
 }
+
+/* Diálogos: cabecera y pie fijos, el cuerpo scrollea. El pie existía en el
+   markup pero sin estilos, y los campos usaban la escala grande del wizard. */
+.owner-dialog__panel{display:flex;flex-direction:column;overflow:hidden;max-height:calc(100dvh - 40px)}
+.owner-dialog__head{flex:none}
+.owner-dialog__body{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain}
+.owner-dialog__foot{display:flex;flex:none;align-items:center;justify-content:flex-end;gap:var(--esp-10);padding:var(--esp-14) var(--esp-26);box-shadow:inset 0 1px 0 var(--divisor);background:var(--elev)}
+.owner-dialog__foot .owner-button{min-height:48px}
+.owner-dialog__body>p+.owner-wizard-field,.owner-dialog__body>p+.owner-wizard-stack{margin-top:var(--esp-16)}
+.owner-dialog .owner-wizard-stack{gap:var(--esp-12)}
+.owner-dialog .owner-wizard-duo{grid-template-columns:repeat(2,minmax(0,1fr))}
+.owner-dialog .owner-wizard-duo>*,.owner-dialog .owner-wizard-field{min-width:0}
+.owner-dialog .owner-wizard-field{padding:12px var(--esp-16);border-radius:12px;font-size:17px}
+.owner-dialog .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){flex-direction:column;align-items:stretch;gap:2px}
+.owner-dialog .owner-wizard-field>span:not(.sr-only){font-size:13px;font-weight:700}
+.owner-dialog .owner-wizard-field--medium{margin-bottom:var(--esp-20);font-size:20px}
+.owner-dialog .owner-wizard-field--amount{padding:12px var(--esp-16);font-size:26px}
+.owner-dialog .owner-wizard-field--amount>span{font-size:15px}
+.owner-dialog .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-12)!important}
+.owner-dialog .owner-wizard-chips{margin-top:var(--esp-6)}
+.owner-wizard-actions{display:flex;gap:var(--esp-10);margin-top:var(--esp-16);justify-content:flex-end}
+
+/* Ítems del ajuste de cuota: cada línea del desglose lleva sus acciones
+   (Editar / Quitar) como botones compactos CON cuerpo —no texto suelto—,
+   siempre visibles (regla 5), con el anillo inset de la familia (regla 6) y
+   Quitar en tono danger con cuerpo (regla 7). Las acciones cuelgan debajo del
+   importe, alineadas a la derecha, para no apretar el monto en la misma línea. */
+.owner-ajuste-item{row-gap:var(--esp-8)}
+.owner-ajuste-item__acciones{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:var(--esp-8);justify-content:flex-end;margin-top:var(--esp-2)}
+.owner-ajuste-accion{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 var(--esp-14);border:0;border-radius:999px;background:var(--elev);color:var(--indigo);box-shadow:inset 0 0 0 1.5px var(--borde-campo);cursor:pointer;font:600 14px var(--font-nunito-sans),sans-serif;transition:background .15s,box-shadow .15s}
+.owner-ajuste-accion:hover{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-ajuste-accion--quitar{color:var(--error);box-shadow:inset 0 0 0 1.5px rgba(206,63,83,.42)}
+.owner-ajuste-accion--quitar:hover{background:var(--error-bg);box-shadow:inset 0 0 0 2px var(--error)}
+.owner-ajuste-accion:focus-visible{outline:3px solid var(--lila);outline-offset:2px}
+.owner-ajuste-accion[disabled]{background:var(--elev);color:var(--gris);box-shadow:inset 0 0 0 1.5px var(--borde);opacity:.55;cursor:not-allowed}
+@media (max-width:620px){.owner-ajuste-item__acciones{justify-content:flex-start}}
+.owner-dialog .owner-wizard-counter button{width:44px;height:44px;border-radius:12px}
+.owner-dialog .owner-wizard-counter strong{font-size:26px}
+@media (max-width:620px){
+  .owner-dialog{place-items:end center;padding:0}
+  .owner-dialog__panel{width:100%;max-height:92dvh;border-radius:20px 20px 0 0}
+  .owner-dialog__head{padding:var(--esp-16) var(--esp-20)}
+  .owner-dialog__head h2{font-size:19px;line-height:1.25}
+  .owner-dialog__body{padding:var(--esp-20)}
+  .owner-dialog__foot{flex-direction:column-reverse;align-items:stretch;padding:var(--esp-12) var(--esp-20) max(var(--esp-16),env(safe-area-inset-bottom))}
+  .owner-dialog__foot .owner-button{width:100%}
+  .owner-dialog .owner-wizard-field{font-size:16px}
+}
+
+/* Todos los campos de un diálogo miden lo mismo, con o sin rótulo. */
+.owner-dialog .owner-wizard-field:not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){box-sizing:border-box;min-height:60px;align-items:center;justify-content:center;padding-block:8px}
+.owner-dialog .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){align-items:stretch;gap:0}
+.owner-dialog .owner-wizard-field>span:not(.sr-only){font-size:12px;line-height:1.2}
+.owner-dialog .owner-wizard-field input,.owner-dialog .owner-wizard-field select{line-height:1.3}
+
+/* Cambiar condiciones: campos con rótulo arriba, contadores lado a lado. */
+.owner-dialog__lead{margin-bottom:var(--esp-20)!important}
+.owner-dialog-money{display:flex;align-items:baseline;gap:var(--esp-6);font:600 17px/1.3 var(--font-quicksand),sans-serif;color:var(--tinta)}
+.owner-dialog-money i{color:var(--gris);font-style:normal}
+.owner-dialog-money input{min-width:0;flex:1}
+.owner-dialog-percent{margin-top:var(--esp-12)}
+.owner-dialog-counters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--esp-20);margin-top:var(--esp-20)}
+.owner-dialog-counters .owner-wizard-label{margin:0 0 var(--esp-8)!important}
+.owner-dialog-counters .owner-wizard-counter>div{gap:var(--esp-10)}
+.owner-dialog-counters .owner-wizard-counter span{font-size:15px}
+@media (max-width:620px){.owner-dialog-counters{grid-template-columns:1fr}}
+
+/* Más aire en los campos y rótulos en minúscula, iguales en todo el diálogo. */
+.owner-dialog .owner-wizard-stack{gap:var(--esp-14)}
+.owner-dialog .owner-wizard-field:not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){min-height:68px;padding:10px var(--esp-18);font-size:18px}
+.owner-dialog .owner-wizard-field>span:not(.sr-only){font-size:13px}
+.owner-dialog .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){gap:3px}
+.owner-dialog-money{font-size:18px}
+.owner-dialog .owner-wizard-label{color:var(--gris)!important;font:700 13px/1.2 var(--font-nunito-sans),sans-serif!important;letter-spacing:0!important;text-transform:none}
+.owner-dialog .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-10)!important}
+.owner-dialog-counters{gap:var(--esp-26);margin-top:var(--esp-26)}
+.owner-dialog-counters .owner-wizard-label{margin:0 0 var(--esp-10)!important}
+.owner-dialog-percent{margin-top:var(--esp-14)}
+.owner-dialog .owner-wizard-chips{gap:var(--esp-10)}
+.owner-dialog__body{padding-block:var(--esp-26)}
+
+/* ── Cobranzas en escritorio ───────────────────────────────────────────
+   Filtro por propiedad junto a los chips de estado; filas de igual altura
+   (las dos acciones van lado a lado, no apiladas); monto sin cortes;
+   «Sin confirmar» como píldora neutra junto a la de estado.
+   Todo bajo 621px+: en celular la tabla apilada queda como estaba.
+   ------------------------------------------------------------------ */
+@media (min-width:621px){
+  .owner-table{min-width:980px}
+  .owner-table th,.owner-table td{padding-inline:var(--esp-20)}
+  .owner-table td[data-cell="monto"]{white-space:nowrap}
+  .owner-table td[data-cell="propiedad"]{min-width:230px}
+  .owner-table td[data-cell="accion"]{white-space:nowrap}
+  .owner-table td[data-cell="accion"] .owner-button{vertical-align:middle}
+  .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:var(--esp-8)}
+  .owner-table tbody tr{height:84px}
+  .owner-table td .owner-status + .owner-substatus{
+    padding:var(--esp-6) var(--esp-12);border-radius:999px;background:var(--superficie);
+    box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);font-size:13.5px;font-weight:600;line-height:1.3;
+  }
+}
+
+/* Documento sin cargar: ya está dentro de una tarjeta blanca, así que va sin caja propia (ni gris ni contorno). */
+.owner-empty-callout--outline{padding:0;background:transparent}
+.owner-empty-callout--outline>svg{background:var(--indigo-suave)}
+
+.owner-chip b{margin-left:7px;font-variant-numeric:tabular-nums}
+
+.owner-dialog__body>.owner-dialog__amount{margin:var(--esp-12) 0 0;color:var(--tinta);font:700 32px var(--font-quicksand),sans-serif;font-variant-numeric:tabular-nums}
+
+/* ── Asistente: alturas, labels y pie ────────────────────────────────
+   · Todos los campos de texto miden lo mismo que el buscador de direcciones.
+   · Los labels van en minúscula, como en los diálogos: antes se mezclaban
+     «Dormitorios» con «SUPERFICIE CUBIERTA».
+   · El pie queda fijo: con una lista larga (tipo de propiedad) «Seguir»
+     quedaba debajo del pliegue. */
+.owner-wizard-field:not(.owner-wizard-field--large):not(.owner-wizard-field--amount){box-sizing:border-box;min-height:64px;align-items:center}
+.owner-wizard:not(.owner-dialog) .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-10)!important;color:var(--gris)!important;font:700 15px/1.2 var(--font-nunito-sans),sans-serif!important;letter-spacing:0!important;text-transform:none}
+.owner-wizard-counters .owner-wizard-label{margin:0 0 var(--esp-10)!important}
+.owner-wizard__footer{position:sticky;bottom:0;z-index:2;background:var(--elev)}
+.owner-wizard-skip{display:flex;width:100%;min-height:52px;align-items:center;justify-content:center;margin-top:var(--esp-32);border:0;border-radius:14px;background:var(--elev);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo);cursor:pointer;font:700 16.5px var(--font-nunito-sans),sans-serif}
+.owner-wizard-skip:hover{background:var(--indigo-suave)}
+.owner-wizard-skip:focus-visible{outline:3px solid var(--lila);outline-offset:3px}
+
+/* ── Asistente: el alquiler mide como el resto de los campos ─────────
+   El monto con 34 px era el doble de alto que la fecha del paso siguiente y
+   que los contadores de abajo. Ahora comparte alto y cuerpo con ellos; el
+   diálogo de cambio de condiciones conserva su propia medida. */
+.owner-wizard:not(.owner-dialog) .owner-wizard-field--amount{box-sizing:border-box;min-height:64px;align-items:center;padding:var(--esp-16) var(--esp-20);font-size:24px;letter-spacing:-.02em}
+
+/* El label quedaba a 10 px de su contador, mucho más cerca que de lo que
+   tiene arriba y abajo: se leía como pegado. */
+.owner-wizard:not(.owner-dialog) .owner-wizard-label{margin-bottom:var(--esp-16)!important}
+.owner-wizard-counters .owner-wizard-label{margin-bottom:var(--esp-10)!important}
+.owner-wizard:not(.owner-dialog) .owner-wizard-field--amount>span:first-child{margin-right:4px}
+
+/* Botón de una tarjeta: no pegado al texto de arriba. */
+.owner-card__copy + .owner-button{margin-top:var(--esp-20)}
+
+/* Editar recordatorios: bloques separados con aire parejo. */
+.owner-dialog__body--reminders{display:flex;flex-direction:column;gap:var(--esp-26)}
+.owner-dialog__body--reminders>p{margin:0}
+.owner-dialog__body--reminders .owner-wizard-chips{margin-top:0}
+.owner-dialog__body--reminders .owner-wizard-counter .owner-wizard-label{margin:0 0 var(--esp-12)!important}
+
+/* La regla de las tarjetas parejas anula el margen del botón: el aire va en el texto. */
+.owner-card__copy:has(+ .owner-button){margin-bottom:var(--esp-20)}
+.owner-dialog__body--reminders .owner-dialog-counters{margin-top:0}
+
+/* Interruptor: la fila entera se toca; el estado se lee en la perilla y el color. */
+.owner-switch{display:flex;width:100%;min-height:56px;align-items:center;justify-content:space-between;gap:var(--esp-16);padding:0 var(--esp-18);border:0;border-radius:12px;background:var(--superficie);color:var(--tinta);cursor:pointer;font:700 17px var(--font-nunito-sans),sans-serif;text-align:left}
+.owner-switch i{position:relative;flex:none;width:50px;height:30px;border-radius:15px;background:#8B8799;transition:background .15s}
+.owner-switch i::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s}
+.owner-switch[aria-checked="true"] i{background:var(--indigo)}
+.owner-switch[aria-checked="true"] i::after{transform:translateX(20px)}
+.owner-switch:focus-visible{outline:3px solid var(--indigo);outline-offset:2px}
+
+/* Recordatorios: una sola lista, rótulo a la izquierda y control a la derecha, como en la tarjeta. */
+.owner-reminder-rows{overflow:hidden;border-radius:12px;box-shadow:inset 0 0 0 1px var(--divisor)}
+.owner-reminder-rows>*{box-sizing:border-box;min-height:76px;padding:var(--esp-12) var(--esp-18)}
+.owner-reminder-rows>*+*{box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-reminder-rows .owner-wizard-counter{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-16)}
+.owner-reminder-rows .owner-wizard-counter .owner-wizard-label{margin:0!important;color:var(--tinta)!important;font-size:17px!important}
+.owner-reminder-rows .owner-wizard-counter>div{display:flex;align-items:center;gap:var(--esp-10)}
+.owner-reminder-rows .owner-wizard-counter strong{min-width:2ch;text-align:center}
+.owner-reminder-rows .owner-switch{border-radius:0;background:transparent}
+@media (max-width:620px){.owner-reminder-rows .owner-wizard-counter{flex-wrap:wrap}}
+
+/* Asistente en celu: pasos 3 y 4 con ritmo vertical más parejo. Solo mobile. */
+@media (max-width:560px){
+  .owner-wizard:not(.owner-dialog){background:var(--superficie)}
+  .owner-wizard__top,.owner-wizard__footer{background:var(--elev)}
+  .owner-wizard:not(.owner-dialog) .owner-wizard__body{box-sizing:border-box;width:calc(100% - var(--esp-24, 24px));margin:var(--esp-12) auto;padding:var(--esp-20);border-radius:20px;background:var(--elev);box-shadow:0 0 0 1px var(--divisor),0 6px 20px rgba(30,27,46,.06)}
+  .owner-wizard__body>p{margin-bottom:var(--esp-20)}
+  .owner-wizard-counters{grid-template-columns:1fr 1fr;gap:var(--esp-16)}
+  .owner-wizard-counter>div{gap:var(--esp-8)}
+  .owner-wizard-counter button{width:44px;height:44px;border-radius:12px}
+  .owner-wizard-counter strong{min-width:1.6ch;font-size:26px}
+  .owner-wizard-counter + .owner-wizard-chips{margin-top:var(--esp-16)}
+  .owner-wizard:not(.owner-dialog) .owner-wizard-label{margin:var(--esp-20) 0 var(--esp-10)!important}
+  .owner-wizard-counters .owner-wizard-label{margin:0 0 var(--esp-10)!important}
+  .owner-wizard-skip{margin-top:var(--esp-20);min-height:46px;box-shadow:none;color:var(--indigo);font-size:15.5px}
+  .owner-wizard-summary{margin-bottom:var(--esp-20)}
+  .owner-wizard-summary>div{padding:var(--esp-10) 0}
+  .owner-wizard-summary span{min-width:0;font-size:14px}
+  .owner-wizard-summary b{font-size:16px}
+  .owner-wizard-note{padding:var(--esp-14)}
+}
+
+/* El nombre del campo siempre visible arriba a la izquierda. Con rótulo visible
+   se apila sobre el valor; con rótulo solo para lectores de pantalla (el campo
+   usa placeholder) aparece en cuanto el campo tiene datos, para no olvidar qué
+   se completó. */
+.owner-wizard:not(.owner-dialog) .owner-wizard-field:has(>span:not(.sr-only):first-child):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){flex-direction:column;align-items:stretch;justify-content:center;gap:2px}
+.owner-wizard:not(.owner-dialog) .owner-wizard-field>span:not(.sr-only):first-child:not(:last-child){font-size:13px;font-weight:700;line-height:1.2}
+.owner-wizard-field:has(>.sr-only):has(>input:not(:placeholder-shown)):not(.owner-wizard-field--amount):not(.owner-wizard-field--medium){flex-direction:column;align-items:stretch;justify-content:center;gap:2px}
+.owner-wizard-field:has(>input:not(:placeholder-shown))>.sr-only{position:static;width:auto;height:auto;margin:0;padding:0;overflow:visible;clip:auto;clip-path:none;white-space:nowrap;color:var(--gris);font:700 13px/1.2 var(--font-nunito-sans),sans-serif}
+
+/* Transición de la carga al contenido: todo lo que aparece debajo del
+   encabezado entra con un fundido corto, así la tarjeta del spinner no se
+   reemplaza de golpe por la lista o por el «todavía no tiene…». Se anima al
+   montarse el nodo, por eso no se repite al filtrar ni al escribir. Sólo
+   opacidad y 6 px de desplazamiento: el final es `transform:none`, que no
+   crea un bloque contenedor para los hijos con `position:fixed`. */
+@keyframes owner-aparece{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.owner-content>:not(.owner-page-head):not(.owner-crumb):not(.owner-wizard){animation:owner-aparece .32s ease-out both}
+@media (prefers-reduced-motion:reduce){.owner-content>:not(.owner-page-head):not(.owner-crumb):not(.owner-wizard){animation:none}}
+
+/* Error al cargar una pantalla o bloque. El color vive en el ícono; el texto
+   va en tinta y gris (regla de contraste de sistema-ui.md). */
+.owner-load-error{display:flex;flex-direction:column;align-items:center;gap:var(--esp-10);
+  padding:clamp(40px,8vh,96px) var(--esp-20);text-align:center}
+.owner-load-error__icon{display:grid;width:56px;height:56px;place-items:center;border-radius:50%;
+  background:var(--error-bg);color:var(--error)}
+.owner-load-error b{color:var(--tinta);font:700 18px var(--font-nunito-sans),sans-serif}
+.owner-load-error>span:last-child{color:var(--gris);font:400 16px var(--font-nunito-sans),sans-serif}
+
+/* «Importe sin confirmar» es lo que el propietario tiene que resolver en esa
+   cuota, así que no puede leerse como una nota al pie: va como aviso de
+   advertencia (fondo --warn-bg, ícono en --adv) y el texto en tinta, por la
+   regla de contraste de los semánticos. */
+.owner-table td .owner-status + .owner-substatus{
+  display:flex;align-items:center;gap:7px;width:fit-content;margin:var(--esp-8) 0 0!important;
+  padding:var(--esp-6) var(--esp-12);
+  border-radius:999px;background:var(--warn-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--adv) 35%,transparent);
+  color:var(--tinta);font-size:14px;font-weight:700;white-space:nowrap;
+}
+.owner-substatus svg{flex:none;color:var(--adv)}
+
+@media (max-width:620px){
+  /* Dos botones apilados no pueden tocarse: la acción principal queda
+     separada de la secundaria por el mismo aire que el resto de la tarjeta. */
+  .owner-table td[data-cell="accion"]{display:flex;grid-area:4/1/5/3;flex-direction:column;gap:var(--esp-10);margin-top:var(--esp-16)}
+  .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:0}
+  /* Tarjeta de cuota en celular, de arriba abajo:
+       1 · propiedad (con inquilino y período)  |  estado
+       2 · monto                                |  vencimiento
+       3 · franja «Sin confirmar» a todo el ancho (sólo si corresponde)
+       4 · acciones
+     La celda de estado deja de ser caja para que su píldora y la franja se
+     ubiquen cada una en su renglón. */
+  .owner-table td[data-cell="propiedad"]{grid-area:1/1/2/2}
+  .owner-table td[data-cell="estado"]{display:contents}
+  .owner-table td[data-cell="estado"] .owner-status{grid-area:1/2/2/3;align-self:start;justify-self:end;margin:0}
+  .owner-table td[data-cell="monto"]{grid-area:2/1/3/2;align-self:end;margin-top:var(--esp-14);font-size:22px}
+  .owner-table td[data-cell="vencimiento"]{grid-area:2/2/3/3;align-self:end;margin-top:var(--esp-14);text-align:right;font-size:15px}
+  .owner-table td[data-cell="estado"] .owner-status+.owner-substatus{display:flex;grid-area:3/1/4/3;justify-self:stretch;width:auto;
+    margin:var(--esp-14) 0 0!important;padding:var(--esp-10) var(--esp-14);border-radius:12px;font-size:14.5px}
+}
+
+/* Las dos píldoras de la celda de estado (estado y «Sin confirmar») apiladas
+   en escritorio tienen que medir lo mismo: una toma la altura del interlineado
+   heredado y la otra no. Altura fija en las dos, con el texto centrado. */
+@media (min-width:621px){
+  .owner-table td .owner-status,.owner-table td .owner-status + .owner-substatus{box-sizing:border-box;height:34px;padding-top:0;padding-bottom:0;line-height:1}
+}
+
+/* Estimador de alquiler (ALQ-45): botón + animación de espera + resultado.
+   La card es el tercer hijo de .owner-detail-grid, así que ocupa todo el ancho
+   por la regla :nth-child(3){grid-column:1/-1} ya existente. */
+.rent-estimate__lead{margin:var(--esp-8) 0 var(--esp-18);color:var(--gris);font-size:15.5px}
+.rent-estimate__moneda-label{margin:0 0 var(--esp-8)}
+.rent-estimate__moneda{margin:0}
+.rent-estimate .owner-button{margin-top:var(--esp-8)}
+.rent-estimate__progress{display:flex;align-items:center;gap:13px;margin-top:22px;padding:var(--esp-20);border-radius:14px;background:var(--superficie);color:var(--tinta);font:600 16.5px var(--font-nunito-sans),sans-serif}
+.rent-estimate__progress .alquia-spinner{color:var(--indigo)}
+.rent-estimate__error{margin-top:var(--esp-14)}
+.rent-estimate__error>p{margin:0 0 var(--esp-14);color:var(--error)}
+.rent-estimate__result{display:grid;gap:var(--esp-8);margin-top:var(--esp-14)}
+.rent-estimate__ready{display:flex;align-items:center;gap:9px;margin:0 0 var(--esp-8);color:var(--exito);font:700 15px var(--font-nunito-sans),sans-serif}
+.rent-estimate__check{display:grid;width:30px;height:30px;place-items:center;border-radius:999px;background:var(--exito-bg);color:var(--exito);animation:rent-estimate-pop .32s ease}
+@keyframes rent-estimate-pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.rent-estimate__amount{margin:0}
+.rent-estimate__amount b{display:block;font:700 32px/1.1 var(--font-quicksand),sans-serif}
+.rent-estimate__amount small{color:var(--gris)}
+.rent-estimate__range,.rent-estimate__basis{margin:0;color:var(--gris);font-size:15px}
+.rent-estimate__confidence{justify-self:start;margin-top:var(--esp-6);padding:var(--esp-6) var(--esp-12);border-radius:999px;font-size:13.5px;font-weight:700}
+.rent-estimate__confidence--alta{background:var(--exito-bg);color:var(--exito)}
+.rent-estimate__confidence--media{background:var(--indigo-suave);color:var(--indigo-osc)}
+.rent-estimate__confidence--baja{background:var(--warn-bg);color:var(--adv)}
+.rent-estimate__disclaimer{display:flex;align-items:flex-start;gap:7px;margin:var(--esp-8) 0 0;color:var(--gris);font-size:13.5px;line-height:1.4}
+.rent-estimate__disclaimer svg{flex:none;margin-top:2px}
+.rent-estimate__result .owner-button--small{justify-self:start;margin-top:var(--esp-12)}
+@media (prefers-reduced-motion:reduce){.rent-estimate__check{animation:none}}
+
+/* Comparables (ALQ-45) */
+.rent-comparables{margin-top:var(--esp-14)}
+.rent-comparables__title{margin:0 0 var(--esp-10);font:700 15px var(--font-nunito-sans),sans-serif;color:var(--tinta)}
+/* Lista y mapa lado a lado, emparejados (ALQ-45). */
+.rent-cmp-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--esp-12);align-items:stretch}
+.rent-cmp-panel .rent-comparables__list{max-height:360px;overflow:auto}
+@media (max-width:720px){.rent-cmp-panel{grid-template-columns:1fr}}
+.rent-comparables__list{list-style:none;margin:0;padding:0;display:grid;gap:var(--esp-8)}
+.rent-comparable{display:grid;grid-template-columns:auto 100px 1fr auto;align-items:center;gap:var(--esp-12);padding:var(--esp-10) var(--esp-12);border:1px solid var(--borde);border-radius:12px;background:var(--superficie);transition:border-color .15s,background-color .15s,box-shadow .15s}
+.rent-comparable--link{color:inherit;text-decoration:none;cursor:pointer}
+.rent-comparable--link:hover,.rent-comparable.is-active{border-color:var(--indigo);background:var(--indigo-suave);box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.rent-comparable--link:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+.rent-comparable__num{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:var(--gris);color:#fff;font:700 11px var(--font-nunito-sans),sans-serif}
+.rent-comparable.is-comparable .rent-comparable__num{background:var(--indigo)}
+.rent-comparable.is-active .rent-comparable__num{background:#A79AF0}
+/* Fila comparable (ALQ-45): la distingue de las demás propiedades del mercado. */
+.rent-comparable.is-comparable{border-color:var(--border-strong)}
+.rent-comparable__tag{flex:none;padding:1px 7px;border-radius:999px;background:var(--indigo-suave);color:var(--indigo-osc);font:700 10.5px var(--font-nunito-sans),sans-serif;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap}
+.rent-comparable__body{min-width:0}
+.rent-comparable__title{margin:0;display:flex;align-items:center;gap:6px;font-size:14.5px;color:var(--tinta)}
+.rent-comparable__title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rent-comparable__ext{flex:none;color:var(--indigo);opacity:0;transition:opacity .15s}
+.rent-comparable--link:hover .rent-comparable__ext,.rent-comparable--link:focus-visible .rent-comparable__ext,.rent-comparable.is-active .rent-comparable__ext{opacity:1}
+.rent-comparable__meta{margin:2px 0 0;color:var(--gris);font-size:12.5px}
+.rent-comparable__price{margin:0;font:700 14.5px var(--font-quicksand),sans-serif;color:var(--tinta);white-space:nowrap}
+.rent-source{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.rent-source__logo{height:18px;width:auto;max-width:96px;object-fit:contain;display:block}
+.rent-source__label{font:600 11px var(--font-nunito-sans),sans-serif;color:var(--gris);white-space:nowrap}
+.rent-source--chip{justify-self:center;padding:3px 9px;border-radius:999px;background:var(--indigo-suave);color:var(--indigo-osc);font-size:11.5px;font-weight:700;white-space:nowrap}
+
+/* Mapa de comparables — placeholder hasta ALQ-92 (ALQ-45) */
+.rent-map{height:100%;min-height:260px;border:1px solid var(--borde);border-radius:14px;overflow:hidden}
+.rent-map__canvas{height:100%;width:100%}
+.rent-map__loading{display:flex;height:100%;align-items:center;justify-content:center;color:var(--gris);font-size:13.5px;background:var(--superficie)}
+/* ALQ-92: tarjeta de ubicación interactiva en el alta/edición de una propiedad. */
+.property-map{display:flex;flex-direction:column;gap:var(--esp-10)}
+.property-map .rent-map{min-height:260px}
+.property-map__hint{display:flex;align-items:flex-start;gap:var(--esp-8);margin:0;color:var(--gris);font-size:14.5px;line-height:1.4}
+.property-map__hint svg{flex:none;margin-top:1px;color:var(--indigo)}
+.property-map__coords{margin:0;color:var(--gris);font-size:13.5px;font-weight:600}
+.property-map-pin__dot{display:block;width:18px;height:18px;border-radius:999px;background:#DB4C8E;box-shadow:0 0 0 4px rgba(219,76,142,.28),0 1px 4px rgba(0,0,0,.35);cursor:grab}
+/* Atribución (requerida por la licencia ODbL de OSM): colapsada en una "ⓘ" que se
+   expande al hover o al enfocar un enlace. El crédito sigue siempre en el DOM, así
+   que cumple la licencia sin ocupar espacio. Colores de marca. */
+.rent-map .leaflet-control-attribution{overflow:hidden;white-space:nowrap;max-width:20px;height:20px;display:flex;align-items:center;padding:0;border-radius:999px;background:rgba(246,245,252,.92);color:var(--gris);font-size:10px;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:max-width .22s ease,border-radius .22s ease;cursor:default}
+.rent-map .leaflet-control-attribution::before{content:"\24D8";flex:none;width:20px;text-align:center;font-size:12px;color:var(--gris)}
+.rent-map .leaflet-control-attribution:hover,.rent-map .leaflet-control-attribution:focus-within{max-width:min(360px,calc(100% - 8px));border-radius:10px 0 0 0;padding-right:8px}
+.rent-map .leaflet-control-attribution a{color:var(--gris)}
+/* Pines dibujados con divIcon (ver RentEstimateMapCanvas) */
+.rent-map-pin__dot{display:block;width:100%;height:100%;border-radius:999px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+/* La propiedad estimada: rosa de marca (#DB4C8E), distinto del violeta de los
+   comparables y del gris del resto, con halo para destacar que es la seleccionada. */
+.rent-map-pin--subject .rent-map-pin__dot{background:#DB4C8E;border-width:3px;box-shadow:0 0 0 4px rgba(219,76,142,.22),0 1px 5px rgba(0,0,0,.4)}
+.rent-map-pin__num{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:999px;border:2px solid #fff;background:var(--gris);color:#fff;font:700 11px var(--font-nunito-sans),sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .12s,background-color .12s}
+/* Comparables en color de marca; el resto del mercado, atenuado y más chico. */
+.rent-map-pin--comp .rent-map-pin__num{background:var(--indigo)}
+.rent-map-pin--other .rent-map-pin__num{background:var(--gris);transform:scale(.82);opacity:.9}
+/* Hover: solo cambia el color a lila de marca (#A79AF0), distinto del violeta de
+   los comparables y del gris del resto. No agranda: cada pin mantiene su diámetro
+   de reposo (no se escala como antes). */
+.rent-map-pin--active .rent-map-pin__num{background:#A79AF0;opacity:1}
+
+/* ── Contrato desde el PDF (PROTOTIPO) ─────────────────────────────
+   Ver docs/design/propuesta-contrato-desde-pdf.md. Radios y anillos
+   copiados de los hermanos: zona de carga = .owner-wizard-field,
+   lista de datos = .owner-list, cita = .owner-wizard-note.
+   ------------------------------------------------------------------ */
+.owner-pdf-drop{display:flex;flex-direction:column;align-items:center;gap:var(--esp-10);padding:var(--esp-44) var(--esp-20);border-radius:20px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde-campo);text-align:center}
+.owner-pdf-drop[data-arrastrando]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo)}
+.owner-pdf-drop__icon{display:grid;width:64px;height:64px;margin-bottom:var(--esp-6);place-items:center;border-radius:999px;background:var(--elev);color:var(--indigo)}
+.owner-pdf-drop b{font:700 19px var(--font-quicksand),sans-serif}
+.owner-pdf-drop small{color:var(--gris);font-size:15px}
+.owner-pdf-drop .owner-button{min-height:48px}
+.owner-pdf-file{display:flex;align-items:center;gap:var(--esp-14);padding:var(--esp-18);border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-pdf-file>span{display:grid;width:44px;height:44px;flex:none;place-items:center;border-radius:10px;background:var(--elev);color:var(--indigo)}
+.owner-pdf-file>div{min-width:0;flex:1}
+.owner-pdf-file b{display:block;overflow-wrap:anywhere;font-size:17px}
+.owner-pdf-file small{display:block;margin-top:3px;color:var(--gris);font-size:14.5px}
+.owner-pdf .owner-wizard-quiet{margin-top:var(--esp-16)}
+.owner-pdf-note{margin-top:var(--esp-26);font-size:15.5px}
+
+/* La espera: qué se está buscando, no sólo un anillo. */
+.owner-pdf-reading{text-align:center}
+.owner-pdf-reading>p{margin-left:auto!important;margin-right:auto!important}
+.owner-pdf-reading__arco{display:inline-block;margin-bottom:var(--esp-26)}
+.owner-pdf-reading ol{display:inline-grid;gap:var(--esp-12);margin:0;padding:0;list-style:none;text-align:left}
+.owner-pdf-reading li{display:flex;align-items:center;gap:var(--esp-12);color:var(--gris);font-size:17px}
+.owner-pdf-reading li>span:first-child{display:grid;width:26px;height:26px;flex:none;place-items:center;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--borde-campo)}
+.owner-pdf-reading li[data-estado="ahora"]{color:var(--tinta);font-weight:700}
+.owner-pdf-reading li[data-estado="ahora"]>span:first-child{box-shadow:none;color:var(--indigo)}
+.owner-pdf-reading li[data-estado="listo"]{color:var(--tinta)}
+.owner-pdf-reading li[data-estado="listo"]>span:first-child{background:var(--exito-bg);box-shadow:none;color:var(--exito)}
+
+/* La revisión: documento a la izquierda, datos a la derecha. */
+.owner-wizard__body.owner-pdf-review{display:grid;width:min(100% - 64px,1180px);grid-template-columns:minmax(0,1fr) minmax(0,560px);grid-template-areas:"intro intro" "doc data";gap:0 var(--esp-44);margin:0 auto;padding-top:var(--esp-32)}
+.owner-pdf-review__intro{grid-area:intro}
+.owner-pdf-review__intro>p{max-width:60ch;margin:0 0 var(--esp-26);color:var(--gris);font-size:17px}
+.owner-pdf-review__doc{position:sticky;top:var(--esp-20);grid-area:doc;align-self:start;max-height:calc(100vh - 200px);overflow:auto;border-radius:14px}
+.owner-pdf-review__data{grid-area:data;min-width:0}
+.owner-pdf-group{margin:var(--esp-26) 0 var(--esp-10);color:var(--gris);font:700 15px/1.2 var(--font-nunito-sans),sans-serif}
+.owner-pdf-group:first-child{margin-top:0}
+.owner-pdf-list{overflow:hidden;border-radius:20px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-pdf-item{display:grid;gap:var(--esp-6);padding:var(--esp-18) var(--esp-20)}
+.owner-pdf-item+.owner-pdf-item{box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-pdf-item[data-activo]{background:var(--superficie)}
+.owner-pdf-item__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-12)}
+.owner-pdf-item__label{color:var(--gris);font-size:15px;font-weight:700}
+.owner-pdf-item__source{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px}
+.owner-pdf-item__source svg{color:var(--exito)}
+.owner-pdf-item__value{font:700 21px/1.25 var(--font-quicksand),sans-serif;letter-spacing:-.01em}
+.owner-pdf-item__detail{color:var(--gris);font-size:15px}
+.owner-pdf-item__why{margin:var(--esp-6) 0 var(--esp-6);color:var(--tinta);font-size:15.5px}
+.owner-pdf-item__edit{display:grid;gap:var(--esp-12);margin-top:var(--esp-10)}
+.owner-pdf-item__edit .owner-wizard-field--amount{font-size:24px}
+.owner-pdf-item__actions{display:flex;flex-wrap:wrap;gap:var(--esp-8);margin-top:var(--esp-8)}
+.owner-pdf-item__actions .owner-button svg{flex:none}
+.owner-pdf-item>.owner-wizard-stack,.owner-pdf-item>.owner-wizard-options{margin-top:var(--esp-10)}
+.owner-pdf-item__quote{display:none;margin:var(--esp-8) 0 0;padding:var(--esp-14) var(--esp-16);border-radius:14px;background:var(--indigo-suave);color:var(--tinta);font:italic 16px/1.5 Georgia,'Times New Roman',serif}
+.owner-pdf-item__quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
+.owner-pdf-pending{margin-left:auto;color:var(--gris);font-size:15px;font-weight:600}
+.owner-pdf-pending+.owner-wizard-next{margin-left:0}
+
+@media (max-width:900px){
+  /* Sin lugar para el documento al lado: cada dato muestra su cita. */
+  .owner-wizard__body.owner-pdf-review{display:block;width:min(100% - 40px,620px)}
+  .owner-pdf-review__doc{display:none}
+  .owner-pdf-item__quote{display:block}
+}
+@media (max-width:620px){
+  .owner-pdf-drop{padding:var(--esp-32) var(--esp-16)}
+  .owner-pdf-file{flex-wrap:wrap}
+  .owner-pdf-file .owner-button{width:100%;min-height:46px}
+  .owner-wizard:not(.owner-dialog) .owner-wizard__body.owner-pdf-review{width:calc(100% - 24px);padding:var(--esp-16) 0;background:transparent;box-shadow:none}
+  .owner-pdf-review__intro{padding:0 var(--esp-8)}
+  .owner-pdf-item{padding:var(--esp-16)}
+  .owner-pdf-item__head{align-items:flex-start;flex-direction:column;gap:var(--esp-6)}
+  /* Dos o tres acciones: se reparten el renglón en vez de apilarse de a una. */
+  .owner-pdf-item__actions .owner-button{flex:1 1 140px;min-height:46px;justify-content:center}
+  /* El pendiente sube a su renglón: al lado del botón no entra. */
+  .owner-pdf .owner-wizard__footer{flex-wrap:wrap}
+  .owner-pdf-pending{order:-1;width:100%;margin:0;text-align:center}
+  .owner-pdf .owner-wizard__footer .owner-wizard-next{flex:1;justify-content:center}
+}
+
+/* ── Recargo por atraso y cuotas sin confirmar ───────────────────── */
+.owner-number .recargo{align-items:flex-end;font-weight:400;text-align:right}
+/* La explicación de «Sin confirmar» es una frase, no una etiqueta: ocupa varios renglones. */
+.owner-table td p.owner-aviso,.owner-unconfirmed p.owner-aviso{margin:var(--esp-8) 0 0;max-width:34ch;color:var(--gris);font-size:14px;font-weight:400;line-height:1.4;white-space:normal}
+.owner-aviso--urgente{color:var(--tinta)!important;font-weight:600!important}
+.owner-aviso__link{padding:0;border:0;background:none;color:var(--indigo);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.owner-aviso__link:disabled{opacity:.5;cursor:default}
+/* Vencida sin confirmar: la píldora pasa de advertencia a error, con el mismo icono y la misma palabra. */
+.owner-table td .owner-status + .owner-substatus--urgente{background:var(--error-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--error) 35%,transparent)}
+.owner-substatus--urgente svg{color:var(--error)}
+.owner-unconfirmed p.owner-aviso{max-width:none}
+.owner-unconfirmed{display:flex;flex-direction:column;gap:var(--esp-16);margin:var(--esp-12) 0 0;padding:0;list-style:none}
+.owner-flag{display:inline-flex;align-items:center;gap:7px;margin-right:var(--esp-8);padding:var(--esp-6) var(--esp-12);border-radius:999px;background:var(--warn-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--adv) 35%,transparent);color:var(--tinta);font-size:14px;font-weight:700}
+.owner-flag svg{flex:none;color:var(--adv)}
+.owner-flag--urgente{background:var(--error-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--error) 35%,transparent)}
+.owner-flag--urgente svg{color:var(--error)}
+.owner-unconfirmed-card{margin-bottom:var(--esp-16)}
+
+/* ── Garantías del contrato ──────────────────────────────────────── */
+.owner-garantias{display:flex;flex-direction:column;gap:var(--esp-16)}
+.owner-garantia{display:flex;flex-direction:column;gap:var(--esp-16);padding:var(--esp-20);border-radius:16px;box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-garantia__cabecera{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--esp-8) var(--esp-16)}
+.owner-garantia__acciones{display:flex;flex-wrap:wrap;gap:var(--esp-6)}
+
+/* ── Cuotas anteriores a hoy (contrato en curso) ─────────────────── */
+.owner-wizard-chips button[aria-checked="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
+.owner-wizard-chips button[role="radio"]{display:inline-flex;align-items:center;gap:var(--esp-6)}
+.owner-pagos-transcurridos{display:flex;flex-direction:column;gap:var(--esp-12);margin-top:var(--esp-32)}
+.owner-pagos-transcurridos .owner-wizard-chips{margin-top:0}
+.owner-pagos-transcurridos__fecha{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--esp-12)}
+@media (max-width:620px){.owner-pagos-transcurridos__fecha{grid-template-columns:minmax(0,1fr)}}
+.owner-pagos-transcurridos .owner-wizard-note{display:block}
+.owner-pagos-transcurridos .owner-wizard-note p{margin:0}
+.owner-pagos-transcurridos .owner-wizard-note p+p{margin-top:var(--esp-6)}
+/* Dentro de una tarjeta de la revisión del PDF: sin el aire que lleva como paso suelto del asistente. */
+.owner-pdf-item .owner-pagos-transcurridos{margin-top:0}
+.owner-wizard:not(.owner-dialog) .owner-pdf-item .owner-pagos-transcurridos .owner-wizard-label{margin:0!important}
+.owner-pdf-item .owner-pagos-transcurridos .owner-wizard-help{margin:0}
+.owner-pago-alta{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px;font-weight:600;white-space:normal}
+.owner-pago-alta svg{flex:none;color:var(--exito)}
+.owner-wizard-summary .owner-wizard-quiet{flex:none;margin:0 0 0 var(--esp-10)}
+.owner-wizard-alert>div p{margin:0}
+.owner-wizard-alert>div .owner-garantia__acciones{margin-top:var(--esp-6)}
+.owner-wizard-alert .owner-wizard-quiet{margin-top:0}
+
+/* Lectura del contrato desde el PDF: citas, visor y espera larga. */
+.owner-pdf-item__quote p{margin:0}
+.owner-pdf-item__quote p+p{margin-top:var(--esp-10)}
+.owner-pdf-item__quote--siempre{display:block}
+.owner-pdf-item__page-link{display:none;margin-top:var(--esp-10);padding:0;border:0;background:none;color:var(--indigo);font:700 15px var(--font-nunito-sans),sans-serif;text-decoration:underline;cursor:pointer}
+.owner-pdf-quote{margin:var(--esp-12) 0 0;padding:var(--esp-14) var(--esp-16);border-radius:14px;background:var(--indigo-suave);color:var(--tinta);font:italic 16px/1.5 Georgia,'Times New Roman',serif}
+.owner-pdf-quote p{margin:0}
+.owner-pdf-quote p+p{margin-top:var(--esp-10)}
+.owner-pdf-quote cite{display:block;margin-top:var(--esp-6);color:var(--gris);font:700 13px var(--font-nunito-sans),sans-serif}
+.owner-pdf-quote--hint{background:transparent;color:var(--gris);font:15px/1.5 var(--font-nunito-sans),sans-serif}
+/* El documento es papel: se queda claro también en modo oscuro. */
+.owner-pdf-viewer{overflow:hidden;border-radius:14px;background:#E9E7F2}
+.owner-pdf-viewer__bar{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-8);padding:var(--esp-10) var(--esp-14);color:#514D63;font-size:14px}
+.owner-pdf-viewer__bar span{min-width:0;flex:1;overflow:hidden;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.owner-pdf-viewer canvas{display:block;max-width:100%;margin:0 auto var(--esp-14);border-radius:4px;background:#fff;box-shadow:0 1px 3px rgba(30,27,46,.12)}
+.owner-pdf-viewer__wait,.owner-pdf-viewer__error{display:flex;align-items:center;justify-content:center;gap:var(--esp-10);margin:0;padding:var(--esp-32) var(--esp-20);color:#514D63;font-size:15px}
+.owner-pdf-add{margin-top:var(--esp-16)}
+.owner-pdf-slow{display:grid;gap:var(--esp-10);max-width:520px;margin:var(--esp-26) auto 0;text-align:left}
+.owner-pdf-slow__actions{display:flex;flex-wrap:wrap;gap:var(--esp-8)}
+.owner-pdf-review__doc .owner-pdf-quote{margin-top:var(--esp-12)}
+/* <fieldset> como agrupador accesible: sin el borde, el relleno ni el ancho mínimo del navegador.
+   Con :where() no pesa más que la clase propia de cada uso (p. ej. .owner-garantia, que trae su relleno y borde). */
+:where(.owner-fieldset){min-width:0;margin-inline:0;padding:0;border:0}
+
+/* Línea aparte de una opción del asistente (las lecturas que quedan): se
+   reserva mientras carga para que la tarjeta no crezca al llegar el dato. */
+.owner-wizard-option .owner-wizard-option__nota{margin-top:var(--esp-2)}
+
+/* Lo que falta para crear el contrato: una nota neutra con un acceso a cada paso. */
+.owner-wizard-pending{margin-bottom:var(--esp-20)}
+.owner-wizard-pending p{margin:0 0 var(--esp-6);font-weight:600}
+.owner-wizard-pending ul{display:flex;flex-wrap:wrap;gap:var(--esp-6) var(--esp-8);margin:0;padding:0;list-style:none}
+.owner-wizard-pending .owner-wizard-quiet{margin:0;box-shadow:inset 0 0 0 1.5px var(--borde)}
+
+/* El estado del guardado del borrador, junto al título del asistente: ícono y palabra, nunca sólo color. */
+.owner-wizard__top>.owner-wizard-guardado{display:inline-flex;align-items:center;gap:var(--esp-6);color:var(--gris);font-size:14px;font-weight:600;white-space:nowrap}
+.owner-wizard-guardado svg{flex:none}
+.owner-wizard__top>.owner-wizard-guardado--falla{color:var(--tinta)}
+.owner-wizard-guardado--falla svg{color:var(--error)}
+/* «Descartar borrador»: al final del encabezado; en celular queda sólo el ícono (el nombre sigue para lectores). */
+.owner-wizard__top>.owner-wizard-descartar{display:inline-flex;width:auto;height:auto;min-height:40px;margin:0 0 0 var(--esp-12);padding:0 var(--esp-10);border-radius:10px;background:transparent;color:var(--gris);gap:var(--esp-6)}
+.owner-wizard__top>.owner-wizard-descartar:hover{background:var(--indigo-suave);color:var(--indigo)}
+@media(max-width:560px){.owner-wizard-descartar>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.owner-wizard__top>.owner-wizard-descartar{min-width:40px;justify-content:center;margin-left:var(--esp-6)}}
+
+/* El PDF opcional de la revisión. */
+.owner-pdf-opcional{margin:var(--esp-26) 0}
+.owner-pdf-opcional h2{margin:0 0 var(--esp-6);font:700 17px var(--font-quicksand),sans-serif}
+.owner-pdf-opcional h2 small{color:var(--gris);font:600 14px var(--font-nunito-sans),sans-serif}
+.owner-pdf-opcional .owner-wizard-help{margin:0 0 var(--esp-10)}
+.owner-pdf-opcional__adjuntar{margin-top:0;box-shadow:inset 0 0 0 1.5px var(--borde)}
+
+/* Acciones al pie de los paneles del borrador (no se pudo abrir, ilegible). */
+.owner-wizard-acciones{display:flex;flex-wrap:wrap;gap:var(--esp-12);margin-top:var(--esp-26)}
+
+/* Contratos a medio cargar: dos acciones por fila o por aviso, siempre a la vista. */
+.owner-section--borradores{margin-top:var(--esp-26);margin-bottom:var(--esp-32)}
+.owner-row--borrador{grid-template-columns:44px minmax(0,1fr) auto}
+.owner-row__acciones{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--esp-8)}
+.owner-notice__action:has(>.owner-button+.owner-button){display:flex;flex-wrap:wrap;gap:var(--esp-8)}
+@media(max-width:620px){.owner-row--borrador{grid-template-columns:44px minmax(0,1fr)}.owner-row--borrador .owner-row__acciones{grid-column:2;justify-content:flex-start}}
+
+/* La lista de borradores del diálogo «Tiene contratos a medio cargar». */
+.owner-borradores-elegir{display:grid;gap:var(--esp-10);margin:var(--esp-16) 0 0;padding:0;list-style:none}
+.owner-borradores-elegir li{display:flex;align-items:center;gap:var(--esp-14);padding:var(--esp-12) var(--esp-14);border-radius:14px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde)}
+.owner-borradores-elegir li>span:nth-child(2){min-width:0;flex:1}
+.owner-borradores-elegir b,.owner-borradores-elegir small{display:block}
+.owner-borradores-elegir small{margin-top:var(--esp-2);color:var(--gris);font-size:14px}
+
+/* El <dialog> trae el negro del navegador (CanvasText) y el panel no definía color: en modo oscuro el
+   título quedaba negro sobre fondo oscuro. El texto del panel toma siempre el de la app. */
+.owner-dialog__panel{color:var(--tinta)}

@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Counter from "@/components/ui/Counter";
+import { Spinner } from "@/components/ui/Spinner";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse } from "@/lib/backend-types";
 import {
   armarPedido,
@@ -17,21 +19,29 @@ import {
 import { formatearPeriodo } from "@/lib/formato";
 
 /**
- * El backend rechaza con 400 y un mensaje en inglés que no le sirve al
- * propietario. Los que el formulario no puede prevenir —una cuota ya paga, un
- * cambio que otra pestaña programó antes— se dicen acá; el resto es un caso que
- * el selector de meses ya evita y cae en el mensaje general.
+ * El backend distingue cada rechazo con un `type` estable (RFC 9457). Los que el
+ * formulario no puede prevenir —una cuota ya paga, un cambio que otra pestaña
+ * programó antes— llegan como 409 y se dicen acá; las validaciones de fecha (400)
+ * y cualquier otro 400 son casos que el selector de meses ya evita y caen en el
+ * mensaje general.
  */
 function mensajeDeError(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.status === 400) {
-    if (/paid/i.test(err.message)) {
+  if (err instanceof ApiError) {
+    if (err.type === ERROR.SCHEMA_CHANGE_OVER_PAID_INVOICE) {
       return "Hay una cuota ya paga desde ese mes. Elija un mes posterior a la última cuota cobrada.";
     }
-    if (/already has a scheduled/i.test(err.message)) {
+    if (err.type === ERROR.CONTRACT_ALREADY_HAS_SUCCESSOR) {
       return "Este contrato ya tiene un cambio programado.";
     }
-    return "El cambio no se pudo programar con esos datos. Revise el mes y las condiciones.";
+    if (
+      err.type === ERROR.EFFECTIVE_FROM_NOT_FIRST_OF_MONTH ||
+      err.type === ERROR.EFFECTIVE_FROM_NOT_FUTURE ||
+      err.type === ERROR.EFFECTIVE_FROM_OUTSIDE_TERM ||
+      err.status === 400
+    ) {
+      return "El cambio no se pudo programar con esos datos. Revise el mes y las condiciones.";
+    }
   }
   return "No pudimos programar el cambio. Inténtelo de nuevo más tarde.";
 }
@@ -47,12 +57,12 @@ export default function CambioCondicionesForm({
   hoyISO,
   onCancelar,
   onProgramado,
-}: {
+}: Readonly<{
   contrato: ContractResponse;
   hoyISO: string;
   onCancelar: () => void;
-  onProgramado: () => void;
-}) {
+  onProgramado: (mes: string) => void;
+}>) {
   const meses = mesesElegibles(contrato, hoyISO);
   const [c, setC] = useState<CondicionesNuevas>(() => condicionesIniciales(contrato, meses));
   const [revisando, setRevisando] = useState(false);
@@ -85,7 +95,7 @@ export default function CambioCondicionesForm({
     setGuardando(true);
     try {
       await AlquiaBackendClient.contracts.scheduleSchemaChange(contrato.id, armarPedido(c));
-      onProgramado();
+      onProgramado(c.mes);
     } catch (err) {
       setError(mensajeDeError(err));
       setRevisando(false);
@@ -108,38 +118,46 @@ export default function CambioCondicionesForm({
         <button type="button" className="owner-button owner-button--quiet" disabled={guardando}
           onClick={() => setRevisando(false)}>Volver</button>
         <button type="button" className="owner-button owner-button--primary" disabled={guardando}
-          onClick={() => void confirmar()}>{guardando ? "Programando…" : "Programar cambio"}</button>
+          aria-busy={guardando || undefined} onClick={() => void confirmar()}>{guardando ? <><Spinner />Programando…</> : "Programar cambio"}</button>
       </div>
     </>;
   }
 
   return <>
     <div className="owner-dialog__body">
-      <p>Elija desde qué mes rigen las condiciones nuevas. Lo anterior no se toca.</p>
+      <p className="owner-dialog__lead">Elija desde qué mes rigen las condiciones nuevas. Lo anterior no se toca.</p>
 
-      <label className="owner-wizard-field owner-wizard-field--medium">
-        <span className="owner-wizard-label">DESDE</span>
-        <select value={c.mes} onChange={(e) => cambiar({ mes: e.target.value })}>
-          {meses.map((m) => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
-        </select>
-      </label>
-      {campoError("mes")}
+      <div className="owner-wizard-stack">
+        <label className="owner-wizard-field">
+          <span>Rige desde</span>
+          <select value={c.mes} onChange={(e) => cambiar({ mes: e.target.value })}>
+            {meses.map((m) => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
+          </select>
+        </label>
+        {campoError("mes")}
 
-      <label className="owner-wizard-field owner-wizard-field--amount">
-        <span>$</span>
-        <input inputMode="numeric" aria-label="Nuevo alquiler mensual"
-          value={c.alquiler ? Number(c.alquiler).toLocaleString("es-AR") : ""}
-          onChange={(e) => cambiar({ alquiler: e.target.value.replace(/\D/g, "") })} />
-        <span>por mes</span>
-      </label>
-      {campoError("alquiler")}
+        <label className="owner-wizard-field">
+          <span>Nuevo alquiler por mes</span>
+          <div className="owner-dialog-money">
+            <i aria-hidden="true">$</i>
+            <input inputMode="numeric" aria-label="Nuevo alquiler mensual"
+              value={c.alquiler ? Number(c.alquiler).toLocaleString("es-AR") : ""}
+              onChange={(e) => cambiar({ alquiler: e.target.value.replace(/\D/g, "") })} />
+          </div>
+        </label>
+        {campoError("alquiler")}
+      </div>
 
-      <p className="owner-wizard-label">DÍA DE VENCIMIENTO</p>
-      <Counter value={c.diaVencimiento} unit="del mes" min={1} max={28}
-        onChange={(dia) => cambiar({ diaVencimiento: dia })} />
+      <div className="owner-dialog-counters">
+        <Counter label="Día de vencimiento" value={c.diaVencimiento} unit="del mes" min={1} max={28}
+          onChange={(dia) => cambiar({ diaVencimiento: dia })} />
+        <Counter label="Se actualiza cada" value={c.frecuencia} unit={c.frecuencia === 1 ? "mes" : "meses"} min={1}
+          onChange={(n) => cambiar({ frecuencia: n })} />
+      </div>
       {campoError("diaVencimiento")}
+      {campoError("frecuencia")}
 
-      <p className="owner-wizard-label">ACTUALIZACIÓN</p>
+      <p className="owner-wizard-label">Actualización</p>
       <div className="owner-wizard-chips">
         {METODOS.map(([valor, texto]) => (
           <button key={valor} type="button" aria-pressed={c.metodo === valor}
@@ -147,17 +165,17 @@ export default function CambioCondicionesForm({
         ))}
       </div>
       {c.metodo === "FIXED_PERCENTAGE" && <>
-        <label className="owner-wizard-field owner-wizard-field--amount">
-          <input inputMode="decimal" aria-label="Porcentaje de aumento"
-            value={c.porcentaje}
-            onChange={(e) => cambiar({ porcentaje: e.target.value.replace(",", ".").replace(/[^\d.]/g, "") })} />
-          <span>%</span>
+        <label className="owner-wizard-field owner-dialog-percent">
+          <span>Porcentaje de aumento</span>
+          <div className="owner-dialog-money">
+            <input inputMode="decimal" aria-label="Porcentaje de aumento"
+              value={c.porcentaje}
+              onChange={(e) => cambiar({ porcentaje: e.target.value.replace(",", ".").replace(/[^\d.]/g, "") })} />
+            <i aria-hidden="true">%</i>
+          </div>
         </label>
         {campoError("porcentaje")}
       </>}
-      <Counter value={c.frecuencia} unit={c.frecuencia === 1 ? "mes" : "meses"} min={1}
-        onChange={(n) => cambiar({ frecuencia: n })} />
-      {campoError("frecuencia")}
 
       {error && <p className="owner-wizard-alert" role="alert">{error}</p>}
     </div>

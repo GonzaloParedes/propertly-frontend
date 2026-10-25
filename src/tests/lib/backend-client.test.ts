@@ -3,17 +3,19 @@ vi.mock("@/lib/api", () => ({
   apiPost: vi.fn(),
   apiPostForm: vi.fn(),
   apiPut: vi.fn(),
+  apiPutForm: vi.fn(),
   apiDelete: vi.fn(),
   apiGetBlob: vi.fn(),
 }));
 
-import { apiGet, apiPost, apiPostForm, apiPut, apiDelete, apiGetBlob } from "@/lib/api";
+import { apiGet, apiPost, apiPostForm, apiPut, apiPutForm, apiDelete, apiGetBlob } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 
 const mockGet = vi.mocked(apiGet);
 const mockPost = vi.mocked(apiPost);
 const mockPostForm = vi.mocked(apiPostForm);
 const mockPut = vi.mocked(apiPut);
+const mockPutForm = vi.mocked(apiPutForm);
 const mockDelete = vi.mocked(apiDelete);
 const mockGetBlob = vi.mocked(apiGetBlob);
 
@@ -81,6 +83,24 @@ describe("AlquiaBackendClient.auth", () => {
       { retry: false }
     );
   });
+
+  it("confirmEmail pega a POST /auth/confirm-email sin reintento", async () => {
+    await AlquiaBackendClient.auth.confirmEmail({ token: "t" });
+    expect(mockPost).toHaveBeenCalledWith(
+      "/auth/confirm-email",
+      { token: "t" },
+      { retry: false }
+    );
+  });
+
+  it("resendVerification pega a POST /auth/resend-verification sin reintento", async () => {
+    await AlquiaBackendClient.auth.resendVerification({ email: "a@a.com" });
+    expect(mockPost).toHaveBeenCalledWith(
+      "/auth/resend-verification",
+      { email: "a@a.com" },
+      { retry: false }
+    );
+  });
 });
 
 describe("AlquiaBackendClient.users", () => {
@@ -140,7 +160,7 @@ describe("AlquiaBackendClient.properties", () => {
   });
 
   it("create pega a POST /properties", async () => {
-    const body = { street: "Main", number: "123", city: "CABA", province: "BA", category: "APARTMENT" as const };
+    const body = { street: "Main", number: "123", city: "CABA", province: "BA", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" as const };
     await AlquiaBackendClient.properties.create(body);
     expect(mockPost).toHaveBeenCalledWith("/properties", body);
   });
@@ -151,7 +171,7 @@ describe("AlquiaBackendClient.properties", () => {
   });
 
   it("update pega a PUT /properties/{id}", async () => {
-    const body = { street: "Main", number: "123", city: "CABA", province: "BA", category: "APARTMENT" as const };
+    const body = { street: "Main", number: "123", city: "CABA", province: "BA", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT" as const };
     await AlquiaBackendClient.properties.update(3, body);
     expect(mockPut).toHaveBeenCalledWith("/properties/3", body);
   });
@@ -191,6 +211,27 @@ describe("AlquiaBackendClient.contracts", () => {
     };
     await AlquiaBackendClient.contracts.create(body);
     expect(mockPost).toHaveBeenCalledWith("/contracts", body);
+  });
+
+  it("onboard pega a POST /contracts/onboarding con propiedad, inquilino y condiciones juntos", async () => {
+    const body = {
+      property: { id: 10 },
+      tenant: {
+        new: { firstName: "Diego", lastName: "Ferrari", taxId: "20301154829", email: "diego@ejemplo.com", phoneNumber: "1144552210" },
+      },
+      contract: {
+        initialRentAmount: 450000,
+        startDate: "2026-06-01",
+        termMonths: 36,
+        dueDay: 10,
+        incrementMethod: "FIXED_PERCENTAGE" as const,
+        incrementFrequencyMonths: 6,
+        incrementValue: 8,
+      },
+      elapsed: { paidThrough: "2026-08" },
+    };
+    await AlquiaBackendClient.contracts.onboard(body);
+    expect(mockPost).toHaveBeenCalledWith("/contracts/onboarding", body);
   });
 
   it("get pega a GET /contracts/{id}", async () => {
@@ -274,7 +315,7 @@ describe("AlquiaBackendClient.payments", () => {
 
   it("confirm pega a POST /payments/{id}/confirm sin body", async () => {
     await AlquiaBackendClient.payments.confirm(7);
-    expect(mockPost).toHaveBeenCalledWith("/payments/7/confirm", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/payments/7/confirm");
   });
 
   it("reject pega a POST /payments/{id}/reject sin body", async () => {
@@ -336,6 +377,16 @@ describe("AlquiaBackendClient.invoices", () => {
     expect(mockPost).toHaveBeenCalledWith("/invoices/4/confirm");
   });
 
+  it("setLateFee pega a PUT /invoices/{id}/late-fee con el importe", async () => {
+    await AlquiaBackendClient.invoices.setLateFee(4, { amount: 0 });
+    expect(mockPut).toHaveBeenCalledWith("/invoices/4/late-fee", { amount: 0 });
+  });
+
+  it("clearLateFee pega a DELETE /invoices/{id}/late-fee", async () => {
+    await AlquiaBackendClient.invoices.clearLateFee(4);
+    expect(mockDelete).toHaveBeenCalledWith("/invoices/4/late-fee");
+  });
+
   it("schemaChange pega a POST /invoices/{id}/schema-change", async () => {
     const body = {
       rentBaseline: 100000,
@@ -375,6 +426,11 @@ describe("AlquiaBackendClient.tenantAuth", () => {
 });
 
 describe("AlquiaBackendClient.tenantPortal", () => {
+  it("calendar pega a GET /tenant/calendar sin reintento", async () => {
+    await AlquiaBackendClient.tenantPortal.calendar();
+    expect(mockGet).toHaveBeenCalledWith("/tenant/calendar", { retry: false });
+  });
+
   it("invoices pega a GET /tenant/invoices sin reintento", async () => {
     await AlquiaBackendClient.tenantPortal.invoices();
     expect(mockGet).toHaveBeenCalledWith("/tenant/invoices", { retry: false });
@@ -439,7 +495,7 @@ describe("archivado", () => {
 
   it("restaura una propiedad", async () => {
     await AlquiaBackendClient.properties.restore(5);
-    expect(mockPost).toHaveBeenCalledWith("/properties/5/restore", undefined);
+    expect(mockPost).toHaveBeenCalledWith("/properties/5/restore");
   });
 
   it("lista las propiedades archivadas aparte de las vigentes", async () => {
@@ -450,8 +506,8 @@ describe("archivado", () => {
   it("archiva y restaura inquilinos igual que propiedades", async () => {
     await AlquiaBackendClient.tenants.archive(9);
     await AlquiaBackendClient.tenants.restore(9);
-    expect(mockPost).toHaveBeenNthCalledWith(1, "/tenants/9/archive", undefined);
-    expect(mockPost).toHaveBeenNthCalledWith(2, "/tenants/9/restore", undefined);
+    expect(mockPost).toHaveBeenNthCalledWith(1, "/tenants/9/archive");
+    expect(mockPost).toHaveBeenNthCalledWith(2, "/tenants/9/restore");
   });
 });
 
@@ -501,5 +557,128 @@ describe("recordatorios", () => {
     };
     await AlquiaBackendClient.users.updateReminderSettings(ajustes);
     expect(mockPut).toHaveBeenCalledWith("/users/me/reminder-settings", ajustes);
+  });
+});
+
+describe("AlquiaBackendClient.contractImports", () => {
+  it("quota pega a GET /contract-imports/quota", async () => {
+    await AlquiaBackendClient.contractImports.quota();
+    expect(mockGet).toHaveBeenCalledWith("/contract-imports/quota");
+  });
+
+  it("upload manda el archivo como multipart en el campo file", async () => {
+    const archivo = new File(["%PDF-1.7"], "contrato.pdf", { type: "application/pdf" });
+    await AlquiaBackendClient.contractImports.upload(archivo);
+    expect(mockPostForm).toHaveBeenCalledTimes(1);
+    const [ruta, form] = mockPostForm.mock.calls[0];
+    expect(ruta).toBe("/contract-imports");
+    expect((form as FormData).get("file")).toBe(archivo);
+  });
+
+  it("get consulta el estado por id", async () => {
+    await AlquiaBackendClient.contractImports.get(41);
+    expect(mockGet).toHaveBeenCalledWith("/contract-imports/41");
+  });
+
+  it("retry pega a POST /contract-imports/{id}/retry sin cuerpo", async () => {
+    await AlquiaBackendClient.contractImports.retry(41);
+    expect(mockPost).toHaveBeenCalledWith("/contract-imports/41/retry");
+  });
+
+  it("complete manda el contrato creado, los valores finales y la acción de cada dato", async () => {
+    const body = {
+      contractId: 77,
+      finalValues: { "rent.initialAmount": 450000 },
+      fieldActions: { "rent.initialAmount": "CONFIRMED" as const },
+    };
+    await AlquiaBackendClient.contractImports.complete(41, body);
+    expect(mockPost).toHaveBeenCalledWith("/contract-imports/41/complete", body);
+  });
+
+  it("discard pega a DELETE /contract-imports/{id}", async () => {
+    await AlquiaBackendClient.contractImports.discard(41);
+    expect(mockDelete).toHaveBeenCalledWith("/contract-imports/41");
+  });
+
+  it("document trae el PDF como blob", async () => {
+    await AlquiaBackendClient.contractImports.document(41);
+    expect(mockGetBlob).toHaveBeenCalledWith("/contract-imports/41/document");
+  });
+});
+
+describe("AlquiaBackendClient.contractDrafts", () => {
+  it("list pega a GET /contract-drafts", async () => {
+    await AlquiaBackendClient.contractDrafts.list();
+    expect(mockGet).toHaveBeenCalledWith("/contract-drafts");
+  });
+
+  it("get pega a GET /contract-drafts/{id}", async () => {
+    await AlquiaBackendClient.contractDrafts.get(5);
+    expect(mockGet).toHaveBeenCalledWith("/contract-drafts/5");
+  });
+
+  it("create manda la etiqueta y el contenido a POST /contract-drafts, sin clave si no se da una", async () => {
+    const body = { label: "Lavalle 950", payload: { paso: 2 } };
+    await AlquiaBackendClient.contractDrafts.create(body);
+    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body, {});
+  });
+
+  it("create manda la clave de idempotencia en el header para poder repetir el alta sin duplicar", async () => {
+    const body = { label: "Lavalle 950", payload: { paso: 2 } };
+    await AlquiaBackendClient.contractDrafts.create(body, { idempotencyKey: "clave-1" });
+    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body, { headers: { "Idempotency-Key": "clave-1" } });
+  });
+
+  it("create reenvía keepalive para el alta al cerrar la pestaña, junto con la clave", async () => {
+    const body = { label: "x", payload: {} };
+    await AlquiaBackendClient.contractDrafts.create(body, { idempotencyKey: "clave-1", keepalive: true });
+    expect(mockPost).toHaveBeenCalledWith("/contract-drafts", body, { keepalive: true, headers: { "Idempotency-Key": "clave-1" } });
+  });
+
+  it("update manda la versión vista a PUT /contract-drafts/{id}", async () => {
+    const body = { label: "Lavalle 950", payload: { paso: 3 }, version: 4 };
+    await AlquiaBackendClient.contractDrafts.update(5, body);
+    expect(mockPut).toHaveBeenCalledWith("/contract-drafts/5", body, undefined);
+  });
+
+  it("update reenvía keepalive para el guardado al cerrar la pestaña", async () => {
+    const body = { label: "x", payload: {}, version: 0 };
+    await AlquiaBackendClient.contractDrafts.update(5, body, { keepalive: true });
+    expect(mockPut).toHaveBeenCalledWith("/contract-drafts/5", body, { keepalive: true });
+  });
+
+  it("remove pega a DELETE /contract-drafts/{id}", async () => {
+    await AlquiaBackendClient.contractDrafts.remove(5);
+    expect(mockDelete).toHaveBeenCalledWith("/contract-drafts/5");
+  });
+
+  it("attachDocument manda el PDF como multipart por PUT en el campo file", async () => {
+    const archivo = new File(["%PDF-1.7"], "contrato.pdf", { type: "application/pdf" });
+    await AlquiaBackendClient.contractDrafts.attachDocument(5, archivo);
+    expect(mockPutForm).toHaveBeenCalledTimes(1);
+    const [ruta, form] = mockPutForm.mock.calls[0];
+    expect(ruta).toBe("/contract-drafts/5/document");
+    expect((form as FormData).get("file")).toBe(archivo);
+  });
+
+  it("getDocument trae el PDF como blob", async () => {
+    await AlquiaBackendClient.contractDrafts.getDocument(5);
+    expect(mockGetBlob).toHaveBeenCalledWith("/contract-drafts/5/document");
+  });
+
+  it("removeDocument pega a DELETE /contract-drafts/{id}/document", async () => {
+    await AlquiaBackendClient.contractDrafts.removeDocument(5);
+    expect(mockDelete).toHaveBeenCalledWith("/contract-drafts/5/document");
+  });
+
+  it("el alta de contrato puede llevar el borrador del que sale", async () => {
+    const body = {
+      property: { id: 1 },
+      tenant: { id: 2 },
+      contract: {} as never,
+      draftId: 5,
+    };
+    await AlquiaBackendClient.contracts.onboard(body);
+    expect(mockPost).toHaveBeenCalledWith("/contracts/onboarding", body);
   });
 });

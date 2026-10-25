@@ -4,8 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { Spinner } from "@/components/ui/Spinner";
 import { ApiError, AuthExpiredError } from "@/lib/api";
+import { ERROR, copyDeError } from "@/lib/error-codes";
 
 const BENEFITS = [
   "Sepa al instante qué alquileres están pagos",
@@ -14,75 +17,19 @@ const BENEFITS = [
 ];
 
 function CheckIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--lila)"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
+  return <Check aria-hidden="true" className="size-5 shrink-0" color="var(--lila)" strokeWidth={3} />;
 }
 
 function EyeIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
+  return <Eye aria-hidden="true" className="size-5" />;
 }
 
 function EyeOffIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-6.5 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94" />
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" />
-      <line x1="2" y1="2" x2="22" y2="22" />
-    </svg>
-  );
+  return <EyeOff aria-hidden="true" className="size-5" />;
 }
 
 function ShieldIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-[18px] shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--success)"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2.5 20 5.5v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10v-6z" />
-      <path d="m8.5 12 2.5 2.5 4.5-4.5" />
-    </svg>
-  );
+  return <ShieldCheck aria-hidden="true" className="size-[18px] shrink-0" color="var(--success)" />;
 }
 
 export default function LoginPage() {
@@ -103,7 +50,10 @@ export default function LoginPage() {
       await login(email, password);
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+      if (err instanceof ApiError && err.type === ERROR.EMAIL_NOT_VERIFIED) {
+        // El backend ya reenvió el mail de verificación al detectar el intento.
+        setError(copyDeError(err));
+      } else if (err instanceof ApiError && err.status === 401) {
         setError("Correo o contraseña incorrectos. Intente nuevamente.");
       } else if (err instanceof AuthExpiredError) {
         // AuthExpiredError acá significa que /auth/login salió bien pero el
@@ -268,6 +218,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isPending}
+                aria-busy={isPending || undefined}
                 className="mt-4 flex min-h-12 w-full cursor-pointer items-center justify-center rounded-[10px] border-2 border-transparent px-6 text-[17px] font-bold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-70 focus-visible:outline-[3px] focus-visible:outline-offset-2"
                 style={{
                   background: "var(--primary)",
@@ -280,7 +231,7 @@ export default function LoginPage() {
                   (e.currentTarget.style.background = "var(--primary)")
                 }
               >
-                {isPending ? "Ingresando…" : "Ingresar"}
+                {isPending ? <span className="inline-flex items-center gap-2"><Spinner />Ingresando…</span> : "Ingresar"}
               </button>
             </form>
 

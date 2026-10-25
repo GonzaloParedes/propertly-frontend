@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import type { InvoiceResponse, PropertyResponse } from "@/lib/backend-types";
@@ -12,7 +12,7 @@ vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { list: vi.fn() },
     contracts: { list: vi.fn() },
-    properties: { list: vi.fn(), archive: vi.fn() },
+    properties: { list: vi.fn(), archive: vi.fn(), update: vi.fn() },
     invoices: { list: vi.fn() },
   },
 }));
@@ -28,7 +28,7 @@ const RIVADAVIA: PropertyResponse = {
   floorUnit: "5.º A",
   city: "CABA",
   province: "Ciudad Autónoma de Buenos Aires",
-  category: "APARTMENT",
+  latitude: -34.6037, longitude: -58.3816, category: "APARTMENT",
   bedrooms: 2,
   coveredArea: 68,
   activeContract: { id: 100, currentRent: 478691, status: "ACTIVE" },
@@ -40,7 +40,7 @@ const MITRE: PropertyResponse = {
   number: "78",
   city: "San Isidro",
   province: "Buenos Aires",
-  category: "COMMERCIAL_PREMISES",
+  latitude: -34.6037, longitude: -58.3816, category: "COMMERCIAL_PREMISES",
   coveredArea: 52,
   activeContract: null,
 };
@@ -51,7 +51,7 @@ const CUOTA_VENCIDA: InvoiceResponse = {
   period: "2026-08-01",
   dueDate: "2026-08-10",
   baseAmount: 478691,
-  total: 478691,
+  total: 478691, amountDue: 478691, lateFee: null,
   status: "DUE",
   confirmed: true,
   adjustments: [],
@@ -75,7 +75,10 @@ describe("carga", () => {
     mockInvoices.mockReturnValue(new Promise(() => {}));
     render(<OwnerWorkspace initialView="propiedades" />);
 
-    expect(screen.getByText("Cargando…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando sus propiedades…")).toBeInTheDocument();
+    // Todavía no se sabe si va arriba o en el centro: mostrarlo para moverlo
+    // después es el parpadeo que se veía al entrar a la pantalla.
+    expect(screen.queryByRole("button", { name: "Agregar propiedad" })).not.toBeInTheDocument();
   });
 
   it("pide las dos listas, no una por propiedad", async () => {
@@ -115,6 +118,16 @@ describe("carga", () => {
     expect(await screen.findByText("Todavía no cargó ninguna propiedad")).toBeInTheDocument();
     // Sin propiedades no hay nada que filtrar.
     expect(screen.queryByLabelText("Buscar propiedades")).not.toBeInTheDocument();
+  });
+
+  it("vacía, ofrece un solo «Agregar propiedad» y abre el asistente", async () => {
+    conDatos([]);
+    render(<OwnerWorkspace initialView="propiedades" />);
+
+    await screen.findByText("Todavía no cargó ninguna propiedad");
+    // Uno solo: el del encabezado se esconde para no repetir el primario.
+    await userEvent.click(screen.getByRole("button", { name: "Agregar propiedad" }));
+    expect(await screen.findByRole("region", { name: "Asistente de nueva propiedad" })).toBeInTheDocument();
   });
 
   it("no pide propiedades si la pantalla es otra", () => {
@@ -207,9 +220,9 @@ describe("filas", () => {
     render(<OwnerWorkspace initialView="propiedades" />);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(
-      screen.queryByRole("group", { name: "Estado de la propiedad" })
-    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    expect(screen.queryByRole("region", { name: "Estado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Sin alquilar/ })).not.toBeInTheDocument();
   });
 });
 
@@ -239,6 +252,7 @@ describe("bajada y filtros", () => {
     render(<OwnerWorkspace initialView="propiedades" />);
     await screen.findByText("Mitre 78");
 
+    await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
     await userEvent.click(screen.getByRole("button", { name: /Sin alquilar 1/ }));
 
     expect(screen.getByText("Mitre 78")).toBeInTheDocument();
@@ -265,7 +279,7 @@ describe("modo demo", () => {
 
     expect(mockProperties).not.toHaveBeenCalled();
     expect(screen.getByText("Av. Rivadavia 2340, 5.º A")).toBeInTheDocument();
-    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cargando sus propiedades…")).not.toBeInTheDocument();
   });
 });
 
@@ -287,7 +301,7 @@ describe("detalle", () => {
   });
 
   it("nombra la categoría en castellano, incluidas las nuevas", async () => {
-    await abrirDetalle([{ ...RIVADAVIA, category: "GARAGE" }]);
+    await abrirDetalle([{ ...RIVADAVIA, latitude: -34.6037, longitude: -58.3816, category: "GARAGE" }]);
 
     // Aparece en la bajada del encabezado y en la ficha de características.
     expect(await screen.findAllByText(/Cochera/)).toHaveLength(2);
@@ -344,6 +358,7 @@ describe("archivar", () => {
 
     await screen.findByText("Todavía no cargó ninguna propiedad");
     expect(mockArchive).toHaveBeenCalledWith(2);
+    expect(await screen.findByText(/Propiedad archivada/)).toBeInTheDocument();
   });
 
   it("explica el 409 y deja la propiedad donde estaba", async () => {
@@ -358,6 +373,8 @@ describe("archivar", () => {
       "No se puede archivar: la propiedad tiene datos asociados"
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // El error de un diálogo abierto va adentro, no a un toast.
+    expect(document.querySelector('[data-toasts="error"]')).toBeEmptyDOMElement();
   });
 
   it("se puede cancelar sin archivar nada", async () => {
@@ -369,5 +386,60 @@ describe("archivar", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockArchive).not.toHaveBeenCalled();
+  });
+});
+
+// --- Editar ---
+
+describe("editar", () => {
+  const mockUpdate = vi.mocked(AlquiaBackendClient.properties.update);
+
+  async function abrirDialogo() {
+    conDatos([MITRE]);
+    render(<OwnerWorkspace initialView="propiedades" />);
+    await userEvent.click(await screen.findByText("Mitre 78"));
+    await userEvent.click(await screen.findByRole("button", { name: /Editar/ }));
+  }
+
+  it("abre con los datos de la propiedad", async () => {
+    await abrirDialogo();
+
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByLabelText("Calle")).toHaveValue("Mitre");
+    expect(within(dialogo).getByLabelText("Ciudad")).toHaveValue("San Isidro");
+    expect(within(dialogo).getByLabelText("Tipo")).toHaveValue("COMMERCIAL_PREMISES");
+  });
+
+  it("guarda los cambios y vuelve a pedir la lista", async () => {
+    await abrirDialogo();
+    mockUpdate.mockResolvedValueOnce({} as never);
+    const dialogo = screen.getByRole("dialog");
+
+    await userEvent.clear(within(dialogo).getByLabelText("Número"));
+    await userEvent.type(within(dialogo).getByLabelText("Número"), "80");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    expect(mockUpdate).toHaveBeenCalledWith(2, expect.objectContaining({ street: "Mitre", number: "80", city: "San Isidro", province: "Buenos Aires", latitude: -34.6037, longitude: -58.3816, category: "COMMERCIAL_PREMISES", coveredArea: 52 }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByText(/Propiedad actualizada/)).toBeInTheDocument();
+  });
+
+  it("no deja guardar sin ciudad", async () => {
+    await abrirDialogo();
+    const dialogo = screen.getByRole("dialog");
+
+    await userEvent.clear(within(dialogo).getByLabelText("Ciudad"));
+
+    expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeDisabled();
+  });
+
+  it("explica el 400 y deja el diálogo abierto", async () => {
+    await abrirDialogo();
+    mockUpdate.mockRejectedValueOnce(new ApiError(400, "Validation failed"));
+
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Verifique los datos");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

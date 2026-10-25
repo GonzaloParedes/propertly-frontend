@@ -10,7 +10,7 @@ import type {
   Property,
   Tenant,
 } from "@/lib/types";
-import { DEPOSIT_TYPES } from "@/lib/mock-data";
+import { Building2, Check, FileText, TrendingUp, Upload } from "lucide-react";
 import { inputClass, selectClass, fieldBorderStyle, labelClass } from "@/components/ui/field-styles";
 import Field from "@/components/ui/Field";
 import SectionCard from "@/components/ui/SectionCard";
@@ -21,6 +21,74 @@ import TenantsField from "./TenantsField";
 
 type Errors = Record<string, string>;
 
+interface ContractFormValues {
+  property: Property | null;
+  tenants: Tenant[];
+  startDate: string;
+  endDate: string;
+  rentAmount: string;
+  paymentDueDay: string;
+  depositAmount: string;
+  commissionPercent: string;
+  commissionPayer: CommissionPayer | "";
+  indexType: IndexType | "";
+  customIndexPercent: string;
+  adjustmentFrequency: AdjustmentFrequency | "";
+  autoRenewal: boolean | null;
+  terminationNoticeMonths: string;
+  hasEarlyTerminationPenalty: boolean;
+  earlyTerminationPenalty: string;
+  lateFeeValue: string;
+  lateFeeGraceDays: string;
+}
+
+function validarDatosBasicos(values: ContractFormValues, errors: Errors) {
+  if (!values.property) errors.property = "Seleccione o cree un inmueble para el contrato.";
+  if (values.tenants.length === 0) errors.tenants = "Agregue al menos un inquilino.";
+  if (!values.startDate) errors.startDate = "Ingrese la fecha de inicio.";
+  if (!values.endDate) errors.endDate = "Ingrese la fecha de fin.";
+  if (values.startDate && values.endDate && values.endDate <= values.startDate) {
+    errors.endDate = "La fecha de fin debe ser posterior a la de inicio.";
+  }
+  if (!values.rentAmount || Number(values.rentAmount) <= 0) {
+    errors.rentAmount = "Ingrese un monto de alquiler válido.";
+  }
+  if (!values.paymentDueDay || Number(values.paymentDueDay) < 1 || Number(values.paymentDueDay) > 31) {
+    errors.paymentDueDay = "Ingrese un día entre 1 y 31.";
+  }
+}
+
+function validarGarantiasYComision(values: ContractFormValues, errors: Errors) {
+  if (!values.depositAmount) errors.depositAmount = "Ingrese el monto del depósito.";
+  if (!values.commissionPercent || Number(values.commissionPercent) < 0 || Number(values.commissionPercent) > 100) {
+    errors.commissionPercent = "Ingrese un porcentaje entre 0 y 100.";
+  }
+  if (!values.commissionPayer) errors.commissionPayer = "Indique quién está a cargo de la comisión.";
+}
+
+function validarIndexacionYReglas(values: ContractFormValues, errors: Errors) {
+  if (!values.indexType) errors.indexType = "Seleccione el tipo de índice.";
+  if (values.indexType === "CUSTOM" && !values.customIndexPercent) {
+    errors.customIndexPercent = "Ingrese el porcentaje de ajuste.";
+  }
+  if (!values.adjustmentFrequency) errors.adjustmentFrequency = "Seleccione la frecuencia de ajuste.";
+  if (values.autoRenewal === null) errors.autoRenewal = "Indique si el contrato se renueva automáticamente.";
+  if (!values.terminationNoticeMonths) errors.terminationNoticeMonths = "Ingrese el preaviso en meses.";
+  if (values.hasEarlyTerminationPenalty && !values.earlyTerminationPenalty) {
+    errors.earlyTerminationPenalty = "Ingrese el monto de la multa.";
+  }
+  if (!values.lateFeeValue) errors.lateFeeValue = "Ingrese el valor del punitorio.";
+  if (!values.lateFeeGraceDays) errors.lateFeeGraceDays = "Ingrese los días de gracia.";
+}
+
+function validarContrato(values: ContractFormValues): Errors {
+  const errors: Errors = {};
+  validarDatosBasicos(values, errors);
+  validarGarantiasYComision(values, errors);
+  validarIndexacionYReglas(values, errors);
+  return errors;
+}
+
 const SECTIONS = [
   { id: "section-inmueble", label: "Inmueble" },
   { id: "section-contrato", label: "Datos del contrato" },
@@ -29,40 +97,19 @@ const SECTIONS = [
 ];
 
 function BuildingIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="3" width="16" height="18" rx="1" />
-      <path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01M9 16h.01M15 16h.01" />
-    </svg>
-  );
+  return <Building2 aria-hidden="true" className="size-5" />;
 }
 
 function TrendingUpIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 17 9 11 13 15 21 6" />
-      <polyline points="15 6 21 6 21 12" />
-    </svg>
-  );
+  return <TrendingUp aria-hidden="true" className="size-5" />;
 }
 
 function DocumentIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 2.5h8l4 4V21.5H6z" />
-      <path d="M14 2.5v4h4" />
-      <path d="M9 12h6M9 16h6" />
-    </svg>
-  );
+  return <FileText aria-hidden="true" className="size-5" />;
 }
 
 function UploadIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 16V4M7 9l5-5 5 5" />
-      <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-    </svg>
-  );
+  return <Upload aria-hidden="true" className="size-5" />;
 }
 
 function ToggleGroup<T extends string>({
@@ -114,7 +161,6 @@ export default function ContractForm() {
   const [currency, setCurrency] = useState<Currency>("ARS");
   const [paymentDueDay, setPaymentDueDay] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositType, setDepositType] = useState("");
   const [commissionPercent, setCommissionPercent] = useState("");
   const [commissionPayer, setCommissionPayer] = useState<CommissionPayer | "">("");
 
@@ -135,6 +181,7 @@ export default function ContractForm() {
   const [errors, setErrors] = useState<Errors>({});
   const [isPending, setIsPending] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const usaIndicePublicado = ["IPC", "ICL"].includes(indexType);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
@@ -147,43 +194,28 @@ export default function ContractForm() {
     setSignedContractFile(file);
   }
 
-  function validate(): Errors {
-    const newErrors: Errors = {};
-    if (!property) newErrors.property = "Seleccione o cree un inmueble para el contrato.";
-    if (tenants.length === 0) newErrors.tenants = "Agregue al menos un inquilino.";
-    if (!startDate) newErrors.startDate = "Ingrese la fecha de inicio.";
-    if (!endDate) newErrors.endDate = "Ingrese la fecha de fin.";
-    if (startDate && endDate && endDate <= startDate) {
-      newErrors.endDate = "La fecha de fin debe ser posterior a la de inicio.";
-    }
-    if (!rentAmount || Number(rentAmount) <= 0) newErrors.rentAmount = "Ingrese un monto de alquiler válido.";
-    if (!paymentDueDay || Number(paymentDueDay) < 1 || Number(paymentDueDay) > 31) {
-      newErrors.paymentDueDay = "Ingrese un día entre 1 y 31.";
-    }
-    if (!depositAmount) newErrors.depositAmount = "Ingrese el monto del depósito.";
-    if (!depositType) newErrors.depositType = "Seleccione el tipo de garantía.";
-    if (!commissionPercent || Number(commissionPercent) < 0 || Number(commissionPercent) > 100) {
-      newErrors.commissionPercent = "Ingrese un porcentaje entre 0 y 100.";
-    }
-    if (!commissionPayer) newErrors.commissionPayer = "Indique quién está a cargo de la comisión.";
-    if (!indexType) newErrors.indexType = "Seleccione el tipo de índice.";
-    if (indexType === "CUSTOM" && !customIndexPercent) {
-      newErrors.customIndexPercent = "Ingrese el porcentaje de ajuste.";
-    }
-    if (!adjustmentFrequency) newErrors.adjustmentFrequency = "Seleccione la frecuencia de ajuste.";
-    if (autoRenewal === null) newErrors.autoRenewal = "Indique si el contrato se renueva automáticamente.";
-    if (!terminationNoticeMonths) newErrors.terminationNoticeMonths = "Ingrese el preaviso en meses.";
-    if (hasEarlyTerminationPenalty && !earlyTerminationPenalty) {
-      newErrors.earlyTerminationPenalty = "Ingrese el monto de la multa.";
-    }
-    if (!lateFeeValue) newErrors.lateFeeValue = "Ingrese el valor del punitorio.";
-    if (!lateFeeGraceDays) newErrors.lateFeeGraceDays = "Ingrese los días de gracia.";
-    return newErrors;
-  }
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formErrors = validate();
+    const formErrors = validarContrato({
+      property,
+      tenants,
+      startDate,
+      endDate,
+      rentAmount,
+      paymentDueDay,
+      depositAmount,
+      commissionPercent,
+      commissionPayer,
+      indexType,
+      customIndexPercent,
+      adjustmentFrequency,
+      autoRenewal,
+      terminationNoticeMonths,
+      hasEarlyTerminationPenalty,
+      earlyTerminationPenalty,
+      lateFeeValue,
+      lateFeeGraceDays,
+    });
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
       const firstErrorField = document.querySelector(`[aria-invalid="true"], [id="${Object.keys(formErrors)[0]}"]`);
@@ -210,9 +242,7 @@ export default function ContractForm() {
           className="mb-4 flex size-16 items-center justify-center rounded-full"
           style={{ background: "var(--success-bg)", color: "var(--success)" }}
         >
-          <svg aria-hidden="true" className="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
+          <Check aria-hidden="true" className="size-8" strokeWidth={2.5} />
         </div>
         <h2 className="font-heading mb-2 text-[22px] font-bold">Contrato creado</h2>
         <p className="mb-3" style={{ color: "var(--text-2)" }}>
@@ -348,23 +378,6 @@ export default function ContractForm() {
               style={fieldBorderStyle(!!errors.depositAmount)}
             />
           </Field>
-          <Field label="Tipo de garantía" htmlFor="deposit-type" required error={errors.depositType}>
-            <select
-              id="deposit-type"
-              required
-              value={depositType}
-              onChange={(e) => setDepositType(e.target.value)}
-              className={selectClass}
-              style={fieldBorderStyle(!!errors.depositType)}
-            >
-              <option value="">Seleccionar…</option>
-              {DEPOSIT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -442,7 +455,7 @@ export default function ContractForm() {
           </Field>
         )}
 
-        {(indexType === "IPC" || indexType === "ICL") && (
+        {usaIndicePublicado && (
           <p className="text-[15px]" style={{ color: "var(--text-2)" }}>
             El ajuste se calculará automáticamente según la variación del índice {indexType}.
           </p>

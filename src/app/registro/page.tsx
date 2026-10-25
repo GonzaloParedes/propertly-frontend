@@ -3,7 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { Check, Eye, EyeOff, Mail, ShieldCheck } from "lucide-react";
 import { apiPost, ApiError } from "@/lib/api";
+import { ERROR, copyDeError } from "@/lib/error-codes";
+import { Spinner } from "@/components/ui/Spinner";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 
@@ -13,101 +16,244 @@ const BENEFITS = [
   "Guarde contratos y comprobantes en un lugar seguro",
 ];
 
+function errorDeCuit(cuit: string): string {
+  if (cuit.length === 0) return "Ingrese su CUIT o CUIL.";
+  if (soloDigitos(cuit).length < 11) return "Faltan dígitos: son 11 en total.";
+  return "El número no es válido. Revise que no haya un dígito cambiado.";
+}
+
+// Copy propio del registro para los duplicados (override del copy por defecto del
+// catálogo): acá un CUIT/teléfono duplicado significa «ya hay una cuenta».
+const COPY_REGISTRO: Record<string, string> = {
+  [ERROR.DUPLICATE_TAX_ID]: "Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.",
+  [ERROR.DUPLICATE_PHONE_NUMBER]: "Ese teléfono ya tiene una cuenta. Inicie sesión o use otro.",
+};
+
+function mensajeDeErrorDeRegistro(err: unknown): string {
+  return copyDeError(err, {
+    overrides: COPY_REGISTRO,
+    fallback:
+      err instanceof ApiError && err.status === 400
+        ? "Verifique los datos ingresados e inténtelo de nuevo."
+        : "No pudimos crear su cuenta. Inténtelo de nuevo más tarde.",
+  });
+}
+
+// El backend asocia los duplicados a un campo (extensión `errors` de RFC 9457):
+// se muestran junto al campo, con el copy en español del `type` —nunca el texto en
+// inglés que viene en el mapa—. Devuelve {} si el error no es por-campo conocido,
+// y entonces se muestra el banner general.
+function erroresDeCampoDeRegistro(err: unknown): Record<string, string> {
+  if (!(err instanceof ApiError) || !err.fieldErrors) return {};
+  const copy = copyDeError(err, { overrides: COPY_REGISTRO, fallback: "" });
+  if (!copy) return {};
+  return Object.fromEntries(Object.keys(err.fieldErrors).map((campo) => [campo, copy]));
+}
+
+// Devuelve el mapa sin un campo, sin mutar el original (para limpiar el error de
+// un campo cuando el usuario lo vuelve a tocar).
+function sinCampo(errores: Record<string, string>, campo: string): Record<string, string> {
+  if (!(campo in errores)) return errores;
+  const resto = { ...errores };
+  delete resto[campo];
+  return resto;
+}
+
 function CheckIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--lila)"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
+  return <Check aria-hidden="true" className="size-5 shrink-0" color="var(--lila)" strokeWidth={3} />;
 }
 
 function ShieldIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-[18px] shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--success)"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2.5 20 5.5v6c0 5.2-3.4 8.8-8 10-4.6-1.2-8-4.8-8-10v-6z" />
-      <path d="m8.5 12 2.5 2.5 4.5-4.5" />
-    </svg>
-  );
+  return <ShieldCheck aria-hidden="true" className="size-[18px] shrink-0" color="var(--success)" />;
 }
 
 function MailIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--primary)"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="2" y="4" width="20" height="16" rx="2" />
-      <path d="m2 7 10 7 10-7" />
-    </svg>
-  );
+  return <Mail aria-hidden="true" className="size-12" color="var(--primary)" strokeWidth={1.5} />;
 }
 
 function EyeIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
+  return <Eye aria-hidden="true" className="size-5" />;
 }
 
 function EyeOffIcon() {
+  return <EyeOff aria-hidden="true" className="size-5" />;
+}
+
+function TaxIdField({
+  value,
+  touched,
+  valid,
+  error,
+  backendError,
+  disabled,
+  onChange,
+  onBlur,
+}: Readonly<{
+  value: string;
+  touched: boolean;
+  valid: boolean;
+  error: string;
+  backendError?: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+}>) {
+  // El backend marca el campo con su `type` (p. ej. CUIT ya registrado); ese
+  // mensaje tiene prioridad sobre la validación de formato del lado del cliente.
+  const invalid = Boolean(backendError) || (touched && !valid);
+  const mensaje = backendError ?? error;
   return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-6.5 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94" />
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19" />
-      <line x1="2" y1="2" x2="22" y2="22" />
-    </svg>
+    <div className="mb-4 flex flex-col gap-1.5">
+      <label htmlFor="rg-tax-id" className="font-bold">CUIT o CUIL</label>
+      <input
+        id="rg-tax-id"
+        name="taxId"
+        type="text"
+        inputMode="numeric"
+        placeholder="20-12345678-9"
+        required
+        disabled={disabled}
+        value={value}
+        aria-invalid={invalid}
+        aria-describedby={invalid ? "rg-tax-id-error" : undefined}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+        style={{ borderColor: invalid ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+      />
+      {invalid && (
+        <p id="rg-tax-id-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+          {mensaje}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PhoneField({
+  value,
+  touched,
+  valid,
+  backendError,
+  disabled,
+  onChange,
+  onBlur,
+}: Readonly<{
+  value: string;
+  touched: boolean;
+  valid: boolean;
+  backendError?: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+}>) {
+  const invalid = Boolean(backendError) || (touched && !valid);
+  const mensaje = backendError ?? errorDeTelefono(value);
+  return (
+    <div className="mb-4 flex flex-col gap-1.5">
+      <label htmlFor="rg-phone" className="font-bold">Teléfono</label>
+      <input
+        id="rg-phone"
+        name="phoneNumber"
+        type="tel"
+        inputMode="tel"
+        autoComplete="tel"
+        placeholder="11 44552210"
+        required
+        disabled={disabled}
+        value={value}
+        aria-invalid={invalid}
+        aria-describedby={invalid ? "rg-phone-error" : undefined}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+        style={{ borderColor: invalid ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+      />
+      {invalid && (
+        <p id="rg-phone-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+          {mensaje}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PasswordField({
+  id,
+  name,
+  label,
+  placeholder,
+  showLabel,
+  hideLabel,
+  showPassword,
+  error,
+  disabled,
+  onToggle,
+  onChange,
+}: Readonly<{
+  id: string;
+  name: string;
+  label: string;
+  placeholder: string;
+  // aria-label propio del toggle: con dos campos de contraseña, un mismo texto
+  // dejaría ambos botones indistinguibles para lectores de pantalla.
+  showLabel: string;
+  hideLabel: string;
+  showPassword: boolean;
+  error?: string;
+  disabled: boolean;
+  onToggle: () => void;
+  onChange: () => void;
+}>) {
+  const inputType = showPassword ? "text" : "password";
+  const toggleLabel = showPassword ? hideLabel : showLabel;
+  const ToggleIcon = showPassword ? EyeOffIcon : EyeIcon;
+  const errorId = `${id}-error`;
+  return (
+    <div className="mb-2 flex flex-col gap-1.5">
+      <label htmlFor={id} className="font-bold">{label}</label>
+      <div className="relative">
+        <input
+          id={id}
+          name={name}
+          type={inputType}
+          autoComplete="new-password"
+          placeholder={placeholder}
+          required
+          disabled={disabled}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          onChange={onChange}
+          className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+          style={{ borderColor: error ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+        />
+        <button
+          type="button"
+          aria-label={toggleLabel}
+          onClick={onToggle}
+          className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+          style={{ color: "var(--text-2)" }}
+        >
+          <ToggleIcon />
+        </button>
+      </div>
+      {error && (
+        <p id={errorId} className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
 export default function RegistroPage() {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [erroresDeCampo, setErroresDeCampo] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [erroresContrasena, setErroresContrasena] = useState<Record<string, string>>({});
   const [email, setEmail] = useState("");
   const [taxId, setTaxId] = useState("");
   const [taxIdTouched, setTaxIdTouched] = useState(false);
@@ -115,18 +261,16 @@ export default function RegistroPage() {
   const [phoneTouched, setPhoneTouched] = useState(false);
 
   const taxIdOk = cuitValido(taxId);
-  const taxIdError =
-    taxId.length === 0
-      ? "Ingrese su CUIT o CUIL."
-      : soloDigitos(taxId).length < 11
-        ? "Faltan dígitos: son 11 en total."
-        : "El número no es válido. Revise que no haya un dígito cambiado.";
+  const taxIdError = errorDeCuit(taxId);
 
   const phoneOk = telefonoValido(phone);
+  const submitButtonLabel = isPending ? <span className="inline-flex items-center gap-2"><Spinner />Creando cuenta…</span> : "Crear cuenta";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setErroresDeCampo({});
+    setErroresContrasena({});
     // El CUIT se valida acá y no con `required` porque el navegador no sabe
     // calcular el dígito verificador: sin esto el error llegaría como un 400
     // del backend que no dice qué campo está mal.
@@ -138,8 +282,14 @@ export default function RegistroPage() {
       setPhoneTouched(true);
       return;
     }
-    setIsPending(true);
     const form = new FormData(e.currentTarget);
+    // Chequeo solo del cliente: que la contraseña y su confirmación coincidan.
+    // El backend no recibe `confirm`; el payload de más abajo no lo incluye.
+    if (form.get("password") !== form.get("confirm")) {
+      setErroresContrasena({ confirm: "Las contraseñas no coinciden." });
+      return;
+    }
+    setIsPending(true);
     try {
       await apiPost(
         "/auth/register",
@@ -162,14 +312,11 @@ export default function RegistroPage() {
       );
       setSubmitted(true);
     } catch (err) {
-      if (err instanceof ApiError && err.message === "Tax ID already registered") {
-        setError("Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.");
-      } else if (err instanceof ApiError && err.message === "Phone number already registered") {
-        setError("Ese teléfono ya tiene una cuenta. Inicie sesión o use otro.");
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError("Verifique los datos ingresados e inténtelo de nuevo.");
+      const porCampo = erroresDeCampoDeRegistro(err);
+      if (Object.keys(porCampo).length > 0) {
+        setErroresDeCampo(porCampo);
       } else {
-        setError("No pudimos crear su cuenta. Inténtelo de nuevo más tarde.");
+        setError(mensajeDeErrorDeRegistro(err));
       }
       setIsPending(false);
     }
@@ -324,76 +471,32 @@ export default function RegistroPage() {
                     </div>
                   </div>
 
-                  {/* CUIT o CUIL */}
-                  <div className="mb-4 flex flex-col gap-1.5">
-                    <label htmlFor="rg-tax-id" className="font-bold">
-                      CUIT o CUIL
-                    </label>
-                    <input
-                      id="rg-tax-id"
-                      name="taxId"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="20-12345678-9"
-                      required
-                      disabled={isPending}
-                      value={taxId}
-                      aria-invalid={taxIdTouched && !taxIdOk}
-                      aria-describedby={taxIdTouched && !taxIdOk ? "rg-tax-id-error" : undefined}
-                      onChange={(e) => setTaxId(formatearCuit(e.target.value))}
-                      onBlur={() => setTaxIdTouched(true)}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{
-                        borderColor: taxIdTouched && !taxIdOk ? "var(--danger)" : "var(--border-strong)",
-                        color: "var(--text)",
-                      }}
-                    />
-                    {taxIdTouched && !taxIdOk && (
-                      <p
-                        id="rg-tax-id-error"
-                        className="text-[14px] font-semibold"
-                        style={{ color: "var(--danger)" }}
-                      >
-                        {taxIdError}
-                      </p>
-                    )}
-                  </div>
+                  <TaxIdField
+                    value={taxId}
+                    touched={taxIdTouched}
+                    valid={taxIdOk}
+                    error={taxIdError}
+                    backendError={erroresDeCampo.taxId}
+                    disabled={isPending}
+                    onChange={(value) => {
+                      setTaxId(formatearCuit(value));
+                      setErroresDeCampo((prev) => sinCampo(prev, "taxId"));
+                    }}
+                    onBlur={() => setTaxIdTouched(true)}
+                  />
 
-                  {/* Teléfono */}
-                  <div className="mb-4 flex flex-col gap-1.5">
-                    <label htmlFor="rg-phone" className="font-bold">
-                      Teléfono
-                    </label>
-                    <input
-                      id="rg-phone"
-                      name="phoneNumber"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      placeholder="11 44552210"
-                      required
-                      disabled={isPending}
-                      value={phone}
-                      aria-invalid={phoneTouched && !phoneOk}
-                      aria-describedby={phoneTouched && !phoneOk ? "rg-phone-error" : undefined}
-                      onChange={(e) => setPhone(e.target.value)}
-                      onBlur={() => setPhoneTouched(true)}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{
-                        borderColor: phoneTouched && !phoneOk ? "var(--danger)" : "var(--border-strong)",
-                        color: "var(--text)",
-                      }}
-                    />
-                    {phoneTouched && !phoneOk && (
-                      <p
-                        id="rg-phone-error"
-                        className="text-[14px] font-semibold"
-                        style={{ color: "var(--danger)" }}
-                      >
-                        {errorDeTelefono(phone)}
-                      </p>
-                    )}
-                  </div>
+                  <PhoneField
+                    value={phone}
+                    touched={phoneTouched}
+                    valid={phoneOk}
+                    backendError={erroresDeCampo.phoneNumber}
+                    disabled={isPending}
+                    onChange={(value) => {
+                      setPhone(value);
+                      setErroresDeCampo((prev) => sinCampo(prev, "phoneNumber"));
+                    }}
+                    onBlur={() => setPhoneTouched(true)}
+                  />
 
                   {/* Email */}
                   <div className="mb-4 flex flex-col gap-1.5">
@@ -409,40 +512,49 @@ export default function RegistroPage() {
                       disabled={isPending}
                       placeholder="ejemplo@ejemplo.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      aria-invalid={Boolean(erroresDeCampo.email)}
+                      aria-describedby={erroresDeCampo.email ? "rg-mail-error" : undefined}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setErroresDeCampo((prev) => sinCampo(prev, "email"));
+                      }}
                       className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                      style={{ borderColor: erroresDeCampo.email ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
                     />
+                    {erroresDeCampo.email && (
+                      <p id="rg-mail-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+                        {erroresDeCampo.email}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Contraseña */}
-                  <div className="mb-2 flex flex-col gap-1.5">
-                    <label htmlFor="rg-pass" className="font-bold">
-                      Contraseña
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="rg-pass"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="new-password"
-                        placeholder="Mínimo 8 caracteres"
-                        required
-                        disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                        style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
-                      />
-                      <button
-                        type="button"
-                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded p-1 focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                        style={{ color: "var(--text-2)" }}
-                      >
-                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                      </button>
-                    </div>
-                  </div>
+                  <PasswordField
+                    id="rg-pass"
+                    name="password"
+                    label="Contraseña"
+                    placeholder="Mínimo 8 caracteres"
+                    showLabel="Mostrar contraseña"
+                    hideLabel="Ocultar contraseña"
+                    showPassword={showPassword}
+                    error={erroresContrasena.password}
+                    disabled={isPending}
+                    onToggle={() => setShowPassword((value) => !value)}
+                    onChange={() => setErroresContrasena((prev) => sinCampo(prev, "password"))}
+                  />
+
+                  <PasswordField
+                    id="rg-confirm"
+                    name="confirm"
+                    label="Confirmar contraseña"
+                    placeholder="Repita la contraseña"
+                    showLabel="Mostrar confirmación de contraseña"
+                    hideLabel="Ocultar confirmación de contraseña"
+                    showPassword={showConfirm}
+                    error={erroresContrasena.confirm}
+                    disabled={isPending}
+                    onToggle={() => setShowConfirm((value) => !value)}
+                    onChange={() => setErroresContrasena((prev) => sinCampo(prev, "confirm"))}
+                  />
 
                   {error && (
                     <p
@@ -470,7 +582,7 @@ export default function RegistroPage() {
                       (e.currentTarget.style.background = "var(--primary)")
                     }
                   >
-                    {isPending ? "Creando cuenta…" : "Crear cuenta"}
+                    {submitButtonLabel}
                   </button>
                 </form>
 

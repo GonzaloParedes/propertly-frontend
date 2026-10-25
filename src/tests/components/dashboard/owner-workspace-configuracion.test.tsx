@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
@@ -63,6 +63,9 @@ describe("recordatorios", () => {
   it("apagados lo dice en vez de listar días que no se envían", async () => {
     abrir({ ...AJUSTES, enabled: false });
     expect(await screen.findByText(/están desactivados/)).toBeInTheDocument();
+    expect(screen.queryByText("7 días")).not.toBeInTheDocument();
+    expect(screen.queryByText("Se avisa")).not.toBeInTheDocument();
+    expect(screen.queryByText("3 días")).not.toBeInTheDocument();
   });
 
   // No depende del interruptor: sale igual. Por eso se nombra aparte.
@@ -107,10 +110,28 @@ describe("editar recordatorios", () => {
     expect(await screen.findByText("Recordatorios guardados.")).toBeInTheDocument();
   });
 
+  it("mientras guarda, el botón queda ocupado y no se puede cancelar ni enviar dos veces", async () => {
+    let terminar: (value: ReminderSettingsResponse) => void = () => {};
+    mockUpdate.mockReturnValue(new Promise((resolver) => { terminar = resolver; }));
+    const dialogo = await abrirDialogo();
+
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+
+    const guardando = await within(dialogo).findByRole("button", { name: "Guardando…" });
+    expect(guardando).toBeDisabled();
+    expect(guardando).toHaveAttribute("aria-busy", "true");
+    expect(within(dialogo).getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    await userEvent.click(guardando);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+
+    terminar(AJUSTES);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
   it("apagar los avisos esconde los días, que dejan de aplicar", async () => {
     const dialogo = await abrirDialogo();
 
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Recordatorios activos" }));
+    await userEvent.click(within(dialogo).getByRole("switch", { name: "Enviar recordatorios" }));
 
     expect(within(dialogo).queryByRole("button", { name: /Sumar días antes/ })).not.toBeInTheDocument();
   });

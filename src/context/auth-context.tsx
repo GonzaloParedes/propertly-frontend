@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ApiError, onAuthExpired } from "@/lib/api";
 import { AlquiaBackendClient, type UserResponse } from "@/lib/backend-client";
 
 /**
@@ -36,12 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // si mientras tanto login()/logout() ya resolvieron un estado más nuevo.
   const authRequestId = useRef(0);
 
+  useEffect(() => onAuthExpired(() => {
+    authRequestId.current++;
+    setUser(null);
+  }), []);
+
   useEffect(() => {
     const id = ++authRequestId.current;
-    // retry:false a propósito: para un visitante anónimo este 401 es esperado,
-    // no queremos gastar un /auth/refresh en cada carga de página sin sesión.
+    // Un access token puede haber vencido mientras la pestaña estaba cerrada;
+    // la cookie de refresh todavía puede mantener la sesión vigente.
     AlquiaBackendClient.users
-      .getMe({ retry: false })
+      .getMe()
       .then((me) => {
         if (authRequestId.current === id) setUser(me);
       })
@@ -51,29 +57,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  const login = useCallback(async (email: string, password: string) => {
     const id = ++authRequestId.current;
     await AlquiaBackendClient.auth.login({ email, password });
     const me = await AlquiaBackendClient.users.getMe();
     if (authRequestId.current === id) setUser(me);
-  }
+  }, []);
 
-  async function logout() {
+  const logout = useCallback(async () => {
     authRequestId.current++;
     try {
       await AlquiaBackendClient.auth.logout();
+    } catch (err) {
+      // Un 401 es que la sesión ya había vencido: lo que se quería cerrar ya
+      // está cerrado. Sin esto el error sube hasta el botón —que lo llama con
+      // `void`— y queda como rechazo sin atrapar.
+      if (!(err instanceof ApiError && err.status === 401)) throw err;
     } finally {
       setUser(null);
     }
-  }
+  }, []);
 
-  function actualizarUsuario(usuario: AuthUser) {
+  const actualizarUsuario = useCallback((usuario: AuthUser) => {
     authRequestId.current++;
     setUser(usuario);
-  }
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({ user, isLoading, login, logout, actualizarUsuario }),
+    [user, isLoading, login, logout, actualizarUsuario]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, actualizarUsuario }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

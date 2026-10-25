@@ -1,0 +1,217 @@
+/* Hallmark · macrostructure: Feature Stack · tone: luxury-calm · anchor hue: indigo
+ * theme: custom (marca Alquia v1.1) · paper superficie #F6F5FC · accent índigo #5B4BC4 · rosa solo en la raya de tareas
+ * nav: N1b · footer: Ft5 Statement · enrichment: piezas reales de la app (no capturas)
+ * pre-emit critique: P4 H4 E4 S5 R4 V4
+ *
+ * Manda el manual de marca v1.1 y docs/design/sistema-ui.md:
+ * · Página clara. El único bloque de color es el hero, en tinta, con el
+ *   acento en lila (manual, sección 10: modo oscuro).
+ * · Sin degradés, blobs, vidrio ni animaciones en bucle.
+ * · Radios existentes (10 · 14 · 20 · 999), anillos en vez de bordes, texto
+ *   base 17px, objetivos táctiles de 48px, cortes en 900 y 620.
+ * · Las vistas del producto usan las clases reales de la app (piezas.tsx).
+ */
+
+.lp {
+  --lp-h1: clamp(44px, 6vw, 76px);
+  --lp-h2: clamp(32px, 4vw, 52px);
+  --lp-h3: clamp(26px, 2.6vw, 34px);
+  --lp-lead: 20px;
+  --lp-seccion: 136px;
+  --lp-nav: 72px;
+  --lp-ease: cubic-bezier(.16, 1, .3, 1);
+  --lp-sombra-pieza: 0 1px 3px rgba(30,27,46,.04), 0 28px 64px -28px rgba(30,27,46,.32);
+  --lp-sombra-suave: 0 1px 2px rgba(30,27,46,.04), 0 4px 12px -4px rgba(30,27,46,.07);
+  min-height: 100dvh;
+  background: var(--superficie);
+  color: var(--tinta);
+  font: 400 17px/1.55 var(--font-nunito-sans), "Segoe UI", Arial, sans-serif;
+}
+.lp h1, .lp h2, .lp h3 { margin: 0; font-family: var(--font-quicksand), "Trebuchet MS", "Segoe UI", sans-serif; font-weight: 700; text-wrap: balance; overflow-wrap: anywhere; }
+.lp h2 { font-size: var(--lp-h2); line-height: 1.1; letter-spacing: -.025em; }
+.lp h3 { font-size: var(--lp-h3); line-height: 1.15; letter-spacing: -.02em; }
+.lp section[id] { scroll-margin-top: calc(var(--lp-nav) + 24px); }
+
+.lp-wrap { width: min(100% - 32px, 1200px); margin-inline: auto; }
+
+.lp-link { display: inline-flex; min-height: 48px; align-items: center; border-radius: 10px; color: var(--indigo); font-weight: 700; text-decoration: none; white-space: nowrap; }
+.lp-link:hover { text-decoration: underline; text-underline-offset: 5px; }
+.lp-link--tinta { color: var(--tinta); font-weight: 600; }
+.lp-link--claro { color: #fff; text-decoration: underline; text-decoration-color: var(--lila); text-underline-offset: 6px; }
+.lp-link:focus-visible, .lp-nav__logo:focus-visible, .lp-preguntas summary:focus-visible { outline: 3px solid var(--lila); outline-offset: 3px; }
+
+.lp-cta { min-height: 58px; padding: 0 32px; font-size: 17px; text-decoration: none; }
+
+/* Nav · N1b ------------------------------------------------------ */
+.lp-nav { position: sticky; top: 0; z-index: 40; background: #fff; box-shadow: inset 0 -1px 0 var(--divisor); }
+.lp-nav__inner { display: flex; height: var(--lp-nav); align-items: center; justify-content: space-between; gap: var(--esp-20); }
+.lp-nav__logo { display: block; border-radius: 10px; }
+.lp-nav__logo img { display: block; width: auto; height: 30px; }
+.lp-nav__secciones { display: flex; gap: var(--esp-32); }
+.lp-nav__links { display: flex; align-items: center; gap: var(--esp-20); }
+.lp-nav__cta { min-height: 48px; text-decoration: none; }
+
+/* Hero ------------------------------------------------------------ */
+/* La pieza baja por debajo del hero y el aviso se superpone a la tarjeta:
+   profundidad por capas, no por degradés. */
+.lp-hero { position: relative; z-index: 1; padding: 112px 0 136px; background: var(--tinta); color: #fff; }
+.lp-hero__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 80px; align-items: center; }
+.lp-hero h1 { font-size: var(--lp-h1); line-height: 1.04; letter-spacing: -.035em; }
+.lp-hero h1 em { color: var(--lila); font-style: normal; }
+.lp-hero__texto > p { max-width: 32ch; margin: var(--esp-32) 0 var(--esp-44); color: var(--on-dark-secondary); font-size: var(--lp-lead); line-height: 1.5; }
+.lp-hero__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: var(--esp-16) var(--esp-32); }
+
+.lp-pieza { margin: 0; color: var(--tinta); }
+.lp-pieza .owner-card__top { align-items: flex-start; }
+.lp-pieza__rotulo { margin: 0 0 var(--esp-10); color: var(--gris); font-size: 15px; font-weight: 700; }
+.lp-pieza .owner-card, .lp-pieza .owner-list, .lp-pieza .owner-notice, .lp-pieza .tenant-calendar { box-shadow: var(--lp-sombra-suave); }
+
+/* El aviso va escalonado debajo de la tarjeta: se corre a la izquierda sin
+   taparle ningún dato. */
+.lp-pieza--inicio .owner-portfolio { grid-template-columns: 1fr; box-shadow: var(--lp-sombra-pieza); }
+.lp-pieza__superpuesta { width: min(440px, 88%); margin: var(--esp-16) 0 0 -56px; }
+.lp-pieza__superpuesta .owner-notice { box-shadow: var(--lp-sombra-pieza); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lp-pieza--inicio .owner-portfolio { animation: lp-sube .8s var(--lp-ease) both; }
+  .lp-pieza__superpuesta { animation: lp-sube .8s .35s var(--lp-ease) both; }
+}
+@keyframes lp-sube { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+
+/* Secciones ------------------------------------------------------- */
+.lp-seccion { padding: var(--lp-seccion) 0; }
+.lp-banda--blanca { background: #fff; }
+.lp-banda--lila { background: var(--indigo-suave); }
+.lp-encabezado { max-width: 680px; }
+.lp-encabezado p { margin: var(--esp-20) 0 0; color: var(--gris); font-size: var(--lp-lead); }
+
+/* Lo que deja de hacer: la raya rosa se dibuja al entrar en pantalla.
+   Es el único uso del rosa en la página (manual: nunca más del 10%). */
+.lp-tareas__lista { display: grid; gap: var(--esp-26); margin: 64px 0 0; padding: 0 0 0 clamp(0px, 12vw, 180px); list-style: none; }
+.lp-tareas__lista li { max-width: 24ch; color: var(--gris); font: 600 clamp(24px, 3.2vw, 40px)/1.25 var(--font-quicksand), sans-serif; letter-spacing: -.02em; }
+.lp-tareas__lista span { background: linear-gradient(var(--rosa), var(--rosa)) no-repeat 0 58% / 100% 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.lp-tareas__cierre { margin: 72px 0 0; padding-left: clamp(0px, 12vw, 180px); font: 700 clamp(28px, 3.8vw, 48px)/1.15 var(--font-quicksand), sans-serif; letter-spacing: -.025em; }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .lp-tareas__lista span { animation: lp-tachar linear both; animation-timeline: view(); animation-range: entry 80% cover 45%; }
+  }
+}
+@keyframes lp-tachar { from { background-size: 0% 3px; } to { background-size: 100% 3px; } }
+
+/* Un mes: calendario de ejemplo + los avisos de ese mes. */
+.lp-mes__grilla { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 88px; align-items: start; margin-top: 72px; }
+.lp-calendario { margin: 0; padding: var(--esp-32); border-radius: 20px; background: var(--superficie); }
+.lp-calendario__semana, .lp-calendario__dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--esp-6); }
+.lp-calendario__semana span { padding-bottom: var(--esp-10); color: var(--gris); font-size: 15px; font-weight: 700; text-align: center; }
+.lp-calendario__dia { display: grid; aspect-ratio: 1; place-items: center; border-radius: 10px; font: 600 17px var(--font-quicksand), sans-serif; font-variant-numeric: tabular-nums; }
+.lp-calendario__dia--aviso { background: var(--indigo); color: #fff; font-weight: 700; }
+.lp-calendario__dia--vence { box-shadow: inset 0 0 0 2px var(--tinta); font-weight: 700; }
+.lp-calendario__clave { display: flex; flex-wrap: wrap; gap: var(--esp-10) var(--esp-26); margin-top: var(--esp-20); padding-top: var(--esp-18); box-shadow: inset 0 1px 0 var(--divisor); color: var(--gris); font-size: 15px; }
+.lp-calendario__clave span { display: inline-flex; align-items: center; gap: var(--esp-8); }
+.lp-calendario__muestra { width: 14px; height: 14px; border-radius: 999px; }
+.lp-calendario__muestra--aviso { background: var(--indigo); }
+.lp-calendario__muestra--vence { box-shadow: inset 0 0 0 2px var(--tinta); }
+
+.lp-mes__avisos { margin: 0; padding: 0; list-style: none; }
+.lp-mes__avisos li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--esp-20); padding: var(--esp-26) 0; }
+.lp-mes__avisos li:first-child { padding-top: 0; }
+.lp-mes__avisos li + li { box-shadow: inset 0 1px 0 var(--borde); }
+.lp-mes__dia { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 999px; background: var(--indigo); color: #fff; font: 700 18px var(--font-quicksand), sans-serif; }
+.lp-mes__avisos p { margin: 0; }
+.lp-mes__para { color: var(--indigo); font-size: 15px; font-weight: 700; }
+.lp-mes__avisos .lp-mes__texto { margin-top: var(--esp-6); font-size: 19px; line-height: 1.45; }
+
+/* Cómo funciona · Feature Stack: el texto queda fijo, las piezas pasan. */
+.lp .lp-stack__titulo { margin-bottom: var(--esp-26); }
+.lp-momento { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 96px; padding: 96px 0; }
+.lp-momento + .lp-momento { box-shadow: inset 0 1px 0 var(--borde); }
+.lp-momento:first-of-type { padding-top: 56px; }
+.lp-momento:last-child { padding-bottom: 0; }
+.lp-momento__texto { position: sticky; top: calc(var(--lp-nav) + 56px); align-self: start; }
+.lp-momento__texto > p { margin: var(--esp-18) 0 0; color: var(--gris); font-size: var(--lp-lead); }
+.lp-momento__texto ul { display: grid; gap: var(--esp-14); margin: var(--esp-32) 0 0; padding: var(--esp-26) 0 0; box-shadow: inset 0 1px 0 var(--borde); list-style: none; }
+.lp-momento__texto li { display: flex; align-items: flex-start; gap: var(--esp-12); }
+.lp-momento__texto li svg { flex: none; margin-top: 4px; color: var(--indigo); }
+.lp-momento__piezas { display: flex; flex-direction: column; gap: var(--esp-32); }
+.lp-momento__piezas .owner-card + .owner-card { margin-top: 0; }
+.lp-momento__piezas .owner-link-box { margin-top: var(--esp-20); }
+.lp-pieza--portal .tenant-calendar__months { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 0; box-shadow: none; }
+.lp-pieza--portal .tenant-calendar__month { min-height: 104px; cursor: default; }
+.lp-pieza .owner-card h2 { font-size: 20px; letter-spacing: 0; }
+.lp-pieza .owner-card .owner-document { margin-top: var(--esp-18); }
+
+/* Empezar: una sola línea, sin cajas. */
+.lp-empezar h2 { max-width: 16ch; }
+.lp-empezar__pasos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--esp-26); margin: var(--esp-44) 0 0; padding: 0; list-style: none; font: 700 clamp(22px, 2.2vw, 28px)/1.3 var(--font-quicksand), sans-serif; letter-spacing: -.015em; }
+.lp-empezar__pasos li { display: flex; align-items: flex-start; gap: var(--esp-20); }
+.lp-empezar__flecha { display: inline-flex; margin-top: 6px; color: var(--lila); }
+
+/* Preguntas frecuentes: <details> nativo, sin JS. */
+.lp-preguntas__grilla { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 88px; align-items: start; }
+.lp-preguntas__lista { border-radius: 20px; background: #fff; box-shadow: var(--lp-sombra-suave); }
+.lp-preguntas details + details { box-shadow: inset 0 1px 0 var(--divisor); }
+.lp-preguntas summary { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: var(--esp-16); padding: var(--esp-20) 28px; border-radius: 20px; cursor: pointer; font-size: 18px; font-weight: 700; list-style: none; }
+.lp-preguntas summary::-webkit-details-marker { display: none; }
+.lp-preguntas summary svg { flex: none; color: var(--indigo); transition: transform .2s var(--lp-ease); }
+.lp-preguntas details[open] summary svg { transform: rotate(45deg); }
+.lp-preguntas details p { margin: 0; padding: 0 28px var(--esp-26); color: var(--gris); }
+
+/* Cierre --------------------------------------------------------- */
+.lp-final__inner { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 64px; align-items: end; }
+.lp-final h2 { max-width: 16ch; font-size: clamp(40px, 5.6vw, 72px); line-height: 1.04; letter-spacing: -.035em; }
+.lp-final__accion { display: flex; flex-direction: column; align-items: flex-start; }
+.lp-final__accion p { margin: 0 0 var(--esp-20); color: var(--gris); font-size: var(--lp-lead); }
+
+/* Pie · Ft5 Statement */
+.lp-pie { padding: 88px 0 var(--esp-32); background: #fff; box-shadow: inset 0 1px 0 var(--divisor); }
+.lp-pie__arriba { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 3fr) minmax(0, 3fr); gap: 48px; }
+.lp-pie__logo { display: block; width: auto; height: 34px; }
+.lp-pie__marca p { max-width: 18ch; margin: var(--esp-18) 0 0; font: 600 22px/1.3 var(--font-quicksand), sans-serif; }
+.lp-pie__columna { display: flex; flex-direction: column; align-items: flex-start; }
+.lp-pie__columna p { margin: 0 0 var(--esp-6); color: var(--gris); font-size: 15px; font-weight: 700; }
+.lp-pie__legal { margin: 72px 0 0; padding-top: var(--esp-20); box-shadow: inset 0 1px 0 var(--divisor); color: var(--gris); font-size: 15px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-preguntas summary svg { transition: none; }
+}
+
+/* 900: la estructura pasa a una columna y el stack deja de ser fijo. */
+@media (max-width: 900px) {
+  .lp { --lp-seccion: 104px; }
+  .lp-nav__secciones { display: none; }
+  .lp-hero { padding: 64px 0 88px; }
+  .lp-hero__grid, .lp-mes__grilla, .lp-momento, .lp-preguntas__grilla, .lp-final__inner, .lp-pie__arriba { grid-template-columns: 1fr; gap: 48px; }
+  .lp-pieza__superpuesta { width: auto; margin: var(--esp-12) 0 0; }
+  .lp-tareas__lista, .lp-tareas__cierre { padding-left: 0; }
+  .lp-mes__grilla { margin-top: 48px; }
+  .lp-momento { gap: 40px; padding: 72px 0; }
+  .lp-momento__texto { position: static; }
+  .lp-final__inner { gap: var(--esp-26); }
+  .lp-pie__arriba { gap: var(--esp-32); }
+}
+
+/* 620: celular. */
+@media (max-width: 620px) {
+  .lp { --lp-seccion: 80px; --lp-nav: 64px; --lp-lead: 18px; }
+  .lp-nav__logo img { height: 26px; }
+  .lp-nav__cta { display: none; }
+  .lp-hero__texto > p { margin: var(--esp-20) 0 var(--esp-26); }
+  .lp-hero__acciones { flex-direction: column; align-items: stretch; gap: var(--esp-8); }
+  .lp-hero__acciones .lp-link { justify-content: center; }
+  .lp-cta { width: 100%; }
+  .lp-tareas__lista { margin-top: 40px; gap: var(--esp-20); }
+  .lp-tareas__cierre { margin-top: 48px; }
+  .lp-calendario { padding: var(--esp-18); }
+  .lp-calendario__dia { font-size: 15px; }
+  .lp-mes__avisos li { grid-template-columns: 40px minmax(0, 1fr); gap: var(--esp-14); }
+  .lp-mes__dia { width: 40px; height: 40px; font-size: 16px; }
+  .lp-mes__avisos .lp-mes__texto { font-size: 17px; }
+  .lp-momento__piezas { gap: var(--esp-20); }
+  .lp-empezar__pasos { grid-template-columns: 1fr; }
+  .lp-empezar__pasos li { flex-direction: column; gap: var(--esp-12); }
+  .lp-empezar__flecha { margin-top: 0; transform: rotate(90deg); }
+  .lp-preguntas summary { padding: var(--esp-16) var(--esp-20); font-size: 17px; }
+  .lp-preguntas details p { padding: 0 var(--esp-20) var(--esp-18); }
+  .lp-pie { padding-top: 56px; }
+  .lp-pie__legal { margin-top: 48px; }
+}

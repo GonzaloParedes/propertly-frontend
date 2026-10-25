@@ -23,7 +23,7 @@ function tenant(over: Partial<TenantResponse> = {}): TenantResponse {
 function property(over: Partial<PropertyResponse> = {}): PropertyResponse {
   return {
     id: 10, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A",
-    city: "CABA", province: "CABA", category: "APARTMENT", ...over,
+    city: "CABA", province: "CABA", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT", ...over,
   };
 }
 
@@ -43,7 +43,7 @@ function payment(over: Partial<PaymentResponse> = {}): PaymentResponse {
 function invoice(over: Partial<InvoiceResponse> = {}): InvoiceResponse {
   return {
     id: 1000, contractId: 100, period: "2026-08-01", dueDate: "2026-08-10",
-    baseAmount: 478691, total: 478691, status: "PENDING", confirmed: true,
+    baseAmount: 478691, total: 478691, amountDue: 478691, lateFee: null, status: "PENDING", confirmed: true,
     adjustments: [], payments: [], ...over,
   };
 }

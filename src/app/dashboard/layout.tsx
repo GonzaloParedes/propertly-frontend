@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { ThemeProvider } from "@/context/theme-context";
+import { Cargando } from "@/components/ui/Spinner";
 import DashboardNav from "@/components/dashboard/DashboardNav";
 
 export default function DashboardLayout({
@@ -22,15 +24,17 @@ export default function DashboardLayout({
   if (isLoading || !user) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <p style={{ color: "var(--text-2)" }}>Cargando…</p>
+        <Cargando>Cargando su panel…</Cargando>
       </main>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <DashboardNav />
-      <main className="flex flex-1 flex-col">{children}</main>
-    </div>
+    <ThemeProvider>
+      <div className="flex min-h-full flex-1 flex-col">
+        <DashboardNav />
+        <main className="flex flex-1 flex-col">{children}</main>
+      </div>
+    </ThemeProvider>
   );
 }

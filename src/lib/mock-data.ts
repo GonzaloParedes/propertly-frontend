@@ -125,11 +125,3 @@ export const MOCK_TENANTS: Tenant[] = [
   { id: "ten-4", name: "Ricardo Gómez", email: "ricardo.gomez@ejemplo.com", phone: "11 5555-8877", isGuarantor: false },
 ];
 
-export const DEPOSIT_TYPES = [
-  "Depósito en efectivo",
-  "Seguro de caución",
-  "Garantía propietaria",
-  "Aval bancario",
-  "Otro",
-] as const;
-

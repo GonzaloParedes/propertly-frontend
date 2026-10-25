@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Quicksand, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const quicksand = Quicksand({
   variable: "--font-quicksand",
@@ -36,7 +37,9 @@ export default function RootLayout({
       className={`${quicksand.variable} ${nunitoSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <ToastProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );
