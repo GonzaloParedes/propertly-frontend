@@ -556,7 +556,7 @@ haya que discutirlos antes de estimarlos.
 
 ### P2-1 · Copropiedad: propietarios con porcentaje de tenencia
 
-**Lo que dice el backend hoy:** no hay entidad propietario. Textual del `CLAUDE.md` de
+**Lo que dice el backend hoy:** no hay entidad propietario. Textual del `AGENTS.md` de
 `controller/`: *«There is no separate "owner" resource — a user who owns tenants/properties is
 just a `User`»*. `Property.user` es el dueño de la cuenta, y es uno solo.
 

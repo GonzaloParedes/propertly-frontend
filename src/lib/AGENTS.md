@@ -1,4 +1,4 @@
-# CLAUDE.md — src/lib
+# AGENTS.md — src/lib
 
 `backend-client.ts` (`AlquiaBackendClient`) and `backend-types.ts` must stay in sync with the
 backend's Swagger UI: `http://localhost:8080/swagger-ui.html` (dev). Before adding, removing, or

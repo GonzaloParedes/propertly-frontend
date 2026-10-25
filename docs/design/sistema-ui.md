@@ -444,7 +444,7 @@ por la forma, que sobrevive al daltonismo y a la impresión en blanco y negro.
 ## Reglas del dominio que la UI tiene que respetar
 
 Fáciles de errarle si uno diseña sin leer el backend. Fuente:
-`propertly-backend@origin/mvp`, ver el `CLAUDE.md` de cada paquete.
+`propertly-backend@origin/mvp`, ver el `AGENTS.md` de cada paquete.
 
 1. **Un pago exige comprobante.** Los campos `receipt*` de `Payment` son
    `non-nullable`. En la UI nunca dice «(opcional)».
@@ -551,7 +551,7 @@ Ya está decidido:
 2. **Lo que el backend no modela y el negocio necesita, se le pide al backend.**
    No se inventa una versión paralela en `types.ts`.
 
-Fuente: `propertly-backend@origin/mvp`, `CLAUDE.md` de cada paquete. La rama
+Fuente: `propertly-backend@origin/mvp`, `AGENTS.md` de cada paquete. La rama
 `main` del backend está muy atrás; para integrar, apuntar siempre a `mvp`.
 
 ### Glosario, porque los nombres confunden
@@ -824,7 +824,7 @@ Lo que cambió en el grupo `payments`, por si aparece código viejo:
 Sus tests verifican a qué URL pega cada método, no que el backend conteste. Eso
 significa que **seguirían verdes contra endpoints muertos**: cuando el backend
 cambie de forma otra vez, el test no lo va a avisar. La red de seguridad real es
-volver a mirar el spec, que es lo que pide el `CLAUDE.md` de `src/lib`.
+volver a mirar el spec, que es lo que pide el `AGENTS.md` de `src/lib`.
 
 ---
 
