@@ -13,6 +13,8 @@ export const ERROR = {
   DUPLICATE_PHONE_NUMBER: "urn:alquia:error:duplicate-phone-number",
   PROPERTY_HAS_ACTIVE_CONTRACT: "urn:alquia:error:property-has-active-contract",
   PAYMENT_ON_UNCONFIRMED_INVOICE: "urn:alquia:error:payment-on-unconfirmed-invoice",
+  PAYMENT_RECEIPT_NOT_IMAGE: "urn:alquia:error:payment-receipt-not-image",
+  PAYMENT_RECEIPT_EMPTY: "urn:alquia:error:payment-receipt-empty",
   ADJUSTMENT_ON_CONFIRMED_INVOICE: "urn:alquia:error:adjustment-on-confirmed-invoice",
   INVOICE_TOTAL_NEGATIVE: "urn:alquia:error:invoice-total-negative",
   SCHEMA_CHANGE_OVER_PAID_INVOICE: "urn:alquia:error:schema-change-over-paid-invoice",
@@ -62,6 +64,10 @@ const COPY: Record<string, string> = {
     "Esa propiedad ya tiene un contrato vigente. Finalícelo antes de crear otro.",
   [ERROR.PAYMENT_ON_UNCONFIRMED_INVOICE]:
     "Primero hay que confirmar la cuota. Después se le puede registrar el pago.",
+  [ERROR.PAYMENT_RECEIPT_NOT_IMAGE]:
+    "El comprobante tiene que ser una imagen PNG, JPG o WebP.",
+  [ERROR.PAYMENT_RECEIPT_EMPTY]:
+    "El comprobante está vacío. Suba una imagen PNG, JPG o WebP.",
   [ERROR.ADJUSTMENT_ON_CONFIRMED_INVOICE]:
     "La cuota quedó confirmada, así que su importe ya está cerrado.",
   [ERROR.INVOICE_TOTAL_NEGATIVE]: "El total de la cuota no puede quedar negativo.",

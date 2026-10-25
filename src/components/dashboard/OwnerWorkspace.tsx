@@ -365,6 +365,10 @@ function mensajeDeErrorCobranza(err: unknown): string {
   if (err instanceof ApiError && (err.type === ERROR.LATE_FEE_NOT_CONFIGURED || err.type === ERROR.LATE_FEE_ALREADY_SETTLED)) {
     return copyDeError(err);
   }
+  // El 400 genérico no dice qué archivo sirve: estos type sí.
+  if (err instanceof ApiError && (err.type === ERROR.PAYMENT_RECEIPT_NOT_IMAGE || err.type === ERROR.PAYMENT_RECEIPT_EMPTY)) {
+    return copyDeError(err);
+  }
   // El tope del recargo lo valida el backend contra el de hoy: si el contrato cambió el día entremedio, rechaza.
   if (err instanceof ApiError && err.status === 400 && err.fieldErrors?.amount) {
     return "Ese importe supera el recargo que corresponde hoy según el contrato. Pruebe con uno menor.";
