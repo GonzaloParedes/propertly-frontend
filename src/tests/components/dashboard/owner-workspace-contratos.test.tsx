@@ -21,6 +21,7 @@ vi.mock("@/lib/backend-client", () => ({
     invoices: { list: vi.fn(), confirm: vi.fn() },
     payments: { create: vi.fn(), confirm: vi.fn(), reject: vi.fn(), getReceipt: vi.fn() },
     contractDrafts: { list: vi.fn(), get: vi.fn(), remove: vi.fn(), create: vi.fn(), update: vi.fn() },
+    propertyDrafts: { list: vi.fn(), get: vi.fn(), remove: vi.fn(), create: vi.fn(), update: vi.fn() },
   },
 }));
 

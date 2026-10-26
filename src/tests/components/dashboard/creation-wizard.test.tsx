@@ -14,6 +14,7 @@ vi.mock("@/lib/backend-client", () => ({
     contracts: { list: vi.fn(), create: vi.fn(), onboard: vi.fn(), attachDocument: vi.fn() },
     contractImports: { quota: vi.fn(), upload: vi.fn(), get: vi.fn(), retry: vi.fn(), complete: vi.fn(), discard: vi.fn(), document: vi.fn() },
     contractDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(), attachDocument: vi.fn(), getDocument: vi.fn(), removeDocument: vi.fn() },
+    propertyDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
     addressLookup: { autocomplete: vi.fn(), resolve: vi.fn() },
   },
 }));
@@ -29,6 +30,7 @@ const mockResolver = vi.mocked(AlquiaBackendClient.addressLookup.resolve);
 const mockCrearContrato = vi.mocked(AlquiaBackendClient.contracts.onboard);
 const mockCuota = vi.mocked(AlquiaBackendClient.contractImports.quota);
 const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
+const mockBorradoresDePropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts);
 
 /** Un borrador como lo devuelve el backend. */
 function borradorGuardado(cuerpo: { label: string; payload: Record<string, unknown> }, id = 5, version = 0) {
@@ -71,6 +73,8 @@ beforeEach(() => {
   mockCuota.mockResolvedValue({ used: 0, limit: 5, available: true });
   mockBorradores.create.mockImplementation(async (cuerpo) => borradorGuardado(cuerpo));
   mockBorradores.update.mockImplementation(async (id, cuerpo) => borradorGuardado(cuerpo, id, cuerpo.version + 1));
+  mockBorradoresDePropiedad.create.mockImplementation(async (cuerpo) => borradorGuardado(cuerpo));
+  mockBorradoresDePropiedad.update.mockImplementation(async (id, cuerpo) => borradorGuardado(cuerpo, id, cuerpo.version + 1));
   mockAutocompletar.mockResolvedValue([{ reference: "ref-lavalle", label: "Lavalle 950" }]);
   // Desde ALQ-92 el resolve trae coordenadas (Caso A): el paso de dirección queda
   // listo para avanzar sin tocar el mapa. Los flujos sin coordenadas (demo, o la
@@ -551,7 +555,8 @@ describe("asistente de propiedad · tipo y guardado", () => {
 
     await waitFor(() => expect(mockCrearPropiedad).toHaveBeenCalled());
     expect(mockCrearPropiedad).toHaveBeenCalledWith(
-      expect.objectContaining({ latitude: -34.6037, longitude: -58.3816, category: "GARAGE" })
+      expect.objectContaining({ latitude: -34.6037, longitude: -58.3816, category: "GARAGE" }),
+      { draftId: 5 }
     );
   });
 
@@ -586,7 +591,7 @@ describe("asistente de propiedad · tipo y guardado", () => {
       coveredArea: undefined,
       petsAllowed: undefined,
       furnished: undefined,
-    });
+    }, { draftId: 5 });
   });
 
   it("manda las características que se cargaron, y sólo esas", async () => {
@@ -611,7 +616,8 @@ describe("asistente de propiedad · tipo y guardado", () => {
         // ni que no está amoblada.
         bathrooms: undefined,
         furnished: undefined,
-      })
+      }),
+      { draftId: 5 }
     );
   });
 
@@ -638,7 +644,8 @@ describe("asistente de propiedad · tipo y guardado", () => {
 
     await waitFor(() => expect(mockCrearPropiedad).toHaveBeenCalled());
     expect(mockCrearPropiedad).toHaveBeenCalledWith(
-      expect.objectContaining({ number: "950", floorUnit: "3.º B" })
+      expect.objectContaining({ number: "950", floorUnit: "3.º B" }),
+      { draftId: 5 }
     );
   });
 
@@ -2555,5 +2562,86 @@ describe("asistente de contrato · retomar un borrador", () => {
     expect(onDraftKept).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockBorradores.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("Nueva propiedad · borrador", () => {
+  const formulario = {
+    direccion: {
+      street: "Lavalle",
+      number: "950",
+      city: "CABA",
+      province: "Ciudad Autónoma de Buenos Aires",
+      postalCode: "C1047",
+      latitude: -34.6037,
+      longitude: -58.3816,
+    },
+    unidad: "",
+    categoria: null,
+    bedrooms: null,
+    bathrooms: null,
+    superficie: "",
+    mascotas: false,
+    amoblada: false,
+  };
+
+  async function abrirPropiedad() {
+    const vista = render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    await userEvent.click(await screen.findByRole("button", { name: "Lavalle 950" }));
+    return vista;
+  }
+
+  it("no guarda antes de completar la ubicación y crea el borrador al completarla", async () => {
+    render(<CreationWizard kind="property" onClose={onClose} onComplete={onComplete} />);
+    await userEvent.type(screen.getByLabelText("Buscar la dirección"), "Lavalle");
+    expect(mockBorradoresDePropiedad.create).not.toHaveBeenCalled();
+    await userEvent.click(await screen.findByRole("button", { name: "Lavalle 950" }));
+
+    await waitFor(() => expect(mockBorradoresDePropiedad.create).toHaveBeenCalledOnce());
+    expect(mockBorradoresDePropiedad.create.mock.calls[0][0]).toMatchObject({
+      label: "Lavalle 950",
+      payload: { schemaVersion: 1, paso: 1 },
+    });
+  });
+
+  it("guarda al cambiar de paso y al retomar conserva el paso y los campos", async () => {
+    const vista = await abrirPropiedad();
+    await userEvent.click(screen.getByRole("button", { name: /Seguir/ }));
+    await waitFor(() => expect(mockBorradoresDePropiedad.update).toHaveBeenCalledOnce());
+    vista.unmount();
+
+    mockBorradoresDePropiedad.get.mockResolvedValue({
+      id: 7,
+      label: "Lavalle 950",
+      version: 2,
+      payload: { schemaVersion: 1, paso: 2, formulario },
+      createdAt: "2026-10-01T12:00:00Z",
+      updatedAt: "2026-10-02T12:00:00Z",
+      expiresAt: "2027-01-01T12:00:00Z",
+    });
+    render(<CreationWizard kind="property" draftId={7} draftKind="property" onClose={onClose} onComplete={onComplete} />);
+
+    expect(await screen.findByText("Paso 2 de 4")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "¿Qué tipo de propiedad es?" })).toBeInTheDocument();
+  });
+
+  it("un borrador ilegible ofrece descartarlo por el recurso de propiedades", async () => {
+    mockBorradoresDePropiedad.get.mockResolvedValue({
+      id: 7,
+      label: "Lavalle 950",
+      version: 0,
+      payload: { schemaVersion: 99 },
+      createdAt: "2026-10-01T12:00:00Z",
+      updatedAt: "2026-10-02T12:00:00Z",
+      expiresAt: "2027-01-01T12:00:00Z",
+    });
+    mockBorradoresDePropiedad.remove.mockResolvedValue(undefined);
+    render(<CreationWizard kind="property" draftId={7} draftKind="property" onClose={onClose} onComplete={onComplete} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Descartar el borrador" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() => expect(mockBorradoresDePropiedad.remove).toHaveBeenCalledWith(7));
   });
 });

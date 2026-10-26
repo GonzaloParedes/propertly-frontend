@@ -7,7 +7,7 @@ import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/tele
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { ERROR, copyDeError, idDelContratoActivo, idDelInquilinoExistente } from "@/lib/error-codes";
 import { AlquiaBackendClient } from "@/lib/backend-client";
-import type { AddressSuggestionResponse, ContractDraft, PropertyCategory, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
+import type { AddressSuggestionResponse, ContractDraft, PropertyCategory, PropertyDraft, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
 import Counter from "@/components/ui/Counter";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
@@ -22,11 +22,13 @@ import OtrasCondiciones from "@/components/dashboard/OtrasCondiciones";
 import Dialog from "@/components/ui/Dialog";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import PdfDelContrato from "@/components/dashboard/PdfDelContrato";
-import { useAutoguardado, type EstadoDeGuardado } from "@/hooks/useAutoguardado";
+import { BORRADORES_DE_PROPIEDAD, useAutoguardado, type EstadoDeGuardado } from "@/hooks/useAutoguardado";
 import { LIMITE_DE_BORRADORES, armarContenido, deserializar, etiquetaDePropiedad, nombreDePropiedadDelBorrador, ubicacionCompleta, type ContenidoDeBorrador, type Direccion, type EstadoDelBorrador, type FormularioDeInquilino, type FormularioDePropiedad, type MetodoDeActualizacion } from "@/lib/borradores";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import { usePdfDelBorrador } from "@/hooks/usePdfDelBorrador";
 import { crearContratoDesdeBorrador, type ResultadoDelAlta } from "@/lib/crear-contrato";
+import { crearPropiedadDesdeBorrador } from "@/lib/crear-propiedad";
+import { armarContenidoDeBorradorDePropiedad, deserializarBorradorDePropiedad, type EstadoDelBorradorDePropiedad } from "@/lib/borradores-de-propiedad";
 import { armarOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
 import { avisoDeCampo, ubicacionDeErrores, type Ubicacion } from "@/lib/errores-de-alta";
 
@@ -918,15 +920,16 @@ type PropsDelAsistente = Readonly<{
   onOpenContract?: (contractId: number) => void;
   demo?: boolean;
   initialPropertyId?: number;
-  /** Retoma este borrador de contrato en vez de empezar uno nuevo. */
+  /** Retoma este borrador en vez de empezar uno nuevo. */
   draftId?: number;
+  draftKind?: "contract" | "property";
   /** Se salió dejando el contrato como borrador: el panel lo avisa y actualiza sus listas. */
   onDraftKept?: () => void;
   /** Se descartó el borrador desde el asistente. */
   onDraftDiscarded?: () => void;
 }>;
 
-type BorradorRetomado = { draft: ContractDraft; estado: EstadoDelBorrador };
+type BorradorRetomado = { draft: ContractDraft; estado: EstadoDelBorrador } | { draft: PropertyDraft; estado: EstadoDelBorradorDePropiedad };
 
 /** Cómo se nombra lo elegido: null si no hay nada elegido, undefined si todavía no se sabe (las listas no llegaron). */
 function nombreElegido(nuevo: boolean, borrador: { etiqueta: string } | null, id: number | null, opciones: Opcion[] | undefined): string | null | undefined {
@@ -956,7 +959,7 @@ function IndicadorDeGuardado({ estado }: Readonly<{ estado: EstadoDeGuardado }>)
 }
 
 function PanelDelBorrador({ titulo, children, onClose }: Readonly<{ titulo: string; children: React.ReactNode; onClose: () => void }>) {
-  return <section className="owner-wizard" aria-label="Asistente de nuevo contrato">
+  return <section className="owner-wizard" aria-label={`Asistente de ${titulo.toLowerCase()}`}>
     <header className="owner-wizard__top">
       <button type="button" aria-label="Salir del asistente" onClick={onClose}><Icon name="x" /></button>
       <b>{titulo}</b>
@@ -968,38 +971,46 @@ function PanelDelBorrador({ titulo, children, onClose }: Readonly<{ titulo: stri
 type CargaDelBorrador =
   | { fase: "cargando" }
   | { fase: "error"; mensaje: string }
-  | { fase: "ilegible"; draft: ContractDraft }
-  | { fase: "listo"; draft: ContractDraft; estado: EstadoDelBorrador };
+  | { fase: "ilegible"; draft: ContractDraft | PropertyDraft }
+  | { fase: "listo"; draft: ContractDraft; estado: EstadoDelBorrador }
+  | { fase: "listo"; draft: PropertyDraft; estado: EstadoDelBorradorDePropiedad };
 
-function cargaDe(draft: ContractDraft): CargaDelBorrador {
+function cargaDe(draft: ContractDraft | PropertyDraft, draftKind: "contract" | "property"): CargaDelBorrador {
+  if (draftKind === "property") {
+    const estado = deserializarBorradorDePropiedad(draft.payload);
+    return estado ? { fase: "listo", draft: draft as PropertyDraft, estado } : { fase: "ilegible", draft };
+  }
   const estado = deserializar(draft.payload);
-  return estado ? { fase: "listo", draft, estado } : { fase: "ilegible", draft };
+  return estado ? { fase: "listo", draft: draft as ContractDraft, estado } : { fase: "ilegible", draft };
 }
 
 /**
  * Trae el borrador y arma el asistente con él. Si no se puede abrir (se descartó, venció o está
  * dañado) lo dice y ofrece lo que corresponde, sin romper el panel.
  */
-function RetomarBorrador({ draftId, ...props }: PropsDelAsistente & Readonly<{ draftId: number }>) {
+function RetomarBorrador({ draftId, draftKind = "contract", ...props }: PropsDelAsistente & Readonly<{ draftId: number }>) {
   const [carga, setCarga] = useState<CargaDelBorrador>({ fase: "cargando" });
   const [intento, setIntento] = useState(0);
   const [descartando, setDescartando] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
-    AlquiaBackendClient.contractDrafts.get(draftId)
-      .then((draft) => { if (!cancelado) setCarga(cargaDe(draft)); })
+    const recurso = draftKind === "property" ? AlquiaBackendClient.propertyDrafts : AlquiaBackendClient.contractDrafts;
+    recurso.get(draftId)
+      .then((draft) => { if (!cancelado) setCarga(cargaDe(draft, draftKind)); })
       .catch((err: unknown) => {
         if (!cancelado) setCarga({ fase: "error", mensaje: copyDeError(err, { fallback: "No pudimos abrir el borrador. Inténtelo de nuevo." }) });
       });
     return () => { cancelado = true; };
-  }, [draftId, intento]);
+  }, [draftId, draftKind, intento]);
+
+  const titulo = draftKind === "property" ? "Nueva propiedad" : "Nuevo contrato";
 
   if (carga.fase === "cargando") {
-    return <PanelDelBorrador titulo="Nuevo contrato" onClose={props.onClose}><Cargando>Abriendo el borrador…</Cargando></PanelDelBorrador>;
+    return <PanelDelBorrador titulo={titulo} onClose={props.onClose}><Cargando>Abriendo el borrador…</Cargando></PanelDelBorrador>;
   }
   if (carga.fase === "error") {
-    return <PanelDelBorrador titulo="Nuevo contrato" onClose={props.onClose}>
+    return <PanelDelBorrador titulo={titulo} onClose={props.onClose}>
       <h1>No pudimos abrir el borrador</h1>
       <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{carga.mensaje}</p>
       <div className="owner-wizard-acciones">
@@ -1010,7 +1021,7 @@ function RetomarBorrador({ draftId, ...props }: PropsDelAsistente & Readonly<{ d
   }
   if (carga.fase === "ilegible") {
     const { draft } = carga;
-    return <PanelDelBorrador titulo="Nuevo contrato" onClose={props.onClose}>
+    return <PanelDelBorrador titulo={titulo} onClose={props.onClose}>
       <h1>No pudimos leer este borrador</h1>
       <p>Se guardó con una versión que ya no entendemos. Puede descartarlo y empezar el contrato de nuevo.</p>
       <div className="owner-wizard-acciones">
@@ -1019,14 +1030,14 @@ function RetomarBorrador({ draftId, ...props }: PropsDelAsistente & Readonly<{ d
       </div>
       {descartando && <DescartarBorrador
         etiqueta={draft.label}
-        conPdf={draft.document !== null}
-        descartar={() => AlquiaBackendClient.contractDrafts.remove(draft.id)}
+        conPdf={"document" in draft && draft.document !== null}
+        descartar={() => draftKind === "property" ? AlquiaBackendClient.propertyDrafts.remove(draft.id) : AlquiaBackendClient.contractDrafts.remove(draft.id)}
         onCancel={() => setDescartando(false)}
         onDone={() => { props.onDraftDiscarded?.(); props.onClose(); }}
       />}
     </PanelDelBorrador>;
   }
-  return <Asistente key={`${carga.draft.id}-${carga.draft.version}`} {...props} retomando={{ draft: carga.draft, estado: carga.estado }} onReloadDraft={(draft) => setCarga(cargaDe(draft))} />;
+  return <Asistente key={`${carga.draft.id}-${carga.draft.version}`} {...props} retomando={{ draft: carga.draft, estado: carga.estado } as BorradorRetomado} onReloadDraft={(draft) => setCarga(cargaDe(draft, draftKind))} />;
 }
 
 export default function CreationWizard(props: PropsDelAsistente) {
@@ -1051,12 +1062,16 @@ const ESTADO_VACIO: EstadoDelBorrador = {
  * desde la que se abrió, si la hay, y hoy como inicio). Los campos de la carga de una propiedad o de
  * un inquilino nuevos vuelven como estaban escritos, estén confirmados o no.
  */
-function valoresIniciales(guardado: EstadoDelBorrador | undefined, tipo: WizardKind, propiedadPreseleccionada: number | undefined) {
+function valoresIniciales(guardado: EstadoDelBorrador | EstadoDelBorradorDePropiedad | undefined, tipo: WizardKind, propiedadPreseleccionada: number | undefined) {
+  const estadoDePropiedad = tipo === "property" && guardado && "formulario" in guardado
+    ? { ...ESTADO_VACIO, paso: guardado.paso, formularioPropiedad: guardado.formulario }
+    : guardado;
   const estado: EstadoDelBorrador = {
     ...ESTADO_VACIO,
     propiedad: { ...ESTADO_VACIO.propiedad, id: tipo === "contract" ? propiedadPreseleccionada ?? null : null },
     inicio: hoyISO(),
-    ...guardado,
+    ...estadoDePropiedad,
+    paso: estadoDePropiedad?.paso ?? (tipo === "contract" && propiedadPreseleccionada !== undefined ? 2 : 1),
   };
   return { estado, propiedad: estado.formularioPropiedad, inquilino: estado.formularioInquilino };
 }
@@ -1137,7 +1152,7 @@ function opcionesDeAutoguardado(args: Readonly<{
 
 /** Sólo «Nuevo contrato» y con sesión guarda borradores: el prototipo y los asistentes sueltos no. */
 function guardaComoBorrador(tipo: WizardKind, demo: boolean): boolean {
-  return tipo === "contract" && !demo;
+  return (tipo === "contract" || tipo === "property") && !demo;
 }
 
 /** En la revisión, «Crear contrato» espera a que no quede ningún paso por completar. */
@@ -1210,11 +1225,11 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   /** El borrador con el que se retoma: el asistente arranca con lo que tenía. */
   retomando?: BorradorRetomado;
   /** Cargar la versión de otro dispositivo: vuelve a armar el asistente con ella. */
-  onReloadDraft?: (draft: ContractDraft) => void;
+  onReloadDraft?: (draft: ContractDraft | PropertyDraft) => void;
 }>) {
   const guardado = retomando?.estado;
   const { estado: inicial, propiedad: formularioPropiedad, inquilino: formularioInquilino } = valoresIniciales(guardado, tipo, initialPropertyId);
-  const { desvio, setDesvio, pasoDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep } = useNavegacion(tipo, initialPropertyId, guardado);
+  const { desvio, setDesvio, pasoDesvio, setPasoDesvio, pasoContrato, setPasoContrato, preseleccionada, kind, step, setStep } = useNavegacion(tipo, initialPropertyId, inicial);
   const total = cantidadPasos(kind);
   const [propiedadId, setPropiedadId] = useState<number | null>(inicial.propiedad.id);
   const [inquilinoId, setInquilinoId] = useState<number | null>(inicial.inquilino.id);
@@ -1334,18 +1349,31 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     inquilino: { id: inquilinoElegido, nuevo: inquilinoNuevo, borrador: borradorInquilino },
     alquiler, diaVencimiento, plazo: term, inicio, metodo: method, porcentaje, frecuencia, otras, pagadoHasta,
   };
-  const contenidoDelBorrador = contenidoDelBorradorDe(estadoDelBorrador, listas, retomando?.draft.label);
+  const contenidoDelBorradorDeContrato = contenidoDelBorradorDe(estadoDelBorrador, listas, retomando?.draft.label);
+  const contenidoDelBorrador = tipo === "property"
+    ? armarContenidoDeBorradorDePropiedad({
+        paso: step,
+        formulario: { direccion, unidad, categoria, bedrooms, bathrooms, superficie, mascotas, amoblada },
+      })
+    : contenidoDelBorradorDeContrato;
   const guardaBorrador = guardaComoBorrador(tipo, demo);
-  const algoPropio = guardaBorrador && hayAlgoPropio({
+  const algoPropio = tipo === "property"
+    ? ubicacionCompleta(direccion)
+    : guardaBorrador && hayAlgoPropio({
     formularioPropiedad: estadoDelBorrador.formularioPropiedad, formularioInquilino: estadoDelBorrador.formularioInquilino,
     borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada,
   });
-  const posicion = posicionDelAsistente({ pasoContrato, desvio, pasoDesvio, direccion });
-  const auto = useAutoguardado(opcionesDeAutoguardado({ guardaBorrador, retomando, hayAlgoPropio: algoPropio, posicion, contenido: contenidoDelBorrador }));
+  const posicion = tipo === "property"
+    ? `${step}|${ubicacionCompleta(direccion) ? "ubicacion" : "sin-ubicacion"}`
+    : posicionDelAsistente({ pasoContrato, desvio, pasoDesvio, direccion });
+  const auto = useAutoguardado({
+    ...opcionesDeAutoguardado({ guardaBorrador, retomando, hayAlgoPropio: algoPropio, posicion, contenido: contenidoDelBorrador }),
+    ...(tipo === "property" ? { recurso: BORRADORES_DE_PROPIEDAD } : {}),
+  });
   const esBorrador = auto.id !== null;
 
   // El PDF del contrato, opcional. Con un borrador guardado viaja enseguida; sin él, espera al contrato.
-  const pdf = usePdfDelBorrador(auto, retomando?.draft.document);
+  const pdf = usePdfDelBorrador(auto, retomando && "document" in retomando.draft ? retomando.draft.document : undefined);
   const [descartandoBorrador, setDescartandoBorrador] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
   function volverAlContrato() {
@@ -1443,9 +1471,12 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     setErrorGuardado(null);
     setGuardando(true);
     try {
-      await AlquiaBackendClient.properties.create(armarPropiedad(direccion, categoria));
+      await auto.congelar();
+      await crearPropiedadDesdeBorrador(armarPropiedad(direccion, categoria), auto.id);
+      auto.detener();
       terminarPropiedad(direccion, categoria);
     } catch (err) {
+      auto.descongelar();
       setErrorGuardado(mensajeDeErrorPropiedad(err));
       setGuardando(false);
     }

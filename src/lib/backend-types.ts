@@ -724,3 +724,27 @@ export interface ContractDraftUpdateRequest extends ContractDraftRequest {
   /** La versión que el cliente vio por última vez. */
   version: number;
 }
+
+// --- Borradores de propiedad ---
+
+export interface PropertyDraftSummary {
+  id: number;
+  label: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+}
+
+export interface PropertyDraft extends PropertyDraftSummary {
+  payload: Record<string, unknown>;
+}
+
+export interface PropertyDraftRequest {
+  label: string;
+  payload: Record<string, unknown>;
+}
+
+export interface PropertyDraftUpdateRequest extends PropertyDraftRequest {
+  version: number;
+}
