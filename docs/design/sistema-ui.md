@@ -751,7 +751,9 @@ servidor cuando queda completa la ubicación (calle, número, ciudad y provincia
 ocupa un borrador. Desde allí se guarda al cambiar de paso, dos segundos después de escribir y al
 ocultar la página; salir avisa que quedó en **Propiedades**. La lista de Propiedades muestra esos
 borradores antes que las propiedades guardadas, con «Continuar» y «Descartar», y «Agregar
-propiedad» ofrece retomar uno antes de empezar otro. Cada propietario puede tener hasta tres;
+propiedad» ofrece retomar uno antes de empezar otro. En Inicio, como los de contrato, cada uno es
+un aviso de «Requieren su acción» («Propiedad en borrador: …») con «Descartar» y «Continuar».
+Cada propietario puede tener hasta tres;
 desde quince días antes del vencimiento se muestra el día en que se descarta. Como en contratos,
 un conflicto entre dispositivos obliga a elegir qué versión conservar y descartar siempre pide
 confirmación.

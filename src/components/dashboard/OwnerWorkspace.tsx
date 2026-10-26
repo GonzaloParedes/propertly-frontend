@@ -964,6 +964,8 @@ type OverviewProps = Readonly<{
   projection: ProyeccionDeInicio;
   /** Los contratos a medio cargar; "error" si no se pudieron traer; null mientras se traen. */
   borradores: BorradoresDeInicio;
+  /** Las propiedades a medio cargar, con los mismos estados. */
+  borradoresDePropiedad: BorradoresDeInicio;
   onCreateProperty: () => void;
   onCreateContract: () => void;
   onOpenCollections: () => void;
@@ -971,6 +973,9 @@ type OverviewProps = Readonly<{
   onResumeDraft: (draftId: number) => void;
   onDiscardDraft: (borrador: FilaDeBorrador) => void;
   onRetryDrafts: () => void;
+  onResumePropertyDraft: (draftId: number) => void;
+  onDiscardPropertyDraft: (borrador: FilaDeBorrador) => void;
+  onRetryPropertyDrafts: () => void;
 }>;
 
 function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: ProyeccionDeInicio; nextMonth: string }>) {
@@ -1008,23 +1013,28 @@ function NoActiveContracts({ hasContracts, onCreateContract }: Readonly<{ hasCon
 }
 
 /**
- * Lo que espera una decisión del propietario: cuotas (Cobranzas) y contratos a medio cargar. Los
+ * Lo que espera una decisión del propietario: cuotas (Cobranzas) y contratos y propiedades a medio cargar. Los
  * borradores son decisión suya —seguirlos o descartarlos—, así que cuentan como pendientes, y la
  * sección sólo dice «nada pendiente» cuando tampoco hay ninguno.
  */
-function ActionsSection({ avisos, borradores, hayContratos, onOpenCollections, onResumeDraft, onDiscardDraft, onRetryDrafts }: Readonly<{
+function ActionsSection({ avisos, borradores, borradoresDePropiedad, hayContratos, onOpenCollections, onResumeDraft, onDiscardDraft, onRetryDrafts, onResumePropertyDraft, onDiscardPropertyDraft, onRetryPropertyDrafts }: Readonly<{
   avisos: Aviso[];
   borradores: BorradoresDeInicio;
+  borradoresDePropiedad: BorradoresDeInicio;
   hayContratos: boolean;
   onOpenCollections: () => void;
   onResumeDraft: (draftId: number) => void;
   onDiscardDraft: (borrador: FilaDeBorrador) => void;
   onRetryDrafts: () => void;
+  onResumePropertyDraft: (draftId: number) => void;
+  onDiscardPropertyDraft: (borrador: FilaDeBorrador) => void;
+  onRetryPropertyDrafts: () => void;
 }>) {
   const filas = Array.isArray(borradores) ? borradores : [];
+  const filasDePropiedad = Array.isArray(borradoresDePropiedad) ? borradoresDePropiedad : [];
   // Mientras no se sabe si hay borradores no se afirma que no hay nada pendiente.
-  const nadaPendiente = avisos.length === 0 && filas.length === 0 && Array.isArray(borradores);
-  const cargandoBorradores = avisos.length === 0 && borradores === null;
+  const nadaPendiente = avisos.length === 0 && filas.length === 0 && filasDePropiedad.length === 0 && Array.isArray(borradores) && Array.isArray(borradoresDePropiedad);
+  const cargandoBorradores = avisos.length === 0 && (borradores === null || borradoresDePropiedad === null);
   let contenido: React.ReactNode = null;
   if (nadaPendiente) {
     contenido = <EmptyState compact art="alDia" title="Nada pendiente por ahora">{hayContratos ? "Sus cuotas están al día." : "Cuando tenga contratos, acá le avisamos qué cuotas vencen o esperan su confirmación."}</EmptyState>;
@@ -1040,6 +1050,11 @@ function ActionsSection({ avisos, borradores, hayContratos, onOpenCollections, o
         {`Editado ${borrador.editado}.`}{borrador.vence && ` Se descarta el ${borrador.vence} si no lo retoma.`}
       </Notice>)}
       {borradores === "error" && <Notice icono="alert" tone="info" title="No pudimos revisar sus borradores" action={<Button tone="secondary" small onClick={onRetryDrafts}>Reintentar</Button>}>Si tiene algún contrato a medio cargar, todavía no lo vemos acá.</Notice>}
+      {filasDePropiedad.map((borrador) => <Notice key={`borrador-propiedad-${borrador.id}`} icono="file" tone={borrador.vence ? "warn" : "info"} title={`Propiedad en borrador: ${borrador.etiqueta}`}
+        action={<><Button tone="secondary" small onClick={() => onDiscardPropertyDraft(borrador)}>Descartar</Button><Button tone="secondary" small onClick={() => onResumePropertyDraft(borrador.id)}>Continuar</Button></>}>
+        {`Editado ${borrador.editado}.`}{borrador.vence && ` Se descarta el ${borrador.vence} si no lo retoma.`}
+      </Notice>)}
+      {borradoresDePropiedad === "error" && <Notice icono="alert" tone="info" title="No pudimos revisar sus borradores de propiedades" action={<Button tone="secondary" small onClick={onRetryPropertyDrafts}>Reintentar</Button>}>Si tiene alguna propiedad a medio cargar, todavía no la vemos acá.</Notice>}
     </div>}
   </section>;
 }
@@ -1053,6 +1068,7 @@ function Overview({
   hasError,
   projection,
   borradores,
+  borradoresDePropiedad,
   onCreateProperty,
   onCreateContract,
   onOpenCollections,
@@ -1060,6 +1076,9 @@ function Overview({
   onResumeDraft,
   onDiscardDraft,
   onRetryDrafts,
+  onResumePropertyDraft,
+  onDiscardPropertyDraft,
+  onRetryPropertyDrafts,
 }: OverviewProps) {
   const actions = <>
     <Button tone="secondary" onClick={onCreateProperty}><Icon name="plus" size={18} />Agregar propiedad</Button>
@@ -1090,7 +1109,7 @@ function Overview({
         <ProjectedSummary projection={projection} nextMonth={nextMonth} />
       </div>
     </section>
-    <ActionsSection avisos={avisos} borradores={borradores} hayContratos={contratos.length > 0} onOpenCollections={onOpenCollections} onResumeDraft={onResumeDraft} onDiscardDraft={onDiscardDraft} onRetryDrafts={onRetryDrafts} />
+    <ActionsSection avisos={avisos} borradores={borradores} borradoresDePropiedad={borradoresDePropiedad} hayContratos={contratos.length > 0} onOpenCollections={onOpenCollections} onResumeDraft={onResumeDraft} onDiscardDraft={onDiscardDraft} onRetryDrafts={onRetryDrafts} onResumePropertyDraft={onResumePropertyDraft} onDiscardPropertyDraft={onDiscardPropertyDraft} onRetryPropertyDrafts={onRetryPropertyDrafts} />
     <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
@@ -2371,7 +2390,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   // Sólo con una lista a la vista: al cerrar el asistente o un detalle vuelve a valer y se relee.
   const necesitaBorradores = !demo && wizard === null && detail === null && (view === "inicio" || view === "contratos");
   useLoadedResource({ enabled: necesitaBorradores, refreshKey: recargaBorradores, load: cargarBorradores, setResult: setCargaBorradores });
-  const necesitaBorradoresDePropiedad = !demo && wizard === null && detail === null && view === "propiedades";
+  const necesitaBorradoresDePropiedad = !demo && wizard === null && detail === null && (view === "inicio" || view === "propiedades");
   useLoadedResource({ enabled: necesitaBorradoresDePropiedad, refreshKey: recargaBorradoresDePropiedad, load: cargarBorradoresDePropiedad, setResult: setCargaBorradoresDePropiedad });
 
   // Contra un build viejo la clave `activeContract` no viene y todas se verían
@@ -2808,7 +2827,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const calendarioDeInicio = overviewCalendar(demo);
   const borradoresDeInicio: BorradoresDeInicio = borradoresVisibles(demo, cargaBorradores);
   const borradoresDeContratos = Array.isArray(borradoresDeInicio) ? borradoresDeInicio : [];
-  const borradoresDePropiedad = cargaBorradoresDePropiedad && "ok" in cargaBorradoresDePropiedad ? cargaBorradoresDePropiedad.ok : [];
+  const borradoresDePropiedadDeInicio: BorradoresDeInicio = borradoresVisibles(demo, cargaBorradoresDePropiedad);
+  const borradoresDePropiedad = Array.isArray(borradoresDePropiedadDeInicio) ? borradoresDePropiedadDeInicio : [];
   const overviewData = overviewWorkspaceData(demo, cargaInicio);
   const datosDeInicio = overviewData.data;
   const inicioConError = overviewData.hasError;
@@ -2840,7 +2860,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
-    inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
+    inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} borradoresDePropiedad={borradoresDePropiedadDeInicio} onResumePropertyDraft={retomarBorradorDePropiedad} onDiscardPropertyDraft={setDescartandoBorradorDePropiedad} onRetryPropertyDrafts={() => setRecargaBorradoresDePropiedad((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };
   const content = <WorkspaceContent wizard={wizard} detail={detail} view={view} wizardContent={wizardContent} detailContent={detailContent} viewContent={viewContent} />;
   const guardarAjuste = () => {
