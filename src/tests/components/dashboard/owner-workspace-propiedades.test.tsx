@@ -12,14 +12,16 @@ vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { list: vi.fn() },
     contracts: { list: vi.fn() },
-    properties: { list: vi.fn(), archive: vi.fn(), update: vi.fn() },
+    properties: { list: vi.fn(), create: vi.fn(), archive: vi.fn(), update: vi.fn() },
     invoices: { list: vi.fn() },
+    propertyDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
   },
 }));
 
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockProperties = vi.mocked(AlquiaBackendClient.properties.list);
 const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
+const mockBorradores = vi.mocked(AlquiaBackendClient.propertyDrafts);
 
 const RIVADAVIA: PropertyResponse = {
   id: 1,
@@ -60,6 +62,7 @@ const CUOTA_VENCIDA: InvoiceResponse = {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mockBorradores.list.mockResolvedValue([]);
 });
 
 function conDatos(properties = [RIVADAVIA, MITRE], invoices: InvoiceResponse[] = []) {
@@ -135,6 +138,45 @@ describe("carga", () => {
     render(<OwnerWorkspace initialView="inquilinos" />);
 
     expect(mockProperties).not.toHaveBeenCalled();
+  });
+});
+
+describe("borradores de propiedad", () => {
+  const borrador = {
+    id: 8,
+    label: "Lavalle 950",
+    version: 0,
+    createdAt: "2026-10-01T12:00:00Z",
+    updatedAt: "2026-10-12T12:00:00Z",
+    expiresAt: "2026-10-25T12:00:00Z",
+  };
+
+  it("los muestra antes de las propiedades y permite continuarlos", async () => {
+    conDatos();
+    mockBorradores.list.mockResolvedValue([borrador]);
+    mockBorradores.get.mockResolvedValue({ ...borrador, payload: { schemaVersion: 1, paso: 2, formulario: {} } });
+    render(<OwnerWorkspace initialView="propiedades" />);
+
+    const grupo = await screen.findByRole("region", { name: "Borradores" });
+    expect(within(grupo).getByText("Lavalle 950")).toBeInTheDocument();
+    expect(within(grupo).getByText(/se descarta el/)).toBeInTheDocument();
+    await userEvent.click(within(grupo).getByRole("button", { name: "Continuar" }));
+    expect(await screen.findByRole("region", { name: "Asistente de nueva propiedad" })).toBeInTheDocument();
+    expect(mockBorradores.get).toHaveBeenCalledWith(8);
+  });
+
+  it("descarta un borrador desde la lista y lo vuelve a cargar", async () => {
+    conDatos();
+    mockBorradores.list.mockResolvedValueOnce([borrador]).mockResolvedValueOnce([]);
+    mockBorradores.remove.mockResolvedValue(undefined);
+    render(<OwnerWorkspace initialView="propiedades" />);
+
+    const grupo = await screen.findByRole("region", { name: "Borradores" });
+    await userEvent.click(within(grupo).getByRole("button", { name: "Descartar" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() => expect(mockBorradores.remove).toHaveBeenCalledWith(8));
+    expect(await screen.findByText("Borrador descartado.")).toBeInTheDocument();
   });
 });
 

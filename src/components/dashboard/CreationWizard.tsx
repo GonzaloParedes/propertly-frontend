@@ -1071,6 +1071,7 @@ function valoresIniciales(guardado: EstadoDelBorrador | EstadoDelBorradorDePropi
     propiedad: { ...ESTADO_VACIO.propiedad, id: tipo === "contract" ? propiedadPreseleccionada ?? null : null },
     inicio: hoyISO(),
     ...estadoDePropiedad,
+    paso: estadoDePropiedad?.paso ?? (tipo === "contract" && propiedadPreseleccionada !== undefined ? 2 : 1),
   };
   return { estado, propiedad: estado.formularioPropiedad, inquilino: estado.formularioInquilino };
 }
@@ -1224,7 +1225,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   /** El borrador con el que se retoma: el asistente arranca con lo que tenía. */
   retomando?: BorradorRetomado;
   /** Cargar la versión de otro dispositivo: vuelve a armar el asistente con ella. */
-  onReloadDraft?: (draft: ContractDraft) => void;
+  onReloadDraft?: (draft: ContractDraft | PropertyDraft) => void;
 }>) {
   const guardado = retomando?.estado;
   const { estado: inicial, propiedad: formularioPropiedad, inquilino: formularioInquilino } = valoresIniciales(guardado, tipo, initialPropertyId);

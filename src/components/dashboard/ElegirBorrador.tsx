@@ -17,13 +17,18 @@ export default function ElegirBorrador({ borradores, onResume, onNew, onClose, k
   kind?: "contract" | "property";
 }>) {
   const alLimite = borradores.length >= LIMITE_DE_BORRADORES;
-  const nombre = kind === "property" ? "propiedad" : "contrato";
-  const plural = kind === "property" ? "propiedades" : "contratos";
+  const esPropiedad = kind === "property";
+  const nombre = esPropiedad ? "propiedad" : "contrato";
+  const plural = esPropiedad ? "propiedades" : "contratos";
+  const otro = esPropiedad ? "otra" : "otro";
+  const articulo = esPropiedad ? "una" : "un";
+  const nuevo = esPropiedad ? "nueva" : "nuevo";
+  const textoEmpezar = esPropiedad ? "Empezar una nueva" : "Empezar uno nuevo";
   return <Dialog title={`Tiene ${plural} a medio cargar`} onClose={onClose}>
     <div className="owner-dialog__body">
       <p>{alLimite
-        ? `Tiene ${LIMITE_DE_BORRADORES} borradores, el máximo. Para empezar otra ${nombre}, termine o descarte uno de estos.`
-        : `Puede seguir con uno de estos o empezar una ${nombre} nueva.`}</p>
+        ? `Tiene ${LIMITE_DE_BORRADORES} borradores, el máximo. Para empezar ${otro} ${nombre}, termine o descarte uno de estos.`
+        : `Puede seguir con uno de estos o empezar ${articulo} ${nombre} ${nuevo}.`}</p>
       <ul className="owner-borradores-elegir">
         {borradores.map((borrador) => <li key={borrador.id}>
           <span className="owner-row__icon"><Icon name="file" /></span>
@@ -33,7 +38,7 @@ export default function ElegirBorrador({ borradores, onResume, onNew, onClose, k
       </ul>
     </div>
     {!alLimite && <div className="owner-dialog__foot">
-      <button type="button" className="owner-button owner-button--primary" onClick={onNew}>Empezar una nueva</button>
+      <button type="button" className="owner-button owner-button--primary" onClick={onNew}>{textoEmpezar}</button>
     </div>}
   </Dialog>;
 }
