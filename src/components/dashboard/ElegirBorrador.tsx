@@ -9,18 +9,21 @@ import { LIMITE_DE_BORRADORES, type FilaDeBorrador } from "@/lib/borradores";
  * más probablemente quería quien volvió. Con el máximo de borradores no se puede empezar otro hasta
  * terminar o descartar uno, y el diálogo lo explica en vez de dejar que el guardado falle después.
  */
-export default function ElegirBorrador({ borradores, onResume, onNew, onClose }: Readonly<{
+export default function ElegirBorrador({ borradores, onResume, onNew, onClose, kind = "contract" }: Readonly<{
   borradores: FilaDeBorrador[];
   onResume: (id: number) => void;
   onNew: () => void;
   onClose: () => void;
+  kind?: "contract" | "property";
 }>) {
   const alLimite = borradores.length >= LIMITE_DE_BORRADORES;
-  return <Dialog title="Tiene contratos a medio cargar" onClose={onClose}>
+  const nombre = kind === "property" ? "propiedad" : "contrato";
+  const plural = kind === "property" ? "propiedades" : "contratos";
+  return <Dialog title={`Tiene ${plural} a medio cargar`} onClose={onClose}>
     <div className="owner-dialog__body">
       <p>{alLimite
-        ? `Tiene ${LIMITE_DE_BORRADORES} borradores, el máximo. Para empezar otro contrato, termine o descarte uno de estos.`
-        : "Puede seguir con uno de estos o empezar un contrato nuevo."}</p>
+        ? `Tiene ${LIMITE_DE_BORRADORES} borradores, el máximo. Para empezar otra ${nombre}, termine o descarte uno de estos.`
+        : `Puede seguir con uno de estos o empezar una ${nombre} nueva.`}</p>
       <ul className="owner-borradores-elegir">
         {borradores.map((borrador) => <li key={borrador.id}>
           <span className="owner-row__icon"><Icon name="file" /></span>
@@ -30,7 +33,7 @@ export default function ElegirBorrador({ borradores, onResume, onNew, onClose }:
       </ul>
     </div>
     {!alLimite && <div className="owner-dialog__foot">
-      <button type="button" className="owner-button owner-button--primary" onClick={onNew}>Empezar uno nuevo</button>
+      <button type="button" className="owner-button owner-button--primary" onClick={onNew}>Empezar una nueva</button>
     </div>}
   </Dialog>;
 }

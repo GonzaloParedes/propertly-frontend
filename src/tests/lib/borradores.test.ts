@@ -22,7 +22,7 @@ import {
 import { garantiaVacia } from "@/lib/garantias";
 import { SIN_DESVIO } from "@/tests/borradores";
 import { SIN_OTRAS_CONDICIONES } from "@/lib/otras-condiciones";
-import type { PropertyRequest } from "@/lib/backend-types";
+import type { PropertyDraftSummary, PropertyRequest } from "@/lib/backend-types";
 
 const PROPIEDAD: PropertyRequest = { street: "Lavalle", number: "950", city: "CABA", province: "Buenos Aires", latitude: -34.6037, longitude: -58.3816, category: "APARTMENT", floorUnit: "3B" };
 
@@ -369,5 +369,13 @@ describe("filaDeBorrador", () => {
   it("marca si trae un PDF", () => {
     const documento = { fileName: "c.pdf", sizeBytes: 10, pages: 1, uploadedAt: "2026-10-12T15:00:00Z" };
     expect(filaDeBorrador(resumen({ document: documento }), ahora).conPdf).toBe(true);
+  });
+
+  it("acepta el resumen de una propiedad y marca que no tiene PDF", () => {
+    const borrador: PropertyDraftSummary = {
+      id: 8, label: "Lavalle 950", version: 0,
+      createdAt: "2026-10-12T15:00:00Z", updatedAt: "2026-10-12T15:00:00Z", expiresAt: "2027-01-10T15:00:00Z",
+    };
+    expect(filaDeBorrador(borrador, ahora).conPdf).toBe(false);
   });
 });
