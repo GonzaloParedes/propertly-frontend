@@ -9,6 +9,7 @@ import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { abrirTutorial } from "@/lib/tutorial";
 import Dialog from "@/components/ui/Dialog";
 import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import { validarImporteDeRecargo } from "@/lib/recargo";
@@ -467,6 +468,11 @@ type ButtonAction = () => void | Promise<unknown>;
  * así las acciones sin estado propio —copiar el enlace, descargar— no necesitan
  * un flag cada una.
  */
+/** Marca el control que el tutorial de primer ingreso señala. El span no cambia el botón. */
+function AnclaDeTutorial({ nombre, children }: Readonly<{ nombre: string; children: React.ReactNode }>) {
+  return <span className="owner-tutorial-ancla" data-tutorial={nombre}>{children}</span>;
+}
+
 function Button({ children, tone = "primary", onClick, disabled = false, busy = false, small = false }: Readonly<{ children: React.ReactNode; tone?: "primary" | "secondary" | "quiet" | "danger"; onClick?: ButtonAction; disabled?: boolean; busy?: boolean; small?: boolean }>) {
   const [pending, setPending] = useState(false);
   const isBusy = busy || pending;
@@ -806,7 +812,7 @@ function ContractsView({
   const isEmpty = contracts?.length === 0;
   // Igual que en Inquilinos: ni vacía ni mientras carga.
   const showHeaderAction = hasError || (contracts?.length ?? 0) > 0;
-  const createButton = <Button onClick={onCreateContract}><Icon name="plus" size={18} />Nuevo contrato</Button>;
+  const createButton = <AnclaDeTutorial nombre="nuevo-contrato"><Button onClick={onCreateContract}><Icon name="plus" size={18} />Nuevo contrato</Button></AnclaDeTutorial>;
 
   return <>
     <header className="owner-page-head"><div><h1>Contratos</h1><p>{contracts ? resumenContratos(contracts) : "Sus contratos y sus condiciones."}</p></div>{showHeaderAction && <div className="owner-page-head__action">{createButton}</div>}</header>
@@ -920,7 +926,7 @@ function CollectionsView({
     <header className="owner-page-head"><div><h1>Cobranzas</h1><p>{collections ? resumenCobranzas(collections) : "Cuotas, pagos y vencimientos."}</p></div></header>
     {hasError && <LoadError title="No pudimos cargar sus cobranzas" />}
     {!hasError && collections === null && <div className="owner-card"><Cargando>Cargando sus cobranzas…</Cargando></div>}
-    {collections?.length === 0 && <EmptyState art="cobranzas" title="Todavía no hay cuotas" action={<Button onClick={onCreateContract}><Icon name="plus" size={18} />Nuevo contrato</Button>}>Las cuotas se emiten solas a partir de sus contratos activos. Acá va a ver qué se pagó y qué está por vencer.</EmptyState>}
+    {collections?.length === 0 && <EmptyState art="cobranzas" title="Todavía no hay cuotas" action={<AnclaDeTutorial nombre="nuevo-contrato"><Button onClick={onCreateContract}><Icon name="plus" size={18} />Nuevo contrato</Button></AnclaDeTutorial>}>Las cuotas se emiten solas a partir de sus contratos activos. Acá va a ver qué se pagó y qué está por vencer.</EmptyState>}
     {collections && collections.length > 0 && <>
       <div className="owner-search-bar">
         <SearchField value={query} onChange={setQuery} placeholder="Buscar por dirección o inquilino" label="Buscar cuotas" />
@@ -1082,7 +1088,7 @@ function Overview({
 }: OverviewProps) {
   const actions = <>
     <Button tone="secondary" onClick={onCreateProperty}><Icon name="plus" size={18} />Agregar propiedad</Button>
-    <Button onClick={onCreateContract}><Icon name="file" size={18} />Nuevo contrato</Button>
+    <AnclaDeTutorial nombre="nuevo-contrato"><Button onClick={onCreateContract}><Icon name="file" size={18} />Nuevo contrato</Button></AnclaDeTutorial>
   </>;
   const header = <header className="owner-page-head"><div><h1>{greeting}</h1><p>{subtitle}</p></div><div className="owner-page-head__action">{actions}</div></header>;
 
@@ -1260,6 +1266,7 @@ function SettingsView({
     <section className="owner-detail-grid">
       <div className="owner-card"><h2>Recordatorios de pago</h2>{reminders}</div>
       <div className="owner-card"><h2>Cuenta</h2><dl className="owner-definition"><div><dt>Nombre</dt><dd>{account ? `${account.firstName} ${account.lastName}` : "—"}</dd></div><div><dt>Correo</dt><dd>{account?.email ?? "—"}</dd></div>{account?.taxId && <div><dt>CUIT</dt><dd>{formatearCuit(account.taxId)}</dd></div>}{account?.phoneNumber && <div><dt>Teléfono</dt><dd>{account.phoneNumber}</dd></div>}</dl><Button tone="secondary" small disabled={!canEditAccount} onClick={onEditAccount}>Editar datos</Button></div>
+      <div className="owner-card"><h2>Ayuda</h2><p className="owner-card__copy">El recorrido de primer ingreso: primero la propiedad, después el inquilino y al final el contrato, todo desde «Nuevo contrato».</p><Button tone="secondary" small onClick={abrirTutorial}>Ver tutorial</Button></div>
     </section>
   </>;
 }

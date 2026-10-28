@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { ThemeProvider } from "@/context/theme-context";
 import { Cargando } from "@/components/ui/Spinner";
 import DashboardNav from "@/components/dashboard/DashboardNav";
+import Tutorial from "@/components/dashboard/Tutorial";
 
 export default function DashboardLayout({
   children,
@@ -33,6 +34,7 @@ export default function DashboardLayout({
     <ThemeProvider>
       <div className="flex min-h-full flex-1 flex-col">
         <DashboardNav />
+        <Tutorial auto />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     </ThemeProvider>

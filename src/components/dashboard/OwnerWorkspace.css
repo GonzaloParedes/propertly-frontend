@@ -968,3 +968,28 @@
 /* El <dialog> trae el negro del navegador (CanvasText) y el panel no definía color: en modo oscuro el
    título quedaba negro sobre fondo oscuro. El texto del panel toma siempre el de la app. */
 .owner-dialog__panel{color:var(--tinta)}
+
+/* Tutorial de primer ingreso. El velo tapa los clics; con un control señalado el
+   oscurecido lo hace la sombra del foco, así el agujero deja ver el botón. */
+.owner-tutorial-ancla{display:inline-flex;align-items:center;align-self:center;max-width:100%}
+.owner-tutorial{position:fixed;inset:0;z-index:120;color:var(--tinta)}
+.owner-tutorial__velo{position:absolute;inset:0;background:rgba(30,27,46,.55)}
+.owner-tutorial--con-foco .owner-tutorial__velo{background:transparent}
+.owner-tutorial__foco{position:fixed;z-index:1;border-radius:14px;background:transparent;pointer-events:none;box-shadow:0 0 0 3px var(--indigo),0 0 0 9999px rgba(30,27,46,.55)}
+.owner-tutorial__tarjeta{position:fixed;z-index:2;top:50%;left:50%;width:min(380px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:var(--esp-26);border-radius:20px;background:var(--elev);color:var(--tinta);box-shadow:0 24px 60px -12px rgba(30,27,46,.34);transform:translate(-50%,-50%)}
+.owner-tutorial__tarjeta h2{margin:var(--esp-8) 0 0;font:700 22px/1.25 var(--font-quicksand),sans-serif}
+.owner-tutorial__tarjeta p{margin:var(--esp-10) 0 0;color:var(--gris);font-size:16px}
+.owner-tutorial__recorrido{display:flex;flex-wrap:wrap;gap:var(--esp-8);margin:var(--esp-16) 0 0;padding:0;list-style:none}
+.owner-tutorial__recorrido li{display:inline-flex;align-items:center;gap:var(--esp-6);min-height:32px;padding:0 var(--esp-12);border-radius:999px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);font-size:14px;font-weight:700}
+.owner-tutorial__recorrido li>span{font:700 13px var(--font-quicksand),sans-serif}
+.owner-tutorial__recorrido li[data-actual]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
+.owner-tutorial__acciones{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--esp-10);margin-top:var(--esp-20)}
+.owner-tutorial__acciones .owner-button--quiet{margin-right:auto}
+.owner-tutorial__acciones .owner-button{min-height:48px}
+@media (max-width:620px){
+  .owner-tutorial__tarjeta{padding:var(--esp-20)}
+  .owner-tutorial__acciones{flex-direction:column-reverse;align-items:stretch}
+  .owner-tutorial__acciones .owner-button{width:100%}
+  .owner-tutorial__acciones .owner-button--quiet{margin-right:0}
+}
+@media (prefers-reduced-motion:reduce){.owner-tutorial__tarjeta{scroll-behavior:auto}}

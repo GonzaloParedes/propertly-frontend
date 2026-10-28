@@ -120,8 +120,8 @@ type MockLinkProps = {
 };
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, className, style }: MockLinkProps) => (
-    <a href={href} className={className} style={style}>
+  default: ({ href, children, className, style, ...rest }: MockLinkProps) => (
+    <a href={href} className={className} style={style} {...rest}>
       {children}
     </a>
   ),

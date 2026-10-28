@@ -9,6 +9,7 @@ import { useTheme } from "@/context/theme-context";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { contarCuotasPendientes } from "@/lib/cobranzas";
 import { Icon } from "@/components/ui/Icon";
+import { abrirTutorial } from "@/lib/tutorial";
 
 /** Tocar el ítem de la pantalla actual no remonta la página: el workspace escucha esto para volver al listado. */
 export const NAV_RESET_EVENT = "alquia:nav-reset";
@@ -96,17 +97,28 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
     return pathname.startsWith(href);
   }
 
+  function verTutorial() {
+    setOpen(false);
+    abrirTutorial();
+  }
+
+  const anclaDe: Partial<Record<WorkspaceView, string>> = {
+    propiedades: "propiedad",
+    inquilinos: "inquilino",
+    contratos: "contrato",
+  };
+
   const navigation = () => (
     <ul className="owner-nav__links">
       {ITEMS.flatMap((item) => {
         const link = (
           <li key={item.href}>
           {onNavigate ? (
-            <button type="button" onClick={() => { onNavigate(item.view); setOpen(false); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
+            <button type="button" data-tutorial={anclaDe[item.view]} onClick={() => { onNavigate(item.view); setOpen(false); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
               <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
             </button>
           ) : (
-            <Link href={item.href} onClick={() => { setOpen(false); window.dispatchEvent(new Event(NAV_RESET_EVENT)); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
+            <Link href={item.href} data-tutorial={anclaDe[item.view]} onClick={() => { setOpen(false); window.dispatchEvent(new Event(NAV_RESET_EVENT)); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
               <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
             </Link>
           )}
@@ -116,6 +128,11 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
           ? [<li className="owner-nav__group" key="account-group">CUENTA</li>, link]
           : [link];
       })}
+      <li>
+        <button type="button" className="owner-nav__link" aria-haspopup="dialog" onClick={verTutorial}>
+          <Icon name="help" /><span>Ver tutorial</span>
+        </button>
+      </li>
     </ul>
   );
 

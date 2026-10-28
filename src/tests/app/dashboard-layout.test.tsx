@@ -76,4 +76,20 @@ describe("con sesión", () => {
     render(<DashboardLayout>contenido</DashboardLayout>);
     expect(screen.getByText("contenido")).toBeInTheDocument();
   });
+
+  it("en el primer ingreso muestra el tutorial y no lo repite si ya se vio", () => {
+    window.localStorage.removeItem("alquia:tutorial");
+    mockUseAuth.mockReturnValue({
+      user: USUARIO,
+      isLoading: false,
+      logout: vi.fn(),
+    });
+    const { unmount } = render(<DashboardLayout>contenido</DashboardLayout>);
+    expect(screen.getByRole("dialog", { name: "Primero, la propiedad" })).toBeInTheDocument();
+
+    window.localStorage.setItem("alquia:tutorial", "visto");
+    unmount();
+    render(<DashboardLayout>contenido</DashboardLayout>);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });

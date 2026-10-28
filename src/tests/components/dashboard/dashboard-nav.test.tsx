@@ -81,6 +81,16 @@ describe("ítems del menú", () => {
   });
 });
 
+describe("tutorial", () => {
+  it("el menú ofrece volver a verlo", async () => {
+    render(<DashboardNav />);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    const menu = screen.getByRole("complementary", { name: "Menú principal" });
+    expect(within(menu).getByRole("button", { name: "Ver tutorial" })).toBeInTheDocument();
+    expect(within(screen.getByRole("complementary", { name: "Navegación principal" })).getByRole("button", { name: "Ver tutorial" })).toBeInTheDocument();
+  });
+});
+
 describe("cerrar sesión", () => {
   it("llama a logout() al hacer click", async () => {
     render(<DashboardNav />);
