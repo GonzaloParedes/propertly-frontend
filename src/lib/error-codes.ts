@@ -13,6 +13,8 @@ export const ERROR = {
   DUPLICATE_PHONE_NUMBER: "urn:alquia:error:duplicate-phone-number",
   PROPERTY_HAS_ACTIVE_CONTRACT: "urn:alquia:error:property-has-active-contract",
   PAYMENT_ON_UNCONFIRMED_INVOICE: "urn:alquia:error:payment-on-unconfirmed-invoice",
+  PAYMENT_RECEIPT_NOT_IMAGE: "urn:alquia:error:payment-receipt-not-image",
+  PAYMENT_RECEIPT_EMPTY: "urn:alquia:error:payment-receipt-empty",
   ADJUSTMENT_ON_CONFIRMED_INVOICE: "urn:alquia:error:adjustment-on-confirmed-invoice",
   INVOICE_TOTAL_NEGATIVE: "urn:alquia:error:invoice-total-negative",
   SCHEMA_CHANGE_OVER_PAID_INVOICE: "urn:alquia:error:schema-change-over-paid-invoice",
@@ -42,6 +44,12 @@ export const ERROR = {
   CONTRACT_DRAFT_TOO_LARGE: "urn:alquia:error:contract-draft-too-large",
   CONTRACT_DRAFT_PAYLOAD_INVALID: "urn:alquia:error:contract-draft-payload-invalid",
   CONTRACT_DRAFT_NOT_FOUND: "urn:alquia:error:contract-draft-not-found",
+  PROPERTY_DRAFT_LIMIT_REACHED: "urn:alquia:error:property-draft-limit-reached",
+  PROPERTY_DRAFT_VERSION_CONFLICT: "urn:alquia:error:property-draft-version-conflict",
+  PROPERTY_DRAFT_TOO_LARGE: "urn:alquia:error:property-draft-too-large",
+  PROPERTY_DRAFT_PAYLOAD_INVALID: "urn:alquia:error:property-draft-payload-invalid",
+  PROPERTY_DRAFT_NOT_FOUND: "urn:alquia:error:property-draft-not-found",
+  PROPERTY_DRAFT_IDEMPOTENCY_KEY_INVALID: "urn:alquia:error:property-draft-idempotency-key-invalid",
   RENT_ESTIMATE_UNAVAILABLE: "urn:alquia:error:rent-estimate-unavailable",
   RENT_ESTIMATE_NO_DATA: "urn:alquia:error:rent-estimate-no-data",
   RENT_ESTIMATE_NOT_ENOUGH_DATA: "urn:alquia:error:rent-estimate-not-enough-data",
@@ -62,6 +70,10 @@ const COPY: Record<string, string> = {
     "Esa propiedad ya tiene un contrato vigente. Finalícelo antes de crear otro.",
   [ERROR.PAYMENT_ON_UNCONFIRMED_INVOICE]:
     "Primero hay que confirmar la cuota. Después se le puede registrar el pago.",
+  [ERROR.PAYMENT_RECEIPT_NOT_IMAGE]:
+    "El comprobante tiene que ser una imagen PNG, JPG o WebP.",
+  [ERROR.PAYMENT_RECEIPT_EMPTY]:
+    "El comprobante está vacío. Suba una imagen PNG, JPG o WebP.",
   [ERROR.ADJUSTMENT_ON_CONFIRMED_INVOICE]:
     "La cuota quedó confirmada, así que su importe ya está cerrado.",
   [ERROR.INVOICE_TOTAL_NEGATIVE]: "El total de la cuota no puede quedar negativo.",
@@ -95,6 +107,13 @@ const COPY: Record<string, string> = {
   [ERROR.CONTRACT_DRAFT_TOO_LARGE]: "El borrador es demasiado grande para guardarlo.",
   [ERROR.CONTRACT_DRAFT_PAYLOAD_INVALID]: "No pudimos guardar el borrador. Inténtelo de nuevo.",
   [ERROR.CONTRACT_DRAFT_NOT_FOUND]: "Ese borrador ya no existe. Puede que se haya descartado o vencido.",
+  [ERROR.PROPERTY_DRAFT_LIMIT_REACHED]:
+    "Ya tiene el máximo de borradores guardados. Termine o descarte uno para empezar otra propiedad.",
+  [ERROR.PROPERTY_DRAFT_VERSION_CONFLICT]: "Este borrador cambió en otro dispositivo.",
+  [ERROR.PROPERTY_DRAFT_TOO_LARGE]: "El borrador es demasiado grande para guardarlo.",
+  [ERROR.PROPERTY_DRAFT_PAYLOAD_INVALID]: "No pudimos guardar el borrador. Inténtelo de nuevo.",
+  [ERROR.PROPERTY_DRAFT_NOT_FOUND]: "Ese borrador ya no existe. Puede que se haya descartado o vencido.",
+  [ERROR.PROPERTY_DRAFT_IDEMPOTENCY_KEY_INVALID]: "No pudimos guardar el borrador. Inténtelo de nuevo.",
   [ERROR.RENT_ESTIMATE_UNAVAILABLE]:
     "El estimador de alquiler no está disponible en este momento. Probá de nuevo en un rato.",
   [ERROR.RENT_ESTIMATE_NO_DATA]:

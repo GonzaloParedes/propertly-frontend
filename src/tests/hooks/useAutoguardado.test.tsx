@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { useAutoguardado } from "@/hooks/useAutoguardado";
+import { BORRADORES_DE_PROPIEDAD, useAutoguardado } from "@/hooks/useAutoguardado";
 import { ApiError } from "@/lib/api";
 import { ERROR } from "@/lib/error-codes";
 import type { ContenidoDeBorrador } from "@/lib/borradores";
@@ -7,6 +7,7 @@ import type { ContenidoDeBorrador } from "@/lib/borradores";
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     contractDrafts: { create: vi.fn(), update: vi.fn(), get: vi.fn(), remove: vi.fn() },
+    propertyDrafts: { create: vi.fn(), update: vi.fn(), get: vi.fn(), remove: vi.fn() },
   },
 }));
 
@@ -16,6 +17,9 @@ const crear = vi.mocked(AlquiaBackendClient.contractDrafts.create);
 const actualizar = vi.mocked(AlquiaBackendClient.contractDrafts.update);
 const traer = vi.mocked(AlquiaBackendClient.contractDrafts.get);
 const borrar = vi.mocked(AlquiaBackendClient.contractDrafts.remove);
+const crearPropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts.create);
+const actualizarPropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts.update);
+const borrarPropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts.remove);
 
 const AHORA = "2026-10-15T12:00:00Z";
 
@@ -53,6 +57,9 @@ beforeEach(() => {
   crear.mockImplementation(async (cuerpo) => borrador(5, 0, cuerpo));
   actualizar.mockImplementation(async (id, cuerpo) => borrador(id, cuerpo.version + 1, cuerpo));
   borrar.mockResolvedValue(undefined);
+  crearPropiedad.mockImplementation(async (cuerpo) => borrador(5, 0, cuerpo));
+  actualizarPropiedad.mockImplementation(async (id, cuerpo) => borrador(id, cuerpo.version + 1, cuerpo));
+  borrarPropiedad.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -85,6 +92,42 @@ describe("useAutoguardado · cuándo nace el borrador", () => {
     await pasar(10_000);
     expect(crear).toHaveBeenCalledTimes(1);
     expect(actualizar).not.toHaveBeenCalled();
+  });
+});
+
+describe("useAutoguardado · borradores de propiedad", () => {
+  function montarPropiedad(props: Props) {
+    return renderHook((actuales: Props) => useAutoguardado({ ...actuales, recurso: BORRADORES_DE_PROPIEDAD }), {
+      initialProps: { ...props, activo: false, posicion: "0" },
+    });
+  }
+
+  it("crea, actualiza y descarta por el recurso de propiedades", async () => {
+    const vista = montarPropiedad({ activo: true, contenido: contenido("1"), posicion: "2" });
+    vista.rerender({ activo: true, contenido: contenido("1"), posicion: "2" });
+    await pasar(0);
+    expect(crearPropiedad).toHaveBeenCalledTimes(1);
+    expect(crear).not.toHaveBeenCalled();
+
+    vista.rerender({ activo: true, contenido: contenido("2"), posicion: "3" });
+    await pasar(0);
+    expect(actualizarPropiedad).toHaveBeenCalledTimes(1);
+    await act(async () => { await vista.result.current.descartar(); });
+    expect(borrarPropiedad).toHaveBeenCalledWith(5);
+  });
+
+  it.each([
+    [new ApiError(409, "x", ERROR.PROPERTY_DRAFT_VERSION_CONFLICT, null, { currentVersion: 1 }), "conflicto"],
+    [new ApiError(409, "x", ERROR.PROPERTY_DRAFT_LIMIT_REACHED, null, { limit: 3 }), "limite"],
+    [new ApiError(404, "x", null), "desaparecido"],
+  ] as const)("frena en %s", async (error, estado) => {
+    crearPropiedad.mockRejectedValueOnce(error);
+    const vista = montarPropiedad({ activo: true, contenido: contenido("1"), posicion: "2" });
+    vista.rerender({ activo: true, contenido: contenido("1"), posicion: "2" });
+    await pasar(0);
+    expect(vista.result.current.estado).toBe(estado);
+    await pasar(30_000);
+    expect(crearPropiedad).toHaveBeenCalledTimes(1);
   });
 });
 

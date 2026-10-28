@@ -444,7 +444,7 @@ por la forma, que sobrevive al daltonismo y a la impresión en blanco y negro.
 ## Reglas del dominio que la UI tiene que respetar
 
 Fáciles de errarle si uno diseña sin leer el backend. Fuente:
-`propertly-backend@origin/mvp`, ver el `CLAUDE.md` de cada paquete.
+`propertly-backend@origin/mvp`, ver el `AGENTS.md` de cada paquete.
 
 1. **Un pago exige comprobante.** Los campos `receipt*` de `Payment` son
    `non-nullable`. En la UI nunca dice «(opcional)».
@@ -551,7 +551,7 @@ Ya está decidido:
 2. **Lo que el backend no modela y el negocio necesita, se le pide al backend.**
    No se inventa una versión paralela en `types.ts`.
 
-Fuente: `propertly-backend@origin/mvp`, `CLAUDE.md` de cada paquete. La rama
+Fuente: `propertly-backend@origin/mvp`, `AGENTS.md` de cada paquete. La rama
 `main` del backend está muy atrás; para integrar, apuntar siempre a `mvp`.
 
 ### Glosario, porque los nombres confunden
@@ -662,8 +662,8 @@ los desvíos guardaban solos:
   toast avisa que quedó como borrador; sin nada propio cargado se sale directo.
   El único diálogo que queda es el de lo que *no* se pudo guardar, y dice por qué
   (ver «Contratos a medio cargar»). Es el mismo `Dialog` del resto de la app
-  (`src/components/ui/Dialog.tsx`). Los asistentes sueltos de propiedad e inquilino
-  salen directo, como siempre.
+  (`src/components/ui/Dialog.tsx`). El asistente suelto de inquilino sale directo;
+  el de propiedad conserva lo cargado como borrador (ver «Propiedades a medio cargar»).
 
 ### Contratos a medio cargar
 
@@ -743,6 +743,20 @@ borrador guardado desde lo primero que se carga, salir y retomar ya cumple esa
 función); mandar al propietario al
 borrador al iniciar sesión (le quita el control de a dónde ir); un aviso «ocultar»
 sin descartar (un tercer estado que habría que explicar).
+
+### Propiedades a medio cargar
+
+**Cambio `save-property-as-draft`.** La carga independiente de una propiedad se guarda en el
+servidor cuando queda completa la ubicación (calle, número, ciudad y provincia). Antes de eso no
+ocupa un borrador. Desde allí se guarda al cambiar de paso, dos segundos después de escribir y al
+ocultar la página; salir avisa que quedó en **Propiedades**. La lista de Propiedades muestra esos
+borradores antes que las propiedades guardadas, con «Continuar» y «Descartar», y «Agregar
+propiedad» ofrece retomar uno antes de empezar otro. En Inicio, como los de contrato, cada uno es
+un aviso de «Requieren su acción» («Propiedad en borrador: …») con «Descartar» y «Continuar».
+Cada propietario puede tener hasta tres;
+desde quince días antes del vencimiento se muestra el día en que se descarta. Como en contratos,
+un conflicto entre dispositivos obliga a elegir qué versión conservar y descartar siempre pide
+confirmación.
 
 ### Cargar un contrato desde el PDF
 
@@ -824,7 +838,7 @@ Lo que cambió en el grupo `payments`, por si aparece código viejo:
 Sus tests verifican a qué URL pega cada método, no que el backend conteste. Eso
 significa que **seguirían verdes contra endpoints muertos**: cuando el backend
 cambie de forma otra vez, el test no lo va a avisar. La red de seguridad real es
-volver a mirar el spec, que es lo que pide el `CLAUDE.md` de `src/lib`.
+volver a mirar el spec, que es lo que pide el `AGENTS.md` de `src/lib`.
 
 ---
 

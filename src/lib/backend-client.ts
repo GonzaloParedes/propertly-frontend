@@ -44,6 +44,10 @@ import type {
   ContractDraftSummary,
   ContractDraftRequest,
   ContractDraftUpdateRequest,
+  PropertyDraft,
+  PropertyDraftSummary,
+  PropertyDraftRequest,
+  PropertyDraftUpdateRequest,
 } from "@/lib/backend-types";
 
 /**
@@ -120,8 +124,8 @@ export const AlquiaBackendClient = {
 
   properties: {
     list: (): Promise<PropertyResponse[]> => apiGet<PropertyResponse[]>("/properties"),
-    create: (body: PropertyRequest): Promise<PropertyResponse> =>
-      apiPost<PropertyResponse>("/properties", body),
+    create: (body: PropertyRequest, options: { draftId?: number } = {}): Promise<PropertyResponse> =>
+      apiPost<PropertyResponse>(`/properties${buildQuery(options)}`, body),
     get: (id: number): Promise<PropertyResponse> =>
       apiGet<PropertyResponse>(`/properties/${id}`),
     // `currency` es obligatorio en el backend (sin default → 400). La UI la elige
@@ -232,6 +236,25 @@ export const AlquiaBackendClient = {
     },
     getDocument: (id: number): Promise<Blob> => apiGetBlob(`/contract-drafts/${id}/document`),
     removeDocument: (id: number): Promise<void> => apiDelete(`/contract-drafts/${id}/document`),
+  },
+
+  propertyDrafts: {
+    list: (): Promise<PropertyDraftSummary[]> => apiGet<PropertyDraftSummary[]>("/property-drafts"),
+    get: (id: number): Promise<PropertyDraft> => apiGet<PropertyDraft>(`/property-drafts/${id}`),
+    create: (
+      body: PropertyDraftRequest,
+      { idempotencyKey, keepalive }: { idempotencyKey?: string; keepalive?: boolean } = {}
+    ): Promise<PropertyDraft> =>
+      apiPost<PropertyDraft>("/property-drafts", body, {
+        ...(keepalive ? { keepalive } : {}),
+        ...(idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : {}),
+      }),
+    update: (
+      id: number,
+      body: PropertyDraftUpdateRequest,
+      options?: { keepalive?: boolean }
+    ): Promise<PropertyDraft> => apiPut<PropertyDraft>(`/property-drafts/${id}`, body, options),
+    remove: (id: number): Promise<void> => apiDelete(`/property-drafts/${id}`),
   },
 
   payments: {

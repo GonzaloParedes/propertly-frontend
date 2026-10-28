@@ -27,6 +27,7 @@ vi.mock("@/lib/backend-client", () => ({
     preInvoices: { list: vi.fn() },
     contractImports: { quota: vi.fn() },
     contractDrafts: { list: vi.fn(), get: vi.fn(), remove: vi.fn(), create: vi.fn(), update: vi.fn() },
+    propertyDrafts: { list: vi.fn(), get: vi.fn(), remove: vi.fn(), create: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -36,6 +37,7 @@ const mockProperties = vi.mocked(AlquiaBackendClient.properties.list);
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockPreInvoices = vi.mocked(AlquiaBackendClient.preInvoices.list);
 const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
+const mockBorradoresDePropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts);
 
 const PROPIEDAD: PropertyResponse = {
   id: 10,
@@ -90,6 +92,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
   mockBorradores.list.mockResolvedValue([]);
+  mockBorradoresDePropiedad.list.mockResolvedValue([]);
 });
 
 function conDatos({
@@ -532,5 +535,93 @@ describe("borradores en «Requieren su acción»", () => {
 
     await screen.findByText("Requieren su acción");
     expect(mockBorradores.list).not.toHaveBeenCalled();
+  });
+});
+
+// --- Propiedades a medio cargar ---
+
+describe("borradores de propiedad en «Requieren su acción»", () => {
+  const seccionDeAcciones = async () => (await screen.findByRole("heading", { name: "Requieren su acción" })).closest("section")!;
+
+  it("cada borrador de propiedad es un aviso con su nombre, cuándo se editó y las acciones Continuar y Descartar", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradoresDePropiedad.list.mockResolvedValue([resumenDeBorrador({ label: "Lavalle 950", editadoHaceDias: 3, venceEnDias: 10 })]);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAcciones();
+    const aviso = (await within(seccion).findByText("Propiedad en borrador: Lavalle 950")).closest("article")!;
+    expect(aviso).toHaveTextContent(/Editado hace 3 días/);
+    expect(aviso).toHaveTextContent(/Se descarta el \d{2}\/\d{2}\/\d{4} si no lo retoma/);
+    expect(within(aviso).getByRole("button", { name: "Continuar" })).toBeInTheDocument();
+    expect(within(aviso).getByRole("button", { name: "Descartar" })).toBeInTheDocument();
+    expect(screen.queryByText(/Nada pendiente por ahora/)).not.toBeInTheDocument();
+  });
+
+  it("muestra juntos los borradores de contrato y de propiedad", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradores.list.mockResolvedValue([resumenDeBorrador({ id: 1, label: "Contrato A" })]);
+    mockBorradoresDePropiedad.list.mockResolvedValue([resumenDeBorrador({ id: 2, label: "Propiedad B" })]);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAcciones();
+    expect(await within(seccion).findByText("Contrato en borrador: Contrato A")).toBeInTheDocument();
+    expect(await within(seccion).findByText("Propiedad en borrador: Propiedad B")).toBeInTheDocument();
+  });
+
+  it("mientras no sabe si hay borradores de propiedad no afirma que no hay nada pendiente", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradoresDePropiedad.list.mockImplementation(() => new Promise(() => {}));
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await screen.findByText("Contratos activos");
+    expect(screen.queryByText(/Nada pendiente por ahora/)).not.toBeInTheDocument();
+  });
+
+  it("si no se pudieron traer lo dice y deja reintentar", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradoresDePropiedad.list.mockRejectedValueOnce(new Error("boom"));
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByText("No pudimos revisar sus borradores de propiedades")).toBeInTheDocument();
+    expect(screen.queryByText(/Nada pendiente por ahora/)).not.toBeInTheDocument();
+
+    mockBorradoresDePropiedad.list.mockResolvedValue([resumenDeBorrador({ label: "Recuperada" })]);
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("Propiedad en borrador: Recuperada")).toBeInTheDocument();
+  });
+
+  it("«Continuar» abre el asistente de propiedad con ese borrador", async () => {
+    conDatos();
+    mockBorradoresDePropiedad.list.mockResolvedValue([resumenDeBorrador({ id: 8 })]);
+    mockBorradoresDePropiedad.get.mockResolvedValue({ ...resumenDeBorrador({ id: 8 }), payload: { schemaVersion: 1, paso: 2, formulario: {} } });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByRole("region", { name: "Asistente de nueva propiedad" })).toBeInTheDocument();
+    expect(mockBorradoresDePropiedad.get).toHaveBeenCalledWith(8);
+  });
+
+  it("«Descartar» pide confirmar, borra, avisa y lo saca de la lista", async () => {
+    conDatos({ invoices: [cuota({ status: "PAID" })] });
+    mockBorradoresDePropiedad.list.mockResolvedValueOnce([resumenDeBorrador({ id: 8, label: "Lavalle 950" })]).mockResolvedValue([]);
+    mockBorradoresDePropiedad.remove.mockResolvedValue(undefined);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Descartar" }));
+    const dialogo = await screen.findByRole("dialog");
+    expect(within(dialogo).getByText("Lavalle 950")).toBeInTheDocument();
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Descartar" }));
+
+    await waitFor(() => expect(mockBorradoresDePropiedad.remove).toHaveBeenCalledWith(8));
+    expect(await screen.findByText("Borrador descartado.")).toBeInTheDocument();
+    expect(await screen.findByText(/Nada pendiente por ahora/)).toBeInTheDocument();
+  });
+
+  it("el prototipo (demo) no pide borradores de propiedad", async () => {
+    render(<OwnerWorkspace initialView="inicio" demo />);
+
+    await screen.findByText("Requieren su acción");
+    expect(mockBorradoresDePropiedad.list).not.toHaveBeenCalled();
   });
 });

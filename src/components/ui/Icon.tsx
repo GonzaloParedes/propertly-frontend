@@ -8,6 +8,7 @@ import {
   Copy,
   CreditCard,
   Download,
+  CircleHelp,
   FileText,
   Home,
   Link2,
@@ -70,6 +71,7 @@ const MAP = {
   trend: TrendingUp,
   paperclip: Paperclip,
   copy: Copy,
+  help: CircleHelp,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof MAP;

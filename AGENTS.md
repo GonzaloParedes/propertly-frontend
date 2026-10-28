@@ -83,23 +83,29 @@ El DSN hardcodeado es correcto: en Sentry el DSN del cliente es público por dis
 
 ## Especificaciones (OpenSpec)
 
-El comportamiento de la app está especificado en `openspec/specs/<área>/` y los
-cambios se planifican en `openspec/changes/`. **Todo cambio que toque
-comportamiento** (funcionalidad nueva, flujos, reglas, pantallas, estados) pasa
-por OpenSpec antes de escribir código. No aplica a bugfixes que devuelven el
-comportamiento a lo que el spec ya dice, ni a copy, estilos o refactors sin
-cambio de comportamiento.
+OpenSpec **ya no vive en este repo**: es único para todo el producto y vive en
+`openspec/` del **repo de orquestación** (`alquia/`), porque los features cruzan
+back + front. El tooling (`/opsx:*` + skills `openspec-*`) también está allá, en
+el `.claude/` de la raíz.
 
-- **Flujo:** `/opsx:explore` (si hay dudas) → `/opsx:propose` → `/opsx:apply` →
-  `/opsx:archive`. Si una decisión cambia a mitad de camino, usar
-  `/opsx:update` en vez de desviarse en el código; al archivar se sincronizan
-  los specs.
+**Todo cambio que toque comportamiento** (funcionalidad nueva, flujos, reglas,
+pantallas, estados) pasa por OpenSpec antes de escribir código. No aplica a
+bugfixes que devuelven el comportamiento a lo que el spec ya dice, ni a copy,
+estilos o refactors sin cambio de comportamiento.
+
+- **Dónde correrlo:** desde la raíz de orquestación, no desde este repo. Flujo:
+  `/opsx:explore` (si hay dudas) → `/opsx:propose` → `/opsx:apply` →
+  `/opsx:archive`. Si una decisión cambia a mitad de camino, `/opsx:update` en
+  vez de desviarse en el código; `/opsx:sync` sincroniza specs.
 - **Los specs mandan:** antes de modificar algo que ya tiene spec, leer el spec
-  de esa área. Si código y spec divergen, avisarlo y no resolverlo en silencio.
+  de esa área (en el `openspec/` central). Si código y spec divergen, avisarlo y
+  no resolverlo en silencio.
 - **Idioma:** los artefactos de OpenSpec (proposal, design, specs, tasks) se
   escriben **en inglés**, con los encabezados estructurales y SHALL/MUST en
-  inglés (ver `openspec/config.yaml`). El resto de la documentación y la
-  conversación siguen en español.
+  inglés. El resto de la documentación y la conversación siguen en español.
+- **Estado:** el `openspec/` central nació limpio (reset brownfield); los specs
+  se van recapturando desde el código real por área. Un spec ausente significa
+  "todavía no recapturado", no "no existe".
 - **Convive con las demás reglas:** un change que toque UI respeta igual
   `docs/design/sistema-ui.md`, el manual de marca y la regla de Lucide; uno que
   toque tipos respeta «Modelo de datos: qué manda y qué se pide».

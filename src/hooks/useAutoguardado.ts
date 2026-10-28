@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
-import type { ContractDraft } from "@/lib/backend-types";
+import type { ContractDraft, PropertyDraft } from "@/lib/backend-types";
 import { contenidoCanonico, type ContenidoDeBorrador } from "@/lib/borradores";
 import { ERROR, versionActualDelBorrador } from "@/lib/error-codes";
 
@@ -24,7 +24,32 @@ const ESPERA_AL_ESCRIBIR_MS = 2000;
 /** Si guardar falla, se reintenta cada vez más tarde y, desde la cuarta vez, cada 30 s. */
 const REINTENTOS_MS = [2000, 5000, 15000, 30000];
 
+type Draft = ContractDraft | PropertyDraft;
 type Inicial = { id: number; version: number; contenido: ContenidoDeBorrador };
+
+type RecursoDeBorradores = {
+  create: (body: ContenidoDeBorrador, options?: { idempotencyKey?: string; keepalive?: boolean }) => Promise<Draft>;
+  update: (id: number, body: ContenidoDeBorrador & { version: number }, options?: { keepalive?: boolean }) => Promise<Draft>;
+  get: (id: number) => Promise<Draft>;
+  remove: (id: number) => Promise<void>;
+  errores: { conflicto: string; limite: string };
+};
+
+export const BORRADORES_DE_CONTRATO: RecursoDeBorradores = {
+  create: (body, options) => AlquiaBackendClient.contractDrafts.create(body, options),
+  update: (id, body, options) => AlquiaBackendClient.contractDrafts.update(id, body, options),
+  get: (id) => AlquiaBackendClient.contractDrafts.get(id),
+  remove: (id) => AlquiaBackendClient.contractDrafts.remove(id),
+  errores: { conflicto: ERROR.CONTRACT_DRAFT_VERSION_CONFLICT, limite: ERROR.CONTRACT_DRAFT_LIMIT_REACHED },
+};
+
+export const BORRADORES_DE_PROPIEDAD: RecursoDeBorradores = {
+  create: (body, options) => AlquiaBackendClient.propertyDrafts.create(body, options),
+  update: (id, body, options) => AlquiaBackendClient.propertyDrafts.update(id, body, options),
+  get: (id) => AlquiaBackendClient.propertyDrafts.get(id),
+  remove: (id) => AlquiaBackendClient.propertyDrafts.remove(id),
+  errores: { conflicto: ERROR.PROPERTY_DRAFT_VERSION_CONFLICT, limite: ERROR.PROPERTY_DRAFT_LIMIT_REACHED },
+};
 
 /**
  * Una clave por sesión del asistente: el backend la usa para no crear dos veces el mismo borrador si el
@@ -53,7 +78,7 @@ function nuevaClaveDeAlta(): string {
  * - **Falla:** reintenta con espera creciente y deja el contenido en pantalla. Un 409 de versión,
  *   de límite o un 404 frenan el guardado: no se insiste contra algo que no va a cambiar solo.
  */
-export function useAutoguardado({ activo, contenido, posicion, inicial = null, esperaMs = ESPERA_AL_ESCRIBIR_MS }: Readonly<{
+export function useAutoguardado({ activo, contenido, posicion, inicial = null, esperaMs = ESPERA_AL_ESCRIBIR_MS, recurso = BORRADORES_DE_CONTRATO }: Readonly<{
   /** Si el contrato ya tiene que ser un borrador. */
   activo: boolean;
   contenido: ContenidoDeBorrador;
@@ -62,6 +87,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
   /** El borrador que se está retomando, tal como lo devolvió el backend. */
   inicial?: Inicial | null;
   esperaMs?: number;
+  recurso?: RecursoDeBorradores;
 }>) {
   const [estado, setEstado] = useState<EstadoDeGuardado>("inactivo");
   const [id, setId] = useState<number | null>(inicial?.id ?? null);
@@ -103,11 +129,11 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
   /** Qué hacer con un pedido que falló: frenar si no va a cambiar solo, o reintentar más tarde. */
   const alFallar = useCallback((err: unknown): void => {
     if (err instanceof ApiError) {
-      if (err.type === ERROR.CONTRACT_DRAFT_VERSION_CONFLICT) {
+      if (err.type === recurso.errores.conflicto) {
         setConflicto({ versionActual: versionActualDelBorrador(err) });
         return frenar("conflicto");
       }
-      if (err.type === ERROR.CONTRACT_DRAFT_LIMIT_REACHED) return frenar("limite");
+      if (err.type === recurso.errores.limite) return frenar("limite");
       if (err.status === 404) return frenar("desaparecido");
     }
     setEstado("error");
@@ -118,7 +144,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
     intentos.current += 1;
     clearTimeout(reintento.current);
     reintento.current = setTimeout(() => void drenarRef.current(), demora);
-  }, [frenar]);
+  }, [frenar, recurso]);
 
   /** Guarda hasta que lo confirmado coincide con lo que hay en pantalla. De a un pedido por vez. */
   const drenar = useCallback((keepalive = false): Promise<void> => {
@@ -131,7 +157,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
         try {
           if (idRef.current === null) {
             claveDeAlta.current ??= nuevaClaveDeAlta();
-            const creado = await AlquiaBackendClient.contractDrafts.create(objetivo, {
+            const creado = await recurso.create(objetivo, {
               idempotencyKey: claveDeAlta.current,
               ...(keepalive ? { keepalive: true } : {}),
             });
@@ -142,7 +168,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
             // pedido, no necesariamente lo de ahora: se compara con lo que realmente guarda.
             guardado.current = contenidoCanonico({ label: creado.label, payload: creado.payload });
           } else {
-            const guardadoAhora = await AlquiaBackendClient.contractDrafts.update(
+            const guardadoAhora = await recurso.update(
               idRef.current,
               { ...objetivo, version: versionRef.current },
               keepalive ? { keepalive: true } : undefined
@@ -166,7 +192,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
       if (enVuelo.current === vuelo) enVuelo.current = null;
     });
     return vuelo;
-  }, [alFallar]);
+  }, [alFallar, recurso]);
 
   useEffect(() => {
     drenarRef.current = drenar;
@@ -249,10 +275,10 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
   const descartar = useCallback(async (): Promise<void> => {
     detener();
     await enVuelo.current;
-    if (idRef.current !== null) await AlquiaBackendClient.contractDrafts.remove(idRef.current);
+    if (idRef.current !== null) await recurso.remove(idRef.current);
     idRef.current = null;
     setId(null);
-  }, [detener]);
+  }, [detener, recurso]);
 
   /** Tras un conflicto: dejar la versión de acá y pisar la del otro dispositivo. */
   const conservarEsta = useCallback(async (): Promise<boolean> => {
@@ -267,14 +293,14 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
   /** Tras un conflicto: traer la del otro dispositivo. El asistente la carga en pantalla. */
   const cargarLaOtra = useCallback(async (): Promise<ContractDraft> => {
     if (idRef.current === null) throw new Error("No hay borrador que cargar");
-    const otro = await AlquiaBackendClient.contractDrafts.get(idRef.current);
+    const otro = await recurso.get(idRef.current);
     versionRef.current = otro.version;
     guardado.current = contenidoCanonico({ label: otro.label, payload: otro.payload });
     frenado.current = false;
     setConflicto(null);
     setEstado("guardado");
-    return otro;
-  }, []);
+    return otro as ContractDraft;
+  }, [recurso]);
 
   /** Subir o quitar el PDF también sube la versión del borrador: sin esto el próximo guardado chocaría. */
   const adoptarVersion = useCallback((version: number): void => {

@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from "@/tests/render";
+import { TUTORIAL_ABRIR } from "@/lib/tutorial";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import { ApiError } from "@/lib/api";
@@ -51,6 +52,21 @@ function abrir(ajustes: ReminderSettingsResponse = AJUSTES) {
 }
 
 // --- Recordatorios ---
+
+describe("tutorial", () => {
+  it("desde Ayuda se puede volver a abrir", async () => {
+    const alAbrir = vi.fn();
+    window.addEventListener(TUTORIAL_ABRIR, alAbrir);
+    try {
+      abrir();
+      await userEvent.click(await screen.findByRole("button", { name: "Ver tutorial" }));
+      expect(alAbrir).toHaveBeenCalledOnce();
+      expect(screen.getByRole("heading", { name: "Ayuda" })).toBeInTheDocument();
+    } finally {
+      window.removeEventListener(TUTORIAL_ABRIR, alAbrir);
+    }
+  });
+});
 
 describe("recordatorios", () => {
   it("muestra los tres valores vigentes", async () => {

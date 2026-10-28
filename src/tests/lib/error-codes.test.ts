@@ -57,6 +57,20 @@ describe("copyDeError", () => {
   });
 });
 
+describe("rechazos del comprobante de pago", () => {
+  it("un archivo que no es imagen dice qué formatos sirven", () => {
+    const copy = copyDeError(errorConType(ERROR.PAYMENT_RECEIPT_NOT_IMAGE));
+    expect(copy).toBe("El comprobante tiene que ser una imagen PNG, JPG o WebP.");
+    expect(copy).not.toMatch(/payment-receipt|English/i);
+  });
+
+  it("un archivo vacío pide subir una imagen", () => {
+    const copy = copyDeError(errorConType(ERROR.PAYMENT_RECEIPT_EMPTY));
+    expect(copy).toBe("El comprobante está vacío. Suba una imagen PNG, JPG o WebP.");
+    expect(copy).not.toMatch(/payment-receipt|English/i);
+  });
+});
+
 describe("extensiones de un conflicto del alta de contrato", () => {
   const conExtensiones = (extensions: Record<string, unknown> | null) =>
     new ApiError(409, "Conflict", ERROR.DUPLICATE_TAX_ID, null, extensions);

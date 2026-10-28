@@ -9,6 +9,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { ApiError } from "@/lib/api";
+import { ERROR, copyDeError } from "@/lib/error-codes";
 import {
   aniosDelCalendario,
   buildFilasInquilino,
@@ -79,6 +80,17 @@ function anioInicial(anios: number[]): number {
   const primerAnio = anios[0];
   if (primerAnio === undefined) return actual;
   return anios.reduce((masCercano, anio) => Math.abs(anio - actual) < Math.abs(masCercano - actual) ? anio : masCercano, primerAnio);
+}
+
+/** El archivo inválido se distingue por `type`. El resto de los 400 sigue con el aviso genérico. */
+function mensajeAlSubirComprobante(err: unknown): string {
+  if (err instanceof ApiError && (err.type === ERROR.PAYMENT_RECEIPT_NOT_IMAGE || err.type === ERROR.PAYMENT_RECEIPT_EMPTY)) {
+    return copyDeError(err);
+  }
+  if (err instanceof ApiError && err.status === 400) {
+    return "No pudimos registrar el comprobante. Verifique el archivo e intente de nuevo.";
+  }
+  return "No pudimos subir el comprobante. Inténtelo de nuevo más tarde.";
 }
 
 function tonoDeCuotas(estados: FilaCuotaInquilino["estado"][]): "bad" | "info" | "warn" | "ok" {
@@ -225,7 +237,7 @@ export default function TenantPortal() {
       await recargarEnSilencio();
       toast.exito("Recibimos su comprobante. Queda esperando la confirmación del propietario.");
     } catch (err) {
-      toast.error(err instanceof ApiError && err.status === 400 ? "No pudimos registrar el comprobante. Verifique el archivo e intente de nuevo." : "No pudimos subir el comprobante. Inténtelo de nuevo más tarde.");
+      toast.error(mensajeAlSubirComprobante(err));
     } finally { setSubiendo(null); }
   }
 

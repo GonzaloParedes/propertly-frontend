@@ -1,4 +1,4 @@
-import type { CommissionPayer, ContractDraftSummary, GuaranteeType, LateFeeMethod, PropertyCategory, PropertyRequest, TenantRequest } from "@/lib/backend-types";
+import type { CommissionPayer, ContractDraftSummary, GuaranteeType, LateFeeMethod, PropertyCategory, PropertyDraftSummary, PropertyRequest, TenantRequest } from "@/lib/backend-types";
 import { formatearCuit } from "@/lib/cuit";
 import { formatearFecha, hoyEnArgentina } from "@/lib/formato";
 import { hace } from "@/lib/inicio";
@@ -246,7 +246,7 @@ function sanearDireccion(valor: unknown): Direccion | null {
 }
 
 /** Cada campo que no se entiende vuelve a su valor vacío: un dato roto no tira abajo el resto del borrador. */
-function sanearFormularioPropiedad(valor: unknown): FormularioDePropiedad | null {
+export function sanearFormularioPropiedad(valor: unknown): FormularioDePropiedad | null {
   if (!esObjeto(valor)) return null;
   return {
     direccion: sanearDireccion(valor.direccion),
@@ -348,11 +348,11 @@ export type FilaDeBorrador = {
   vence: string | null;
 };
 
-export function filaDeBorrador(borrador: ContractDraftSummary, ahora: Date): FilaDeBorrador {
+export function filaDeBorrador(borrador: ContractDraftSummary | PropertyDraftSummary, ahora: Date): FilaDeBorrador {
   return {
     id: borrador.id,
     etiqueta: borrador.label,
-    conPdf: borrador.document !== null,
+    conPdf: "document" in borrador && borrador.document !== null,
     editado: hace(borrador.updatedAt, hoyEnArgentina(ahora)) ?? "hace un momento",
     vence: venceProximamente(borrador.expiresAt, ahora) ? formatearFecha(hoyEnArgentina(new Date(borrador.expiresAt))) : null,
   };

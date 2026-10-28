@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import TenantPortalPage from "@/app/tenant-portal/page";
 import { ApiError } from "@/lib/api";
+import { ERROR } from "@/lib/error-codes";
 import type { LateFeeResponse, TenantCalendarPreInvoiceResponse, TenantCalendarResponse, TenantCalendarInvoiceResponse } from "@/lib/backend-types";
 import { FakeEventSource, instalarEventSourceFalso } from "@/tests/fake-event-source";
 
@@ -307,6 +308,39 @@ describe("acciones del detalle", () => {
     await waitFor(() => expect(mockCrearPago).toHaveBeenCalledWith(1000, archivo));
     expect(await screen.findByText("Comprobante esperando confirmación del propietario")).toBeInTheDocument();
     expect(await screen.findByText(/Recibimos su comprobante/)).toBeInTheDocument();
+  });
+
+  it.each([
+    [ERROR.PAYMENT_RECEIPT_NOT_IMAGE, "El comprobante tiene que ser una imagen PNG, JPG o WebP."],
+    [ERROR.PAYMENT_RECEIPT_EMPTY, "El comprobante está vacío. Suba una imagen PNG, JPG o WebP."],
+  ] as const)("al subir, %s se muestra en español y no el código", async (type, mensaje) => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota()]));
+    mockCrearPago.mockRejectedValueOnce(new ApiError(400, "English detail from backend", type));
+    render(<TenantPortalPage />);
+
+    await abrirMes("Septiembre", 2026, "A vencer");
+    await userEvent.upload(
+      screen.getByLabelText("Subir comprobante de septiembre 2026"),
+      new File(["x"], "recibo.pdf", { type: "application/pdf" })
+    );
+
+    expect(await screen.findByText(mensaje)).toBeInTheDocument();
+    expect(screen.queryByText(/English|payment-receipt/)).not.toBeInTheDocument();
+  });
+
+  it("un 400 sin esos type sigue con el aviso genérico del comprobante", async () => {
+    mockCalendario.mockResolvedValueOnce(calendario([cuota()]));
+    mockCrearPago.mockRejectedValueOnce(new ApiError(400, "English detail from backend", "urn:alquia:error:otro"));
+    render(<TenantPortalPage />);
+
+    await abrirMes("Septiembre", 2026, "A vencer");
+    await userEvent.upload(
+      screen.getByLabelText("Subir comprobante de septiembre 2026"),
+      new File(["x"], "recibo.pdf", { type: "application/pdf" })
+    );
+
+    expect(await screen.findByText("No pudimos registrar el comprobante. Verifique el archivo e intente de nuevo.")).toBeInTheDocument();
+    expect(screen.queryByText(/English/)).not.toBeInTheDocument();
   });
 
   it("permite ver el comprobante propio desde el detalle", async () => {

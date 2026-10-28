@@ -250,6 +250,23 @@ describe("acciones", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Primero hay que confirmar la cuota");
   });
+
+  it.each([
+    [ERROR.PAYMENT_RECEIPT_NOT_IMAGE, "El comprobante tiene que ser una imagen PNG, JPG o WebP."],
+    [ERROR.PAYMENT_RECEIPT_EMPTY, "El comprobante está vacío. Suba una imagen PNG, JPG o WebP."],
+  ] as const)("al registrar el pago, %s se muestra en español", async (type, mensaje) => {
+    conCuotas([cuota()]);
+    mockCrearPago.mockRejectedValueOnce(new ApiError(400, "English detail from backend", type));
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    await userEvent.upload(
+      screen.getByLabelText("Comprobante del pago"),
+      new File(["x"], "t.pdf", { type: "application/pdf" })
+    );
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Registrar pago" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(mensaje);
+    expect(screen.queryByText(/English/)).not.toBeInTheDocument();
+  });
 });
 
 // --- revisar el pago del inquilino ---
