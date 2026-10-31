@@ -34,7 +34,8 @@ export default function Nav() {
       const items = [boton.current, ...(panel.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])]
         .filter((el): el is HTMLElement => el !== null);
       const primero = items[0];
-      const ultimo = items[items.length - 1];
+      const ultimo = items.at(-1);
+      if (!primero || !ultimo) return;
       if (e.shiftKey && document.activeElement === primero) {
         e.preventDefault();
         ultimo.focus();

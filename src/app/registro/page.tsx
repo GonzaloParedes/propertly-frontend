@@ -288,7 +288,8 @@ export default function RegistroPage() {
     // largo mínimo lo pide la pantalla; el backend hoy acepta desde 6 (ALQ-110
     // lo sube a 10 en los dos lados). `confirm` no viaja: el payload de más
     // abajo no lo incluye.
-    const password = String(form.get("password") ?? "");
+    const campoPassword = form.get("password");
+    const password = typeof campoPassword === "string" ? campoPassword : "";
     const errores: Record<string, string> = {};
     if (password.length < 8) errores.password = "La contraseña debe tener al menos 8 caracteres.";
     if (password !== form.get("confirm")) errores.confirm = "Las contraseñas no coinciden.";

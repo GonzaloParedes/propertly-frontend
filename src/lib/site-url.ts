@@ -6,5 +6,8 @@
  */
 export function siteUrl(): string | null {
   const url = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  return url ? url.replace(/\/+$/, "") : null;
+  if (!url) return null;
+  let fin = url.length;
+  while (fin > 0 && url[fin - 1] === "/") fin--;
+  return url.slice(0, fin);
 }
