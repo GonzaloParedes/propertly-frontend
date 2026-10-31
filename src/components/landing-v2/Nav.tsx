@@ -11,6 +11,7 @@ const FOCUSABLE = "a[href], button:not([disabled])";
 
 export default function Nav() {
   const [abierto, setAbierto] = useState(false);
+  const cerrar = () => setAbierto(false);
   const boton = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
 
@@ -83,14 +84,13 @@ export default function Nav() {
       id="lp-menu"
       className="lp-menu"
       hidden={!abierto}
-      // Tocar cualquier link cierra el menú: las anclas no recargan la página y se quedaría tapándola.
-      onClick={(e) => { if ((e.target as HTMLElement).closest("a")) setAbierto(false); }}
     >
       <nav aria-label="Menú" className="lp-wrap lp-menu__lista">
-        <a href="#como-funciona" className="lp-menu__link">Cómo funciona</a>
-        <a href="#preguntas" className="lp-menu__link">Preguntas frecuentes</a>
-        <Link href="/login" className="lp-menu__link">Ingresar</Link>
-        <Link href="/registro" className="owner-button lp-menu__cta">Crear cuenta gratis</Link>
+        {/* Tocar cualquier link cierra el menú: las anclas no recargan la página y se quedaría tapándola. */}
+        <a href="#como-funciona" className="lp-menu__link" onClick={cerrar}>Cómo funciona</a>
+        <a href="#preguntas" className="lp-menu__link" onClick={cerrar}>Preguntas frecuentes</a>
+        <Link href="/login" className="lp-menu__link" onClick={cerrar}>Ingresar</Link>
+        <Link href="/registro" className="owner-button lp-menu__cta" onClick={cerrar}>Crear cuenta gratis</Link>
       </nav>
     </div>
   </header>;
