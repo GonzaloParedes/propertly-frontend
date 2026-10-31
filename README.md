@@ -16,6 +16,13 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Variables de entorno
+
+| Variable | Para qué |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | URL del backend, p. ej. `http://localhost:8080`. |
+| `NEXT_PUBLIC_SITE_URL` | URL pública del sitio, p. ej. `https://alquia.com.ar`. La usan `/sitemap.xml`, `/robots.txt` y las imágenes de Open Graph. Configurarla sólo en producción: sin ella, `robots.txt` bloquea todo y el sitemap sale vacío, así un preview no se indexa. |
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

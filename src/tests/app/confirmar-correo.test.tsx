@@ -33,7 +33,7 @@ describe("sin token en la URL", () => {
   it("no llama al backend y ofrece reenviar el enlace", () => {
     render(<ConfirmarCorreoPage />);
     expect(mockConfirmEmail).not.toHaveBeenCalled();
-    expect(screen.getByText("No pudimos verificar tu correo")).toBeInTheDocument();
+    expect(screen.getByText("No pudimos verificar su correo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reenviar enlace" })).toBeInTheDocument();
   });
 });
@@ -50,7 +50,7 @@ describe("con token en la URL", () => {
     await waitFor(() =>
       expect(mockConfirmEmail).toHaveBeenCalledWith({ token: "abc123" })
     );
-    expect(await screen.findByText("¡Correo verificado!")).toBeInTheDocument();
+    expect(await screen.findByText("Correo verificado")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ir al inicio de sesión" })).toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe("con token en la URL", () => {
       expect(mockResendVerification).toHaveBeenCalledWith({ email: "owner@example.com" })
     );
     expect(
-      await screen.findByText(/te enviamos un enlace nuevo/i)
+      await screen.findByText(/le enviamos un enlace nuevo/i)
     ).toBeInTheDocument();
   });
 });

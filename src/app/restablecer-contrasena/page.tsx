@@ -8,6 +8,7 @@ import { Check, CircleCheck, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const TIPS = [
   "Use al menos 8 caracteres",
@@ -57,16 +58,10 @@ function RestablecerContrasenaForm() {
         <h2 className="font-heading mb-3 text-[22px] font-bold">
           Enlace inválido
         </h2>
-        <p
-          role="alert"
-          className="mb-4 w-full rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-          style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-        >
-          El enlace es inválido o ya expiró.
-        </p>
+        <ErrorAlert className="mb-4 w-full">El enlace es inválido o ya expiró.</ErrorAlert>
         <Link
           href="/olvidar-contrasena"
-          className="text-[15px] font-bold underline"
+          className="inline-flex min-h-12 items-center text-[16px] font-bold underline"
           style={{ color: "var(--primary)" }}
         >
           Solicitar un nuevo enlace
@@ -172,11 +167,13 @@ function RestablecerContrasenaForm() {
               disabled={isPending}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={fieldErrors.password ? "rp-pass-error" : undefined}
+              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
               style={{
                 borderColor: fieldErrors.password
                   ? "var(--danger)"
-                  : "var(--border-strong)",
+                  : "var(--borde-control)",
                 color: "var(--text)",
               }}
             />
@@ -191,7 +188,7 @@ function RestablecerContrasenaForm() {
             </button>
           </div>
           {fieldErrors.password && (
-            <p className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+            <p id="rp-pass-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
               {fieldErrors.password}
             </p>
           )}
@@ -212,11 +209,13 @@ function RestablecerContrasenaForm() {
               disabled={isPending}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+              aria-invalid={Boolean(fieldErrors.confirm)}
+              aria-describedby={fieldErrors.confirm ? "rp-confirm-error" : undefined}
+              className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
               style={{
                 borderColor: fieldErrors.confirm
                   ? "var(--danger)"
-                  : "var(--border-strong)",
+                  : "var(--borde-control)",
                 color: "var(--text)",
               }}
             />
@@ -231,20 +230,14 @@ function RestablecerContrasenaForm() {
             </button>
           </div>
           {fieldErrors.confirm && (
-            <p className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
+            <p id="rp-confirm-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
               {fieldErrors.confirm}
             </p>
           )}
         </div>
 
         {error && (
-          <p
-            role="alert"
-            className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-            style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-          >
-            {error}
-          </p>
+          <ErrorAlert className="mb-2">{error}</ErrorAlert>
         )}
 
         <button
@@ -278,14 +271,16 @@ export default function RestablecerContrasenaPage() {
         className="flex items-center px-6 py-5 lg:hidden"
         style={{ background: "var(--primary)" }}
       >
-        <Image
-          src="/logos/lockup-oscuro.svg"
-          alt="Alquia"
-          width={360}
-          height={160}
-          priority
-          className="h-10 w-auto"
-        />
+        <Link href="/">
+          <Image
+            src="/logos/lockup-oscuro.svg"
+            alt="Alquia — volver al inicio"
+            width={360}
+            height={160}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
       </header>
 
       <main
@@ -298,14 +293,16 @@ export default function RestablecerContrasenaPage() {
           style={{ background: "var(--primary)" }}
         >
           <div className="my-auto">
-            <Image
-              src="/logos/lockup-oscuro.svg"
-              alt="Alquia"
-              width={360}
-              height={160}
-              priority
-              className="mb-10 block h-[108px] w-auto"
-            />
+            <Link href="/">
+              <Image
+                src="/logos/lockup-oscuro.svg"
+                alt="Alquia — volver al inicio"
+                width={360}
+                height={160}
+                priority
+                className="mb-10 block h-[108px] w-auto"
+              />
+            </Link>
 
             <h1 className="font-heading mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]">
               Cree una nueva contraseña segura.

@@ -3,6 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import { ApiError, apiGet } from "@/lib/api";
 
+// La verificación inicial de sesión sólo corre en el panel: cada test fija la ruta.
+let mockPathname = "/dashboard";
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockPathname,
+}));
+
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     auth: { login: vi.fn(), logout: vi.fn() },
@@ -51,6 +57,7 @@ const SESION = "Sesión: Ricardo Rosas (test@test.com)";
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mockPathname = "/dashboard";
 });
 
 // --- Carga inicial ---
@@ -88,6 +95,48 @@ describe("carga inicial", () => {
     });
 
     await waitFor(() => expect(screen.getByText("Sin sesión")).toBeInTheDocument());
+  });
+});
+
+// --- Visitantes anónimos ---
+
+describe("fuera del panel", () => {
+  it.each(["/", "/login", "/registro"])("en %s no consulta la sesión ni queda cargando", (ruta) => {
+    mockPathname = ruta;
+    renderAuth();
+    expect(screen.getByText("Sin sesión")).toBeInTheDocument();
+    expect(mockGetMe).not.toHaveBeenCalled();
+  });
+
+  it("al entrar al panel desde otra ruta verifica la sesión una sola vez", async () => {
+    mockPathname = "/login";
+    mockGetMe.mockResolvedValueOnce(USUARIO);
+    const { rerender } = renderAuth();
+    expect(mockGetMe).not.toHaveBeenCalled();
+
+    mockPathname = "/dashboard";
+    rerender(<AuthProvider><TestConsumer /></AuthProvider>);
+    expect(screen.getByText("Cargando")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(SESION)).toBeInTheDocument());
+
+    mockPathname = "/dashboard/propiedades";
+    rerender(<AuthProvider><TestConsumer /></AuthProvider>);
+    expect(mockGetMe).toHaveBeenCalledTimes(1);
+  });
+
+  it("tras ingresar desde el login, entrar al panel no vuelve a consultar", async () => {
+    mockPathname = "/login";
+    mockLogin.mockResolvedValueOnce(undefined);
+    mockGetMe.mockResolvedValueOnce(USUARIO);
+    const { rerender } = renderAuth();
+
+    await userEvent.click(screen.getByRole("button", { name: "Login" }));
+    await waitFor(() => expect(screen.getByText(SESION)).toBeInTheDocument());
+
+    mockPathname = "/dashboard";
+    rerender(<AuthProvider><TestConsumer /></AuthProvider>);
+    expect(screen.getByText(SESION)).toBeInTheDocument();
+    expect(mockGetMe).toHaveBeenCalledTimes(1);
   });
 });
 
