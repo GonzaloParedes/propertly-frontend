@@ -405,6 +405,81 @@ describe("garantías leídas del contrato", () => {
     await waitFor(() => expect(onComplete).toHaveBeenCalled());
     expect(mockOnboard.mock.calls[0][0].contract.guarantees).toEqual([expect.objectContaining({ fullName: "Ana María Gómez" })]);
   });
+
+  it("dicen quién es cada garante, y la línea sigue lo que se corrige", async () => {
+    await hastaLaRevision(conGarante());
+    const garantias = tarjeta("Garantías");
+    expect(within(garantias).getByText("Garante con recibo de sueldo: Ana Gómez · CUIT 27-24891055-6 · Lavalle 950")).toBeInTheDocument();
+    await userEvent.click(boton(garantias, "Corregir"));
+    const nombre = within(garantias).getByDisplayValue("Ana Gómez");
+    await userEvent.clear(nombre);
+    await userEvent.type(nombre, "Ana María Gómez");
+    expect(within(garantias).getByText(/^Garante con recibo de sueldo: Ana María Gómez/)).toBeInTheDocument();
+  });
+
+  it("con más de tres garantes, avisa que se tomaron los tres primeros", async () => {
+    const garante = (n: number) => ({ fullName: `Garante ${n}`, taxId: null, type: "PERSONAL", address: null });
+    await hastaLaRevision(lectura({ guarantors: campo([1, 2, 3, 4].map(garante)) }));
+    const garantias = tarjeta("Garantías");
+    expect(within(garantias).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(garantias).getByText(/El contrato tiene 4 garantías y Alquia guarda hasta 3/)).toBeInTheDocument();
+  });
+});
+
+describe("una garantía leída a medias", () => {
+  it("dice qué falta, y el editor sigue abierto mientras se completa", async () => {
+    await hastaLaRevision(lectura({ guarantors: campo([{ fullName: "Ana Gómez", taxId: null, type: "PROPERTY", address: "Lavalle 950" }]) }));
+    const garantias = tarjeta("Garantías");
+    expect(within(garantias).getByText(/Falta: Dirección de la propiedad en garantía$/)).toBeInTheDocument();
+    await userEvent.type(within(garantias).getByLabelText("Dirección de la propiedad en garantía"), "Av. Rivadavia 1234");
+    expect(within(garantias).getByLabelText("Dirección de la propiedad en garantía")).toHaveValue("Av. Rivadavia 1234");
+    expect(within(garantias).getByText("Garantía propietaria de Ana Gómez · Lavalle 950 · propiedad en garantía: Av. Rivadavia 1234")).toBeInTheDocument();
+  });
+});
+
+describe("un garante que la lectura no pudo completar", () => {
+  const sinDatos = () => lectura({ guarantors: campo(null, "MISSING", { evidence: [cita(4, "en garantía firma el Sr.")] }) });
+
+  it("se carga en la tarjeta, sin «Cargarlo a mano», y quitarlo deja crear sin garantías", async () => {
+    await hastaLaRevision(sinDatos());
+    const garantias = tarjeta("Garantías");
+    expect(within(garantias).getByText("Falta completar")).toBeInTheDocument();
+    expect(within(garantias).getByText(/El contrato menciona un garante, pero no pudimos leer sus datos/)).toBeInTheDocument();
+    expect(within(garantias).getByText("Garantía 1 · Un garante con recibo de sueldo")).toBeInTheDocument();
+    expect(within(garantias).queryByRole("button", { name: "Cargarlo a mano" })).not.toBeInTheDocument();
+
+    await resolverTodo();
+    expect(crear()).toBeDisabled();
+    await userEvent.click(within(garantias).getByRole("button", { name: "Quitar la garantía 1" }));
+    expect(crear()).toBeEnabled();
+    expect(within(tarjeta("Alquiler inicial")).getByText("$ 450.000 por mes")).toBeInTheDocument();
+    expect(onManual).not.toHaveBeenCalled();
+
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockOnboard).toHaveBeenCalled());
+    expect(mockOnboard.mock.calls[0][0].contract.guarantees).toBeUndefined();
+  });
+
+  it("ofrece todos los datos del garante y los manda con el contrato", async () => {
+    await hastaLaRevision(sinDatos());
+    await resolverTodo();
+    const garantias = tarjeta("Garantías");
+    await userEvent.type(within(garantias).getByLabelText("Nombre y apellido"), "Ana Gómez");
+    await userEvent.click(within(garantias).getByRole("button", { name: "Agregar más datos" }));
+    await userEvent.type(within(garantias).getByLabelText("CUIT o CUIL"), "27248910556");
+    await userEvent.type(within(garantias).getByLabelText("Teléfono"), "11 4455 2210");
+    await userEvent.type(within(garantias).getByLabelText("Correo"), "ana@ejemplo.com");
+    await userEvent.type(within(garantias).getByLabelText("Domicilio"), "Lavalle 950");
+    await userEvent.type(within(garantias).getByLabelText("Empleador"), "Panadería Los Andes");
+
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockOnboard).toHaveBeenCalled());
+    const [garantia] = mockOnboard.mock.calls[0][0].contract.guarantees!;
+    expect(garantia).toMatchObject({
+      type: "PERSONAL", fullName: "Ana Gómez", taxId: "27248910556", email: "ana@ejemplo.com", address: "Lavalle 950", employer: "Panadería Los Andes",
+    });
+    expect(garantia.phoneNumber).toMatch(/1144552210$/);
+  });
 });
 
 describe("opcionales que el contrato no menciona", () => {

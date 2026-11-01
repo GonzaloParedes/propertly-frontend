@@ -10,8 +10,10 @@ import { correoValido } from "@/lib/correo";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, telefonoValido } from "@/lib/telefono";
 import { etiquetaCategoria, CATEGORIAS } from "@/lib/propiedad";
+import { describirBorrador } from "@/lib/garantias";
 import { GRUPOS, resumenDeGrupo, soloDecimal, type GrupoDeCondiciones } from "@/lib/otras-condiciones";
 import {
+  datosCompletos,
   type Borrador,
   type Cita,
   type Decision,
@@ -115,7 +117,8 @@ function OptionCard({ selected, title, description, onClick }: Readonly<{ select
 
 interface TarjetaProps {
   id: ItemId;
-  valor: string;
+  /** Una frase; o una lista, cuando el dato tiene varias partes (como las garantías). */
+  valor: React.ReactNode;
   detalle?: string;
   item: ItemLeido;
   pendiente: Pendiente | undefined;
@@ -155,7 +158,7 @@ function Tarjeta({ id, valor, detalle, item, pendiente, revisado, conError, acti
         <span className="owner-pdf-item__label">{TITULO_DE_ITEM[id]}</span>
         {estado}
       </div>
-      <b className="owner-pdf-item__value">{valor}</b>
+      {typeof valor === "string" ? <b className="owner-pdf-item__value">{valor}</b> : valor}
       {detalle && <small className="owner-pdf-item__detail">{detalle}</small>}
       {porQue && <p className="owner-pdf-item__why">{porQue}</p>}
       {razon === "revisar" && item.motivos.map((motivo) => <p key={motivo} className="owner-pdf-item__why">{motivo}</p>)}
@@ -248,7 +251,7 @@ interface Contexto {
   sumados: ReadonlySet<ItemId>;
   existentes: ImportReviewProps["existentes"];
   erroresDelBackend: Record<string, string>;
-  tarjeta: (id: ItemId, valor: string, opciones?: Opciones) => React.ReactNode;
+  tarjeta: (id: ItemId, valor: React.ReactNode, opciones?: Opciones) => React.ReactNode;
   pendientePor: (id: ItemId) => Pendiente | undefined;
   set: (cambio: Partial<Borrador>) => void;
   onDecision: (id: ItemId, decision: Decision | null) => void;
@@ -430,6 +433,25 @@ function tarjetaOpcional(ctx: Contexto, id: GrupoDeCondiciones, extra: { sinSopo
   });
 }
 
+/**
+ * Las garantías dicen quién es cada garante, no sólo cuántas son. Se cargan, completan o quitan acá
+ * mismo: no hay «Cargarlo a mano», que descartaría toda la lectura.
+ */
+function tarjetaDeGarantias({ lectura, b, sumados, erroresDelBackend, tarjeta, pendientePor, set }: Contexto) {
+  const item = lectura.items.garantias;
+  if (!item.presente && !sumados.has("garantias")) return null;
+  const valor = b.otras.garantias.length > 0
+    ? <ul className="owner-pdf-item__value owner-pdf-item__lista">{b.otras.garantias.map((garantia) => <li key={garantia.id}>{describirBorrador(garantia)}</li>)}</ul>
+    : resumenDeGrupo(b.otras, "garantias");
+  // La tarjeta muestra sus motivos sólo al revisar; con algo por completar (el garante sin datos, una
+  // garantía a medias) también tienen que verse.
+  const porCompletar = pendientePor("garantias")?.razon === "falta" && item.motivos.length > 0;
+  return tarjeta("garantias", valor, {
+    porQue: porCompletar ? item.motivos.join(" ") : undefined,
+    editor: <div className="owner-wizard-stack"><EditorDeGrupo grupo="garantias" value={b.otras} onChange={(otras) => set({ otras })} mostrarErrores erroresDelBackend={erroresDelBackend} /></div>,
+  });
+}
+
 function tarjetaDeOtraClausula(ctx: Contexto) {
   const { lectura, moneda, tarjeta } = ctx;
   const item = lectura.items.otro;
@@ -479,7 +501,11 @@ export default function ImportReview({
   pendientes, restantes, itemsConError, erroresDelBackend, existentes, cargarDocumento, onManual, aviso, antesDeCrear,
 }: Readonly<ImportReviewProps>) {
   const amplio = useAnchoAmplio();
-  const [abiertos, setAbiertos] = useState<ReadonlySet<ItemId>>(new Set());
+  // Una garantía que llega incompleta (un garante sin datos, una a medias) arranca abierta y no a la
+  // fuerza: completar lo obligatorio no tiene que cerrar el editor en medio del tipeo, y todavía se
+  // puede sumar el resto de los datos.
+  const [abiertos, setAbiertos] = useState<ReadonlySet<ItemId>>(() =>
+    new Set(lectura.items.garantias.presente && !datosCompletos("garantias", lectura.borrador) ? ["garantias"] : []));
   const [activo, setActivo] = useState<ItemId | null>(null);
   const [paginaEnDialogo, setPaginaEnDialogo] = useState<number | null>(null);
 
@@ -504,7 +530,7 @@ export default function ImportReview({
     if (abierto) onRevisar(id);
   };
 
-  function tarjeta(id: ItemId, valor: string, opciones: Opciones = {}) {
+  function tarjeta(id: ItemId, valor: React.ReactNode, opciones: Opciones = {}) {
     const item = lectura.items[id];
     const pendiente = pendientePor(id);
     const forzado = estaForzado(id, item, pendiente, itemsConError);
@@ -550,7 +576,7 @@ export default function ImportReview({
   const deposito = tarjetaOpcional(ctx, "deposito", { sinSoporte: "sinDeposito", boton: "Crear sin depósito", resultado: "El contrato se crea sin depósito." });
   const comision = tarjetaOpcional(ctx, "comision");
   const punitorios = tarjetaOpcional(ctx, "punitorios", { sinSoporte: "sinPunitorios", boton: "Crear sin punitorios", resultado: "El contrato se crea sin punitorios: ese dato no se carga." });
-  const garantias = tarjetaOpcional(ctx, "garantias");
+  const garantias = tarjetaDeGarantias(ctx);
   const otro = tarjetaDeOtraClausula(ctx);
 
   const faltantes = GRUPOS.filter(({ grupo }) => !lectura.items[grupo].presente && !sumados.has(grupo));
