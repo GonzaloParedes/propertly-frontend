@@ -9,6 +9,7 @@ import { useAuth } from "@/context/auth-context";
 import { Spinner } from "@/components/ui/Spinner";
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { ERROR, copyDeError } from "@/lib/error-codes";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const BENEFITS = [
   "Sepa al instante qué alquileres están pagos",
@@ -77,14 +78,16 @@ export default function LoginPage() {
         className="flex items-center px-6 py-5 lg:hidden"
         style={{ background: "var(--primary)" }}
       >
-        <Image
-          src="/logos/lockup-oscuro.svg"
-          alt="Alquia"
-          width={360}
-          height={160}
-          priority
-          className="h-10 w-auto"
-        />
+        <Link href="/">
+          <Image
+            src="/logos/lockup-oscuro.svg"
+            alt="Alquia — volver al inicio"
+            width={360}
+            height={160}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
       </header>
 
       <main
@@ -165,8 +168,8 @@ export default function LoginPage() {
                   required
                   disabled={isPending}
                   placeholder="ejemplo@ejemplo.com"
-                  className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                  style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                  className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                  style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                 />
               </div>
 
@@ -183,8 +186,8 @@ export default function LoginPage() {
                     required
                     disabled={isPending}
                     placeholder="Su contraseña"
-                    className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                    style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                    className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                    style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                   />
                   <button
                     type="button"
@@ -198,7 +201,7 @@ export default function LoginPage() {
                 </div>
                 <Link
                   href="/olvidar-contrasena"
-                  className="mt-1 self-start text-[15px] underline"
+                  className="inline-flex min-h-12 items-center self-start text-[16px] underline"
                   style={{ color: "var(--primary)" }}
                 >
                   ¿Olvidó su contraseña?
@@ -206,13 +209,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <p
-                  role="alert"
-                  className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-                  style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-                >
-                  {error}
-                </p>
+                <ErrorAlert className="mb-2">{error}</ErrorAlert>
               )}
 
               <button

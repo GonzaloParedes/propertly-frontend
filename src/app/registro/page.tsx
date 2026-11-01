@@ -9,6 +9,7 @@ import { ERROR, copyDeError } from "@/lib/error-codes";
 import { Spinner } from "@/components/ui/Spinner";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const BENEFITS = [
   "Configure sus propiedades en minutos",
@@ -118,8 +119,8 @@ function TaxIdField({
         aria-describedby={invalid ? "rg-tax-id-error" : undefined}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-        style={{ borderColor: invalid ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+        style={{ borderColor: invalid ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
       />
       {invalid && (
         <p id="rg-tax-id-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
@@ -166,8 +167,8 @@ function PhoneField({
         aria-describedby={invalid ? "rg-phone-error" : undefined}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-        style={{ borderColor: invalid ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+        style={{ borderColor: invalid ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
       />
       {invalid && (
         <p id="rg-phone-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
@@ -224,8 +225,8 @@ function PasswordField({
           aria-invalid={Boolean(error)}
           aria-describedby={error ? errorId : undefined}
           onChange={onChange}
-          className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-          style={{ borderColor: error ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+          className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 pr-12 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+          style={{ borderColor: error ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
         />
         <button
           type="button"
@@ -283,10 +284,17 @@ export default function RegistroPage() {
       return;
     }
     const form = new FormData(e.currentTarget);
-    // Chequeo solo del cliente: que la contraseña y su confirmación coincidan.
-    // El backend no recibe `confirm`; el payload de más abajo no lo incluye.
-    if (form.get("password") !== form.get("confirm")) {
-      setErroresContrasena({ confirm: "Las contraseñas no coinciden." });
+    // Chequeos sólo del cliente, los mismos que en restablecer contraseña. El
+    // largo mínimo lo pide la pantalla; el backend hoy acepta desde 6 (ALQ-110
+    // lo sube a 10 en los dos lados). `confirm` no viaja: el payload de más
+    // abajo no lo incluye.
+    const campoPassword = form.get("password");
+    const password = typeof campoPassword === "string" ? campoPassword : "";
+    const errores: Record<string, string> = {};
+    if (password.length < 8) errores.password = "La contraseña debe tener al menos 8 caracteres.";
+    if (password !== form.get("confirm")) errores.confirm = "Las contraseñas no coinciden.";
+    if (Object.keys(errores).length > 0) {
+      setErroresContrasena(errores);
       return;
     }
     setIsPending(true);
@@ -329,14 +337,16 @@ export default function RegistroPage() {
         className="flex items-center px-6 py-5 lg:hidden"
         style={{ background: "var(--primary)" }}
       >
-        <Image
-          src="/logos/lockup-oscuro.svg"
-          alt="Alquia"
-          width={360}
-          height={160}
-          priority
-          className="h-10 w-auto"
-        />
+        <Link href="/">
+          <Image
+            src="/logos/lockup-oscuro.svg"
+            alt="Alquia — volver al inicio"
+            width={360}
+            height={160}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
       </header>
 
       <main
@@ -418,7 +428,7 @@ export default function RegistroPage() {
                 </p>
                 <Link
                   href="/login"
-                  className="text-[15px] font-bold underline"
+                  className="inline-flex min-h-12 items-center text-[16px] font-bold underline"
                   style={{ color: "var(--primary)" }}
                 >
                   Volver al inicio de sesión
@@ -449,8 +459,8 @@ export default function RegistroPage() {
                         placeholder="Ej: María"
                         required
                         disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                        style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                        style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -465,8 +475,8 @@ export default function RegistroPage() {
                         placeholder="Ej: González"
                         required
                         disabled={isPending}
-                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                        style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                        className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                        style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                       />
                     </div>
                   </div>
@@ -518,8 +528,8 @@ export default function RegistroPage() {
                         setEmail(e.target.value);
                         setErroresDeCampo((prev) => sinCampo(prev, "email"));
                       }}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{ borderColor: erroresDeCampo.email ? "var(--danger)" : "var(--border-strong)", color: "var(--text)" }}
+                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                      style={{ borderColor: erroresDeCampo.email ? "var(--danger)" : "var(--borde-control)", color: "var(--text)" }}
                     />
                     {erroresDeCampo.email && (
                       <p id="rg-mail-error" className="text-[14px] font-semibold" style={{ color: "var(--danger)" }}>
@@ -557,13 +567,7 @@ export default function RegistroPage() {
                   />
 
                   {error && (
-                    <p
-                      role="alert"
-                      className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-                      style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-                    >
-                      {error}
-                    </p>
+                    <ErrorAlert className="mb-2">{error}</ErrorAlert>
                   )}
 
                   <button

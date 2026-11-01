@@ -56,7 +56,7 @@ export default function PropertySelector({ selectedProperty, onSelect, onClear, 
             <HomeIcon />
           </div>
           <div>
-            <p className="text-[13px] font-bold tracking-wide uppercase" style={{ color: "var(--primary)" }}>
+            <p className="text-[14px] font-bold tracking-wide uppercase" style={{ color: "var(--primary)" }}>
               Inmueble seleccionado
             </p>
             <p className="font-heading text-[18px] font-bold">{selectedProperty.address}</p>

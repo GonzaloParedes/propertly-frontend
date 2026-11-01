@@ -109,6 +109,16 @@ describe("confirmación de contraseña", () => {
     expect(mockApiPost).not.toHaveBeenCalled();
   });
 
+  it("no llama al backend si la contraseña tiene menos de 8 caracteres", async () => {
+    render(<RegistroPage />);
+    await fillAndSubmit({ password: "corta12" });
+
+    expect(await screen.findByText("La contraseña debe tener al menos 8 caracteres.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Contraseña")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Contraseña")).toHaveAccessibleDescription("La contraseña debe tener al menos 8 caracteres.");
+    expect(mockApiPost).not.toHaveBeenCalled();
+  });
+
   it("marca el campo de confirmación como inválido para lectores de pantalla", async () => {
     render(<RegistroPage />);
     await fillAndSubmit({ password: "secreta123", confirm: "otracosa456" });

@@ -12,7 +12,7 @@ export default function StepIndicator({ steps, currentStep }: StepIndicatorProps
     <div>
       <div className="mb-2.5 flex items-baseline justify-between" aria-live="polite">
         <span className="font-heading text-[18px] font-bold">{steps[currentStep]}</span>
-        <span className="text-[13.5px] font-bold" style={{ color: "var(--text-2)" }}>
+        <span className="text-[14px] font-bold" style={{ color: "var(--text-2)" }}>
           Paso {currentStep + 1} de {steps.length}
         </span>
       </div>

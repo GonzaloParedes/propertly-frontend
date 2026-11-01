@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Check, Mail, ShieldCheck } from "lucide-react";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { Spinner } from "@/components/ui/Spinner";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 const BENEFITS = [
   "Le enviamos un enlace seguro a su correo electrónico",
@@ -53,14 +54,16 @@ export default function OlvidarContrasenaPage() {
         className="flex items-center px-6 py-5 lg:hidden"
         style={{ background: "var(--primary)" }}
       >
-        <Image
-          src="/logos/lockup-oscuro.svg"
-          alt="Alquia"
-          width={360}
-          height={160}
-          priority
-          className="h-10 w-auto"
-        />
+        <Link href="/">
+          <Image
+            src="/logos/lockup-oscuro.svg"
+            alt="Alquia — volver al inicio"
+            width={360}
+            height={160}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
       </header>
 
       <main
@@ -73,14 +76,16 @@ export default function OlvidarContrasenaPage() {
           style={{ background: "var(--primary)" }}
         >
           <div className="my-auto">
-            <Image
-              src="/logos/lockup-oscuro.svg"
-              alt="Alquia"
-              width={360}
-              height={160}
-              priority
-              className="mb-10 block h-[108px] w-auto"
-            />
+            <Link href="/">
+              <Image
+                src="/logos/lockup-oscuro.svg"
+                alt="Alquia — volver al inicio"
+                width={360}
+                height={160}
+                priority
+                className="mb-10 block h-[108px] w-auto"
+              />
+            </Link>
 
             <h1 className="font-heading mb-3 max-w-[560px] text-[32px] leading-[1.25] font-bold tracking-[-0.01em]">
               Recupere el acceso a su cuenta.
@@ -137,7 +142,7 @@ export default function OlvidarContrasenaPage() {
                 </p>
                 <Link
                   href="/login"
-                  className="text-[15px] font-bold underline"
+                  className="inline-flex min-h-12 items-center text-[16px] font-bold underline"
                   style={{ color: "var(--primary)" }}
                 >
                   Volver al inicio de sesión
@@ -167,19 +172,13 @@ export default function OlvidarContrasenaPage() {
                       placeholder="ejemplo@ejemplo.com"
                       required
                       disabled={isPending}
-                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--border-strong)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
-                      style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
+                      className="min-h-[50px] w-full rounded-[10px] border-[1.5px] bg-white px-3.5 py-2.5 text-[17px] outline-offset-0 disabled:opacity-60 placeholder:text-[var(--placeholder)] focus-visible:border-[var(--primary)] focus-visible:outline-[3px] focus-visible:outline-[var(--primary-soft)]"
+                      style={{ borderColor: "var(--borde-control)", color: "var(--text)" }}
                     />
                   </div>
 
                   {error && (
-                    <p
-                      role="alert"
-                      className="mb-2 rounded-[8px] px-3 py-2 text-[15px] font-semibold"
-                      style={{ background: "var(--danger-bg)", color: "var(--danger)" }}
-                    >
-                      {error}
-                    </p>
+                    <ErrorAlert className="mb-2">{error}</ErrorAlert>
                   )}
 
                   <button

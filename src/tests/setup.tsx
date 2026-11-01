@@ -17,6 +17,12 @@ if (typeof window.localStorage?.getItem !== "function") {
   Object.defineProperty(window, "localStorage", { value: enMemoria, configurable: true });
 }
 
+// jsdom no implementa `scrollIntoView`; el calendario del inquilino lo llama en un
+// `requestAnimationFrame` y, si el frame cae fuera del test, Vitest corta la corrida.
+if (typeof Element.prototype.scrollIntoView !== "function") {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
