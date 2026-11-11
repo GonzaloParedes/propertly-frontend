@@ -646,7 +646,7 @@ los desvíos guardaban solos:
   sería descartarlos en silencio.
 - **La revisión lista lo nuevo como tal** y cada sección tiene «Cambiar», que
   lleva a su paso. Sigue ahí «¿Hasta qué mes le pagaron?», y «Crear contrato»
-  queda deshabilitado mientras no se contesta y mientras el pedido viaja.
+  queda deshabilitado si hay cuotas con vencimiento anterior a hoy sin decidir y mientras el pedido viaja. Se ofrece también el mes actual, aunque aún no haya vencido; si no hay cuotas anteriores vencidas, la respuesta es opcional. El resumen separa cuotas cobradas, vencidas e impagas aún no vencidas, y el backend determina los períodos disponibles.
 - **Los errores vuelven al paso que los tiene.** El backend ubica cada error con
   un prefijo (`property.`, `tenant.`, `contract.`): el asistente abre el primer
   paso con errores, con «Revise este dato.» junto al campo (el texto del backend
@@ -809,8 +809,7 @@ rechazado, una lectura que falla, una cláusula que no se puede cargar— ofrece
   siempre se confirma: el contrato dice «vivienda» o «comercial», no «PH» ni
   «departamento».
 - **«Crear contrato» sigue apagado** mientras quede algo por resolver, y el pie
-  dice cuántas cosas. Con un inicio en el pasado exige «¿Hasta qué mes le
-  pagaron?». Crea con el mismo `POST /contracts/onboarding` del asistente y
+  dice cuántas cosas. Ofrece «¿Hasta qué mes le pagaron?» hasta el mes actual y exige respuesta cuando hay vencimientos anteriores a hoy. Crea con el mismo `POST /contracts/onboarding` del asistente y
   después cierra la lectura (`complete`) con los valores finales y lo que hizo
   el propietario con cada dato. Si cerrarla falla, se reintenta una vez; si
   vuelve a fallar, el contrato se muestra como creado, con un camino para

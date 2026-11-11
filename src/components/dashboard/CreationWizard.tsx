@@ -14,7 +14,7 @@ import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
 import { correoValido } from "@/lib/correo";
 import { hoyEnArgentina } from "@/lib/formato";
-import { faltaResponder, mesesTranscurridos, paidThroughDe, periodosDelBackend, respuestaVigenteDe, type RespuestaPagadoHasta } from "@/lib/transcurridos";
+import { faltaResponder, mesesElegibles, mesesTranscurridos, paidThroughDe, periodosDelBackend, respuestaVigenteDe, type RespuestaPagadoHasta } from "@/lib/transcurridos";
 import PagosTranscurridos from "@/components/dashboard/PagosTranscurridos";
 import { formatearDireccion } from "@/lib/tenant-rows";
 import ContractFromPdf from "@/components/dashboard/ContractFromPdf";
@@ -1250,6 +1250,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   // lista de meses (un contrato por índice no genera todas las cuotas), su lista vale mientras no
   // cambien el inicio, el plazo o el vencimiento que la originaron.
   const [pagadoHasta, setPagadoHasta] = useState<RespuestaPagadoHasta>(inicial.pagadoHasta);
+  const [avisoCuotas, setAvisoCuotas] = useState(false);
   const [periodosBackend, setPeriodosBackend] = useState<{ clave: string; meses: string[] } | null>(null);
   // null = todavía no lo cargó. El paso es opcional, así que no puede arrancar
   // con un número puesto por nosotros: se guardaría como si lo hubiera elegido.
@@ -1317,8 +1318,13 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   const claveDeFechas = `${inicio}|${term}|${diaVencimiento}`;
   const mesesPorPagar = periodosBackend?.clave === claveDeFechas
     ? periodosBackend.meses
-    : mesesTranscurridos({ inicioISO: inicio, plazoMeses: term, diaVencimiento, hoyISO: hoyArgentina });
+    : mesesElegibles({ inicioISO: inicio, plazoMeses: term, hoyISO: hoyArgentina });
+  const obligatorios = mesesTranscurridos({ inicioISO: inicio, plazoMeses: term, diaVencimiento, hoyISO: hoyArgentina }).filter((m) => mesesPorPagar.includes(m));
   const respuestaVigente = respuestaVigenteDe(pagadoHasta, mesesPorPagar);
+  if (pagadoHasta && !respuestaVigente) {
+    setPagadoHasta("");
+    setAvisoCuotas(true);
+  }
 
   const finish = step === total;
   // No se puede avanzar con datos que el backend rechazaría (@NotBlank / @ValidTaxId / @Email)
@@ -1328,7 +1334,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     alquilerOk,
     inicioOk,
     porcentajeOk,
-    faltaRespuesta: faltaResponder(respuestaVigente, mesesPorPagar),
+    faltaRespuesta: faltaResponder(respuestaVigente, obligatorios),
   };
   const pendientes = pasosPendientes(banderas, otrasCondicionesValidas(otras));
   const bloqueadoPorTipo: Record<WizardKind, boolean> = {
@@ -1506,6 +1512,8 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
       if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
       setPagadoHasta("");
     } else if (err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) {
+      const periodos = periodosDelBackend(err.fieldErrors);
+      if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
       setPagadoHasta("");
     }
   }
@@ -1675,7 +1683,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     erroresBackend={erroresBackend}
     cantidadErrores={Object.keys(erroresBackend).length}
     conflictSection={conflictSection}
-    elapsedSection={<PagosTranscurridos meses={mesesPorPagar} value={respuestaVigente} onChange={setPagadoHasta} inicioISO={inicio} alquiler={Number(alquiler)} frecuenciaMeses={frecuencia} tieneRecargo={punitoriosCargados(otras.punitorios)} hoyISO={hoyArgentina} />}
+    elapsedSection={<PagosTranscurridos meses={mesesPorPagar} value={respuestaVigente} onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }} inicioISO={inicio} alquiler={Number(alquiler)} frecuenciaMeses={frecuencia} tieneRecargo={punitoriosCargados(otras.punitorios)} hoyISO={hoyArgentina} diaVencimiento={diaVencimiento} obligatorio={obligatorios.length > 0} aviso={avisoCuotas ? "La selección ya no está disponible. Elija nuevamente." : null} />}
     pdfSection={<PdfDelContrato habilitado={guardaBorrador} documento={pdf.documento} ocupado={pdf.ocupado} error={pdf.error} onElegir={(archivo) => void pdf.adjuntar(archivo)} onQuitar={() => void pdf.quitar()} />}
     onRentChange={setAlquiler}
     onDueDayChange={setDiaVencimiento}

@@ -984,7 +984,7 @@ describe("asistente de contrato · cuotas anteriores a hoy", () => {
     await irALaRevision("2026-06-01");
 
     const opciones = within(grupo()).getAllByRole("radio");
-    expect(opciones.map((o) => o.textContent)).toEqual(["junio 2026", "julio 2026", "agosto 2026", "septiembre 2026", "Ninguno todavía"]);
+    expect(opciones.map((o) => o.textContent)).toEqual(["junio 2026", "julio 2026", "agosto 2026", "septiembre 2026", "octubre 2026", "Ninguno todavía"]);
     expect(opciones.every((o) => o.getAttribute("aria-checked") === "false")).toBe(true);
     expect(crear()).toBeDisabled();
     expect(screen.getByText("Elija una opción para poder seguir.")).toBeInTheDocument();
@@ -996,13 +996,33 @@ describe("asistente de contrato · cuotas anteriores a hoy", () => {
     await userEvent.click(within(grupo()).getByRole("radio", { name: "agosto 2026" }));
 
     expect(screen.getByText("Junio a agosto quedan como cobradas (sin comprobante).")).toBeInTheDocument();
-    expect(screen.getByText("Septiembre queda como deuda: $ 450.000.")).toBeInTheDocument();
+    expect(screen.getByText("Septiembre a octubre quedan como deuda: $ 900.000.")).toBeInTheDocument();
     expect(screen.getByText("Su inquilino va a recibir el aviso de cuota vencida.")).toBeInTheDocument();
     expect(screen.queryByText(/recargo/i)).not.toBeInTheDocument();
 
     await userEvent.click(crear());
     await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
     expect(mockCrearContrato.mock.calls[0][0].elapsed).toEqual({ paidThrough: "2026-08" });
+  });
+
+  it("permite declarar cobrado el mes actual y lo envía", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevision("2026-06-01");
+    await userEvent.click(within(grupo()).getByRole("radio", { name: "octubre 2026" }));
+    expect(screen.getByText("No queda deuda.")).toBeInTheDocument();
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
+    expect(mockCrearContrato.mock.calls[0][0].elapsed).toEqual({ paidThrough: "2026-10" });
+  });
+
+  it("permite continuar sin responder cuando solo existe el mes actual", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevision("2026-10-01");
+    expect(within(grupo()).getByRole("radio", { name: "octubre 2026" })).toBeInTheDocument();
+    expect(crear()).toBeEnabled();
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
+    expect(mockCrearContrato.mock.calls[0][0].elapsed).toBeUndefined();
   });
 
   it("«Ninguno todavía» se manda como paidThrough null", async () => {
@@ -1039,7 +1059,7 @@ describe("asistente de contrato · cuotas anteriores a hoy", () => {
     await seguir();
     await seguir();
 
-    expect(within(grupo()).getAllByRole("radio").map((o) => o.textContent)).toEqual(["agosto 2026", "septiembre 2026", "Ninguno todavía"]);
+    expect(within(grupo()).getAllByRole("radio").map((o) => o.textContent)).toEqual(["agosto 2026", "septiembre 2026", "octubre 2026", "Ninguno todavía"]);
     expect(within(grupo()).getByRole("radio", { name: "septiembre 2026" })).toHaveAttribute("aria-checked", "true");
   });
 

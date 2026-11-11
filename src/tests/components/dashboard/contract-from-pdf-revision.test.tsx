@@ -526,6 +526,16 @@ describe("cuotas anteriores a hoy", () => {
     expect(crear()).toBeEnabled();
   });
 
+  it("permite declarar el mes actual cobrado desde la revisión del PDF", async () => {
+    vi.setSystemTime(new Date("2026-11-10T15:00:00Z"));
+    await hastaLaRevision(lectura({ "dates.startDate": campo("2026-08-01") }));
+    await resolverTodo();
+    await userEvent.click(screen.getByRole("radio", { name: "noviembre 2026" }));
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockOnboard).toHaveBeenCalled());
+    expect(mockOnboard.mock.calls[0][0].elapsed).toEqual({ paidThrough: "2026-11" });
+  });
+
   it("manda la respuesta con el contrato", async () => {
     await hastaLaRevision(lectura({ "dates.startDate": campo("2026-03-01") }));
     await resolverTodo();
