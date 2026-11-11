@@ -1,3 +1,4 @@
+import { hoyEnArgentina } from "@/lib/formato";
 import type { ContractDraftSummary } from "@/lib/backend-types";
 import type { FormularioDeInquilino, FormularioDePropiedad } from "@/lib/borradores";
 
@@ -34,7 +35,9 @@ export function resumenDeBorrador({
   conPdf?: boolean;
   ahora?: Date;
 } = {}): ContractDraftSummary {
-  const actualizado = new Date(ahora.getTime() - editadoHaceDias * DIA).toISOString();
+  // Noon UTC is the same calendar date in Argentina, including near midnight.
+  const hoy = new Date(`${hoyEnArgentina(ahora)}T12:00:00Z`);
+  const actualizado = new Date(hoy.getTime() - editadoHaceDias * DIA).toISOString();
   return {
     id,
     label,

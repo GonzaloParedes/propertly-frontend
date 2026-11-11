@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { consecuenciaDe, faltaResponder, mesesTranscurridos, NINGUNO, paidThroughDe, periodosDelBackend } from "@/lib/transcurridos";
+import { consecuenciaDe, faltaResponder, mesesTranscurridos, mesesElegibles, NINGUNO, paidThroughDe, periodosDelBackend } from "@/lib/transcurridos";
 
 const base = { inicioISO: "2026-06-01", plazoMeses: 36, diaVencimiento: 10, hoyISO: "2026-10-10" };
 
@@ -129,5 +129,22 @@ describe("consecuenciaDe", () => {
   it("sin responder o sin meses transcurridos no hay consecuencia que mostrar", () => {
     expect(consecuenciaDe({ ...entrada, respuesta: "" })).toBeNull();
     expect(consecuenciaDe({ ...entrada, meses: [], respuesta: NINGUNO })).toBeNull();
+  });
+});
+
+
+describe("meses elegibles y vencimientos", () => {
+  it("incluye el mes actual aunque aún no haya vencido, y respeta el plazo", () => {
+    expect(mesesElegibles({ inicioISO: "2026-08-01", plazoMeses: 12, hoyISO: "2026-11-10" })).toEqual(["2026-08", "2026-09", "2026-10", "2026-11"]);
+    expect(mesesElegibles({ inicioISO: "2026-12-01", plazoMeses: 12, hoyISO: "2026-11-10" })).toEqual([]);
+  });
+  it("distingue noviembre pendiente antes de vencer y deuda el día del vencimiento", () => {
+    const args = { meses: ["2026-10", "2026-11"], respuesta: "2026-10", inicioISO: "2026-08-01", alquiler: 100, frecuenciaMeses: 12, tieneRecargo: false, diaVencimiento: 15 };
+    expect(consecuenciaDe({ ...args, hoyISO: "2026-11-10" })?.frases.join(" ")).toContain("Noviembre queda impaga y aún no venció");
+    expect(consecuenciaDe({ ...args, hoyISO: "2026-11-15" })?.deuda).toEqual(["2026-11"]);
+  });
+  it("respeta una lista vacía explícita del servidor", () => {
+    expect(periodosDelBackend({ elapsed: "" })).toEqual([]);
+    expect(periodosDelBackend({ elapsed: "invalid" })).toBeNull();
   });
 });
