@@ -242,6 +242,10 @@ const MOTIVOS: Record<string, string> = {
 };
 
 const MOTIVO_DE_GARANTIAS = "Las garantías se leyeron del contrato: confirme que son las correctas. Se guardan con el contrato al crearlo.";
+const MOTIVO_DE_GARANTE_SIN_DATOS = "El contrato menciona un garante, pero no pudimos leer sus datos. Cárguelos acá.";
+
+const motivoDelTope = (leidas: number) =>
+  `El contrato tiene ${leidas} garantías y Alquia guarda hasta ${MAX_GARANTIAS}: se tomaron las ${MAX_GARANTIAS} primeras. Revise cuáles conservar.`;
 
 /** La nota fija que agrega el propio backend cuando no pudo verificar una cita, en inglés. */
 const NOTA_DEL_BACKEND = "Evidence could not be verified";
@@ -291,6 +295,29 @@ function garantiasDe(valor: unknown): GarantiaBorrador[] {
   });
 }
 
+/** Cuántas garantías trae la lectura, antes de quedarse con las primeras `MAX_GARANTIAS`. */
+function garantiasLeidasDe(campos: Campos): number {
+  const valor = valorDe(campos, "guarantors");
+  return Array.isArray(valor) ? valor.length : 0;
+}
+
+/** Una garantía de la que se sabe quién es: un nombre, o la aseguradora de una póliza. */
+const tieneQuienEs = (garantia: GarantiaBorrador) =>
+  (garantia.type === "SURETY_INSURANCE" ? garantia.insurerName : garantia.fullName).trim() !== "";
+
+/**
+ * El contrato menciona un garante pero la lectura no dio quién es: la cláusula no se puede leer, o
+ * la lectura la citó sin poder completarla (`MISSING`) y no hay ninguna garantía con nombre. Una lista
+ * vacía `LITERAL` con cita es otra cosa: el contrato dice que no hay garantía. Sin valor ni cita, no
+ * hay cómo saberlo.
+ */
+function garanteSinDatos(campos: Campos): boolean {
+  const campo = campos.guarantors;
+  if (!campo) return false;
+  if (campo.status === "UNSUPPORTED") return true;
+  return campo.status === "MISSING" && (campo.evidence ?? []).length > 0 && !garantiasDe(campo.value).some(tieneQuienEs);
+}
+
 function actualizacionDe(campos: Campos): Pick<Borrador, "metodo" | "valorDeActualizacion"> {
   const metodo = valorDe(campos, "increments.method");
   const indice = valorDe(campos, "increments.indexName");
@@ -304,6 +331,9 @@ function otrasDe(campos: Campos): OtrasCondiciones {
   const metodo = valorDe(campos, "lateFee.method");
   const metodosDeRecargo = ["PERCENT_PER_DAY", "PERCENT_PER_MONTH", "PERCENT_PER_YEAR", "FIXED_PER_DAY", "FIXED_ONCE"];
   const pagador = valorDe(campos, "commission.payer");
+  const garantias = garantiasDe(valorDe(campos, "guarantors"));
+  // Un garante mencionado sin datos se carga en la revisión: arranca con una garantía para completar.
+  if (garantias.length === 0 && garanteSinDatos(campos)) garantias.push(garantiaVacia("PERSONAL"));
   return {
     deposito: digitos(valorDe(campos, "deposit.amount")),
     comision: numeroTexto(valorDe(campos, "commission.percent")),
@@ -313,7 +343,7 @@ function otrasDe(campos: Campos): OtrasCondiciones {
       value: numeroTexto(valorDe(campos, "lateFee.value")),
       graceDays: digitos(valorDe(campos, "lateFee.graceDays")),
     },
-    garantias: garantiasDe(valorDe(campos, "guarantors")),
+    garantias,
   };
 }
 
@@ -504,16 +534,24 @@ function itemLeidoDe(
   }>
 ): ItemLeido {
   const claves = CLAVES_DE[id];
+  const citas = sinSoporte ? sinSoporte.citas : claves.flatMap((clave) => citasDe(campos[clave]?.evidence)).slice(0, 3);
+  if (id === "garantias" && garanteSinDatos(campos)) {
+    // Se carga en la revisión, no «no se puede»: la tarjeta aparece con la garantía para completar.
+    return { id, estado: "falta", claves, citas, motivos: [MOTIVO_DE_GARANTE_SIN_DATOS], nota: null, presente: true, noSePuede: null, diaDelContrato: null };
+  }
   const base = estadoYPresenciaDe(id, campos, claves, borrador, sinSoporte);
   const { presente } = base;
   // Las garantías leídas son datos de revisión, no garantías definitivas: se confirman antes de crear
   // el contrato, y recién se guardan con él (`guarantees`), no por cerrar la lectura.
   const garantiasLeidas = id === "garantias" && presente && sinSoporte === null;
   const estado: EstadoDeItem = garantiasLeidas && base.estado === "ok" ? "revisar" : base.estado;
-  const citas = sinSoporte ? sinSoporte.citas : claves.flatMap((clave) => citasDe(campos[clave]?.evidence)).slice(0, 3);
   const nota = claves.map((clave) => campos[clave]?.note).find((n): n is string => !!n && n !== NOTA_DEL_BACKEND);
   const motivos = estado === "revisar" ? motivosDe(campos, claves) : [];
-  if (estado === "revisar" && garantiasLeidas) motivos.push(MOTIVO_DE_GARANTIAS);
+  if (estado === "revisar" && garantiasLeidas) {
+    const leidas = garantiasLeidasDe(campos);
+    if (leidas > MAX_GARANTIAS) motivos.push(motivoDelTope(leidas));
+    motivos.push(MOTIVO_DE_GARANTIAS);
+  }
   return {
     id,
     estado,

@@ -218,6 +218,52 @@ describe("leerResultado", () => {
     expect(items.garantias.presente).toBe(false);
   });
 
+  const garante = (n: number) => ({ fullName: `Garante ${n}`, taxId: null, type: "PERSONAL", address: null });
+
+  it("con más de tres garantes, se queda con los tres primeros y avisa cuántos tiene el contrato", () => {
+    const { borrador, items } = leerResultado(lectura({ guarantors: campo([1, 2, 3, 4].map(garante)) }));
+    expect(borrador.otras.garantias.map((g) => g.fullName)).toEqual(["Garante 1", "Garante 2", "Garante 3"]);
+    expect(items.garantias.estado).toBe("revisar");
+    expect(items.garantias.motivos).toContain("El contrato tiene 4 garantías y Alquia guarda hasta 3: se tomaron las 3 primeras. Revise cuáles conservar.");
+  });
+
+  it("con tres garantes o menos, no avisa del tope", () => {
+    const { items } = leerResultado(lectura({ guarantors: campo([1, 2, 3].map(garante)) }));
+    expect(items.garantias.motivos.join(" ")).not.toMatch(/guarda hasta 3/);
+  });
+
+  it("un garante que la lectura citó sin poder completarlo se carga en la revisión", () => {
+    const { borrador, items } = leerResultado(lectura({ guarantors: campo(null, "MISSING", { evidence: [cita(4, "en garantía firma el Sr.")] }) }));
+    expect(items.garantias).toMatchObject({ presente: true, estado: "falta", noSePuede: null });
+    expect(items.garantias.motivos).toEqual(["El contrato menciona un garante, pero no pudimos leer sus datos. Cárguelos acá."]);
+    expect(items.garantias.citas).toEqual([{ pagina: 4, texto: "en garantía firma el Sr.", verificada: true }]);
+    expect(borrador.otras.garantias).toHaveLength(1);
+    expect(borrador.otras.garantias[0]).toMatchObject({ type: "PERSONAL", fullName: "" });
+  });
+
+  it("una cláusula de garantía que no se puede leer también se carga en la revisión, no «no se puede»", () => {
+    const { borrador, items } = leerResultado(lectura({ guarantors: campo(null, "UNSUPPORTED", { evidence: [cita(4, "fianza")] }) }));
+    expect(items.garantias).toMatchObject({ presente: true, estado: "falta", noSePuede: null });
+    expect(borrador.otras.garantias).toHaveLength(1);
+  });
+
+  it("una lista vacía que el contrato dice tal cual, o nada sin cita, no muestra ni pide garantías", () => {
+    const sinGarantia = leerResultado(lectura({ guarantors: campo([], "LITERAL", { evidence: [cita(4, "sin garantía")] }) }));
+    expect(sinGarantia.items.garantias.presente).toBe(false);
+    expect(sinGarantia.borrador.otras.garantias).toEqual([]);
+    const nada = leerResultado(lectura({ guarantors: campo(null, "MISSING") }));
+    expect(nada.items.garantias.presente).toBe(false);
+    expect(nada.borrador.otras.garantias).toEqual([]);
+  });
+
+  it("un garante a medias no es «sin datos»: entra como se leyó y queda por completar", () => {
+    const respuesta = lectura({ guarantors: campo([{ fullName: "Ana Gómez", taxId: null, type: "PROPERTY", address: "Lavalle 950" }]) });
+    const { borrador, items } = leerResultado(respuesta);
+    expect(items.garantias.estado).toBe("revisar");
+    expect(borrador.otras.garantias[0]).toMatchObject({ type: "PROPERTY", fullName: "Ana Gómez", propertyAddress: "" });
+    expect(datosCompletos("garantias", borrador)).toBe(false);
+  });
+
   it("sin resultado todavía, no inventa nada", () => {
     const { borrador, items } = leerResultado(lectura({}, { fields: null, unsupported: null, matches: null }));
     expect(borrador.alquiler).toBe("");
