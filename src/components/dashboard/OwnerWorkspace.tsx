@@ -1927,7 +1927,16 @@ function InvoiceConfirmationDialog({ row, error, isBusy, onClose, onConfirm }: R
 function PaymentRegistrationDialog({ row, file, error, isBusy, onClose, onFileChange, onRegister, onChangeLateFee }: Readonly<{ onChangeLateFee: (row: FilaCobranza) => void; row: FilaCobranza; file: File | null; error: string | null; isBusy: boolean; onClose: () => void; onFileChange: (file: File | null) => void; onRegister: (file: File) => void }>) {
   const buttonLabel = isBusy ? "Guardando…" : "Registrar pago";
   const register = () => { if (file) onRegister(file); };
-  return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p>{row.recargo?.monto && <p className="owner-dialog__hint">Incluye el recargo por atraso de <b>{row.recargo.monto}</b>, que queda saldado con este pago.{row.recargoEditable && <> <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onChangeLateFee(row)}>Cambiar</button></>}</p>}<label className="owner-file"><span>Comprobante del pago</span><input type="file" accept="image/*,application/pdf" onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} /></label><p className="owner-dialog__hint">Adjunte la transferencia, el recibo firmado o la boleta de depósito. Queda guardada junto a la cuota.</p>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} disabled={!file} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
+  return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p>{row.recargo?.monto && <p className="owner-dialog__hint">Incluye el recargo por atraso de <b>{row.recargo.monto}</b>, que queda saldado con este pago.{row.recargoEditable && <> <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onChangeLateFee(row)}>Cambiar</button></>}</p>}<div className="owner-file">
+    <p className="owner-file__title">Comprobante del pago</p>
+    <label className="owner-file__button">
+      <Icon name="paperclip" size={18} />
+      <span>{file ? "Cambiar comprobante" : "Adjuntar comprobante"}</span>
+      <input type="file" aria-label="Comprobante del pago" accept="image/*,application/pdf" disabled={isBusy} onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} />
+    </label>
+    <p className="owner-file__name" aria-live="polite">{file ? file.name : "Ningún archivo seleccionado"}</p>
+    <p className="owner-file__help">Adjunte una imagen o PDF de la transferencia, el recibo firmado o la boleta de depósito. Queda guardado junto a la cuota.</p>
+  </div>{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} disabled={!file} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
 }
 
 function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ tenant: TenantRequest; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (tenant: TenantRequest) => void; onSave: () => void }>) {
