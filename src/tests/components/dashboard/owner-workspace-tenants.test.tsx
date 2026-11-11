@@ -35,7 +35,7 @@ const CONTRATO_JORGE = {
   tenant: JORGE,
   initialRentAmount: 400000, startDate: "2025-03-01", termMonths: 36, endDate: "2028-02-29",
   status: "ACTIVE" as const, incrementMethod: "FIXED_PERCENTAGE" as const,
-  incrementFrequencyMonths: 3, currentRent: 478691, dueDay: 1,
+  incrementFrequencyMonths: 3, currentRent: 478691, dueDay: 1, tenantNotificationsEnabled: true,
 };
 
 beforeEach(() => {

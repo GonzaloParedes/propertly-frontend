@@ -9,7 +9,7 @@ import { campo, cita, lectura } from "@/tests/lectura-de-contrato";
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     contractImports: { quota: vi.fn(), upload: vi.fn(), get: vi.fn(), retry: vi.fn(), complete: vi.fn(), discard: vi.fn(), document: vi.fn() },
-    contracts: { onboard: vi.fn() },
+    contracts: { onboard: vi.fn(), setTenantNotifications: vi.fn() },
     properties: { get: vi.fn() },
     tenants: { get: vi.fn() },
   },
@@ -29,6 +29,7 @@ vi.mock("@/components/dashboard/PdfPageViewer", async () => {
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const importaciones = vi.mocked(AlquiaBackendClient.contractImports);
 const mockOnboard = vi.mocked(AlquiaBackendClient.contracts.onboard);
+const mockAvisos = vi.mocked(AlquiaBackendClient.contracts.setTenantNotifications);
 const mockPropiedad = vi.mocked(AlquiaBackendClient.properties.get);
 const mockInquilino = vi.mocked(AlquiaBackendClient.tenants.get);
 
@@ -799,5 +800,43 @@ describe("salir de la revisión", () => {
     await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("avisos al inquilino al crear desde el PDF", () => {
+  it("nacen apagados y el alta no manda el flag", async () => {
+    await hastaLaRevision();
+    expect(screen.getByRole("switch", { name: "Avisar al inquilino" })).toHaveAttribute("aria-checked", "false");
+
+    await resolverTodo();
+    await userEvent.click(crear());
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(undefined));
+    expect(mockOnboard.mock.calls[0][0]).not.toHaveProperty("tenantNotificationsEnabled");
+    expect(mockAvisos).not.toHaveBeenCalled();
+  });
+
+  it("si los activa, el PUT va después del alta", async () => {
+    mockAvisos.mockResolvedValue({ id: 99 } as ContractResponse);
+    await hastaLaRevision();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await resolverTodo();
+    await userEvent.click(crear());
+
+    await waitFor(() => expect(mockAvisos).toHaveBeenCalledWith(99, true));
+    expect(mockOnboard.mock.invocationCallOrder[0]).toBeLessThan(mockAvisos.mock.invocationCallOrder[0]);
+    expect(onComplete).toHaveBeenCalledWith(undefined);
+  });
+
+  it("si el PUT falla, el contrato queda creado y se avisa", async () => {
+    mockAvisos.mockRejectedValue(new ApiError(500, "x"));
+    await hastaLaRevision();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await resolverTodo();
+    await userEvent.click(crear());
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true }));
+    expect(mockOnboard).toHaveBeenCalledTimes(1);
+    expect(importaciones.complete).toHaveBeenCalled();
   });
 });

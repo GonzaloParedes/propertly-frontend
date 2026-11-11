@@ -9,6 +9,8 @@ export type ResultadoDelAlta = {
   pdfPerdido?: boolean;
   /** El PDF no se pudo adjuntar al contrato recién creado: se puede subir desde su detalle. */
   pdfSinAdjuntar?: boolean;
+  /** El contrato quedó creado, pero no se pudieron activar los avisos al inquilino. */
+  avisosSinActivar?: boolean;
 };
 
 /** Lo que el asistente tiene del PDF al crear el contrato. */
@@ -19,6 +21,14 @@ export type PdfDelAlta = {
   archivoLocal: File | null;
 };
 
+function unir(...partes: Array<ResultadoDelAlta | undefined>): ResultadoDelAlta | undefined {
+  const resultado: ResultadoDelAlta = {};
+  for (const parte of partes) {
+    if (parte) Object.assign(resultado, parte);
+  }
+  return Object.keys(resultado).length > 0 ? resultado : undefined;
+}
+
 /** Sin borrador, el PDF espera en pantalla y se adjunta recién al contrato ya creado. */
 async function adjuntarAlContrato(contratoId: number, archivo: File): Promise<ResultadoDelAlta | undefined> {
   try {
@@ -26,6 +36,19 @@ async function adjuntarAlContrato(contratoId: number, archivo: File): Promise<Re
     return undefined;
   } catch {
     return { pdfSinAdjuntar: true };
+  }
+}
+
+/**
+ * El alta no acepta el flag y deja los avisos apagados. Si el propietario los pidió,
+ * se prenden con el PUT. Si ese PUT falla, el contrato igual existe.
+ */
+export async function activarAvisosDelInquilino(contratoId: number): Promise<ResultadoDelAlta | undefined> {
+  try {
+    await AlquiaBackendClient.contracts.setTenantNotifications(contratoId, true);
+    return undefined;
+  } catch {
+    return { avisosSinActivar: true };
   }
 }
 
@@ -41,16 +64,20 @@ function elBorradorYaNoExiste(err: unknown, borradorId: number | null): boolean 
 export async function crearContratoDesdeBorrador(
   pedido: ContractOnboardingRequest,
   borradorId: number | null,
-  pdf: PdfDelAlta
+  pdf: PdfDelAlta,
+  avisarAlInquilino = false
 ): Promise<ResultadoDelAlta | undefined> {
   try {
     const creado = await AlquiaBackendClient.contracts.onboard(borradorId === null ? pedido : { ...pedido, draftId: borradorId });
-    return pdf.archivoLocal ? await adjuntarAlContrato(creado.id, pdf.archivoLocal) : undefined;
+    const adjunto = pdf.archivoLocal ? await adjuntarAlContrato(creado.id, pdf.archivoLocal) : undefined;
+    const avisos = avisarAlInquilino ? await activarAvisosDelInquilino(creado.id) : undefined;
+    return unir(adjunto, avisos);
   } catch (err) {
     if (!elBorradorYaNoExiste(err, borradorId)) throw err;
   }
   const creado = await AlquiaBackendClient.contracts.onboard(pedido);
   const perdido: ResultadoDelAlta | undefined = pdf.enElBorrador ? { pdfPerdido: true } : undefined;
-  if (!pdf.archivoLocal) return perdido;
-  return { ...perdido, ...(await adjuntarAlContrato(creado.id, pdf.archivoLocal)) };
+  const adjunto = pdf.archivoLocal ? await adjuntarAlContrato(creado.id, pdf.archivoLocal) : undefined;
+  const avisos = avisarAlInquilino ? await activarAvisosDelInquilino(creado.id) : undefined;
+  return unir(perdido, adjunto, avisos);
 }

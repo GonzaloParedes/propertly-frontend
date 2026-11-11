@@ -37,6 +37,7 @@ const CONTRATO: ContractResponse = {
   incrementFrequencyMonths: 3,
   incrementValue: 8,
   currentRent: 478691,
+  tenantNotificationsEnabled: true,
 };
 
 describe("formatearImporte", () => {

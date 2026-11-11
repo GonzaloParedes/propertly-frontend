@@ -308,6 +308,7 @@ export type TenantSelection = { id: number; new?: never } | { id?: never; new: T
 /**
  * `POST /contracts/onboarding`: crea propiedad, inquilino y contrato juntos, o nada. Valida todo
  * antes y ubica cada error con un prefijo (`property.`, `tenant.`, `contract.`).
+ * No acepta `tenantNotificationsEnabled`: el alta queda con los avisos apagados.
  */
 export interface ContractOnboardingRequest {
   property: PropertySelection;
@@ -367,6 +368,12 @@ export interface ContractResponse {
   documentUploadedAt?: string;
   predecessorContractId?: number;
   successorContractId?: number;
+  /**
+   * Avisos por correo al inquilino (vencimientos, ajustes). Los contratos nuevos nacen
+   * en false; los que ya existían quedaron en true. No viaja en el alta: se cambia con
+   * `PUT /contracts/{id}/tenant-notifications`.
+   */
+  tenantNotificationsEnabled: boolean;
 }
 
 export interface ContractTerminateRequest {

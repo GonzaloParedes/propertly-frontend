@@ -31,7 +31,7 @@ function contract(over: Partial<ContractResponse> = {}): ContractResponse {
   return {
     id: 100, property: property(), tenant: tenant(), initialRentAmount: 400000,
     startDate: "2025-03-01", termMonths: 36, dueDay: 1, endDate: "2028-02-29", status: "ACTIVE",
-    incrementMethod: "FIXED_PERCENTAGE", incrementFrequencyMonths: 3, currentRent: 478691,
+    incrementMethod: "FIXED_PERCENTAGE", incrementFrequencyMonths: 3, currentRent: 478691, tenantNotificationsEnabled: true,
     ...over,
   };
 }
@@ -136,10 +136,16 @@ describe("buildTenantRows", () => {
       email: "jorge@ejemplo.com",
       telefono: "+5491144552210",
       contratoId: 100,
+      avisosAlInquilino: true,
       direccion: "Av. Rivadavia 2340, 5.º A",
       alquiler: "$ 478.691",
       estado: "Vencida",
     }]);
+  });
+
+  it("hereda si el contrato avisa al inquilino", () => {
+    const apagado = buildTenantRows([tenant()], [contract({ tenantNotificationsEnabled: false })], []);
+    expect(apagado[0].avisosAlInquilino).toBe(false);
   });
 
   it("el inquilino sin contrato queda sin dirección, sin monto y sin contrato", () => {

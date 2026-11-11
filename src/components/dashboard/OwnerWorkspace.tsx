@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
 import CreationWizard, { type ResultadoDelAlta } from "@/components/dashboard/CreationWizard";
+import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
@@ -148,13 +149,14 @@ const inquilinosDemo: TenantRow[] = [
     email: tenant.email,
     telefono: "+5491144552210",
     contratoId: indice + 1,
+    avisosAlInquilino: true,
     direccion: tenant.property.address,
     alquiler: tenant.property.rent,
     estado: tenant.property.state === "Sin alquilar" ? ("Al día" as const) : tenant.property.state,
   })),
   { id: 90, nombre: "Luis Cabrera", nombrePila: "Luis", apellido: "Cabrera",
     cuit: "20-31447290-0", email: "luis.cabrera@gmail.com", telefono: "+5491155667788",
-    contratoId: null, direccion: null, alquiler: null, estado: "Sin contrato" },
+    contratoId: null, avisosAlInquilino: false, direccion: null, alquiler: null, estado: "Sin contrato" },
 ];
 
 /**
@@ -323,6 +325,7 @@ const inicioDemo = {
     incrementMethod: "FIXED_PERCENTAGE" as const,
     incrementFrequencyMonths: 3,
     currentRent: Number((c.property.rent ?? "0").replace(/[^\d]/g, "")),
+    tenantNotificationsEnabled: true,
   })) as ContractResponse[],
 };
 
@@ -474,7 +477,7 @@ function AnclaDeTutorial({ nombre, children }: Readonly<{ nombre: string; childr
   return <span className="owner-tutorial-ancla" data-tutorial={nombre}>{children}</span>;
 }
 
-function Button({ children, tone = "primary", onClick, disabled = false, busy = false, small = false }: Readonly<{ children: React.ReactNode; tone?: "primary" | "secondary" | "quiet" | "danger"; onClick?: ButtonAction; disabled?: boolean; busy?: boolean; small?: boolean }>) {
+function Button({ children, tone = "primary", onClick, disabled = false, busy = false, small = false, describedBy }: Readonly<{ children: React.ReactNode; tone?: "primary" | "secondary" | "quiet" | "danger"; onClick?: ButtonAction; disabled?: boolean; busy?: boolean; small?: boolean; describedBy?: string }>) {
   const [pending, setPending] = useState(false);
   const isBusy = busy || pending;
   function handleClick() {
@@ -484,7 +487,7 @@ function Button({ children, tone = "primary", onClick, disabled = false, busy = 
       void result.finally(() => setPending(false));
     }
   }
-  return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={handleClick} disabled={disabled || isBusy} aria-busy={isBusy || undefined}>{isBusy && <Spinner />}{children}</button>;
+  return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={handleClick} disabled={disabled || isBusy} aria-busy={isBusy || undefined} aria-describedby={describedBy}>{isBusy && <Spinner />}{children}</button>;
 }
 
 function SwitchRow({ label, checked, onChange }: Readonly<{ label: string; checked: boolean; onChange: (checked: boolean) => void }>) {
@@ -692,7 +695,7 @@ function TenantDetail({
         <div className="owner-card">
           <h2>Acceso de pago</h2>
           <p className="owner-card__copy">El inquilino no necesita una cuenta. Comparte un enlace seguro para ver cuotas habilitadas y subir su comprobante.</p>
-          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
+          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={tenant.avisosAlInquilino} />
         </div>
       )}
     </section>
@@ -1483,6 +1486,7 @@ type ContractDetailProps = Readonly<{
   onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>;
   onRemoveDocument: (contractId: number) => void | Promise<unknown>;
   onAttachDocument: (contractId: number, file: File) => void | Promise<unknown>;
+  onSetTenantNotifications: (contractId: number, enabled: boolean) => Promise<unknown>;
 }>;
 
 function UnconfirmedInvoicesCard({ invoices, onConfirm }: Readonly<{ invoices: FilaCobranza[]; onConfirm: (fila: FilaCobranza) => void }>) {
@@ -1507,10 +1511,11 @@ function DemoContractDetail({ demoContract, onBack, onCopyDemoLink }: Readonly<{
   onBack: () => void;
   onCopyDemoLink: () => void;
 }>) {
+  const [avisos, setAvisos] = useState(true);
   const document = demoContract.document
     ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{demoContract.document}</b><small>PDF · 2,4 MB</small></div><Button tone="quiet" small><Icon name="download" size={16} />Descargar</Button></div>
     : <div className="owner-empty-callout owner-empty-callout--outline"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><Button small>Adjuntar</Button></div>;
-  return <><ContractBreadcrumb name={demoContract.property.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoContract.property.address}</h1><p>Contrato con {demoContract.property.tenant} · vigente hasta el {demoContract.end}</p></div><div className="owner-page-head__action"><Button tone="danger">Finalizar contrato</Button></div></header><section className="owner-detail-grid owner-detail-grid--even"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{demoContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{demoContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {demoContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{demoContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{demoContract.property.tenant}</b></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b></span></div><Button tone="secondary" small onClick={onCopyDemoLink}><Icon name="copy" size={16} />Copiar enlace</Button></div></div><div className="owner-card"><h2>Documento firmado</h2>{document}</div></section></>;
+  return <><ContractBreadcrumb name={demoContract.property.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoContract.property.address}</h1><p>Contrato con {demoContract.property.tenant} · vigente hasta el {demoContract.end}</p></div><div className="owner-page-head__action"><Button tone="danger">Finalizar contrato</Button></div></header><section className="owner-detail-grid owner-detail-grid--even"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{demoContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{demoContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {demoContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{demoContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{demoContract.property.tenant}</b></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b></span></div><Button tone="secondary" small onClick={onCopyDemoLink}><Icon name="copy" size={16} />Copiar enlace</Button></div><ControlAvisosInquilino enabled={avisos} onChange={async (value) => { setAvisos(value); }} /></div><div className="owner-card"><h2>Documento firmado</h2>{document}</div></section></>;
 }
 
 function ContractHeaderActions({ isActive, scheduledContract, successorId, onOpenConditions, onBeginTermination }: Readonly<{ isActive: boolean; scheduledContract: ContractResponse | null; successorId: number | null; onOpenConditions: () => void; onBeginTermination: () => void }>) {
@@ -1527,12 +1532,13 @@ function ContractSummaryCard({ contract, nextUpdate, scheduledContract, onOpenCo
   return <div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{formatearImporte(contract.currentRent, contract.currency)}</strong><small>por mes · vence el día {contract.dueDay}</small></div><Status>{estadoDeContrato(contract, new Date().toISOString().slice(0, 10))}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>{formatearFecha(contract.startDate)}</small></p></div>{nextUpdateRow}<div><span><Icon name="calendar" /></span><p><b>{endLabel}</b><small>{formatearFecha(contract.actualEndDate ?? contract.endDate)}</small></p></div></div>{scheduledCallout}{successorCallout}</div>;
 }
 
-function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contractId: number; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
-  return <div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small onClick={() => onCopyPaymentLink(contractId)}><Icon name="copy" size={16} />Copiar enlace</Button><Button tone="secondary" small onClick={() => onResendPaymentLink(contractId)}>Reenviar por correo</Button></div></div>;
+function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink, resendEnabled = true }: Readonly<{ contractId: number; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown>; resendEnabled?: boolean }>) {
+  const avisoId = `reenvio-sin-avisos-${contractId}`;
+  return <div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small onClick={() => onCopyPaymentLink(contractId)}><Icon name="copy" size={16} />Copiar enlace</Button><Button tone="secondary" small disabled={!resendEnabled} describedBy={resendEnabled ? undefined : avisoId} onClick={() => onResendPaymentLink(contractId)}>Reenviar por correo</Button></div>{!resendEnabled && <p className="owner-link-box__aviso" id={avisoId}>Activá las notificaciones al inquilino para reenviar el acceso.</p>}</div>;
 }
 
-function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
-  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} /></div>;
+function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink, onSetTenantNotifications }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown>; onSetTenantNotifications: (contractId: number, enabled: boolean) => Promise<unknown> }>) {
+  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled} /><ControlAvisosInquilino enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
 }
 
 function ContractDocumentCard({ contract, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>; onRemoveDocument: (contractId: number) => void | Promise<unknown>; onAttachDocument: (contractId: number, file: File) => void | Promise<unknown> }>) {
@@ -1564,6 +1570,7 @@ function ContractDetail({
   onDownloadDocument,
   onRemoveDocument,
   onAttachDocument,
+  onSetTenantNotifications,
 }: ContractDetailProps) {
   if (demo) {
     return <DemoContractDetail demoContract={demoContract} onBack={onBack} onCopyDemoLink={onCopyDemoLink} />;
@@ -1590,7 +1597,7 @@ function ContractDetail({
     {unconfirmedInvoices.length > 0 && <UnconfirmedInvoicesCard invoices={unconfirmedInvoices} onConfirm={onConfirmInvoice} />}
     <section className="owner-detail-grid">
       <ContractSummaryCard contract={contract} nextUpdate={nextUpdate} scheduledContract={scheduledContract} onOpenContract={onOpenContract} />
-      <ContractAccessCard contract={contract} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
+      <ContractAccessCard contract={contract} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} onSetTenantNotifications={onSetTenantNotifications} />
       <ContractDocumentCard contract={contract} onDownloadDocument={onDownloadDocument} onRemoveDocument={onRemoveDocument} onAttachDocument={onAttachDocument} />
       {conditions.length > 0 && <div className="owner-card"><h2>Condiciones pactadas</h2><dl className="owner-definition">{conditions.map((condition) => <div key={condition.etiqueta}><dt>{condition.etiqueta}</dt><dd>{condition.valor}</dd></div>)}</dl></div>}
       <ContractAdjustmentHistory increments={increments} lines={adjustmentLines} contract={contract} />
@@ -2797,6 +2804,11 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     }
   }
 
+  async function cambiarAvisosAlInquilino(contratoId: number, enabled: boolean) {
+    const actualizado = await AlquiaBackendClient.contracts.setTenantNotifications(contratoId, enabled);
+    setCargaContrato((actual) => (actual && "ok" in actual && actual.ok.id === actualizado.id ? { ok: actualizado } : actual));
+  }
+
   async function adjuntarDocumento(contratoId: number, archivo: File) {
     try {
       await AlquiaBackendClient.contracts.attachDocument(contratoId, archivo);
@@ -2856,10 +2868,11 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       toast.exito(WIZARD_SUCCESS[wizardKind]);
       if (resultado?.pdfPerdido) toast.aviso("El borrador ya no existía, así que el PDF no llegó al contrato. Puede adjuntarlo desde su detalle.");
       if (resultado?.pdfSinAdjuntar) toast.aviso("El contrato se creó, pero no pudimos adjuntar el PDF. Puede subirlo desde su detalle.");
+      if (resultado?.avisosSinActivar) toast.aviso("El contrato se creó, pero no pudimos activar los avisos al inquilino. Puede activarlos desde su detalle.");
     }} />;
   const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
     property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => void nuevoContrato(demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
-    contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} unconfirmedInvoices={cuotasSinConfirmar.filter((fila) => fila.contractId === contratoAbierto?.id)} onConfirmInvoice={pedirConfirmacion} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} />,
+    contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} unconfirmedInvoices={cuotasSinConfirmar.filter((fila) => fila.contractId === contratoAbierto?.id)} onConfirmInvoice={pedirConfirmacion} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} onSetTenantNotifications={(contractId, enabled) => cambiarAvisosAlInquilino(contractId, enabled)} />,
     tenant: <TenantDetail onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => void nuevoContrato()} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
   };
   const viewContent: Record<OwnerView, React.ReactNode> = {

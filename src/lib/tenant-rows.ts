@@ -28,6 +28,8 @@ export interface TenantRow {
   email: string;
   telefono: string;
   contratoId: number | null;
+  /** El contrato vigente tiene los avisos al inquilino prendidos. Sin contrato, false. */
+  avisosAlInquilino: boolean;
   direccion: string | null;
   alquiler: string | null;
   estado: EstadoInquilino;
@@ -89,6 +91,7 @@ export function buildTenantRows(
       email: tenant.email,
       telefono: tenant.phoneNumber,
       contratoId: contrato?.id ?? null,
+      avisosAlInquilino: contrato?.tenantNotificationsEnabled === true,
       direccion: contrato ? formatearDireccion(contrato.property) : null,
       alquiler: contrato ? formatearMonto(contrato.currentRent) : null,
       estado: contrato ? estadoDeCuotas(cuotas) : "Sin contrato",
