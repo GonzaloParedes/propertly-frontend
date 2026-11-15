@@ -518,6 +518,11 @@
   .owner-table{min-width:980px}
   .owner-table th,.owner-table td{padding-inline:var(--esp-20)}
   .owner-table td[data-cell="monto"]{white-space:nowrap}
+  /* El recargo en la columna Monto: cada etiqueta con su importe en un solo
+     renglón (sin esto «Recargo por atraso» se partía en tres y el importe en
+     dos). Sólo la frase de detalle puede ocupar más de un renglón. */
+  .owner-table td[data-cell="monto"] .recargo b{display:inline}
+  .owner-table td[data-cell="monto"] :is(.recargo__linea--etiqueta,.recargo__linea--importe,.recargo__linea--modificado){white-space:nowrap}
   .owner-table td[data-cell="propiedad"]{min-width:230px}
   .owner-table td[data-cell="accion"]{white-space:nowrap}
   .owner-table td[data-cell="accion"] .owner-button{vertical-align:middle}
@@ -668,21 +673,30 @@
 @media (max-width:620px){
   /* Dos botones apilados no pueden tocarse: la acción principal queda
      separada de la secundaria por el mismo aire que el resto de la tarjeta. */
-  .owner-table td[data-cell="accion"]{display:flex;grid-area:4/1/5/3;flex-direction:column;gap:var(--esp-10);margin-top:var(--esp-16)}
+  .owner-table td[data-cell="accion"]{display:flex;grid-area:5/1/6/3;flex-direction:column;gap:var(--esp-10);margin-top:var(--esp-16)}
   .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:0}
   /* Tarjeta de cuota en celular, de arriba abajo:
        1 · propiedad (con inquilino y período)  |  estado
        2 · monto                                |  vencimiento
-       3 · franja «Sin confirmar» a todo el ancho (sólo si corresponde)
-       4 · acciones
-     La celda de estado deja de ser caja para que su píldora y la franja se
-     ubiquen cada una en su renglón. */
+       3 · recargo por atraso a todo el ancho (sólo si corresponde)
+       4 · franja «Sin confirmar» a todo el ancho (sólo si corresponde)
+       5 · acciones
+     Las celdas de estado y de monto dejan de ser caja para que la píldora, el
+     importe, el recargo y la franja se ubiquen cada uno en su renglón: el
+     recargo no entra en la mitad del renglón que comparte con el vencimiento. */
   .owner-table td[data-cell="propiedad"]{grid-area:1/1/2/2}
   .owner-table td[data-cell="estado"]{display:contents}
   .owner-table td[data-cell="estado"] .owner-status{grid-area:1/2/2/3;align-self:start;justify-self:end;margin:0}
-  .owner-table td[data-cell="monto"]{grid-area:2/1/3/2;align-self:end;margin-top:var(--esp-14);font-size:22px}
+  .owner-table td[data-cell="monto"]{display:contents}
+  .owner-table td[data-cell="monto"] .owner-monto{grid-area:2/1/3/2;align-self:end;margin-top:var(--esp-14);font-size:22px}
   .owner-table td[data-cell="vencimiento"]{grid-area:2/2/3/3;align-self:end;margin-top:var(--esp-14);text-align:right;font-size:15px}
-  .owner-table td[data-cell="estado"] .owner-status+.owner-substatus{display:flex;grid-area:3/1/4/3;justify-self:stretch;width:auto;
+  /* Cada línea del recargo: lo que es a la izquierda, el importe a la derecha. */
+  .owner-table td[data-cell="monto"] .recargo{grid-area:3/1/4/3;align-items:stretch;gap:var(--esp-6);margin-top:var(--esp-12);padding:var(--esp-10) var(--esp-14);
+    border-radius:12px;background:var(--superficie);font:400 14.5px/1.4 var(--font-nunito-sans),sans-serif;text-align:left}
+  .owner-table td[data-cell="monto"] .recargo__linea{display:flex;align-items:baseline;gap:var(--esp-6)}
+  .owner-table td[data-cell="monto"] .recargo__linea--etiqueta{align-items:center}
+  .owner-table td[data-cell="monto"] .recargo b{display:inline;margin-left:auto;font-weight:700;white-space:nowrap}
+  .owner-table td[data-cell="estado"] .owner-status+.owner-substatus{display:flex;grid-area:4/1/5/3;justify-self:stretch;width:auto;
     margin:var(--esp-14) 0 0!important;padding:var(--esp-10) var(--esp-14);border-radius:12px;font-size:14.5px}
 }
 

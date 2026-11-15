@@ -595,7 +595,7 @@ describe("recargo por atraso", () => {
     conCuotas([cuota({ total: 450000, amountDue: 456750, lateFee: recargo() })]);
     const filaCuota = within(await screen.findByRole("row", { name: /Av\. Rivadavia/ }));
 
-    expect(filaCuota.getByText("$ 456.750", { selector: "td" , exact: false })).toBeInTheDocument();
+    expect(filaCuota.getByText("$ 456.750")).toBeInTheDocument();
     expect(filaCuota.getByText(/Recargo por atraso/)).toHaveTextContent("$ 6.750");
     expect(filaCuota.getByText(/Desde mañana/)).toHaveTextContent("$ 459.000");
   });
