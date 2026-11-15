@@ -199,6 +199,45 @@ export function erroresDelBackend(fieldErrors: Record<string, string> | null | u
   return { porCampo, hayOtros };
 }
 
+// --- Cómo se cuentan en la revisión de la importación ---
+
+/** Las etiquetas de los obligatorios del tipo que siguen vacíos. */
+function obligatoriosVacios(garantia: GarantiaBorrador): string[] {
+  return CAMPOS_POR_TIPO[garantia.type].obligatorios
+    .filter(({ campo }) => garantia[campo].trim() === "")
+    .map(({ etiqueta }) => etiqueta);
+}
+
+/**
+ * Una línea por garantía que se está revisando: el tipo y todo lo que tiene cargado, en el orden en que
+ * se lee una ficha. Lo vacío se omite, y si falta un obligatorio del tipo se dice cuál.
+ */
+export function describirBorrador(garantia: GarantiaBorrador): string {
+  const v = (campo: CampoGarantia) => garantia[campo].trim();
+  const cuit = v("taxId") && `CUIT ${formatearCuit(v("taxId"))}`;
+  let base: string;
+  let partes: (string | false)[];
+  switch (garantia.type) {
+    case "PERSONAL":
+      base = "Garante con recibo de sueldo";
+      partes = [v("fullName"), cuit, v("address"), v("phoneNumber"), v("email"), v("employer") && `trabaja en ${v("employer")}`];
+      break;
+    case "PROPERTY": {
+      base = v("fullName") ? `Garantía propietaria de ${v("fullName")}` : "Garantía propietaria";
+      const matricula = v("propertyRegistry") && ` (matrícula ${v("propertyRegistry")})`;
+      partes = [cuit, v("address"), v("phoneNumber"), v("email"), v("propertyAddress") && `propiedad en garantía: ${v("propertyAddress")}${matricula}`];
+      break;
+    }
+    case "SURETY_INSURANCE":
+      base = "Seguro de caución";
+      partes = [v("insurerName"), v("policyNumber") && `póliza ${v("policyNumber")}`];
+      break;
+  }
+  const faltan = obligatoriosVacios(garantia);
+  const linea = conDetalle(base, partes, " · ", base.startsWith("Garantía propietaria de") ? " · " : ": ");
+  return faltan.length > 0 ? `${linea} · Falta: ${faltan.join(", ")}` : linea;
+}
+
 // --- Cómo se cuentan en el detalle del contrato ---
 
 function conDetalle(base: string, partes: (string | false | undefined)[], separador: string, prefijo = ": "): string {

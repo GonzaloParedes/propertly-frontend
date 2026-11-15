@@ -67,7 +67,7 @@ function ElegirMes({ meses, value, onChange }: Readonly<{ meses: string[]; value
           setAlgunas(true);
           if (value !== "") onChange("");
         })}
-        {opcion("Todavía no se pagó ninguna", "Ninguna de las cuotas anteriores a hoy se cobró.", ninguna, () => {
+        {opcion("Todavía no se pagó ninguna", "Ninguna de estas cuotas se cobró.", ninguna, () => {
           setAlgunas(false);
           setMes("");
           setAnio(anioUnico);
@@ -102,7 +102,7 @@ function ElegirMes({ meses, value, onChange }: Readonly<{ meses: string[]; value
  * respuesta cambia lo que ve él y lo que recibe el inquilino. Debajo de la
  * elección va lo que va a pasar, antes de crear nada.
  */
-export default function PagosTranscurridos({ meses, value, onChange, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, aviso }: Readonly<{
+export default function PagosTranscurridos({ meses, value, onChange, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento, obligatorio, aviso }: Readonly<{
   meses: string[];
   value: RespuestaPagadoHasta;
   onChange: (respuesta: RespuestaPagadoHasta) => void;
@@ -111,11 +111,13 @@ export default function PagosTranscurridos({ meses, value, onChange, inicioISO, 
   frecuenciaMeses: number;
   tieneRecargo: boolean;
   hoyISO: string;
+  diaVencimiento: number;
+  obligatorio: boolean;
   /** Un aviso propio de la pantalla, por ejemplo cuando el backend corrigió la lista. */
   aviso?: string | null;
 }>) {
   if (meses.length === 0) return null;
-  const consecuencia = consecuenciaDe({ meses, respuesta: value, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO });
+  const consecuencia = consecuenciaDe({ meses, respuesta: value, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento });
   const opcion = (clave: string, etiqueta: string) => {
     const elegida = value === clave;
     return (
@@ -125,9 +127,9 @@ export default function PagosTranscurridos({ meses, value, onChange, inicioISO, 
     );
   };
   return (
-    <section className="owner-pagos-transcurridos" aria-label="Cuotas anteriores a hoy">
+    <section className="owner-pagos-transcurridos" aria-label="Cuotas cobradas">
       <p className="owner-wizard-label">¿Hasta qué mes le pagaron?</p>
-      <p className="owner-wizard-help">Este contrato ya empezó, así que hay cuotas que vencieron antes de hoy. Elija hasta qué mes las cobró.</p>
+      <p className="owner-wizard-help">Indique hasta qué mes cobró las cuotas. {obligatorio ? "Debe elegir una opción para continuar." : "Puede dejar esta respuesta sin completar."}</p>
       {aviso && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{aviso}</p>}
       {meses.length > MAX_MESES_EN_CHIPS ? (
         // Cuando cambia la lista de meses (otras fechas, o la corrige el backend) se vuelve a empezar.
@@ -140,7 +142,7 @@ export default function PagosTranscurridos({ meses, value, onChange, inicioISO, 
       )}
       {consecuencia
         ? <div className="owner-wizard-note" aria-live="polite">{consecuencia.frases.map((frase) => <p key={frase}>{frase}</p>)}</div>
-        : faltaResponder(value, meses) && <p className="owner-wizard-help">Elija una opción para poder seguir.</p>}
+        : obligatorio && faltaResponder(value, meses) && <p className="owner-wizard-help">Elija una opción para poder seguir.</p>}
     </section>
   );
 }

@@ -822,6 +822,7 @@
 .owner-pdf-item__source svg{color:var(--exito)}
 .owner-pdf-item__value{font:700 21px/1.25 var(--font-quicksand),sans-serif;letter-spacing:-.01em}
 .owner-pdf-item__detail{color:var(--gris);font-size:15px}
+.owner-pdf-item__lista{display:grid;gap:var(--esp-6);margin:0;padding:0;list-style:none;font-size:18px}
 .owner-pdf-item__why{margin:var(--esp-6) 0 var(--esp-6);color:var(--tinta);font-size:15.5px}
 .owner-pdf-item__edit{display:grid;gap:var(--esp-12);margin-top:var(--esp-10)}
 .owner-pdf-item__edit .owner-wizard-field--amount{font-size:24px}

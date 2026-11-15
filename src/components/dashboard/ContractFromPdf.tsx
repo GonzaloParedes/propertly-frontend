@@ -48,6 +48,7 @@ import { punitoriosCargados } from "@/lib/otras-condiciones";
 import { formatearDireccion } from "@/lib/tenant-rows";
 import {
   faltaResponder,
+  mesesElegibles,
   mesesTranscurridos,
   paidThroughDe,
   periodosDelBackend,
@@ -122,7 +123,7 @@ function mesesPorPagarDe({ b, fechasValidas, periodosBackend, claveDeFechas, hoy
 }>): string[] {
   if (!b || !fechasValidas) return [];
   if (periodosBackend?.clave === claveDeFechas) return periodosBackend.meses;
-  return mesesTranscurridos({ inicioISO: b.inicio, plazoMeses: Number(b.plazo), diaVencimiento: Number(b.dia), hoyISO: hoy });
+  return mesesElegibles({ inicioISO: b.inicio, plazoMeses: Number(b.plazo), hoyISO: hoy });
 }
 
 /** El tilde, el spinner o nada, según cómo va ese paso de la lectura. */
@@ -251,6 +252,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   const [existentes, setExistentes] = useState<{ propiedad: string | null; inquilino: string | null }>({ propiedad: null, inquilino: null });
 
   const [pagadoHasta, setPagadoHasta] = useState<RespuestaPagadoHasta>("");
+  const [avisoCuotas, setAvisoCuotas] = useState(false);
   const [periodosBackend, setPeriodosBackend] = useState<{ clave: string; meses: string[] } | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState<{ mensaje: string; contratoActivoId?: number | null } | null>(null);
@@ -423,9 +425,14 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   const claveDeFechas = b ? `${b.inicio}|${b.plazo}|${b.dia}` : "";
   const mesesPorPagar = mesesPorPagarDe({ b, fechasValidas, periodosBackend, claveDeFechas, hoy });
   const respuestaVigente = respuestaVigenteDe(pagadoHasta, mesesPorPagar);
+  if (pagadoHasta && !respuestaVigente) {
+    setPagadoHasta("");
+    setAvisoCuotas(true);
+  }
+  const obligatorios = b ? mesesTranscurridos({ inicioISO: b.inicio, plazoMeses: Number(b.plazo), diaVencimiento: Number(b.dia), hoyISO: hoy }).filter((m) => mesesPorPagar.includes(m)) : [];
 
   const pendientes = lectura && b ? calcularPendientes(lectura, b, decisiones, revisados, sumados) : [];
-  const restantes = pendientes.length + (faltaResponder(respuestaVigente, mesesPorPagar) ? 1 : 0);
+  const restantes = pendientes.length + (faltaResponder(respuestaVigente, obligatorios) ? 1 : 0);
 
   function cambiarDecision(id: ItemId, decision: Decision | null) {
     setDecisiones((previas) => {
@@ -474,7 +481,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   function conAvisoDelAlta(err: unknown) {
     if (err instanceof ApiError) {
       if (err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED) return preguntarOtraVezLasCuotas(err, true);
-      if (err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) return preguntarOtraVezLasCuotas(err, false);
+      if (err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) return preguntarOtraVezLasCuotas(err, true);
       const existente = idDelInquilinoExistente(err);
       if ((err.type === ERROR.DUPLICATE_TAX_ID || err.type === ERROR.DUPLICATE_PHONE_NUMBER) && existente !== null) {
         return ofrecerInquilinoExistente(existente);
@@ -608,16 +615,19 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
             <>
               <h2 className="owner-pdf-group">Antes de crearlo</h2>
               <div className="owner-pdf-list">
-                <article className="owner-pdf-item" data-estado={faltaResponder(respuestaVigente, mesesPorPagar) ? "falta" : "ok"}>
+                <article className="owner-pdf-item" data-estado={faltaResponder(respuestaVigente, obligatorios) ? "falta" : "ok"}>
                   <PagosTranscurridos
                     meses={mesesPorPagar}
                     value={respuestaVigente}
-                    onChange={setPagadoHasta}
+                    onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }}
                     inicioISO={b.inicio}
                     alquiler={Number(b.alquiler)}
                     frecuenciaMeses={Number(b.frecuencia)}
                     tieneRecargo={hayPunitorios}
+                    diaVencimiento={Number(b.dia)}
+                    obligatorio={obligatorios.length > 0}
                     hoyISO={hoy}
+                    aviso={avisoCuotas ? "La selección ya no está disponible. Elija nuevamente." : null}
                   />
                 </article>
               </div>

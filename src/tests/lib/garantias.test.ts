@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  armarGarantias, cambiarTipo, describirGarantia, desdeRespuesta, erroresDelBackend, garantiaVacia,
+  armarGarantias, cambiarTipo, describirBorrador, describirGarantia, desdeRespuesta, erroresDelBackend, garantiaVacia,
   hayErrores, validarGarantia, validarGarantias, type GarantiaBorrador,
 } from "@/lib/garantias";
 
@@ -109,5 +109,35 @@ describe("describirGarantia", () => {
   it("una garantía propietaria con matrícula", () => {
     expect(describirGarantia({ type: "PROPERTY", fullName: "Ana Gómez", propertyAddress: "Av. Rivadavia 1234", propertyRegistry: "15-1234" }))
       .toBe("Garantía propietaria de Ana Gómez: Av. Rivadavia 1234, matrícula 15-1234");
+  });
+});
+
+describe("describirBorrador", () => {
+  it("un garante con recibo de sueldo: nombre, CUIT formateado y domicilio", () => {
+    expect(describirBorrador(borrador({ type: "PERSONAL", fullName: "Carla Prueba", taxId: "27323456783", address: "Calle Falsa 900" })))
+      .toBe("Garante con recibo de sueldo: Carla Prueba · CUIT 27-32345678-3 · Calle Falsa 900");
+  });
+
+  it("suma teléfono, correo y empleador cuando están, y omite lo vacío", () => {
+    expect(describirBorrador(borrador({ type: "PERSONAL", fullName: "Ana Gómez", phoneNumber: "11 4455-2210", email: "ana@ejemplo.com", employer: "Panadería Los Andes" })))
+      .toBe("Garante con recibo de sueldo: Ana Gómez · 11 4455-2210 · ana@ejemplo.com · trabaja en Panadería Los Andes");
+  });
+
+  it("una garantía propietaria sin la propiedad en garantía dice que falta", () => {
+    expect(describirBorrador(borrador({ type: "PROPERTY", fullName: "Ana Gómez", address: "Lavalle 950" })))
+      .toBe("Garantía propietaria de Ana Gómez · Lavalle 950 · Falta: Dirección de la propiedad en garantía");
+    expect(describirBorrador(borrador({ type: "PROPERTY", fullName: "Ana Gómez", propertyAddress: "Av. Rivadavia 1234", propertyRegistry: "15-1234" })))
+      .toBe("Garantía propietaria de Ana Gómez · propiedad en garantía: Av. Rivadavia 1234 (matrícula 15-1234)");
+  });
+
+  it("un seguro de caución, con y sin aseguradora", () => {
+    expect(describirBorrador(borrador({ type: "SURETY_INSURANCE", insurerName: "Aseguradora Sur", policyNumber: "4411" })))
+      .toBe("Seguro de caución: Aseguradora Sur · póliza 4411");
+    expect(describirBorrador(borrador({ type: "SURETY_INSURANCE" }))).toBe("Seguro de caución · Falta: Aseguradora");
+  });
+
+  it("un garante sin nombre dice que falta", () => {
+    expect(describirBorrador(borrador({ type: "PERSONAL", taxId: "27323456783" })))
+      .toBe("Garante con recibo de sueldo: CUIT 27-32345678-3 · Falta: Nombre y apellido");
   });
 });

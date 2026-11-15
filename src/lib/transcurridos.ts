@@ -22,20 +22,10 @@ export function nombreDeMes(anioMes: string): string {
   return `${MESES[m - 1]} ${anio}`;
 }
 
-/**
- * Los períodos cuya cuota ya venció el día del alta, que son los que el backend
- * obliga a decidir (`ContractCreationService`): hay una cuota por mes desde el de
- * inicio hasta el actual, mientras el mes empiece antes del fin del contrato, y es
- * «transcurrida» si su vencimiento —el `dueDay` de ese mes— es anterior a hoy.
- *
- * Es una estimación del cliente. En un contrato por índice el backend sólo genera
- * las cuotas de los meses con valor publicado, así que puede devolver otra lista:
- * en ese caso manda la del backend (ver `periodosDelBackend`).
- */
-export function mesesTranscurridos({ inicioISO, plazoMeses, diaVencimiento, hoyISO }: Readonly<{
+/** Periods in the contract through the current business month. Pricing is authoritative on the server. */
+export function mesesElegibles({ inicioISO, plazoMeses, hoyISO }: Readonly<{
   inicioISO: string;
   plazoMeses: number;
-  diaVencimiento: number;
   hoyISO: string;
 }>): string[] {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(inicioISO) || !/^\d{4}-\d{2}-\d{2}$/.test(hoyISO) || plazoMeses <= 0) return [];
@@ -45,21 +35,25 @@ export function mesesTranscurridos({ inicioISO, plazoMeses, diaVencimiento, hoyI
   const finMes = sumarMeses(primero, plazoMeses);
   const resultado: string[] = [];
   for (let periodo = primero; periodo <= actual && periodo < finMes; periodo = sumarMeses(periodo, 1)) {
-    const vencimiento = `${periodo}-${String(diaVencimiento).padStart(2, "0")}`;
-    if (vencimiento < hoyISO) resultado.push(periodo);
+    resultado.push(periodo);
   }
   return resultado;
 }
 
+/** Historical periods require an explicit decision; the due date itself is excluded. */
+export function mesesTranscurridos(args: { inicioISO: string; plazoMeses: number; diaVencimiento: number; hoyISO: string }): string[] {
+  return mesesElegibles(args).filter((periodo) => `${periodo}-${String(args.diaVencimiento).padStart(2, "0")}` < args.hoyISO);
+}
+
 /**
- * El backend rechaza el alta con la lista de períodos que él considera transcurridos
+ * El backend rechaza el alta con la lista de períodos que él considera elegibles
  * («2026-06, 2026-07») en `errors.elapsed`. Sólo se acepta lo que tiene forma de mes.
  */
 export function periodosDelBackend(fieldErrors: Record<string, string> | null | undefined): string[] | null {
   const lista = fieldErrors?.elapsed;
-  if (!lista) return null;
+  if (lista === undefined) return null;
   const periodos = lista.split(",").map((p) => p.trim()).filter((p) => /^\d{4}-\d{2}$/.test(p));
-  return periodos.length > 0 ? periodos : null;
+  return periodos.length > 0 || lista === "" ? periodos : null;
 }
 
 export const NINGUNO = "ninguno";
@@ -129,7 +123,7 @@ export interface Consecuencia {
  * inicial. Después de un aumento, el importe lo calcula el backend (en un contrato
  * por índice ni siquiera existe todavía) y decir un total sería inventarlo.
  */
-export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO }: Readonly<{
+export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento = 1 }: Readonly<{
   meses: string[];
   respuesta: RespuestaPagadoHasta;
   inicioISO: string;
@@ -137,15 +131,18 @@ export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenc
   frecuenciaMeses: number;
   tieneRecargo: boolean;
   hoyISO: string;
+  diaVencimiento?: number;
 }>): Consecuencia | null {
   if (meses.length === 0 || respuesta === "") return null;
   const hasta = respuesta === NINGUNO ? null : respuesta;
   const cobradas = hasta === null ? [] : meses.filter((m) => m <= hasta);
-  const deuda = meses.filter((m) => hasta === null || m > hasta);
+  const impagas = meses.filter((m) => hasta === null || m > hasta);
+  const deuda = impagas.filter((m) => `${m}-${String(diaVencimiento).padStart(2, "0")}` <= hoyISO);
+  const pendientes = impagas.filter((m) => !deuda.includes(m));
 
   const antesDelAumento = deuda.every((m) => m < sumarMeses(mes(inicioISO), frecuenciaMeses));
   const totalDeuda = deuda.length > 0 && antesDelAumento && alquiler > 0 ? alquiler * deuda.length : null;
 
-  const frases = [fraseDeCobradas(cobradas, hoyISO), ...frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO })];
+  const frases = [fraseDeCobradas(cobradas, hoyISO), ...frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO }), ...(pendientes.length ? [`${rango(pendientes, hoyISO)} ${pendientes.length === 1 ? "queda impaga y aún no venció" : "quedan impagas y aún no vencieron"}.`] : [])];
   return { cobradas, deuda, totalDeuda, frases };
 }
