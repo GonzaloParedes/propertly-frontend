@@ -1995,7 +1995,9 @@ function overviewCalendar(demo: boolean) {
   return { hoy: hoyEnLetras(), mesActual: mesActualEnLetras(), mesSiguiente: mesSiguienteEnLetras() };
 }
 
-function borradoresVisibles(demo: boolean, carga: { ok: FilaDeBorrador[] } | LoadFailure | null): BorradoresDeInicio {
+type CargaDeBorradores = { ok: FilaDeBorrador[] } | LoadFailure | null;
+
+function borradoresVisibles(demo: boolean, carga: CargaDeBorradores): BorradoresDeInicio {
   if (demo) return [];
   if (carga === null) return null;
   return "error" in carga ? "error" : carga.ok;
@@ -2776,7 +2778,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       const { url } = await AlquiaBackendClient.contracts.getTenantAccess(contratoId);
       await navigator.clipboard.writeText(url);
       toast.exito("Enlace copiado.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to get tenant access link", e);
       toast.error("No pudimos obtener el enlace. Inténtelo de nuevo.");
     }
   }
@@ -2785,7 +2788,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     try {
       await AlquiaBackendClient.contracts.resendTenantAccess(contratoId);
       toast.exito("Le reenviamos el enlace por correo al inquilino.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to resend tenant access link", e);
       toast.error("No pudimos reenviar el correo. Inténtelo de nuevo más tarde.");
     }
   }
@@ -2799,7 +2803,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       enlace.download = contrato.documentFileName ?? "contrato";
       enlace.click();
       URL.revokeObjectURL(url);
-    } catch {
+    } catch (e) {
+      console.error("Failed to download contract document", e);
       toast.error("No pudimos descargar el documento. Inténtelo de nuevo más tarde.");
     }
   }
@@ -2824,7 +2829,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       await AlquiaBackendClient.contracts.removeDocument(contratoId);
       setRecargaContrato((n) => n + 1);
       toast.exito("Documento quitado.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to remove contract document", e);
       toast.error("No pudimos quitar el documento. Inténtelo de nuevo más tarde.");
     }
   }

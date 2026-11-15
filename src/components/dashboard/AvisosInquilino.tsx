@@ -40,7 +40,8 @@ export function ControlAvisosInquilino({ enabled, onChange }: Readonly<{
     setPending(true);
     try {
       await onChange(siguiente);
-    } catch {
+    } catch (e) {
+      console.error("Failed to toggle tenant notifications", e);
       setError("No pudimos cambiar los avisos al inquilino. Inténtelo de nuevo.");
     } finally {
       enCurso.current = false;

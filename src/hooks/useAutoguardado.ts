@@ -136,6 +136,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
       if (err.type === recurso.errores.limite) return frenar("limite");
       if (err.status === 404) return frenar("desaparecido");
     }
+    console.error("Autoguardado: error inesperado al guardar", err);
     setEstado("error");
     // El asistente ya se cerró: el último guardado salió una vez y no se sigue insistiendo en segundo plano,
     // porque quien salió igual, tras el aviso, no espera que el borrador aparezca después.
@@ -149,6 +150,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
   /** Guarda hasta que lo confirmado coincide con lo que hay en pantalla. De a un pedido por vez. */
   const drenar = useCallback((keepalive = false): Promise<void> => {
     if (enVuelo.current) return enVuelo.current;
+    const keepaliveOpt = keepalive ? { keepalive: true } : undefined;
     const guardarHastaEstarAlDia = async (): Promise<void> => {
       while (!detenido.current && !congelado.current && !frenado.current) {
         const { contenido: objetivo, canonico: texto } = ultimo.current;
@@ -159,7 +161,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
             claveDeAlta.current ??= nuevaClaveDeAlta();
             const creado = await recurso.create(objetivo, {
               idempotencyKey: claveDeAlta.current,
-              ...(keepalive ? { keepalive: true } : {}),
+              ...keepaliveOpt,
             });
             idRef.current = creado.id;
             versionRef.current = creado.version;
@@ -171,7 +173,7 @@ export function useAutoguardado({ activo, contenido, posicion, inicial = null, e
             const guardadoAhora = await recurso.update(
               idRef.current,
               { ...objetivo, version: versionRef.current },
-              keepalive ? { keepalive: true } : undefined
+              keepaliveOpt
             );
             versionRef.current = guardadoAhora.version;
             guardado.current = texto;
