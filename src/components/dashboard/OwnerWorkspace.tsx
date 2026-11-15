@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
-import CreationWizard, { type ResultadoDelAlta } from "@/components/dashboard/CreationWizard";
+import CreationWizard from "@/components/dashboard/CreationWizard";
+import { mensajeExitoDelContrato, type ResultadoDelAlta } from "@/lib/crear-contrato";
 import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
@@ -2863,7 +2864,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const recordatorios = loadedData(demo, AVISOS_DEMO, cargaAjustes);
   const recordatoriosConError = loadHasError(demo, cargaAjustes);
 
-  const WIZARD_SUCCESS: Record<Exclude<Creation, null>, string> = { property: "Propiedad agregada.", tenant: "Inquilino agregado.", contract: "Contrato creado. Le enviamos al inquilino su enlace por correo." };
+  const WIZARD_SUCCESS = { property: "Propiedad agregada.", tenant: "Inquilino agregado." } as const;
   const wizardDestinations: Record<Exclude<Creation, null>, OwnerView> = { property: "propiedades", tenant: "inquilinos", contract: "contratos" };
   const wizardKind = wizard ?? "contract";
   const wizardContent = <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} draftId={wizardDraftId} draftKind={wizardKind === "property" ? "property" : "contract"} onClose={() => setWizard(null)} onOpenContract={(contractId) => { setWizard(null); openDetail("contract", String(contractId)); }}
@@ -2871,10 +2872,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     onDraftDiscarded={() => toast.exito("Borrador descartado.")}
     onComplete={(resultado?: ResultadoDelAlta) => {
       go(wizardDestinations[wizardKind]);
-      toast.exito(WIZARD_SUCCESS[wizardKind]);
+      toast.exito(wizardKind === "contract" ? mensajeExitoDelContrato(resultado) : WIZARD_SUCCESS[wizardKind]);
       if (resultado?.pdfPerdido) toast.aviso("El borrador ya no existía, así que el PDF no llegó al contrato. Puede adjuntarlo desde su detalle.");
       if (resultado?.pdfSinAdjuntar) toast.aviso("El contrato se creó, pero no pudimos adjuntar el PDF. Puede subirlo desde su detalle.");
-      if (resultado?.avisosSinActivar) toast.aviso("El contrato se creó, pero no pudimos activar los avisos al inquilino. Puede activarlos desde su detalle.");
+      if (resultado?.avisosSinActivar) toast.aviso("El contrato se creó, pero no pudimos activar los avisos al inquilino. Podés activarlos desde su detalle.");
     }} />;
   const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
     property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => void nuevoContrato(demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
