@@ -11,7 +11,7 @@ vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { create: vi.fn(), list: vi.fn() },
     properties: { list: vi.fn(), create: vi.fn() },
-    contracts: { list: vi.fn(), create: vi.fn(), onboard: vi.fn(), attachDocument: vi.fn() },
+    contracts: { list: vi.fn(), create: vi.fn(), onboard: vi.fn(), attachDocument: vi.fn(), setTenantNotifications: vi.fn() },
     contractImports: { quota: vi.fn(), upload: vi.fn(), get: vi.fn(), retry: vi.fn(), complete: vi.fn(), discard: vi.fn(), document: vi.fn() },
     contractDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(), attachDocument: vi.fn(), getDocument: vi.fn(), removeDocument: vi.fn() },
     propertyDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
@@ -28,6 +28,7 @@ const mockContratos = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockAutocompletar = vi.mocked(AlquiaBackendClient.addressLookup.autocomplete);
 const mockResolver = vi.mocked(AlquiaBackendClient.addressLookup.resolve);
 const mockCrearContrato = vi.mocked(AlquiaBackendClient.contracts.onboard);
+const mockAvisos = vi.mocked(AlquiaBackendClient.contracts.setTenantNotifications);
 const mockCuota = vi.mocked(AlquiaBackendClient.contractImports.quota);
 const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
 const mockBorradoresDePropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts);
@@ -1995,6 +1996,45 @@ describe("asistente de contrato · borrador que se guarda solo", () => {
     await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
 
     await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ pdfSinAdjuntar: true }));
+  });
+
+  it("los avisos al inquilino nacen apagados y el alta no manda el flag", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevisionDelBorrador();
+
+    expect(screen.getByText("¿Querés notificar al inquilino?")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Avisar al inquilino" })).toHaveAttribute("aria-checked", "false");
+
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+    expect(mockCrearContrato.mock.calls[0][0]).not.toHaveProperty("tenantNotificationsEnabled");
+    expect(mockAvisos).not.toHaveBeenCalled();
+  });
+
+  it("si los activa, después de crear el contrato llama al PUT", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 41 } as never);
+    mockAvisos.mockResolvedValueOnce({ id: 41 } as never);
+    await irALaRevisionDelBorrador();
+
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(undefined));
+    expect(mockAvisos).toHaveBeenCalledWith(41, true);
+    expect(mockCrearContrato.mock.invocationCallOrder[0]).toBeLessThan(mockAvisos.mock.invocationCallOrder[0]);
+  });
+
+  it("si el PUT de avisos falla, el contrato queda creado y se puede activar desde el detalle", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 41 } as never);
+    mockAvisos.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await irALaRevisionDelBorrador();
+
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true }));
+    expect(mockCrearContrato).toHaveBeenCalledTimes(1);
   });
 
   // --- conflicto entre dispositivos ---

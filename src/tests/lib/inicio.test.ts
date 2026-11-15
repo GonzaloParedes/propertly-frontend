@@ -47,6 +47,7 @@ const CONTRATO: ContractResponse = {
   incrementMethod: "FIXED_PERCENTAGE",
   incrementFrequencyMonths: 3,
   currentRent: 478691,
+  tenantNotificationsEnabled: true,
 };
 
 function cuota(extra: Partial<InvoiceResponse> = {}): InvoiceResponse {

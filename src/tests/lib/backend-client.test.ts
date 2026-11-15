@@ -254,6 +254,11 @@ describe("AlquiaBackendClient.contracts", () => {
     expect(mockPut).toHaveBeenCalledWith("/contracts/4", body);
   });
 
+  it("setTenantNotifications pega a PUT /contracts/{id}/tenant-notifications con enabled", async () => {
+    await AlquiaBackendClient.contracts.setTenantNotifications(4, false);
+    expect(mockPut).toHaveBeenCalledWith("/contracts/4/tenant-notifications", { enabled: false });
+  });
+
   it("terminate pega a POST /contracts/{id}/terminate", async () => {
     await AlquiaBackendClient.contracts.terminate(4, { terminationDate: "2026-06-01" });
     expect(mockPost).toHaveBeenCalledWith("/contracts/4/terminate", {
