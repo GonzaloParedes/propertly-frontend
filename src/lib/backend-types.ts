@@ -59,6 +59,15 @@ export interface UserUpdateRequest {
 export interface TenantRequest {
   firstName: string;
   lastName: string;
+  taxId?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+}
+
+/** Controlled input values; empty optional fields are accepted by the API. */
+export interface TenantFormValues {
+  firstName: string;
+  lastName: string;
   taxId: string;
   email: string;
   phoneNumber: string;
@@ -68,9 +77,9 @@ export interface TenantResponse {
   id: number;
   firstName: string;
   lastName: string;
-  taxId: string;
-  email: string;
-  phoneNumber: string;
+  taxId?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
 }
 
 // --- Properties ---

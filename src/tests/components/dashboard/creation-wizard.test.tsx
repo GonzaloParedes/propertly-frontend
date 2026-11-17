@@ -109,9 +109,9 @@ async function fillAndSave({
 } = {}) {
   if (nombre) await userEvent.type(screen.getByLabelText("Nombre"), nombre);
   if (apellido) await userEvent.type(screen.getByLabelText("Apellido"), apellido);
-  if (cuit) await userEvent.type(screen.getByLabelText("CUIT o CUIL"), cuit);
-  if (correo) await userEvent.type(screen.getByLabelText("Correo electrónico"), correo);
-  if (telefono) await userEvent.type(screen.getByLabelText("Teléfono"), telefono);
+  if (cuit) await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), cuit);
+  if (correo) await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), correo);
+  if (telefono) await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), telefono);
   await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
 }
 
@@ -152,8 +152,8 @@ describe("guardado exitoso", () => {
       email: "jorge@ejemplo.com", phoneNumber: "+5491144552210",
     });
     renderWizard();
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    expect(screen.getByLabelText("CUIT o CUIL")).toHaveValue("27-24891055-6");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+    expect(screen.getByLabelText("CUIT o CUIL (opcional)")).toHaveValue("27-24891055-6");
     await fillAndSave({ cuit: "" });
 
     await waitFor(() =>
@@ -259,21 +259,20 @@ describe("errores al guardar", () => {
 // --- Validación previa ---
 
 describe("validación previa", () => {
-  it("no habilita guardar hasta que los cinco campos son válidos", async () => {
+  it("habilita guardar con nombre y apellido sin datos opcionales", async () => {
+    mockCreate.mockResolvedValue({ id: 1, firstName: "Jorge", lastName: "Paletta" });
     renderWizard();
     const guardar = screen.getByRole("button", { name: "Guardar inquilino" });
     expect(guardar).toBeDisabled();
-
     await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
+    expect(guardar).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Apellido"), "Paletta");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    expect(guardar).toBeDisabled();
-
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "jorge@ejemplo.com");
-    expect(guardar).toBeDisabled();
-
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
-    expect(guardar).not.toBeDisabled();
+    expect(guardar).toBeEnabled();
+    await userEvent.click(guardar);
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith({
+      firstName: "Jorge", lastName: "Paletta", taxId: "", email: "", phoneNumber: "",
+    }));
+    expect(onComplete).toHaveBeenCalled();
   });
 
   it("no llega al backend con un CUIT de dígito verificador inválido", async () => {
@@ -894,9 +893,9 @@ describe("asistente de contrato · borradores y un solo guardado", () => {
     await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
     await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
     await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+    await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(screen.getByRole("button", { name: "Usar este inquilino" }));
 
     // Condiciones
@@ -1340,9 +1339,9 @@ describe("asistente de contrato · revisión y errores del alta", () => {
     await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
     await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
     await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+    await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(screen.getByRole("button", { name: "Usar este inquilino" }));
     await seguir();
     await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
@@ -1483,9 +1482,9 @@ describe("asistente de contrato · revisión y errores del alta", () => {
       await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
       await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
       await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
-      await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-      await userEvent.type(screen.getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-      await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+      await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+      await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+      await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
       await userEvent.click(screen.getByRole("button", { name: "Usar este inquilino" }));
       await seguir();
       await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");

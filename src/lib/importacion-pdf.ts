@@ -389,8 +389,8 @@ const CLAVES_DE: Record<ItemId, string[]> = {
 /** Las claves cuya ausencia hace que el item «falte»: las demás del item son complementarias. */
 const OBLIGATORIAS: Partial<Record<ItemId, string[]>> = {
   propiedad: ["property.street", "property.number", "property.city", "property.province"],
-  inquilino: ["tenant.firstName", "tenant.lastName", "tenant.taxId"],
-  contacto: ["tenant.email", "tenant.phone"],
+  inquilino: ["tenant.firstName", "tenant.lastName"],
+
   alquiler: ["rent.initialAmount", "rent.currency"],
   vencimiento: ["rent.dueDay"],
   plazo: ["dates.startDate", "dates.termMonths"],
@@ -598,9 +598,9 @@ export function datosCompletos(id: ItemId, b: Borrador): boolean {
     case "tipo":
       return b.propiedadId !== null || b.categoria !== null;
     case "inquilino":
-      return b.inquilinoId !== null || (b.nombre.trim() !== "" && b.apellido.trim() !== "" && cuitValido(b.cuit));
+      return b.inquilinoId !== null || (b.nombre.trim() !== "" && b.apellido.trim() !== "" && (!b.cuit.trim() || cuitValido(b.cuit)));
     case "contacto":
-      return b.inquilinoId !== null || (correoValido(b.correo) && telefonoValido(b.telefono));
+      return b.inquilinoId !== null || ((!b.correo.trim() || correoValido(b.correo)) && (!b.telefono.trim() || telefonoValido(b.telefono)));
     case "alquiler":
       return Number(b.alquiler) > 0;
     case "vencimiento":
