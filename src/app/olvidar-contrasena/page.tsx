@@ -41,7 +41,8 @@ export default function OlvidarContrasenaPage() {
         email: form.get("email") as string,
       });
       setSubmitted(true);
-    } catch {
+    } catch (e) {
+      console.error("Forgot password request failed", e);
       setError("Ocurrió un error inesperado. Intente nuevamente más tarde.");
       setIsPending(false);
     }

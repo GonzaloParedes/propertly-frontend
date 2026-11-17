@@ -1,6 +1,7 @@
 import {
   Archive,
   ArrowRight,
+  Bell,
   Building2,
   Calendar,
   Check,
@@ -72,6 +73,7 @@ const MAP = {
   paperclip: Paperclip,
   copy: Copy,
   help: CircleHelp,
+  bell: Bell,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof MAP;

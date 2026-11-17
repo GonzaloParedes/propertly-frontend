@@ -17,6 +17,8 @@ import Dialog from "@/components/ui/Dialog";
 import ImportReview from "@/components/dashboard/ImportReview";
 import PagosTranscurridos from "@/components/dashboard/PagosTranscurridos";
 import { AlquiaBackendClient } from "@/lib/backend-client";
+import { activarAvisosDelInquilino, type ResultadoDelAlta } from "@/lib/crear-contrato";
+import { CartelAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import type { ContractImportResponse } from "@/lib/backend-types";
 import { ApiError } from "@/lib/api";
 import {
@@ -26,6 +28,7 @@ import {
   idDelInquilinoExistente,
 } from "@/lib/error-codes";
 import { ubicacionDeErrores } from "@/lib/errores-de-alta";
+import { correoValido } from "@/lib/correo";
 import { hoyEnArgentina } from "@/lib/formato";
 import {
   armarAlta,
@@ -198,15 +201,17 @@ function PantallaDeFallo({ fallo, onReintentar, onOtroArchivo, onCargarAMano }: 
 }
 
 /** El contrato se creó pero no se pudo adjuntar el PDF. */
-function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete }: Readonly<{
+function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete, avisos }: Readonly<{
   contratoId: number;
   onOpenContract?: (contratoId: number) => void;
-  onComplete: () => void;
+  onComplete: (resultado?: ResultadoDelAlta) => void;
+  avisos?: ResultadoDelAlta;
 }>) {
   return (
     <main className="owner-wizard__body">
       <h1>El contrato se creó</h1>
       <p><output>No pudimos adjuntar el PDF al contrato. El contrato está creado y no hace falta cargarlo de nuevo: puede adjuntar el archivo desde el detalle del contrato.</output></p>
+      {avisos?.avisosSinActivar && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />Tampoco pudimos activar los avisos al inquilino. Podés activarlos desde el detalle del contrato.</p>}
       <div className="owner-wizard-options">
         {onOpenContract && (
           <button type="button" className="owner-wizard-option" onClick={() => onOpenContract(contratoId)}>
@@ -214,7 +219,7 @@ function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete }: Readon
             <span><b>Ver el contrato</b><small>Desde ahí puede adjuntar el PDF.</small></span>
           </button>
         )}
-        <button type="button" className="owner-wizard-option" onClick={onComplete}>
+        <button type="button" className="owner-wizard-option" onClick={() => onComplete(avisos)}>
           <span className="owner-wizard-option__icon"><Icon name="check" /></span>
           <span><b>Listo</b><small>Volver a sus contratos.</small></span>
         </button>
@@ -227,7 +232,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   onBack: () => void;
   onManual: () => void;
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: (resultado?: ResultadoDelAlta) => void;
   /** Para ir al contrato recién creado cuando no se pudo adjuntar el PDF. */
   onOpenContract?: (contratoId: number) => void;
 }>) {
@@ -259,6 +264,13 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   const [erroresDelBackend, setErroresDelBackend] = useState<Record<string, string>>({});
   const [itemsConError, setItemsConError] = useState<ReadonlySet<ItemId>>(new Set());
   const [creado, setCreado] = useState<number | null>(null);
+  const [avisarAlInquilino, setAvisarAlInquilino] = useState(false);
+  const [correoExistente, setCorreoExistente] = useState<{ id: number; email: string | null } | null>(null);
+  const tieneCorreoInquilino = borrador?.inquilinoId != null
+    ? correoExistente?.id === borrador.inquilinoId && correoValido(correoExistente.email ?? "")
+    : correoValido(borrador?.correo ?? "");
+  const [avisosDelAlta, setAvisosDelAlta] = useState<ResultadoDelAlta | undefined>();
+
   const [confirmandoSalida, setConfirmandoSalida] = useState<(() => void) | null>(null);
 
   // --- La lectura: se consulta hasta que termina ---
@@ -281,7 +293,10 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
     }
     if (inquilinoId !== null) {
       AlquiaBackendClient.tenants.get(inquilinoId)
-        .then((inquilino) => setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` })))
+        .then((inquilino) => {
+          setCorreoExistente({ id: inquilino.id, email: inquilino.email ?? null });
+          setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` }));
+        })
         .catch(() => {});
     }
   }, []);
@@ -463,7 +478,10 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
     setLectura((actual) => (actual ? { ...actual, coincidencias: { ...actual.coincidencias, inquilinoId: existente } } : actual));
     setBorrador((actual) => (actual ? { ...actual, inquilinoId: existente } : actual));
     AlquiaBackendClient.tenants.get(existente)
-      .then((inquilino) => setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` })))
+      .then((inquilino) => {
+          setCorreoExistente({ id: inquilino.id, email: inquilino.email ?? null });
+          setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` }));
+        })
       .catch(() => {});
     setAviso({ mensaje: "Ya tiene cargado a ese inquilino con el mismo CUIT o teléfono. Lo dejamos elegido: revise y cree el contrato de nuevo." });
   }
@@ -501,6 +519,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
     setErroresDelBackend({});
     setItemsConError(new Set());
     let contrato;
+    let avisos: ResultadoDelAlta | undefined;
     try {
       contrato = await AlquiaBackendClient.contracts.onboard(armarAlta(b, decisiones, paidThroughDe(respuestaVigente, mesesPorPagar)));
     } catch (err) {
@@ -508,16 +527,19 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
       setGuardando(false);
       return;
     }
+    // El alta deja los avisos apagados. Si el propietario los pidió, se prenden ahora: si el PUT falla, el contrato igual existe.
+    if (avisarAlInquilino && tieneCorreoInquilino) avisos = await activarAvisosDelInquilino(contrato.id);
     // El contrato ya existe: de acá en más no se vuelve a crear. Cerrar la lectura se intenta dos veces.
     const cierre = armarCierre(lectura, b, decisiones, revisados, contrato.id);
     for (let vez = 0; vez < 2; vez += 1) {
       try {
         await AlquiaBackendClient.contractImports.complete(importId, cierre);
-        return onComplete();
+        return onComplete(avisos);
       } catch {
         // Se reintenta una vez; si falla otra, se muestra el contrato como creado, sin el PDF.
       }
     }
+    setAvisosDelAlta(avisos);
     setCreado(contrato.id);
     setFase("creado");
     setGuardando(false);
@@ -611,33 +633,38 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
               </div>
             </div>
           )}
-          antesDeCrear={mesesPorPagar.length > 0 && b ? (
+          antesDeCrear={(
             <>
-              <h2 className="owner-pdf-group">Antes de crearlo</h2>
-              <div className="owner-pdf-list">
-                <article className="owner-pdf-item" data-estado={faltaResponder(respuestaVigente, obligatorios) ? "falta" : "ok"}>
-                  <PagosTranscurridos
-                    meses={mesesPorPagar}
-                    value={respuestaVigente}
-                    onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }}
-                    inicioISO={b.inicio}
-                    alquiler={Number(b.alquiler)}
-                    frecuenciaMeses={Number(b.frecuencia)}
-                    tieneRecargo={hayPunitorios}
-                    diaVencimiento={Number(b.dia)}
-                    obligatorio={obligatorios.length > 0}
-                    hoyISO={hoy}
-                    aviso={avisoCuotas ? "La selección ya no está disponible. Elija nuevamente." : null}
-                  />
-                </article>
-              </div>
+              {mesesPorPagar.length > 0 && b && (
+                <>
+                  <h2 className="owner-pdf-group">Antes de crearlo</h2>
+                  <div className="owner-pdf-list">
+                    <article className="owner-pdf-item" data-estado={faltaResponder(respuestaVigente, obligatorios) ? "falta" : "ok"}>
+                      <PagosTranscurridos
+                        meses={mesesPorPagar}
+                        value={respuestaVigente}
+                        onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }}
+                        inicioISO={b.inicio}
+                        alquiler={Number(b.alquiler)}
+                        frecuenciaMeses={Number(b.frecuencia)}
+                        tieneRecargo={hayPunitorios}
+                        diaVencimiento={Number(b.dia)}
+                        obligatorio={obligatorios.length > 0}
+                        hoyISO={hoy}
+                        aviso={avisoCuotas ? "La selección ya no está disponible. Elija nuevamente." : null}
+                      />
+                    </article>
+                  </div>
+                </>
+              )}
+              <CartelAvisosInquilino tieneCorreo={tieneCorreoInquilino} activo={avisarAlInquilino && tieneCorreoInquilino} onChange={setAvisarAlInquilino} disabled={guardando} />
             </>
-          ) : undefined}
+          )}
         />
       )}
 
       {fase === "creado" && creado !== null && (
-        <PantallaCreadoSinPdf contratoId={creado} onOpenContract={onOpenContract} onComplete={onComplete} />
+        <PantallaCreadoSinPdf contratoId={creado} onOpenContract={onOpenContract} onComplete={onComplete} avisos={avisosDelAlta} />
       )}
 
       <footer className="owner-wizard__footer">

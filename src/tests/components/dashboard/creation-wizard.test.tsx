@@ -11,7 +11,7 @@ vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { create: vi.fn(), list: vi.fn() },
     properties: { list: vi.fn(), create: vi.fn() },
-    contracts: { list: vi.fn(), create: vi.fn(), onboard: vi.fn(), attachDocument: vi.fn() },
+    contracts: { list: vi.fn(), create: vi.fn(), onboard: vi.fn(), attachDocument: vi.fn(), setTenantNotifications: vi.fn() },
     contractImports: { quota: vi.fn(), upload: vi.fn(), get: vi.fn(), retry: vi.fn(), complete: vi.fn(), discard: vi.fn(), document: vi.fn() },
     contractDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(), attachDocument: vi.fn(), getDocument: vi.fn(), removeDocument: vi.fn() },
     propertyDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
@@ -28,6 +28,7 @@ const mockContratos = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockAutocompletar = vi.mocked(AlquiaBackendClient.addressLookup.autocomplete);
 const mockResolver = vi.mocked(AlquiaBackendClient.addressLookup.resolve);
 const mockCrearContrato = vi.mocked(AlquiaBackendClient.contracts.onboard);
+const mockAvisos = vi.mocked(AlquiaBackendClient.contracts.setTenantNotifications);
 const mockCuota = vi.mocked(AlquiaBackendClient.contractImports.quota);
 const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
 const mockBorradoresDePropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts);
@@ -108,9 +109,9 @@ async function fillAndSave({
 } = {}) {
   if (nombre) await userEvent.type(screen.getByLabelText("Nombre"), nombre);
   if (apellido) await userEvent.type(screen.getByLabelText("Apellido"), apellido);
-  if (cuit) await userEvent.type(screen.getByLabelText("CUIT o CUIL"), cuit);
-  if (correo) await userEvent.type(screen.getByLabelText("Correo electrónico"), correo);
-  if (telefono) await userEvent.type(screen.getByLabelText("Teléfono"), telefono);
+  if (cuit) await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), cuit);
+  if (correo) await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), correo);
+  if (telefono) await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), telefono);
   await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
 }
 
@@ -151,8 +152,8 @@ describe("guardado exitoso", () => {
       email: "jorge@ejemplo.com", phoneNumber: "+5491144552210",
     });
     renderWizard();
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    expect(screen.getByLabelText("CUIT o CUIL")).toHaveValue("27-24891055-6");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+    expect(screen.getByLabelText("CUIT o CUIL (opcional)")).toHaveValue("27-24891055-6");
     await fillAndSave({ cuit: "" });
 
     await waitFor(() =>
@@ -258,21 +259,20 @@ describe("errores al guardar", () => {
 // --- Validación previa ---
 
 describe("validación previa", () => {
-  it("no habilita guardar hasta que los cinco campos son válidos", async () => {
+  it("habilita guardar con nombre y apellido sin datos opcionales", async () => {
+    mockCreate.mockResolvedValue({ id: 1, firstName: "Jorge", lastName: "Paletta" });
     renderWizard();
     const guardar = screen.getByRole("button", { name: "Guardar inquilino" });
     expect(guardar).toBeDisabled();
-
     await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
+    expect(guardar).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Apellido"), "Paletta");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    expect(guardar).toBeDisabled();
-
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "jorge@ejemplo.com");
-    expect(guardar).toBeDisabled();
-
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
-    expect(guardar).not.toBeDisabled();
+    expect(guardar).toBeEnabled();
+    await userEvent.click(guardar);
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledWith({
+      firstName: "Jorge", lastName: "Paletta", taxId: "", email: "", phoneNumber: "",
+    }));
+    expect(onComplete).toHaveBeenCalled();
   });
 
   it("no llega al backend con un CUIT de dígito verificador inválido", async () => {
@@ -893,9 +893,9 @@ describe("asistente de contrato · borradores y un solo guardado", () => {
     await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
     await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
     await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+    await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(screen.getByRole("button", { name: "Usar este inquilino" }));
 
     // Condiciones
@@ -1339,9 +1339,9 @@ describe("asistente de contrato · revisión y errores del alta", () => {
     await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
     await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
     await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+    await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(screen.getByRole("button", { name: "Usar este inquilino" }));
     await seguir();
     await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
@@ -1482,9 +1482,9 @@ describe("asistente de contrato · revisión y errores del alta", () => {
       await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
       await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
       await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
-      await userEvent.type(screen.getByLabelText("CUIT o CUIL"), CUIT_VALIDO);
-      await userEvent.type(screen.getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-      await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+      await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), CUIT_VALIDO);
+      await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+      await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
       await userEvent.click(screen.getByRole("button", { name: "Usar este inquilino" }));
       await seguir();
       await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
@@ -1995,6 +1995,46 @@ describe("asistente de contrato · borrador que se guarda solo", () => {
     await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
 
     await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ pdfSinAdjuntar: true }));
+  });
+
+  it("los avisos al inquilino nacen apagados y el alta no manda el flag", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await irALaRevisionDelBorrador();
+
+    expect(screen.getByText("¿Querés notificar al inquilino?")).toBeInTheDocument();
+    expect(screen.getByText(/Podés activarlos ahora; si no, los activás después desde el detalle del contrato/)).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Avisar al inquilino" })).toHaveAttribute("aria-checked", "false");
+
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+    expect(mockCrearContrato.mock.calls[0][0]).not.toHaveProperty("tenantNotificationsEnabled");
+    expect(mockAvisos).not.toHaveBeenCalled();
+  });
+
+  it("si los activa, después de crear el contrato llama al PUT", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 41 } as never);
+    mockAvisos.mockResolvedValueOnce({ id: 41 } as never);
+    await irALaRevisionDelBorrador();
+
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ avisosActivados: true }));
+    expect(mockAvisos).toHaveBeenCalledWith(41, true);
+    expect(mockCrearContrato.mock.invocationCallOrder[0]).toBeLessThan(mockAvisos.mock.invocationCallOrder[0]);
+  });
+
+  it("si el PUT de avisos falla, el contrato queda creado y se puede activar desde el detalle", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 41 } as never);
+    mockAvisos.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await irALaRevisionDelBorrador();
+
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true }));
+    expect(mockCrearContrato).toHaveBeenCalledTimes(1);
   });
 
   // --- conflicto entre dispositivos ---

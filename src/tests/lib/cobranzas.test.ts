@@ -32,7 +32,7 @@ function contract(over: Partial<ContractResponse> = {}): ContractResponse {
     id: 100, property: property(), tenant: tenant(), initialRentAmount: 400000,
     startDate: "2025-03-01", termMonths: 36, dueDay: 1, endDate: "2028-03-01",
     status: "ACTIVE", incrementMethod: "FIXED_PERCENTAGE", incrementFrequencyMonths: 3,
-    currentRent: 478691, ...over,
+    currentRent: 478691, tenantNotificationsEnabled: true, ...over,
   };
 }
 

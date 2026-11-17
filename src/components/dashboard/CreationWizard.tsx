@@ -29,6 +29,7 @@ import { usePdfDelBorrador } from "@/hooks/usePdfDelBorrador";
 import { crearContratoDesdeBorrador, type ResultadoDelAlta } from "@/lib/crear-contrato";
 import { crearPropiedadDesdeBorrador } from "@/lib/crear-propiedad";
 import { armarContenidoDeBorradorDePropiedad, deserializarBorradorDePropiedad, type EstadoDelBorradorDePropiedad } from "@/lib/borradores-de-propiedad";
+import { CartelAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import { armarOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
 import { avisoDeCampo, ubicacionDeErrores, type Ubicacion } from "@/lib/errores-de-alta";
 
@@ -150,7 +151,8 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
         postalCode: r.postalCode ?? "",
         latitude: conCoordenadas ? r.latitude : null, longitude: conCoordenadas ? r.longitude : null,
       });
-    } catch {
+    } catch (e) {
+      console.error("Failed to resolve address suggestion", e);
       setFalloResolver(true);
     }
   };
@@ -273,7 +275,7 @@ function montoConSeparadores(digitos: string): string {
   return digitos ? Number(digitos).toLocaleString("es-AR") : "";
 }
 
-type Opcion = { id: number; titulo: string; detalle: string };
+type Opcion = { id: number; titulo: string; detalle: string; email?: string | null };
 
 // En /prototipo no hay sesión, así que no se llama al backend: estas son las
 // mismas dos propiedades y dos inquilinos que mostraba el asistente cuando sus
@@ -283,8 +285,8 @@ const PROPIEDADES_DEMO: Opcion[] = [
   { id: -2, titulo: "Colón 2255, 4.º D", detalle: "Departamento · Vicente López · 58 m²" },
 ];
 const INQUILINOS_DEMO: Opcion[] = [
-  { id: -1, titulo: "Diego Ferrari", detalle: "20-30115482-9 · diego.ferrari@outlook.com" },
-  { id: -2, titulo: "Marta Suárez", detalle: "27-24891055-6 · marta.suarez@gmail.com" },
+  { id: -1, titulo: "Diego Ferrari", detalle: "20-30115482-9 · diego.ferrari@outlook.com", email: "diego.ferrari@outlook.com" },
+  { id: -2, titulo: "Marta Suárez", detalle: "27-24891055-6 · marta.suarez@gmail.com", email: "marta.suarez@gmail.com" },
 ];
 
 function cantidadPasos(kind: WizardKind): number {
@@ -357,7 +359,7 @@ function TenantWizardStep({
     ? "Faltan dígitos: son 11 en total."
     : "El número no es válido. Revise que no haya un dígito cambiado.";
   const aviso = (...campos: string[]) => <Aviso texto={avisoDeCampo(erroresBackend, "tenant", ...campos)} />;
-  return <><h1>¿Quién es el inquilino?</h1><p>Estos son los datos que van a figurar en el contrato. Al correo le llegan los avisos de vencimiento y el enlace para subir comprobantes.</p><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={firstName} onChange={(event) => onFirstNameChange(event.target.value)} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={lastName} onChange={(event) => onLastNameChange(event.target.value)} /></label></div>{aviso("firstName", "lastName")}<label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}{aviso("taxId")}<label className="owner-wizard-field"><span>Correo electrónico</span><input type="email" placeholder="Ej: maria@correo.com" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}{aviso("email")}<label className="owner-wizard-field"><span>Teléfono</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{aviso("phoneNumber")}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div></>;
+  return <><h1>¿Quién es el inquilino?</h1><p>Nombre y apellido son obligatorios. Puede completar los demás datos después. Para activar avisos al inquilino necesita un correo electrónico.</p><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={firstName} onChange={(event) => onFirstNameChange(event.target.value)} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={lastName} onChange={(event) => onLastNameChange(event.target.value)} /></label></div>{aviso("firstName", "lastName")}<label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}{aviso("taxId")}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}{aviso("email")}<label className="owner-wizard-field"><span>Teléfono (opcional)</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{aviso("phoneNumber")}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div></>;
 }
 
 /**
@@ -417,7 +419,7 @@ function ContractPropertyStep({ lists, seleccion }: Readonly<{ lists: CargaDeLis
 
 function ContractTenantStep({ lists, seleccion }: Readonly<{ lists: CargaDeListas; seleccion: SeleccionDeContrato }>) {
   const options = typeof lists === "object" && lists !== null ? lists.inquilinos : [];
-  return <><h1>¿A quién se la alquila?</h1><p>El inquilino va a figurar en el contrato y recibir los avisos de vencimiento. Elija uno cargado o cargue uno nuevo acá mismo.</p><ContractOptions loadState={lists} options={options} seleccion={seleccion} icon="users" nueva={{ titulo: "Un inquilino nuevo", detalle: "Lo carga acá y se guarda junto con el contrato.", tituloBorrador: "Inquilino nuevo" }} empty={<p className="owner-wizard-help">Todavía no cargó ningún inquilino.</p>} /></>;
+  return <><h1>¿A quién se la alquila?</h1><p>El inquilino va a figurar en el contrato. Los avisos de vencimiento son opcionales. Elija uno cargado o cargue uno nuevo acá mismo.</p><ContractOptions loadState={lists} options={options} seleccion={seleccion} icon="users" nueva={{ titulo: "Un inquilino nuevo", detalle: "Lo carga acá y se guarda junto con el contrato.", tituloBorrador: "Inquilino nuevo" }} empty={<p className="owner-wizard-help">Todavía no cargó ningún inquilino.</p>} /></>;
 }
 
 function ContractRentStep({ rent, dueDay, erroresBackend, onRentChange, onDueDayChange }: Readonly<{ rent: string; dueDay: number; erroresBackend: Record<string, string>; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void }>) {
@@ -432,7 +434,7 @@ function ContractIndexStep({ method, percentage, frequency, erroresBackend, onMe
   return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" placeholder="Ej. 8" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementMethod", "incrementValue", "incrementIndexName")} /><p className="owner-wizard-label">Cada cuánto se actualiza</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div><Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementFrequencyMonths")} />{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
 }
 
-function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, startDate, method, percentage, frequency, otras, pendientes, error, cantidadErrores, conflictSection, elapsedSection, pdfSection, onCambiar }: Readonly<{ lists: CargaDeListas; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; pendientes: number[]; error: string | null; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; pdfSection: React.ReactNode; onCambiar: (paso: number) => void }>) {
+function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, startDate, method, percentage, frequency, otras, pendientes, error, cantidadErrores, conflictSection, elapsedSection, pdfSection, avisarAlInquilino, tieneCorreoInquilino, onAvisarAlInquilino, onCambiar }: Readonly<{ lists: CargaDeListas; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; pendientes: number[]; error: string | null; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; pdfSection: React.ReactNode; avisarAlInquilino: boolean; tieneCorreoInquilino: boolean; onAvisarAlInquilino: (value: boolean) => void; onCambiar: (paso: number) => void }>) {
   const loadedLists = typeof lists === "object" && lists !== null ? lists : null;
   const propertyName = propiedad.borradorElegido && propiedad.borrador !== null
     ? `Propiedad nueva: ${propiedad.borrador}`
@@ -443,7 +445,7 @@ function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, s
   const adjustment = method === "FIXED_PERCENTAGE" ? `${percentage} % cada ${frequency} meses` : `Según el ${method} · cada ${frequency} meses`;
   // Lo que falta no se muestra con valores a medias («$ por mes · vence el día 1»): se dice que falta.
   const valor = (paso: number, texto: string) => pendientes.includes(paso) ? "Falta completar" : texto;
-  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, use «Cambiar» en la sección correspondiente. Recién al crear el contrato se guarda todo junto.</p>{cantidadErrores > 0 && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{cantidadErrores === 1 ? "Hay 1 dato para corregir." : `Hay ${cantidadErrores} datos para corregir.`} Use «Cambiar» en cada sección para llegar a ellos.</p>}<Summary rows={[["Propiedad", valor(1, propertyName), () => onCambiar(1)], ["Inquilino", valor(2, tenantName), () => onCambiar(2)], ["Alquiler inicial", valor(3, `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`), () => onCambiar(3)], ["Plazo", valor(4, `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`), () => onCambiar(4)], ["Actualización", valor(5, adjustment), () => onCambiar(5)], ["Otras condiciones", valor(6, resumenDeOtrasCondiciones(otras)), () => onCambiar(6)]]} />{pendientes.length > 0 && <FaltaCompletar pendientes={pendientes} onCambiar={onCambiar} />}{conflictSection}{elapsedSection}{pdfSection}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}<aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
+  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, use «Cambiar» en la sección correspondiente. Recién al crear el contrato se guarda todo junto.</p>{cantidadErrores > 0 && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{cantidadErrores === 1 ? "Hay 1 dato para corregir." : `Hay ${cantidadErrores} datos para corregir.`} Use «Cambiar» en cada sección para llegar a ellos.</p>}<Summary rows={[["Propiedad", valor(1, propertyName), () => onCambiar(1)], ["Inquilino", valor(2, tenantName), () => onCambiar(2)], ["Alquiler inicial", valor(3, `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`), () => onCambiar(3)], ["Plazo", valor(4, `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`), () => onCambiar(4)], ["Actualización", valor(5, adjustment), () => onCambiar(5)], ["Otras condiciones", valor(6, resumenDeOtrasCondiciones(otras)), () => onCambiar(6)]]} />{pendientes.length > 0 && <FaltaCompletar pendientes={pendientes} onCambiar={onCambiar} />}{conflictSection}{elapsedSection}{pdfSection}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}<CartelAvisosInquilino tieneCorreo={tieneCorreoInquilino} activo={avisarAlInquilino && tieneCorreoInquilino} onChange={onAvisarAlInquilino} /><aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
 }
 
 /** Lo que impide crear el contrato todavía, con un acceso directo a cada paso. */
@@ -452,7 +454,7 @@ function FaltaCompletar({ pendientes, onCambiar }: Readonly<{ pendientes: number
 }
 
 function ContractWizardStep(props: Readonly<{
-  step: number; lists: CargaDeListas; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; pendientes: number[]; mostrarErroresDeOtras: boolean; error: string | null; erroresBackend: Record<string, string>; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; pdfSection: React.ReactNode; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onOtrasChange: (value: Condiciones) => void; onSaltearOtras: () => void; onCambiar: (paso: number) => void;
+  step: number; lists: CargaDeListas; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; isStartDateValid: boolean; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; pendientes: number[]; mostrarErroresDeOtras: boolean; error: string | null; erroresBackend: Record<string, string>; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; pdfSection: React.ReactNode; avisarAlInquilino: boolean; tieneCorreoInquilino: boolean; onAvisarAlInquilino: (value: boolean) => void; onRentChange: (value: string) => void; onDueDayChange: (value: number) => void; onTermChange: (value: number) => void; onStartDateChange: (value: string) => void; onMethodChange: (value: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void; onOtrasChange: (value: Condiciones) => void; onSaltearOtras: () => void; onCambiar: (paso: number) => void;
 }>) {
   const { step, ...stepProps } = props;
   const steps: Record<number, React.ReactNode> = {
@@ -463,7 +465,7 @@ function ContractWizardStep(props: Readonly<{
     5: <ContractIndexStep method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} erroresBackend={stepProps.erroresBackend} onMethodChange={stepProps.onMethodChange} onPercentageChange={stepProps.onPercentageChange} onFrequencyChange={stepProps.onFrequencyChange} />,
     6: <OtrasCondiciones value={stepProps.otras} onChange={stepProps.onOtrasChange} onSkip={stepProps.onSaltearOtras} mostrarErrores={stepProps.mostrarErroresDeOtras} erroresDelBackend={stepProps.erroresBackend} />,
   };
-  return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propiedad={stepProps.propiedad} inquilino={stepProps.inquilino} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} otras={stepProps.otras} pendientes={stepProps.pendientes} error={stepProps.error} cantidadErrores={stepProps.cantidadErrores} conflictSection={stepProps.conflictSection} elapsedSection={stepProps.elapsedSection} pdfSection={stepProps.pdfSection} onCambiar={stepProps.onCambiar} />;
+  return steps[step] ?? <ContractReviewStep lists={stepProps.lists} propiedad={stepProps.propiedad} inquilino={stepProps.inquilino} rent={stepProps.rent} dueDay={stepProps.dueDay} term={stepProps.term} startDate={stepProps.startDate} method={stepProps.method} percentage={stepProps.percentage} frequency={stepProps.frequency} otras={stepProps.otras} pendientes={stepProps.pendientes} error={stepProps.error} cantidadErrores={stepProps.cantidadErrores} conflictSection={stepProps.conflictSection} elapsedSection={stepProps.elapsedSection} pdfSection={stepProps.pdfSection} avisarAlInquilino={stepProps.avisarAlInquilino} tieneCorreoInquilino={stepProps.tieneCorreoInquilino} onAvisarAlInquilino={stepProps.onAvisarAlInquilino} onCambiar={stepProps.onCambiar} />;
 }
 
 type ModoContrato = "pdf" | "manual";
@@ -597,7 +599,8 @@ function useListasDeContrato(activo: boolean): CargaDeListas {
           inquilinos: inquilinos.map((t: TenantResponse) => ({
             id: t.id,
             titulo: `${t.firstName} ${t.lastName}`,
-            detalle: t.email,
+            detalle: t.email ?? "Sin correo",
+            email: t.email,
           })),
         });
       })
@@ -1221,6 +1224,44 @@ function DialogoDeConflicto({ abierto, onCargarLaOtra, onConservarEsta }: Readon
   </Dialog>;
 }
 
+function calcularPosicion(tipo: WizardKind, step: number, direccion: Direccion | null, desvio: "tenant" | "property" | null, pasoDesvio: number, pasoContrato: number): string {
+  if (tipo !== "property") return posicionDelAsistente({ pasoContrato, desvio, pasoDesvio, direccion });
+  return `${step}|${ubicacionCompleta(direccion) ? "ubicacion" : "sin-ubicacion"}`;
+}
+
+function wizardBloqueado(guardando: boolean, eligiendo: boolean, modoElegido: ModoContrato | null, bloqueadoPorTipo: Record<WizardKind, boolean>, kind: WizardKind): boolean {
+  if (guardando) return true;
+  return eligiendo ? modoElegido === null : bloqueadoPorTipo[kind];
+}
+
+function atrasDeshabilitadoEn(eligiendo: boolean, guardando: boolean, step: number, desvio: "tenant" | "property" | null, ofrecePdf: boolean): boolean {
+  return eligiendo || guardando || (step === 1 && !desvio && !ofrecePdf);
+}
+
+function algoPropioDe(tipo: WizardKind, direccion: Direccion | null, guardaBorrador: boolean, formularioPropiedad: FormularioDePropiedad, formularioInquilino: FormularioDeInquilino, borradorPropiedad: unknown, borradorInquilino: unknown, pasoContrato: number, preseleccionada: boolean): boolean {
+  if (tipo === "property") return ubicacionCompleta(direccion);
+  return guardaBorrador && hayAlgoPropio({ formularioPropiedad, formularioInquilino, borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada });
+}
+
+function contenidoDelBorradorDel(tipo: WizardKind, step: number, formulario: FormularioDePropiedad, contenidoDeContrato: ContenidoDeBorrador): ContenidoDeBorrador {
+  if (tipo !== "property") return contenidoDeContrato;
+  return armarContenidoDeBorradorDePropiedad({ paso: step, formulario });
+}
+
+function contratoIdDeConflicto(conflicto: Conflicto | null): number | null {
+  if (conflicto?.tipo === "propiedad") return conflicto.contratoId;
+  return null;
+}
+
+function recursoDeAutoguardado(tipo: WizardKind) {
+  return tipo === "property" ? { recurso: BORRADORES_DE_PROPIEDAD } : {};
+}
+
+function documentoDelRetomando(retomando: BorradorRetomado | undefined) {
+  if (!retomando || !("document" in retomando.draft)) return undefined;
+  return retomando.draft.document;
+}
+
 function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = false, initialPropertyId, retomando, onReloadDraft, onDraftKept, onDraftDiscarded }: Omit<PropsDelAsistente, "draftId"> & Readonly<{
   /** El borrador con el que se retoma: el asistente arranca con lo que tenía. */
   retomando?: BorradorRetomado;
@@ -1272,6 +1313,8 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
   // «Otras condiciones»: depósito, comisión, punitorios y garantías. Lo que queda vacío no viaja.
   const [otras, setOtras] = useState<Condiciones>(inicial.otras);
+  // Los avisos al inquilino nacen apagados. El alta no acepta el flag: si queda prendido, se activa después de crear.
+  const [avisarAlInquilino, setAvisarAlInquilino] = useState(false);
   const [intentoOtras, setIntentoOtras] = useState(false);
   // Los errores del backend, por su ruta (`property.street`), hasta el próximo intento de crear.
   const [erroresBackend, setErroresBackend] = useState<Record<string, string>>({});
@@ -1291,9 +1334,9 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   const cuota = useCuotaDeLecturas(ofrecePdf, setModoElegido);
   const cargaListas = useListasDeContrato(kind === "contract" && !demo);
 
-  const cuitOk = cuitValido(cuit);
-  const correoOk = correoValido(correo);
-  const telefonoOk = telefonoValido(telefono);
+  const cuitOk = !cuit.trim() || cuitValido(cuit);
+  const correoOk = !correo.trim() || correoValido(correo);
+  const telefonoOk = !telefono.trim() || telefonoValido(telefono);
   const tenantStep = <TenantWizardStep
     firstName={nombre}
     lastName={apellido}
@@ -1313,6 +1356,9 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   />;
   const listas = listasDisponibles(demo, cargaListas);
   const { propiedadPerdida, inquilinoPerdido, propiedadElegida, inquilinoElegido } = elegidosVigentes(retomando !== undefined, listas, { propiedadId, propiedadNueva, inquilinoId, inquilinoNuevo });
+  const tieneCorreoInquilino = inquilinoNuevo
+    ? correoValido(borradorInquilino?.pedido.email ?? "")
+    : typeof listas === "object" && listas !== null && correoValido(listas.inquilinos.find((t) => t.id === inquilinoElegido)?.email ?? "");
   const { alquilerOk, inicioOk, porcentajeOk } = validarDatosDelContrato({ alquiler, inicio, method, porcentaje });
   const hoyArgentina = hoyEnArgentina();
   const claveDeFechas = `${inicio}|${term}|${diaVencimiento}`;
@@ -1342,7 +1388,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     property: propiedadBloqueada(step, direccion, categoria),
     contract: contratoBloqueadoEn(step, banderas, pendientes),
   };
-  const bloqueado = guardando || (eligiendo ? modoElegido === null : bloqueadoPorTipo[kind]);
+  const bloqueado = wizardBloqueado(guardando, eligiendo, modoElegido, bloqueadoPorTipo, kind);
 
   // --- El contrato como borrador ---
   // Nace con lo primero que carga el propietario; desde ahí se guarda solo. Sólo en «Nuevo contrato» y con sesión.
@@ -1356,30 +1402,18 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     alquiler, diaVencimiento, plazo: term, inicio, metodo: method, porcentaje, frecuencia, otras, pagadoHasta,
   };
   const contenidoDelBorradorDeContrato = contenidoDelBorradorDe(estadoDelBorrador, listas, retomando?.draft.label);
-  const contenidoDelBorrador = tipo === "property"
-    ? armarContenidoDeBorradorDePropiedad({
-        paso: step,
-        formulario: { direccion, unidad, categoria, bedrooms, bathrooms, superficie, mascotas, amoblada },
-      })
-    : contenidoDelBorradorDeContrato;
+  const contenidoDelBorrador = contenidoDelBorradorDel(tipo, step, estadoDelBorrador.formularioPropiedad, contenidoDelBorradorDeContrato);
   const guardaBorrador = guardaComoBorrador(tipo, demo);
-  const algoPropio = tipo === "property"
-    ? ubicacionCompleta(direccion)
-    : guardaBorrador && hayAlgoPropio({
-    formularioPropiedad: estadoDelBorrador.formularioPropiedad, formularioInquilino: estadoDelBorrador.formularioInquilino,
-    borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada,
-  });
-  const posicion = tipo === "property"
-    ? `${step}|${ubicacionCompleta(direccion) ? "ubicacion" : "sin-ubicacion"}`
-    : posicionDelAsistente({ pasoContrato, desvio, pasoDesvio, direccion });
+  const algoPropio = algoPropioDe(tipo, direccion, guardaBorrador, estadoDelBorrador.formularioPropiedad, estadoDelBorrador.formularioInquilino, borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada);
+  const posicion = calcularPosicion(tipo, step, direccion, desvio, pasoDesvio, pasoContrato);
   const auto = useAutoguardado({
     ...opcionesDeAutoguardado({ guardaBorrador, retomando, hayAlgoPropio: algoPropio, posicion, contenido: contenidoDelBorrador }),
-    ...(tipo === "property" ? { recurso: BORRADORES_DE_PROPIEDAD } : {}),
+    ...recursoDeAutoguardado(tipo),
   });
   const esBorrador = auto.id !== null;
 
   // El PDF del contrato, opcional. Con un borrador guardado viaja enseguida; sin él, espera al contrato.
-  const pdf = usePdfDelBorrador(auto, retomando && "document" in retomando.draft ? retomando.draft.document : undefined);
+  const pdf = usePdfDelBorrador(auto, documentoDelRetomando(retomando));
   const [descartandoBorrador, setDescartandoBorrador] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
   function volverAlContrato() {
@@ -1506,12 +1540,8 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   /** Cuando el backend corrige la lista de cuotas (o la respuesta quedó fuera de rango), se vuelve a preguntar. */
   function repreguntarCuotas(err: unknown) {
     if (!(err instanceof ApiError)) return;
-    if (err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED) {
+    if (err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED || err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) {
       // Pasa cerca de la medianoche o con un contrato por índice: la lista del backend manda y se vuelve a preguntar.
-      const periodos = periodosDelBackend(err.fieldErrors);
-      if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
-      setPagadoHasta("");
-    } else if (err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) {
       const periodos = periodosDelBackend(err.fieldErrors);
       if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
       setPagadoHasta("");
@@ -1565,7 +1595,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     };
     try {
       // Un solo pedido con todo: o se crea todo, o nada. Los borradores recién se guardan acá.
-      const resultado = await crearContratoDesdeBorrador(pedido, auto.id, { enElBorrador: pdf.documento !== null, archivoLocal: pdf.archivoLocal });
+      const resultado = await crearContratoDesdeBorrador(pedido, auto.id, { enElBorrador: pdf.documento !== null, archivoLocal: pdf.archivoLocal }, avisarAlInquilino && tieneCorreoInquilino);
       auto.detener();
       onComplete(resultado);
     } catch (err) {
@@ -1653,7 +1683,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     crear: () => abrirDesvio("tenant"),
   });
   const nombreDelExistente = nombreDelInquilinoExistente(conflicto, contractLists);
-  const contratoAVer = conflicto?.tipo === "propiedad" ? conflicto.contratoId : null;
+  const contratoAVer = contratoIdDeConflicto(conflicto);
   const conflictSection = conflicto && <ConflictoDeAlta
     conflicto={conflicto}
     nombreDelExistente={nombreDelExistente}
@@ -1685,6 +1715,9 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     conflictSection={conflictSection}
     elapsedSection={<PagosTranscurridos meses={mesesPorPagar} value={respuestaVigente} onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }} inicioISO={inicio} alquiler={Number(alquiler)} frecuenciaMeses={frecuencia} tieneRecargo={punitoriosCargados(otras.punitorios)} hoyISO={hoyArgentina} diaVencimiento={diaVencimiento} obligatorio={obligatorios.length > 0} aviso={avisoCuotas ? "La selección ya no está disponible. Elija nuevamente." : null} />}
     pdfSection={<PdfDelContrato habilitado={guardaBorrador} documento={pdf.documento} ocupado={pdf.ocupado} error={pdf.error} onElegir={(archivo) => void pdf.adjuntar(archivo)} onQuitar={() => void pdf.quitar()} />}
+    avisarAlInquilino={avisarAlInquilino}
+    tieneCorreoInquilino={tieneCorreoInquilino}
+    onAvisarAlInquilino={setAvisarAlInquilino}
     onRentChange={setAlquiler}
     onDueDayChange={setDiaVencimiento}
     onTermChange={setTerm}
@@ -1711,7 +1744,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     return <ContractFromPdf {...alternar} onOpenContract={onOpenContract} />;
   }
 
-  const atrasDeshabilitado = eligiendo || guardando || (step === 1 && !desvio && !ofrecePdf);
+  const atrasDeshabilitado = atrasDeshabilitadoEn(eligiendo, guardando, step, desvio, ofrecePdf);
   // Desde el primer paso a mano, «Atrás» vuelve a la elección.
   const atras = () => {
     if (desvio && step === 1) return volverAlContrato();

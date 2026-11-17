@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
-import CreationWizard, { type ResultadoDelAlta } from "@/components/dashboard/CreationWizard";
+import CreationWizard from "@/components/dashboard/CreationWizard";
+import { mensajeExitoDelContrato, type ResultadoDelAlta } from "@/lib/crear-contrato";
+import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
@@ -23,7 +25,7 @@ import type {
   PropertyResponse,
   ReminderSettingsResponse,
   RentIncrementResponse,
-  TenantRequest,
+  TenantFormValues,
   UserUpdateRequest,
 } from "@/lib/backend-types";
 import { buildTenantRows, resumenInquilinos, type TenantRow } from "@/lib/tenant-rows";
@@ -148,13 +150,14 @@ const inquilinosDemo: TenantRow[] = [
     email: tenant.email,
     telefono: "+5491144552210",
     contratoId: indice + 1,
+    avisosAlInquilino: true,
     direccion: tenant.property.address,
     alquiler: tenant.property.rent,
     estado: tenant.property.state === "Sin alquilar" ? ("Al día" as const) : tenant.property.state,
   })),
   { id: 90, nombre: "Luis Cabrera", nombrePila: "Luis", apellido: "Cabrera",
     cuit: "20-31447290-0", email: "luis.cabrera@gmail.com", telefono: "+5491155667788",
-    contratoId: null, direccion: null, alquiler: null, estado: "Sin contrato" },
+    contratoId: null, avisosAlInquilino: false, direccion: null, alquiler: null, estado: "Sin contrato" },
 ];
 
 /**
@@ -323,6 +326,7 @@ const inicioDemo = {
     incrementMethod: "FIXED_PERCENTAGE" as const,
     incrementFrequencyMonths: 3,
     currentRent: Number((c.property.rent ?? "0").replace(/[^\d]/g, "")),
+    tenantNotificationsEnabled: true,
   })) as ContractResponse[],
 };
 
@@ -408,6 +412,7 @@ function mensajeErrorDeInquilino(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
   if (err instanceof ApiError && err.type === ERROR.DUPLICATE_TAX_ID) return "Ese documento ya figura en otro inquilino suyo.";
   if (err instanceof ApiError && err.type === ERROR.DUPLICATE_PHONE_NUMBER) return "Ese teléfono ya figura en otro inquilino suyo.";
+  if (err instanceof ApiError && err.type === ERROR.TENANT_EMAIL_REQUIRED_FOR_NOTIFICATIONS) return copyDeError(err);
   if (err instanceof ApiError && err.status === 400) return "Verifique los datos ingresados e inténtelo de nuevo.";
   return "No pudimos guardar los datos. Inténtelo de nuevo más tarde.";
 }
@@ -474,7 +479,7 @@ function AnclaDeTutorial({ nombre, children }: Readonly<{ nombre: string; childr
   return <span className="owner-tutorial-ancla" data-tutorial={nombre}>{children}</span>;
 }
 
-function Button({ children, tone = "primary", onClick, disabled = false, busy = false, small = false }: Readonly<{ children: React.ReactNode; tone?: "primary" | "secondary" | "quiet" | "danger"; onClick?: ButtonAction; disabled?: boolean; busy?: boolean; small?: boolean }>) {
+function Button({ children, tone = "primary", onClick, disabled = false, busy = false, small = false, describedBy }: Readonly<{ children: React.ReactNode; tone?: "primary" | "secondary" | "quiet" | "danger"; onClick?: ButtonAction; disabled?: boolean; busy?: boolean; small?: boolean; describedBy?: string }>) {
   const [pending, setPending] = useState(false);
   const isBusy = busy || pending;
   function handleClick() {
@@ -484,7 +489,7 @@ function Button({ children, tone = "primary", onClick, disabled = false, busy = 
       void result.finally(() => setPending(false));
     }
   }
-  return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={handleClick} disabled={disabled || isBusy} aria-busy={isBusy || undefined}>{isBusy && <Spinner />}{children}</button>;
+  return <button type="button" className={`owner-button owner-button--${tone}${small ? " owner-button--small" : ""}`} onClick={handleClick} disabled={disabled || isBusy} aria-busy={isBusy || undefined} aria-describedby={describedBy}>{isBusy && <Spinner />}{children}</button>;
 }
 
 function SwitchRow({ label, checked, onChange }: Readonly<{ label: string; checked: boolean; onChange: (checked: boolean) => void }>) {
@@ -692,7 +697,7 @@ function TenantDetail({
         <div className="owner-card">
           <h2>Acceso de pago</h2>
           <p className="owner-card__copy">El inquilino no necesita una cuenta. Comparte un enlace seguro para ver cuotas habilitadas y subir su comprobante.</p>
-          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
+          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={tenant.avisosAlInquilino && Boolean(tenant.email)} />
         </div>
       )}
     </section>
@@ -711,7 +716,7 @@ function TenantListRow({ tenant, onOpenTenant, onCreateContract }: TenantListRow
       <span className="owner-row__icon"><Icon name="users" /></span>
       <span className="owner-row__body">
         <b><button type="button" className="owner-row__link" onClick={() => onOpenTenant(tenant.id)}>{tenant.nombre}</button></b>
-        <small>{tenant.cuit} · {tenant.email}</small>
+        <small>{[tenant.cuit, tenant.email].filter(Boolean).join(" · ") || "Sin datos de contacto"}</small>
       </span>
       <span className="owner-row__amount"><Button tone="secondary" small onClick={onCreateContract}>Crear contrato</Button></span>
       <Status>{tenant.estado}</Status>
@@ -723,7 +728,7 @@ function TenantListRow({ tenant, onOpenTenant, onCreateContract }: TenantListRow
     <span className="owner-row__icon"><Icon name="users" /></span>
     <span className="owner-row__body">
       <b>{tenant.nombre}</b>
-      <small>{tenant.cuit} · {tenant.email} · {tenant.direccion}</small>
+      <small>{[tenant.cuit, tenant.email, tenant.direccion].filter(Boolean).join(" · ")}</small>
     </span>
     <span className="owner-row__amount"><b>{tenant.alquiler}</b><small>por mes</small></span>
     <Status>{tenant.estado}</Status>
@@ -1483,6 +1488,7 @@ type ContractDetailProps = Readonly<{
   onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>;
   onRemoveDocument: (contractId: number) => void | Promise<unknown>;
   onAttachDocument: (contractId: number, file: File) => void | Promise<unknown>;
+  onSetTenantNotifications: (contractId: number, enabled: boolean) => Promise<unknown>;
 }>;
 
 function UnconfirmedInvoicesCard({ invoices, onConfirm }: Readonly<{ invoices: FilaCobranza[]; onConfirm: (fila: FilaCobranza) => void }>) {
@@ -1507,10 +1513,11 @@ function DemoContractDetail({ demoContract, onBack, onCopyDemoLink }: Readonly<{
   onBack: () => void;
   onCopyDemoLink: () => void;
 }>) {
+  const [avisos, setAvisos] = useState(true);
   const document = demoContract.document
     ? <div className="owner-document"><span><Icon name="file" /></span><div><b>{demoContract.document}</b><small>PDF · 2,4 MB</small></div><Button tone="quiet" small><Icon name="download" size={16} />Descargar</Button></div>
     : <div className="owner-empty-callout owner-empty-callout--outline"><Icon name="paperclip" /><div><b>Todavía no cargó el contrato</b><small>Puede adjuntar un PDF o una imagen firmada en cualquier momento.</small></div><Button small>Adjuntar</Button></div>;
-  return <><ContractBreadcrumb name={demoContract.property.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoContract.property.address}</h1><p>Contrato con {demoContract.property.tenant} · vigente hasta el {demoContract.end}</p></div><div className="owner-page-head__action"><Button tone="danger">Finalizar contrato</Button></div></header><section className="owner-detail-grid owner-detail-grid--even"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{demoContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{demoContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {demoContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{demoContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{demoContract.property.tenant}</b></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b></span></div><Button tone="secondary" small onClick={onCopyDemoLink}><Icon name="copy" size={16} />Copiar enlace</Button></div></div><div className="owner-card"><h2>Documento firmado</h2>{document}</div></section></>;
+  return <><ContractBreadcrumb name={demoContract.property.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoContract.property.address}</h1><p>Contrato con {demoContract.property.tenant} · vigente hasta el {demoContract.end}</p></div><div className="owner-page-head__action"><Button tone="danger">Finalizar contrato</Button></div></header><section className="owner-detail-grid owner-detail-grid--even"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{demoContract.property.rent}</strong><small>por mes · vence el día 1</small></div><Status>{demoContract.property.state}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>01/03/2025</small></p></div><div><span><Icon name="trend" /></span><p><b>Próxima actualización</b><small>01/09/2026 · {demoContract.increment}</small></p></div><div><span><Icon name="calendar" /></span><p><b>Fin previsto</b><small>{demoContract.end}</small></p></div></div></div><div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{demoContract.property.tenant}</b></div></div><div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b></span></div><Button tone="secondary" small onClick={onCopyDemoLink}><Icon name="copy" size={16} />Copiar enlace</Button></div><ControlAvisosInquilino enabled={avisos} onChange={async (value) => { setAvisos(value); }} /></div><div className="owner-card"><h2>Documento firmado</h2>{document}</div></section></>;
 }
 
 function ContractHeaderActions({ isActive, scheduledContract, successorId, onOpenConditions, onBeginTermination }: Readonly<{ isActive: boolean; scheduledContract: ContractResponse | null; successorId: number | null; onOpenConditions: () => void; onBeginTermination: () => void }>) {
@@ -1527,12 +1534,13 @@ function ContractSummaryCard({ contract, nextUpdate, scheduledContract, onOpenCo
   return <div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ALQUILER ACTUAL</p><strong className="owner-detail-money">{formatearImporte(contract.currentRent, contract.currency)}</strong><small>por mes · vence el día {contract.dueDay}</small></div><Status>{estadoDeContrato(contract, new Date().toISOString().slice(0, 10))}</Status></div><div className="owner-timeline"><div><span><Icon name="calendar" /></span><p><b>Inicio del contrato</b><small>{formatearFecha(contract.startDate)}</small></p></div>{nextUpdateRow}<div><span><Icon name="calendar" /></span><p><b>{endLabel}</b><small>{formatearFecha(contract.actualEndDate ?? contract.endDate)}</small></p></div></div>{scheduledCallout}{successorCallout}</div>;
 }
 
-function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contractId: number; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
-  return <div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small onClick={() => onCopyPaymentLink(contractId)}><Icon name="copy" size={16} />Copiar enlace</Button><Button tone="secondary" small onClick={() => onResendPaymentLink(contractId)}>Reenviar por correo</Button></div></div>;
+function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink, resendEnabled = true }: Readonly<{ contractId: number; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown>; resendEnabled?: boolean }>) {
+  const avisoId = `reenvio-sin-avisos-${contractId}`;
+  return <div className="owner-link-box"><div><Icon name="link" /><span><b>Enlace para comprobantes</b><small>El inquilino sube sus comprobantes desde ahí, sin cuenta.</small></span></div><div className="owner-link-actions"><Button tone="secondary" small onClick={() => onCopyPaymentLink(contractId)}><Icon name="copy" size={16} />Copiar enlace</Button><Button tone="secondary" small disabled={!resendEnabled} describedBy={resendEnabled ? undefined : avisoId} onClick={() => onResendPaymentLink(contractId)}>Reenviar por correo</Button></div>{!resendEnabled && <p className="owner-link-box__aviso" id={avisoId}>Activá las notificaciones al inquilino para reenviar el acceso.</p>}</div>;
 }
 
-function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown> }>) {
-  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} /></div>;
+function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink, onSetTenantNotifications }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown>; onSetTenantNotifications: (contractId: number, enabled: boolean) => Promise<unknown> }>) {
+  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled && Boolean(contract.tenant.email)} /><ControlAvisosInquilino tieneCorreo={Boolean(contract.tenant.email)} enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
 }
 
 function ContractDocumentCard({ contract, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>; onRemoveDocument: (contractId: number) => void | Promise<unknown>; onAttachDocument: (contractId: number, file: File) => void | Promise<unknown> }>) {
@@ -1564,6 +1572,7 @@ function ContractDetail({
   onDownloadDocument,
   onRemoveDocument,
   onAttachDocument,
+  onSetTenantNotifications,
 }: ContractDetailProps) {
   if (demo) {
     return <DemoContractDetail demoContract={demoContract} onBack={onBack} onCopyDemoLink={onCopyDemoLink} />;
@@ -1590,7 +1599,7 @@ function ContractDetail({
     {unconfirmedInvoices.length > 0 && <UnconfirmedInvoicesCard invoices={unconfirmedInvoices} onConfirm={onConfirmInvoice} />}
     <section className="owner-detail-grid">
       <ContractSummaryCard contract={contract} nextUpdate={nextUpdate} scheduledContract={scheduledContract} onOpenContract={onOpenContract} />
-      <ContractAccessCard contract={contract} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} />
+      <ContractAccessCard contract={contract} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} onSetTenantNotifications={onSetTenantNotifications} />
       <ContractDocumentCard contract={contract} onDownloadDocument={onDownloadDocument} onRemoveDocument={onRemoveDocument} onAttachDocument={onAttachDocument} />
       {conditions.length > 0 && <div className="owner-card"><h2>Condiciones pactadas</h2><dl className="owner-definition">{conditions.map((condition) => <div key={condition.etiqueta}><dt>{condition.etiqueta}</dt><dd>{condition.valor}</dd></div>)}</dl></div>}
       <ContractAdjustmentHistory increments={increments} lines={adjustmentLines} contract={contract} />
@@ -1931,12 +1940,12 @@ function PaymentRegistrationDialog({ row, file, error, isBusy, onClose, onFileCh
   return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p>{row.recargo?.monto && <p className="owner-dialog__hint">Incluye el recargo por atraso de <b>{row.recargo.monto}</b>, que queda saldado con este pago.{row.recargoEditable && <> <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onChangeLateFee(row)}>Cambiar</button></>}</p>}<PaymentReceiptUpload file={file} isBusy={isBusy} onFileChange={onFileChange} />{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} disabled={!file} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
 }
 
-function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ tenant: TenantRequest; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (tenant: TenantRequest) => void; onSave: () => void }>) {
+function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ tenant: TenantFormValues; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (tenant: TenantFormValues) => void; onSave: () => void }>) {
   const invalidTaxId = tenant.taxId.length > 0 && !cuitValido(tenant.taxId);
   const invalidPhone = tenant.phoneNumber.length > 0 && !telefonoValido(tenant.phoneNumber);
   const taxIdError = soloDigitos(tenant.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ account: UserUpdateRequest; email: string | undefined; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (account: UserUpdateRequest) => void; onSave: () => void }>) {
@@ -1958,9 +1967,9 @@ function isAccountValid(account: UserUpdateRequest | null): boolean {
   return Boolean(account.firstName.trim()) && Boolean(account.lastName.trim()) && cuitValido(account.taxId) && telefonoValido(account.phoneNumber);
 }
 
-function isTenantValid(tenant: TenantRequest | null): boolean {
+function isTenantValid(tenant: TenantFormValues | null): boolean {
   if (!tenant) return false;
-  return Boolean(tenant.firstName.trim()) && Boolean(tenant.lastName.trim()) && cuitValido(tenant.taxId) && correoValido(tenant.email) && telefonoValido(tenant.phoneNumber);
+  return Boolean(tenant.firstName.trim()) && Boolean(tenant.lastName.trim()) && (!tenant.taxId.trim() || cuitValido(tenant.taxId)) && (!tenant.email.trim() || correoValido(tenant.email)) && (!tenant.phoneNumber.trim() || telefonoValido(tenant.phoneNumber));
 }
 
 function loadedData<T>(demo: boolean, demoData: T, loadState: { ok: T } | LoadFailure | null): T | null {
@@ -1988,7 +1997,9 @@ function overviewCalendar(demo: boolean) {
   return { hoy: hoyEnLetras(), mesActual: mesActualEnLetras(), mesSiguiente: mesSiguienteEnLetras() };
 }
 
-function borradoresVisibles(demo: boolean, carga: { ok: FilaDeBorrador[] } | LoadFailure | null): BorradoresDeInicio {
+type CargaDeBorradores = { ok: FilaDeBorrador[] } | LoadFailure | null;
+
+function borradoresVisibles(demo: boolean, carga: CargaDeBorradores): BorradoresDeInicio {
   if (demo) return [];
   if (carga === null) return null;
   return "error" in carga ? "error" : carga.ok;
@@ -2061,7 +2072,7 @@ type WorkspaceDialogState = {
   adjustmentId: number | null;
   adjustmentForm: FormularioItem;
   removingAdjustment: number | null;
-  editingTenant: TenantRequest | null;
+  editingTenant: TenantFormValues | null;
   editingTenantId: number | null;
   archivingTenant: TenantRow | null;
   reminderSettings: ReminderSettingsResponse | null;
@@ -2099,8 +2110,8 @@ type WorkspaceDialogActions = {
   closeRemoval: () => void;
   removeAdjustment: () => void;
   closeTenantEditor: () => void;
-  setTenant: (tenant: TenantRequest) => void;
-  saveTenant: (id: number, tenant: TenantRequest) => void;
+  setTenant: (tenant: TenantFormValues) => void;
+  saveTenant: (id: number, tenant: TenantFormValues) => void;
   closeTenantArchive: () => void;
   archiveTenant: (tenant: TenantRow) => void;
   closeReminders: () => void;
@@ -2220,7 +2231,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   >(null);
   const [editandoAvisos, setEditandoAvisos] = useState<ReminderSettingsResponse | null>(null);
   const [editandoCuenta, setEditandoCuenta] = useState<UserUpdateRequest | null>(null);
-  const [editandoInquilino, setEditandoInquilino] = useState<TenantRequest | null>(null);
+  const [editandoInquilino, setEditandoInquilino] = useState<TenantFormValues | null>(null);
   const [editandoPropiedad, setEditandoPropiedad] = useState<PropertyRequest | null>(null);
   const [propiedadEditadaId, setPropiedadEditadaId] = useState<number | null>(null);
   const [inquilinoEditadoId, setInquilinoEditadoId] = useState<number | null>(null);
@@ -2681,7 +2692,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     }
   }
 
-  async function guardarInquilinoEditado(id: number, datos: TenantRequest) {
+  async function guardarInquilinoEditado(id: number, datos: TenantFormValues) {
     if (demo) { setEditandoInquilino(null); toast.exito("Datos del inquilino guardados."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);
@@ -2769,7 +2780,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       const { url } = await AlquiaBackendClient.contracts.getTenantAccess(contratoId);
       await navigator.clipboard.writeText(url);
       toast.exito("Enlace copiado.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to get tenant access link", e);
       toast.error("No pudimos obtener el enlace. Inténtelo de nuevo.");
     }
   }
@@ -2778,7 +2790,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     try {
       await AlquiaBackendClient.contracts.resendTenantAccess(contratoId);
       toast.exito("Le reenviamos el enlace por correo al inquilino.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to resend tenant access link", e);
       toast.error("No pudimos reenviar el correo. Inténtelo de nuevo más tarde.");
     }
   }
@@ -2792,9 +2805,15 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       enlace.download = contrato.documentFileName ?? "contrato";
       enlace.click();
       URL.revokeObjectURL(url);
-    } catch {
+    } catch (e) {
+      console.error("Failed to download contract document", e);
       toast.error("No pudimos descargar el documento. Inténtelo de nuevo más tarde.");
     }
+  }
+
+  async function cambiarAvisosAlInquilino(contratoId: number, enabled: boolean) {
+    const actualizado = await AlquiaBackendClient.contracts.setTenantNotifications(contratoId, enabled);
+    setCargaContrato((actual) => (actual && "ok" in actual && actual.ok.id === actualizado.id ? { ok: actualizado } : actual));
   }
 
   async function adjuntarDocumento(contratoId: number, archivo: File) {
@@ -2812,7 +2831,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       await AlquiaBackendClient.contracts.removeDocument(contratoId);
       setRecargaContrato((n) => n + 1);
       toast.exito("Documento quitado.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to remove contract document", e);
       toast.error("No pudimos quitar el documento. Inténtelo de nuevo más tarde.");
     }
   }
@@ -2845,7 +2865,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const recordatorios = loadedData(demo, AVISOS_DEMO, cargaAjustes);
   const recordatoriosConError = loadHasError(demo, cargaAjustes);
 
-  const WIZARD_SUCCESS: Record<Exclude<Creation, null>, string> = { property: "Propiedad agregada.", tenant: "Inquilino agregado.", contract: "Contrato creado. Le enviamos al inquilino su enlace por correo." };
+  const WIZARD_SUCCESS = { property: "Propiedad agregada.", tenant: "Inquilino agregado." } as const;
   const wizardDestinations: Record<Exclude<Creation, null>, OwnerView> = { property: "propiedades", tenant: "inquilinos", contract: "contratos" };
   const wizardKind = wizard ?? "contract";
   const wizardContent = <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} draftId={wizardDraftId} draftKind={wizardKind === "property" ? "property" : "contract"} onClose={() => setWizard(null)} onOpenContract={(contractId) => { setWizard(null); openDetail("contract", String(contractId)); }}
@@ -2853,13 +2873,14 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     onDraftDiscarded={() => toast.exito("Borrador descartado.")}
     onComplete={(resultado?: ResultadoDelAlta) => {
       go(wizardDestinations[wizardKind]);
-      toast.exito(WIZARD_SUCCESS[wizardKind]);
+      toast.exito(wizardKind === "contract" ? mensajeExitoDelContrato(resultado) : WIZARD_SUCCESS[wizardKind]);
       if (resultado?.pdfPerdido) toast.aviso("El borrador ya no existía, así que el PDF no llegó al contrato. Puede adjuntarlo desde su detalle.");
       if (resultado?.pdfSinAdjuntar) toast.aviso("El contrato se creó, pero no pudimos adjuntar el PDF. Puede subirlo desde su detalle.");
+      if (resultado?.avisosSinActivar) toast.aviso("El contrato se creó, pero no pudimos activar los avisos al inquilino. Podés activarlos desde su detalle.");
     }} />;
   const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
     property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => void nuevoContrato(demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
-    contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} unconfirmedInvoices={cuotasSinConfirmar.filter((fila) => fila.contractId === contratoAbierto?.id)} onConfirmInvoice={pedirConfirmacion} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} />,
+    contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} unconfirmedInvoices={cuotasSinConfirmar.filter((fila) => fila.contractId === contratoAbierto?.id)} onConfirmInvoice={pedirConfirmacion} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} onSetTenantNotifications={(contractId, enabled) => cambiarAvisosAlInquilino(contractId, enabled)} />,
     tenant: <TenantDetail onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => void nuevoContrato()} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
   };
   const viewContent: Record<OwnerView, React.ReactNode> = {

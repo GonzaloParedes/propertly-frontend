@@ -138,7 +138,7 @@ export function formularioDeInquilino(pedido: TenantRequest | undefined): Formul
   return {
     nombre: pedido?.firstName ?? "",
     apellido: pedido?.lastName ?? "",
-    cuit: pedido ? formatearCuit(pedido.taxId) : "",
+    cuit: pedido ? formatearCuit(pedido.taxId ?? "") : "",
     correo: pedido?.email ?? "",
     telefono: pedido?.phoneNumber ?? "",
   };
@@ -226,7 +226,8 @@ const esPropiedad = (pedido: Objeto) =>
   [pedido.street, pedido.number, pedido.city, pedido.province].every(esTexto) && CATEGORIAS.some(({ valor }) => valor === pedido.category);
 
 const esInquilino = (pedido: Objeto) =>
-  [pedido.firstName, pedido.lastName, pedido.taxId, pedido.email, pedido.phoneNumber].every(esTexto);
+  [pedido.firstName, pedido.lastName].every(esTexto) &&
+  [pedido.taxId, pedido.email, pedido.phoneNumber].every((value) => value == null || esTexto(value));
 
 const textoONada = (valor: unknown): string => (esTexto(valor) ? valor : "");
 const enteroONada = (valor: unknown): number | null => (esEntero(valor) && valor >= 0 ? valor : null);

@@ -39,8 +39,11 @@ export default function PdfPageViewer({ cargar, pagina, nombre }: Readonly<{
         if (cancelado) return void abierto.destroy();
         setDocumento(abierto);
         setPaginas(abierto.numPages);
-      } catch {
-        if (!cancelado) setEstado("error");
+      } catch (e) {
+        if (!cancelado) {
+          console.error("Failed to load PDF", e);
+          setEstado("error");
+        }
       }
     })();
     return () => {

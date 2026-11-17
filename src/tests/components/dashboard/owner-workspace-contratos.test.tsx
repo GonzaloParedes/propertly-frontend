@@ -43,7 +43,7 @@ function contract(over: Partial<ContractResponse> = {}): ContractResponse {
       email: "jorge@ejemplo.com", phoneNumber: "+5491144552210" },
     initialRentAmount: 400000, startDate: "2025-03-01", termMonths: 36, dueDay: 1,
     endDate: "2028-03-01", status: "ACTIVE", incrementMethod: "FIXED_PERCENTAGE",
-    incrementFrequencyMonths: 3, incrementValue: 8, currentRent: 478691, ...over,
+    incrementFrequencyMonths: 3, incrementValue: 8, currentRent: 478691, tenantNotificationsEnabled: true, ...over,
   };
 }
 
@@ -314,9 +314,9 @@ describe("inquilino nuevo desde el asistente de contrato", () => {
 
     await userEvent.type(within(asistente).getByLabelText("Nombre"), "Ana");
     await userEvent.type(within(asistente).getByLabelText("Apellido"), "Gómez");
-    await userEvent.type(within(asistente).getByLabelText("CUIT o CUIL"), "20224567899");
-    await userEvent.type(within(asistente).getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-    await userEvent.type(within(asistente).getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(within(asistente).getByLabelText("CUIT o CUIL (opcional)"), "20224567899");
+    await userEvent.type(within(asistente).getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+    await userEvent.type(within(asistente).getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(within(asistente).getByRole("button", { name: "Usar este inquilino" }));
 
     const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });
