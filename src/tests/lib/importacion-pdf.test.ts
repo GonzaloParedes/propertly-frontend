@@ -421,6 +421,13 @@ describe("armarAlta", () => {
     expect(pedido.elapsed).toEqual({ paidThrough: "2026-08" });
   });
 
+  it("manda null si el correo, el teléfono y el CUIT quedaron vacíos", () => {
+    const { borrador } = pendientesDe(respuesta, { cuit: "", correo: "", telefono: "" });
+    expect(armarAlta(borrador, {}, undefined).tenant).toEqual({
+      new: { firstName: "Lucía", lastName: "Benítez", taxId: null, email: null, phoneNumber: null },
+    });
+  });
+
   it("usa la propiedad y el inquilino que ya existen en vez de crearlos", () => {
     const { borrador } = pendientesDe(lectura({}, { matches: { property: { id: 12, by: "ADDRESS" }, tenant: { id: 7, by: "TAX_ID" } } }));
     const pedido = armarAlta(borrador, {}, undefined);

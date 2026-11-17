@@ -317,8 +317,9 @@ describe("detalle · editar datos", () => {
     const dialogo = screen.getByRole("dialog");
     expect(within(dialogo).getByLabelText("Correo electrónico (opcional)")).toHaveValue("");
     await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+    expect(screen.queryByText("Revise este dato.")).not.toBeInTheDocument();
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith(1, {
-      firstName: "Jorge", lastName: "Paletta", taxId: "", email: "", phoneNumber: "",
+      firstName: "Jorge", lastName: "Paletta", taxId: null, email: null, phoneNumber: null,
     }));
   });
 

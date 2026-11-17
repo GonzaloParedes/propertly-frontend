@@ -827,7 +827,7 @@ describe("avisos al inquilino al crear desde el PDF", () => {
     expect(crear()).toBeEnabled();
     await userEvent.click(crear());
     await waitFor(() => expect(mockOnboard).toHaveBeenCalled());
-    expect(mockOnboard.mock.calls[0][0].tenant).toMatchObject({ new: { email: "", phoneNumber: "" } });
+    expect(mockOnboard.mock.calls[0][0].tenant).toMatchObject({ new: { email: null, phoneNumber: null } });
     expect(mockAvisos).not.toHaveBeenCalled();
   });
 

@@ -1429,13 +1429,14 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
       // Sin guiones: @ValidTaxId acepta los dos formatos, pero guardar siempre
       // igual evita que el mismo CUIT entre dos veces con distinto formato y
       // esquive el chequeo de duplicados, que compara el string tal cual.
-      taxId: soloDigitos(cuit),
-      email: correo.trim(),
+      // Vacío va como null: @ValidTaxId, @Email y @ValidPhoneNumber rechazan "".
+      taxId: soloDigitos(cuit) || null,
+      email: correo.trim() || null,
       // En dígitos por la misma razón que el CUIT —dos formatos del mismo
       // teléfono no deberían esquivar el chequeo de duplicados—, no porque el
       // backend lo exija: su normalizador reconstruye el número igual venga
       // con separadores. Ver src/lib/telefono.ts.
-      phoneNumber: soloDigitosTelefono(telefono),
+      phoneNumber: soloDigitosTelefono(telefono) || null,
     };
   }
   function armarPropiedad(direccionElegida: Direccion, categoriaElegida: PropertyCategory): PropertyRequest {

@@ -2702,9 +2702,9 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       await AlquiaBackendClient.tenants.update(id, {
         firstName: datos.firstName.trim(),
         lastName: datos.lastName.trim(),
-        taxId: soloDigitos(datos.taxId),
-        email: datos.email.trim(),
-        phoneNumber: soloDigitosTelefono(datos.phoneNumber),
+        taxId: soloDigitos(datos.taxId) || null,
+        email: datos.email.trim() || null,
+        phoneNumber: soloDigitosTelefono(datos.phoneNumber) || null,
       });
       setEditandoInquilino(null);
       setRecargaInquilinos((n) => n + 1);
