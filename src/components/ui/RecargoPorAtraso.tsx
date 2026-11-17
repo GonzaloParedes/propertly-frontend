@@ -13,13 +13,13 @@ export function RecargoPorAtraso({ vista, importeHoy }: Readonly<{
 }>) {
   return (
     <div className="recargo">
-      {importeHoy && vista.desdeManana && <span className="recargo__linea">Hoy: <b>{importeHoy}</b></span>}
+      {importeHoy && vista.desdeManana && <span className="recargo__linea recargo__linea--importe">Hoy: <b>{importeHoy}</b></span>}
       {vista.monto && (
         <span className="recargo__linea recargo__linea--etiqueta">
           <Icon name="clock" size={15} />{vista.etiqueta} <b>{vista.monto}</b>
         </span>
       )}
-      {vista.desdeManana && <span className="recargo__linea">Desde mañana: <b>{vista.desdeManana}</b></span>}
+      {vista.desdeManana && <span className="recargo__linea recargo__linea--importe">Desde mañana: <b>{vista.desdeManana}</b></span>}
       {vista.detalle && <span className="recargo__linea">{vista.detalle}</span>}
       {vista.modificado && <span className="recargo__linea recargo__linea--modificado">{vista.modificado}</span>}
     </div>

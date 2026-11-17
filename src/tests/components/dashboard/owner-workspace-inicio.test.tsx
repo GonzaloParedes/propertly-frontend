@@ -259,7 +259,7 @@ describe("proyección", () => {
     render(<OwnerWorkspace initialView="inicio" />);
 
     expect(
-      await screen.findByText("más 1 contrato a definir según el índice")
+      await screen.findByText("No incluye 1 contrato que aumenta por un índice todavía sin publicar.")
     ).toBeInTheDocument();
   });
 

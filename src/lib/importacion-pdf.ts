@@ -689,9 +689,9 @@ function armarInquilino(b: Borrador): TenantRequest {
   return {
     firstName: b.nombre.trim(),
     lastName: b.apellido.trim(),
-    taxId: soloDigitos(b.cuit),
-    email: b.correo.trim(),
-    phoneNumber: soloDigitosTelefono(b.telefono),
+    taxId: soloDigitos(b.cuit) || null,
+    email: b.correo.trim() || null,
+    phoneNumber: soloDigitosTelefono(b.telefono) || null,
   };
 }
 
