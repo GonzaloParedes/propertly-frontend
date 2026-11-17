@@ -28,6 +28,7 @@ import {
   idDelInquilinoExistente,
 } from "@/lib/error-codes";
 import { ubicacionDeErrores } from "@/lib/errores-de-alta";
+import { correoValido } from "@/lib/correo";
 import { hoyEnArgentina } from "@/lib/formato";
 import {
   armarAlta,
@@ -264,7 +265,12 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   const [itemsConError, setItemsConError] = useState<ReadonlySet<ItemId>>(new Set());
   const [creado, setCreado] = useState<number | null>(null);
   const [avisarAlInquilino, setAvisarAlInquilino] = useState(false);
+  const [correoExistente, setCorreoExistente] = useState<{ id: number; email: string | null } | null>(null);
+  const tieneCorreoInquilino = borrador?.inquilinoId != null
+    ? correoExistente?.id === borrador.inquilinoId && correoValido(correoExistente.email ?? "")
+    : correoValido(borrador?.correo ?? "");
   const [avisosDelAlta, setAvisosDelAlta] = useState<ResultadoDelAlta | undefined>();
+
   const [confirmandoSalida, setConfirmandoSalida] = useState<(() => void) | null>(null);
 
   // --- La lectura: se consulta hasta que termina ---
@@ -287,7 +293,10 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
     }
     if (inquilinoId !== null) {
       AlquiaBackendClient.tenants.get(inquilinoId)
-        .then((inquilino) => setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` })))
+        .then((inquilino) => {
+          setCorreoExistente({ id: inquilino.id, email: inquilino.email ?? null });
+          setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` }));
+        })
         .catch(() => {});
     }
   }, []);
@@ -469,7 +478,10 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
     setLectura((actual) => (actual ? { ...actual, coincidencias: { ...actual.coincidencias, inquilinoId: existente } } : actual));
     setBorrador((actual) => (actual ? { ...actual, inquilinoId: existente } : actual));
     AlquiaBackendClient.tenants.get(existente)
-      .then((inquilino) => setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` })))
+      .then((inquilino) => {
+          setCorreoExistente({ id: inquilino.id, email: inquilino.email ?? null });
+          setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` }));
+        })
       .catch(() => {});
     setAviso({ mensaje: "Ya tiene cargado a ese inquilino con el mismo CUIT o teléfono. Lo dejamos elegido: revise y cree el contrato de nuevo." });
   }
@@ -516,7 +528,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
       return;
     }
     // El alta deja los avisos apagados. Si el propietario los pidió, se prenden ahora: si el PUT falla, el contrato igual existe.
-    if (avisarAlInquilino) avisos = await activarAvisosDelInquilino(contrato.id);
+    if (avisarAlInquilino && tieneCorreoInquilino) avisos = await activarAvisosDelInquilino(contrato.id);
     // El contrato ya existe: de acá en más no se vuelve a crear. Cerrar la lectura se intenta dos veces.
     const cierre = armarCierre(lectura, b, decisiones, revisados, contrato.id);
     for (let vez = 0; vez < 2; vez += 1) {
@@ -645,7 +657,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
                   </div>
                 </>
               )}
-              <CartelAvisosInquilino activo={avisarAlInquilino} onChange={setAvisarAlInquilino} disabled={guardando} />
+              <CartelAvisosInquilino tieneCorreo={tieneCorreoInquilino} activo={avisarAlInquilino && tieneCorreoInquilino} onChange={setAvisarAlInquilino} disabled={guardando} />
             </>
           )}
         />

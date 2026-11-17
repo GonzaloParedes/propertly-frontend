@@ -314,9 +314,9 @@ describe("inquilino nuevo desde el asistente de contrato", () => {
 
     await userEvent.type(within(asistente).getByLabelText("Nombre"), "Ana");
     await userEvent.type(within(asistente).getByLabelText("Apellido"), "Gómez");
-    await userEvent.type(within(asistente).getByLabelText("CUIT o CUIL"), "20224567899");
-    await userEvent.type(within(asistente).getByLabelText("Correo electrónico"), "ana@ejemplo.com");
-    await userEvent.type(within(asistente).getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(within(asistente).getByLabelText("CUIT o CUIL (opcional)"), "20224567899");
+    await userEvent.type(within(asistente).getByLabelText("Correo electrónico (opcional)"), "ana@ejemplo.com");
+    await userEvent.type(within(asistente).getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(within(asistente).getByRole("button", { name: "Usar este inquilino" }));
 
     const contrato = await screen.findByRole("region", { name: "Asistente de nuevo contrato" });

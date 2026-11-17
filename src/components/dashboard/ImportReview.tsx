@@ -321,21 +321,21 @@ function tarjetaDeInquilino(ctx: Contexto) {
       {!usaElExistente && <>
         <label className="owner-wizard-field"><span>Nombre</span><input value={b.nombre} onChange={(e) => set({ nombre: e.target.value })} /></label>
         <label className="owner-wizard-field"><span>Apellido</span><input value={b.apellido} onChange={(e) => set({ apellido: e.target.value })} /></label>
-        <label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" value={formatearCuit(b.cuit)} aria-invalid={b.cuit.length > 0 && !cuitValido(b.cuit)} onChange={(e) => set({ cuit: soloDigitos(e.target.value) })} /></label>
+        <label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" value={formatearCuit(b.cuit)} aria-invalid={b.cuit.length > 0 && !cuitValido(b.cuit)} onChange={(e) => set({ cuit: soloDigitos(e.target.value) })} /></label>
         {b.cuit.length > 0 && !cuitValido(b.cuit) && <p className="owner-wizard-error" role="alert">Ese CUIT no parece completo o tiene un número equivocado.</p>}
       </>}
     </div>,
   });
 }
 
-function tarjetaDeContacto({ b, tarjeta, pendientePor, set }: Contexto) {
+function tarjetaDeContacto({ b, tarjeta, set }: Contexto) {
   if (b.inquilinoId !== null) return null;
   return tarjeta("contacto", [b.correo, b.telefono].filter(Boolean).join(" · ") || "Sin cargar", {
-    porQue: pendientePor("contacto") ? "El contrato no los trae. Los necesitamos para mandarle los avisos de vencimiento y el enlace para subir comprobantes." : undefined,
+    porQue: "Estos datos son opcionales. Para activar avisos necesita un correo; también puede compartir el enlace del portal manualmente.",
     editor: <div className="owner-wizard-stack">
-      <label className="owner-wizard-field"><span>Correo electrónico</span><input type="email" placeholder="Ej: lucia@correo.com" value={b.correo} aria-invalid={b.correo.length > 0 && !correoValido(b.correo)} onChange={(e) => set({ correo: e.target.value })} /></label>
+      <label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: lucia@correo.com" value={b.correo} aria-invalid={b.correo.length > 0 && !correoValido(b.correo)} onChange={(e) => set({ correo: e.target.value })} /></label>
       {b.correo.length > 0 && !correoValido(b.correo) && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}
-      <label className="owner-wizard-field"><span>Teléfono</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={b.telefono} aria-invalid={b.telefono.length > 0 && !telefonoValido(b.telefono)} onChange={(e) => set({ telefono: e.target.value })} /></label>
+      <label className="owner-wizard-field"><span>Teléfono (opcional)</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={b.telefono} aria-invalid={b.telefono.length > 0 && !telefonoValido(b.telefono)} onChange={(e) => set({ telefono: e.target.value })} /></label>
       {b.telefono.length > 0 && !telefonoValido(b.telefono) && <p className="owner-wizard-error" role="alert">{errorDeTelefono(b.telefono)}</p>}
     </div>,
   });

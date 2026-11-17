@@ -25,7 +25,7 @@ import type {
   PropertyResponse,
   ReminderSettingsResponse,
   RentIncrementResponse,
-  TenantRequest,
+  TenantFormValues,
   UserUpdateRequest,
 } from "@/lib/backend-types";
 import { buildTenantRows, resumenInquilinos, type TenantRow } from "@/lib/tenant-rows";
@@ -412,6 +412,7 @@ function mensajeErrorDeInquilino(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
   if (err instanceof ApiError && err.type === ERROR.DUPLICATE_TAX_ID) return "Ese documento ya figura en otro inquilino suyo.";
   if (err instanceof ApiError && err.type === ERROR.DUPLICATE_PHONE_NUMBER) return "Ese teléfono ya figura en otro inquilino suyo.";
+  if (err instanceof ApiError && err.type === ERROR.TENANT_EMAIL_REQUIRED_FOR_NOTIFICATIONS) return copyDeError(err);
   if (err instanceof ApiError && err.status === 400) return "Verifique los datos ingresados e inténtelo de nuevo.";
   return "No pudimos guardar los datos. Inténtelo de nuevo más tarde.";
 }
@@ -696,7 +697,7 @@ function TenantDetail({
         <div className="owner-card">
           <h2>Acceso de pago</h2>
           <p className="owner-card__copy">El inquilino no necesita una cuenta. Comparte un enlace seguro para ver cuotas habilitadas y subir su comprobante.</p>
-          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={tenant.avisosAlInquilino} />
+          <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={tenant.avisosAlInquilino && Boolean(tenant.email)} />
         </div>
       )}
     </section>
@@ -715,7 +716,7 @@ function TenantListRow({ tenant, onOpenTenant, onCreateContract }: TenantListRow
       <span className="owner-row__icon"><Icon name="users" /></span>
       <span className="owner-row__body">
         <b><button type="button" className="owner-row__link" onClick={() => onOpenTenant(tenant.id)}>{tenant.nombre}</button></b>
-        <small>{tenant.cuit} · {tenant.email}</small>
+        <small>{[tenant.cuit, tenant.email].filter(Boolean).join(" · ") || "Sin datos de contacto"}</small>
       </span>
       <span className="owner-row__amount"><Button tone="secondary" small onClick={onCreateContract}>Crear contrato</Button></span>
       <Status>{tenant.estado}</Status>
@@ -727,7 +728,7 @@ function TenantListRow({ tenant, onOpenTenant, onCreateContract }: TenantListRow
     <span className="owner-row__icon"><Icon name="users" /></span>
     <span className="owner-row__body">
       <b>{tenant.nombre}</b>
-      <small>{tenant.cuit} · {tenant.email} · {tenant.direccion}</small>
+      <small>{[tenant.cuit, tenant.email, tenant.direccion].filter(Boolean).join(" · ")}</small>
     </span>
     <span className="owner-row__amount"><b>{tenant.alquiler}</b><small>por mes</small></span>
     <Status>{tenant.estado}</Status>
@@ -1539,7 +1540,7 @@ function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink, re
 }
 
 function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink, onSetTenantNotifications }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown>; onSetTenantNotifications: (contractId: number, enabled: boolean) => Promise<unknown> }>) {
-  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled} /><ControlAvisosInquilino enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
+  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled && Boolean(contract.tenant.email)} /><ControlAvisosInquilino tieneCorreo={Boolean(contract.tenant.email)} enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
 }
 
 function ContractDocumentCard({ contract, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>; onRemoveDocument: (contractId: number) => void | Promise<unknown>; onAttachDocument: (contractId: number, file: File) => void | Promise<unknown> }>) {
@@ -1939,12 +1940,12 @@ function PaymentRegistrationDialog({ row, file, error, isBusy, onClose, onFileCh
   return <Dialog title="Registrar pago" onClose={onClose}><div className="owner-dialog__body"><p>{row.direccion} · cuota de {row.periodo} por <b>{row.monto}</b>.</p>{row.recargo?.monto && <p className="owner-dialog__hint">Incluye el recargo por atraso de <b>{row.recargo.monto}</b>, que queda saldado con este pago.{row.recargoEditable && <> <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onChangeLateFee(row)}>Cambiar</button></>}</p>}<PaymentReceiptUpload file={file} isBusy={isBusy} onFileChange={onFileChange} />{error && <p className="owner-list-note" role="alert">{error}</p>}<div className="owner-dialog__actions"><Button tone="secondary" onClick={onClose}>Cancelar</Button><Button busy={isBusy} disabled={!file} onClick={register}>{buttonLabel}</Button></div></div></Dialog>;
 }
 
-function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ tenant: TenantRequest; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (tenant: TenantRequest) => void; onSave: () => void }>) {
+function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ tenant: TenantFormValues; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (tenant: TenantFormValues) => void; onSave: () => void }>) {
   const invalidTaxId = tenant.taxId.length > 0 && !cuitValido(tenant.taxId);
   const invalidPhone = tenant.phoneNumber.length > 0 && !telefonoValido(tenant.phoneNumber);
   const taxIdError = soloDigitos(tenant.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ account: UserUpdateRequest; email: string | undefined; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (account: UserUpdateRequest) => void; onSave: () => void }>) {
@@ -1966,9 +1967,9 @@ function isAccountValid(account: UserUpdateRequest | null): boolean {
   return Boolean(account.firstName.trim()) && Boolean(account.lastName.trim()) && cuitValido(account.taxId) && telefonoValido(account.phoneNumber);
 }
 
-function isTenantValid(tenant: TenantRequest | null): boolean {
+function isTenantValid(tenant: TenantFormValues | null): boolean {
   if (!tenant) return false;
-  return Boolean(tenant.firstName.trim()) && Boolean(tenant.lastName.trim()) && cuitValido(tenant.taxId) && correoValido(tenant.email) && telefonoValido(tenant.phoneNumber);
+  return Boolean(tenant.firstName.trim()) && Boolean(tenant.lastName.trim()) && (!tenant.taxId.trim() || cuitValido(tenant.taxId)) && (!tenant.email.trim() || correoValido(tenant.email)) && (!tenant.phoneNumber.trim() || telefonoValido(tenant.phoneNumber));
 }
 
 function loadedData<T>(demo: boolean, demoData: T, loadState: { ok: T } | LoadFailure | null): T | null {
@@ -2071,7 +2072,7 @@ type WorkspaceDialogState = {
   adjustmentId: number | null;
   adjustmentForm: FormularioItem;
   removingAdjustment: number | null;
-  editingTenant: TenantRequest | null;
+  editingTenant: TenantFormValues | null;
   editingTenantId: number | null;
   archivingTenant: TenantRow | null;
   reminderSettings: ReminderSettingsResponse | null;
@@ -2109,8 +2110,8 @@ type WorkspaceDialogActions = {
   closeRemoval: () => void;
   removeAdjustment: () => void;
   closeTenantEditor: () => void;
-  setTenant: (tenant: TenantRequest) => void;
-  saveTenant: (id: number, tenant: TenantRequest) => void;
+  setTenant: (tenant: TenantFormValues) => void;
+  saveTenant: (id: number, tenant: TenantFormValues) => void;
   closeTenantArchive: () => void;
   archiveTenant: (tenant: TenantRow) => void;
   closeReminders: () => void;
@@ -2230,7 +2231,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   >(null);
   const [editandoAvisos, setEditandoAvisos] = useState<ReminderSettingsResponse | null>(null);
   const [editandoCuenta, setEditandoCuenta] = useState<UserUpdateRequest | null>(null);
-  const [editandoInquilino, setEditandoInquilino] = useState<TenantRequest | null>(null);
+  const [editandoInquilino, setEditandoInquilino] = useState<TenantFormValues | null>(null);
   const [editandoPropiedad, setEditandoPropiedad] = useState<PropertyRequest | null>(null);
   const [propiedadEditadaId, setPropiedadEditadaId] = useState<number | null>(null);
   const [inquilinoEditadoId, setInquilinoEditadoId] = useState<number | null>(null);
@@ -2691,7 +2692,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     }
   }
 
-  async function guardarInquilinoEditado(id: number, datos: TenantRequest) {
+  async function guardarInquilinoEditado(id: number, datos: TenantFormValues) {
     if (demo) { setEditandoInquilino(null); toast.exito("Datos del inquilino guardados."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);

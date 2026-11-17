@@ -126,9 +126,9 @@ describe("modo demo · avisos", () => {
     await userEvent.click(screen.getByRole("button", { name: "Agregar inquilino" }));
     await userEvent.type(screen.getByLabelText("Nombre"), "Lucía");
     await userEvent.type(screen.getByLabelText("Apellido"), "Gómez");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), "27248910556");
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "lucia@ejemplo.com");
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), "27248910556");
+    await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "lucia@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
 
     expect(await screen.findByText(/Inquilino agregado/)).toBeInTheDocument();
@@ -148,9 +148,9 @@ describe("alta de inquilino", () => {
     await userEvent.click(screen.getByRole("button", { name: "Agregar inquilino" }));
     await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
     await userEvent.type(screen.getByLabelText("Apellido"), "Paletta");
-    await userEvent.type(screen.getByLabelText("CUIT o CUIL"), "20224567899");
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "jorge@ejemplo.com");
-    await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+    await userEvent.type(screen.getByLabelText("CUIT o CUIL (opcional)"), "20224567899");
+    await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "jorge@ejemplo.com");
+    await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
     await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
 
     expect(await screen.findByText("Jorge Paletta")).toBeInTheDocument();
@@ -289,7 +289,7 @@ describe("detalle · editar datos", () => {
     mockUpdate.mockResolvedValueOnce(JORGE);
     const dialogo = await abrirEdicion();
 
-    const correo = within(dialogo).getByLabelText("Correo electrónico");
+    const correo = within(dialogo).getByLabelText("Correo electrónico (opcional)");
     await userEvent.clear(correo);
     await userEvent.type(correo, "jorge.nuevo@ejemplo.com");
     await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
@@ -307,10 +307,33 @@ describe("detalle · editar datos", () => {
     );
   });
 
+  it("abre y guarda un inquilino con sólo nombre y apellido", async () => {
+    const minimal = { id: 1, firstName: "Jorge", lastName: "Paletta", taxId: null, email: null, phoneNumber: null };
+    conDatos({ tenants: [minimal], contracts: [] });
+    mockUpdate.mockResolvedValueOnce(minimal);
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await userEvent.click(await screen.findByText("Jorge Paletta"));
+    await userEvent.click(await screen.findByRole("button", { name: /Editar datos/ }));
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByLabelText("Correo electrónico (opcional)")).toHaveValue("");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith(1, {
+      firstName: "Jorge", lastName: "Paletta", taxId: "", email: "", phoneNumber: "",
+    }));
+  });
+
+  it("explica que debe desactivar avisos antes de quitar el correo", async () => {
+    mockUpdate.mockRejectedValueOnce(new ApiError(400, "Email required", ERROR.TENANT_EMAIL_REQUIRED_FOR_NOTIFICATIONS));
+    const dialogo = await abrirEdicion();
+    await userEvent.clear(within(dialogo).getByLabelText("Correo electrónico (opcional)"));
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("desactive primero los avisos");
+  });
+
   it("no deja guardar con un documento inválido", async () => {
     const dialogo = await abrirEdicion();
 
-    const cuit = within(dialogo).getByLabelText("CUIT o CUIL");
+    const cuit = within(dialogo).getByLabelText("CUIT o CUIL (opcional)");
     await userEvent.clear(cuit);
     await userEvent.type(cuit, "20224567890");
 
@@ -320,7 +343,7 @@ describe("detalle · editar datos", () => {
   it("no deja guardar con un correo inválido", async () => {
     const dialogo = await abrirEdicion();
 
-    const correo = within(dialogo).getByLabelText("Correo electrónico");
+    const correo = within(dialogo).getByLabelText("Correo electrónico (opcional)");
     await userEvent.clear(correo);
     await userEvent.type(correo, "no-es-un-correo");
 
