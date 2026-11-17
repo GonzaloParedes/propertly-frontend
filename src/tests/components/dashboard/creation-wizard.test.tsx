@@ -269,8 +269,9 @@ describe("validación previa", () => {
     await userEvent.type(screen.getByLabelText("Apellido"), "Paletta");
     expect(guardar).toBeEnabled();
     await userEvent.click(guardar);
+    expect(screen.queryByText("Revise este dato.")).not.toBeInTheDocument();
     await waitFor(() => expect(mockCreate).toHaveBeenCalledWith({
-      firstName: "Jorge", lastName: "Paletta", taxId: "", email: "", phoneNumber: "",
+      firstName: "Jorge", lastName: "Paletta", taxId: null, email: null, phoneNumber: null,
     }));
     expect(onComplete).toHaveBeenCalled();
   });
@@ -926,6 +927,41 @@ describe("asistente de contrato · borradores y un solo guardado", () => {
     expect(pedido.contract).toMatchObject({ initialRentAmount: 450000, startDate: "2026-09-01" });
     expect(mockCrearPropiedad).not.toHaveBeenCalled();
     expect(mockCreate).not.toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("con sólo nombre y apellido manda los opcionales en null y no muestra «Revise este dato.»", async () => {
+    mockPropiedades.mockResolvedValue([MITRE]);
+    mockInquilinos.mockResolvedValue([]);
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    renderContratoAMano();
+
+    await userEvent.click(await screen.findByRole("radio", { name: /Mitre 78/ }));
+    await seguir();
+    await userEvent.click(await screen.findByRole("radio", { name: /Un inquilino nuevo/ }));
+    const usar = screen.getByRole("button", { name: "Usar este inquilino" });
+    expect(usar).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Nombre"), "Felipe");
+    await userEvent.type(screen.getByLabelText("Apellido"), "Boderone");
+    expect(usar).toBeEnabled();
+    expect(screen.queryByText("Revise este dato.")).not.toBeInTheDocument();
+    await userEvent.click(usar);
+
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Alquiler mensual"), "450000");
+    await seguir();
+    fireEvent.change(screen.getByLabelText("Fecha de inicio"), { target: { value: "2026-09-01" } });
+    await seguir();
+    await userEvent.type(screen.getByLabelText("Porcentaje de aumento"), "8");
+    await seguir();
+    await seguir();
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalledTimes(1));
+    expect(mockCrearContrato.mock.calls[0][0].tenant).toEqual({
+      new: { firstName: "Felipe", lastName: "Boderone", taxId: null, email: null, phoneNumber: null },
+    });
+    expect(screen.queryByText("Revise este dato.")).not.toBeInTheDocument();
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
