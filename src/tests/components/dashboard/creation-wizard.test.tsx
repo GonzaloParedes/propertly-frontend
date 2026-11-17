@@ -2003,6 +2003,7 @@ describe("asistente de contrato · borrador que se guarda solo", () => {
     await irALaRevisionDelBorrador();
 
     expect(screen.getByText("¿Querés notificar al inquilino?")).toBeInTheDocument();
+    expect(screen.getByText(/Podés activarlos ahora; si no, los activás después desde el detalle del contrato/)).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Avisar al inquilino" })).toHaveAttribute("aria-checked", "false");
 
     await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
@@ -2020,7 +2021,7 @@ describe("asistente de contrato · borrador que se guarda solo", () => {
     await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
     await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
 
-    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(undefined));
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ avisosActivados: true }));
     expect(mockAvisos).toHaveBeenCalledWith(41, true);
     expect(mockCrearContrato.mock.invocationCallOrder[0]).toBeLessThan(mockAvisos.mock.invocationCallOrder[0]);
   });

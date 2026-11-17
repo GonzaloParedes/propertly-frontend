@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
-import CreationWizard, { type ResultadoDelAlta } from "@/components/dashboard/CreationWizard";
+import CreationWizard from "@/components/dashboard/CreationWizard";
+import { mensajeExitoDelContrato, type ResultadoDelAlta } from "@/lib/crear-contrato";
 import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
@@ -1608,8 +1609,6 @@ function ContractDetail({
 }
 
 type LoadFailure = { error: true };
-/** Los borradores leídos del backend: todavía sin leer (`null`), leídos, o la lectura falló. */
-type CargaDeBorradores = { ok: FilaDeBorrador[] } | LoadFailure | null;
 
 function useLoadedResource<T>({
   enabled,
@@ -1998,6 +1997,8 @@ function overviewCalendar(demo: boolean) {
   if (demo) return { hoy: "martes 19 de agosto de 2026", mesActual: "agosto 2026", mesSiguiente: "septiembre 2026" };
   return { hoy: hoyEnLetras(), mesActual: mesActualEnLetras(), mesSiguiente: mesSiguienteEnLetras() };
 }
+
+type CargaDeBorradores = { ok: FilaDeBorrador[] } | LoadFailure | null;
 
 function borradoresVisibles(demo: boolean, carga: CargaDeBorradores): BorradoresDeInicio {
   if (demo) return [];
@@ -2780,7 +2781,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       const { url } = await AlquiaBackendClient.contracts.getTenantAccess(contratoId);
       await navigator.clipboard.writeText(url);
       toast.exito("Enlace copiado.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to get tenant access link", e);
       toast.error("No pudimos obtener el enlace. Inténtelo de nuevo.");
     }
   }
@@ -2789,7 +2791,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     try {
       await AlquiaBackendClient.contracts.resendTenantAccess(contratoId);
       toast.exito("Le reenviamos el enlace por correo al inquilino.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to resend tenant access link", e);
       toast.error("No pudimos reenviar el correo. Inténtelo de nuevo más tarde.");
     }
   }
@@ -2803,7 +2806,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       enlace.download = contrato.documentFileName ?? "contrato";
       enlace.click();
       URL.revokeObjectURL(url);
-    } catch {
+    } catch (e) {
+      console.error("Failed to download contract document", e);
       toast.error("No pudimos descargar el documento. Inténtelo de nuevo más tarde.");
     }
   }
@@ -2828,7 +2832,8 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       await AlquiaBackendClient.contracts.removeDocument(contratoId);
       setRecargaContrato((n) => n + 1);
       toast.exito("Documento quitado.");
-    } catch {
+    } catch (e) {
+      console.error("Failed to remove contract document", e);
       toast.error("No pudimos quitar el documento. Inténtelo de nuevo más tarde.");
     }
   }
@@ -2861,7 +2866,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const recordatorios = loadedData(demo, AVISOS_DEMO, cargaAjustes);
   const recordatoriosConError = loadHasError(demo, cargaAjustes);
 
-  const WIZARD_SUCCESS: Record<Exclude<Creation, null>, string> = { property: "Propiedad agregada.", tenant: "Inquilino agregado.", contract: "Contrato creado. Le enviamos al inquilino su enlace por correo." };
+  const WIZARD_SUCCESS = { property: "Propiedad agregada.", tenant: "Inquilino agregado." } as const;
   const wizardDestinations: Record<Exclude<Creation, null>, OwnerView> = { property: "propiedades", tenant: "inquilinos", contract: "contratos" };
   const wizardKind = wizard ?? "contract";
   const wizardContent = <CreationWizard kind={wizardKind} demo={demo} initialPropertyId={wizardPropertyId} draftId={wizardDraftId} draftKind={wizardKind === "property" ? "property" : "contract"} onClose={() => setWizard(null)} onOpenContract={(contractId) => { setWizard(null); openDetail("contract", String(contractId)); }}
@@ -2869,10 +2874,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     onDraftDiscarded={() => toast.exito("Borrador descartado.")}
     onComplete={(resultado?: ResultadoDelAlta) => {
       go(wizardDestinations[wizardKind]);
-      toast.exito(WIZARD_SUCCESS[wizardKind]);
+      toast.exito(wizardKind === "contract" ? mensajeExitoDelContrato(resultado) : WIZARD_SUCCESS[wizardKind]);
       if (resultado?.pdfPerdido) toast.aviso("El borrador ya no existía, así que el PDF no llegó al contrato. Puede adjuntarlo desde su detalle.");
       if (resultado?.pdfSinAdjuntar) toast.aviso("El contrato se creó, pero no pudimos adjuntar el PDF. Puede subirlo desde su detalle.");
-      if (resultado?.avisosSinActivar) toast.aviso("El contrato se creó, pero no pudimos activar los avisos al inquilino. Puede activarlos desde su detalle.");
+      if (resultado?.avisosSinActivar) toast.aviso("El contrato se creó, pero no pudimos activar los avisos al inquilino. Podés activarlos desde su detalle.");
     }} />;
   const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
     property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => void nuevoContrato(demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,

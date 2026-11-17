@@ -151,7 +151,8 @@ function AddressField({ value, demo, onSelect, onClear }: Readonly<{
         postalCode: r.postalCode ?? "",
         latitude: conCoordenadas ? r.latitude : null, longitude: conCoordenadas ? r.longitude : null,
       });
-    } catch {
+    } catch (e) {
+      console.error("Failed to resolve address suggestion", e);
       setFalloResolver(true);
     }
   };
@@ -1222,6 +1223,44 @@ function DialogoDeConflicto({ abierto, onCargarLaOtra, onConservarEsta }: Readon
   </Dialog>;
 }
 
+function calcularPosicion(tipo: WizardKind, step: number, direccion: Direccion | null, desvio: "tenant" | "property" | null, pasoDesvio: number, pasoContrato: number): string {
+  if (tipo !== "property") return posicionDelAsistente({ pasoContrato, desvio, pasoDesvio, direccion });
+  return `${step}|${ubicacionCompleta(direccion) ? "ubicacion" : "sin-ubicacion"}`;
+}
+
+function wizardBloqueado(guardando: boolean, eligiendo: boolean, modoElegido: ModoContrato | null, bloqueadoPorTipo: Record<WizardKind, boolean>, kind: WizardKind): boolean {
+  if (guardando) return true;
+  return eligiendo ? modoElegido === null : bloqueadoPorTipo[kind];
+}
+
+function atrasDeshabilitadoEn(eligiendo: boolean, guardando: boolean, step: number, desvio: "tenant" | "property" | null, ofrecePdf: boolean): boolean {
+  return eligiendo || guardando || (step === 1 && !desvio && !ofrecePdf);
+}
+
+function algoPropioDe(tipo: WizardKind, direccion: Direccion | null, guardaBorrador: boolean, formularioPropiedad: FormularioDePropiedad, formularioInquilino: FormularioDeInquilino, borradorPropiedad: unknown, borradorInquilino: unknown, pasoContrato: number, preseleccionada: boolean): boolean {
+  if (tipo === "property") return ubicacionCompleta(direccion);
+  return guardaBorrador && hayAlgoPropio({ formularioPropiedad, formularioInquilino, borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada });
+}
+
+function contenidoDelBorradorDel(tipo: WizardKind, step: number, formulario: FormularioDePropiedad, contenidoDeContrato: ContenidoDeBorrador): ContenidoDeBorrador {
+  if (tipo !== "property") return contenidoDeContrato;
+  return armarContenidoDeBorradorDePropiedad({ paso: step, formulario });
+}
+
+function contratoIdDeConflicto(conflicto: Conflicto | null): number | null {
+  if (conflicto?.tipo === "propiedad") return conflicto.contratoId;
+  return null;
+}
+
+function recursoDeAutoguardado(tipo: WizardKind) {
+  return tipo === "property" ? { recurso: BORRADORES_DE_PROPIEDAD } : {};
+}
+
+function documentoDelRetomando(retomando: BorradorRetomado | undefined) {
+  if (!retomando || !("document" in retomando.draft)) return undefined;
+  return retomando.draft.document;
+}
+
 function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = false, initialPropertyId, retomando, onReloadDraft, onDraftKept, onDraftDiscarded }: Omit<PropsDelAsistente, "draftId"> & Readonly<{
   /** El borrador con el que se retoma: el asistente arranca con lo que tenía. */
   retomando?: BorradorRetomado;
@@ -1345,7 +1384,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     property: propiedadBloqueada(step, direccion, categoria),
     contract: contratoBloqueadoEn(step, banderas, pendientes),
   };
-  const bloqueado = guardando || (eligiendo ? modoElegido === null : bloqueadoPorTipo[kind]);
+  const bloqueado = wizardBloqueado(guardando, eligiendo, modoElegido, bloqueadoPorTipo, kind);
 
   // --- El contrato como borrador ---
   // Nace con lo primero que carga el propietario; desde ahí se guarda solo. Sólo en «Nuevo contrato» y con sesión.
@@ -1359,30 +1398,18 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     alquiler, diaVencimiento, plazo: term, inicio, metodo: method, porcentaje, frecuencia, otras, pagadoHasta,
   };
   const contenidoDelBorradorDeContrato = contenidoDelBorradorDe(estadoDelBorrador, listas, retomando?.draft.label);
-  const contenidoDelBorrador = tipo === "property"
-    ? armarContenidoDeBorradorDePropiedad({
-        paso: step,
-        formulario: { direccion, unidad, categoria, bedrooms, bathrooms, superficie, mascotas, amoblada },
-      })
-    : contenidoDelBorradorDeContrato;
+  const contenidoDelBorrador = contenidoDelBorradorDel(tipo, step, estadoDelBorrador.formularioPropiedad, contenidoDelBorradorDeContrato);
   const guardaBorrador = guardaComoBorrador(tipo, demo);
-  const algoPropio = tipo === "property"
-    ? ubicacionCompleta(direccion)
-    : guardaBorrador && hayAlgoPropio({
-    formularioPropiedad: estadoDelBorrador.formularioPropiedad, formularioInquilino: estadoDelBorrador.formularioInquilino,
-    borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada,
-  });
-  const posicion = tipo === "property"
-    ? `${step}|${ubicacionCompleta(direccion) ? "ubicacion" : "sin-ubicacion"}`
-    : posicionDelAsistente({ pasoContrato, desvio, pasoDesvio, direccion });
+  const algoPropio = algoPropioDe(tipo, direccion, guardaBorrador, estadoDelBorrador.formularioPropiedad, estadoDelBorrador.formularioInquilino, borradorPropiedad, borradorInquilino, pasoContrato, preseleccionada);
+  const posicion = calcularPosicion(tipo, step, direccion, desvio, pasoDesvio, pasoContrato);
   const auto = useAutoguardado({
     ...opcionesDeAutoguardado({ guardaBorrador, retomando, hayAlgoPropio: algoPropio, posicion, contenido: contenidoDelBorrador }),
-    ...(tipo === "property" ? { recurso: BORRADORES_DE_PROPIEDAD } : {}),
+    ...recursoDeAutoguardado(tipo),
   });
   const esBorrador = auto.id !== null;
 
   // El PDF del contrato, opcional. Con un borrador guardado viaja enseguida; sin él, espera al contrato.
-  const pdf = usePdfDelBorrador(auto, retomando && "document" in retomando.draft ? retomando.draft.document : undefined);
+  const pdf = usePdfDelBorrador(auto, documentoDelRetomando(retomando));
   const [descartandoBorrador, setDescartandoBorrador] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
   function volverAlContrato() {
@@ -1509,12 +1536,8 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   /** Cuando el backend corrige la lista de cuotas (o la respuesta quedó fuera de rango), se vuelve a preguntar. */
   function repreguntarCuotas(err: unknown) {
     if (!(err instanceof ApiError)) return;
-    if (err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED) {
+    if (err.type === ERROR.ELAPSED_INVOICES_DECISION_REQUIRED || err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) {
       // Pasa cerca de la medianoche o con un contrato por índice: la lista del backend manda y se vuelve a preguntar.
-      const periodos = periodosDelBackend(err.fieldErrors);
-      if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
-      setPagadoHasta("");
-    } else if (err.type === ERROR.ELAPSED_PAID_THROUGH_OUT_OF_RANGE) {
       const periodos = periodosDelBackend(err.fieldErrors);
       if (periodos) setPeriodosBackend({ clave: claveDeFechas, meses: periodos });
       setPagadoHasta("");
@@ -1656,7 +1679,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     crear: () => abrirDesvio("tenant"),
   });
   const nombreDelExistente = nombreDelInquilinoExistente(conflicto, contractLists);
-  const contratoAVer = conflicto?.tipo === "propiedad" ? conflicto.contratoId : null;
+  const contratoAVer = contratoIdDeConflicto(conflicto);
   const conflictSection = conflicto && <ConflictoDeAlta
     conflicto={conflicto}
     nombreDelExistente={nombreDelExistente}
@@ -1716,7 +1739,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     return <ContractFromPdf {...alternar} onOpenContract={onOpenContract} />;
   }
 
-  const atrasDeshabilitado = eligiendo || guardando || (step === 1 && !desvio && !ofrecePdf);
+  const atrasDeshabilitado = atrasDeshabilitadoEn(eligiendo, guardando, step, desvio, ofrecePdf);
   // Desde el primer paso a mano, «Atrás» vuelve a la elección.
   const atras = () => {
     if (desvio && step === 1) return volverAlContrato();

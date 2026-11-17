@@ -1,6 +1,6 @@
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { ContractOnboardingRequest } from "@/lib/backend-types";
-import { crearContratoDesdeBorrador } from "@/lib/crear-contrato";
+import { crearContratoDesdeBorrador, mensajeExitoDelContrato } from "@/lib/crear-contrato";
 
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
@@ -47,7 +47,7 @@ describe("crearContratoDesdeBorrador", () => {
   it("después de crear, prende los avisos con el PUT", async () => {
     avisos.mockResolvedValue({ id: 7 } as never);
 
-    await expect(crearContratoDesdeBorrador(pedido, null, sinPdf, true)).resolves.toBeUndefined();
+    await expect(crearContratoDesdeBorrador(pedido, null, sinPdf, true)).resolves.toEqual({ avisosActivados: true });
 
     expect(avisos).toHaveBeenCalledWith(7, true);
     expect(onboard.mock.invocationCallOrder[0]).toBeLessThan(avisos.mock.invocationCallOrder[0]);
@@ -58,5 +58,35 @@ describe("crearContratoDesdeBorrador", () => {
 
     await expect(crearContratoDesdeBorrador(pedido, null, sinPdf, true)).resolves.toEqual({ avisosSinActivar: true });
     expect(onboard).toHaveBeenCalledTimes(1);
+  });
+});
+
+const SIN_ENVIO = "Contrato creado. Podés activar los avisos al inquilino desde su detalle.";
+const CON_ENLACE = "Contrato creado. Le enviamos al inquilino su enlace por correo.";
+
+describe("toast del alta de contrato", () => {
+  it("con los avisos apagados no menciona ningún envío", async () => {
+    const resultado = await crearContratoDesdeBorrador(pedido, null, sinPdf, false);
+
+    expect(avisos).not.toHaveBeenCalled();
+    expect(mensajeExitoDelContrato(resultado)).toBe(SIN_ENVIO);
+  });
+
+  it("si el propietario los prende y el PUT responde bien, dice que le enviamos el enlace", async () => {
+    avisos.mockResolvedValue({ id: 7 } as never);
+
+    const resultado = await crearContratoDesdeBorrador(pedido, null, sinPdf, true);
+
+    expect(avisos).toHaveBeenCalledWith(7, true);
+    expect(mensajeExitoDelContrato(resultado)).toBe(CON_ENLACE);
+  });
+
+  it("si el PUT de avisos falla, no menciona ningún envío", async () => {
+    avisos.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const resultado = await crearContratoDesdeBorrador(pedido, null, sinPdf, true);
+
+    expect(resultado?.avisosSinActivar).toBe(true);
+    expect(mensajeExitoDelContrato(resultado)).toBe(SIN_ENVIO);
   });
 });
