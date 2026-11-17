@@ -1608,6 +1608,8 @@ function ContractDetail({
 }
 
 type LoadFailure = { error: true };
+/** Los borradores leídos del backend: todavía sin leer (`null`), leídos, o la lectura falló. */
+type CargaDeBorradores = { ok: FilaDeBorrador[] } | LoadFailure | null;
 
 function useLoadedResource<T>({
   enabled,
@@ -1997,7 +1999,7 @@ function overviewCalendar(demo: boolean) {
   return { hoy: hoyEnLetras(), mesActual: mesActualEnLetras(), mesSiguiente: mesSiguienteEnLetras() };
 }
 
-function borradoresVisibles(demo: boolean, carga: { ok: FilaDeBorrador[] } | LoadFailure | null): BorradoresDeInicio {
+function borradoresVisibles(demo: boolean, carga: CargaDeBorradores): BorradoresDeInicio {
   if (demo) return [];
   if (carga === null) return null;
   return "error" in carga ? "error" : carga.ok;
@@ -2190,10 +2192,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   // El borrador que se está retomando en el asistente, si no es un contrato nuevo.
   const [wizardDraftId, setWizardDraftId] = useState<number | undefined>(undefined);
   // Los contratos a medio cargar de Inicio y Contratos. Se vuelven a leer cada vez que se cierra el asistente.
-  const [cargaBorradores, setCargaBorradores] = useState<{ ok: FilaDeBorrador[] } | LoadFailure | null>(null);
+  const [cargaBorradores, setCargaBorradores] = useState<CargaDeBorradores>(null);
   const [recargaBorradores, setRecargaBorradores] = useState(0);
   const [descartandoBorrador, setDescartandoBorrador] = useState<FilaDeBorrador | null>(null);
-  const [cargaBorradoresDePropiedad, setCargaBorradoresDePropiedad] = useState<{ ok: FilaDeBorrador[] } | LoadFailure | null>(null);
+  const [cargaBorradoresDePropiedad, setCargaBorradoresDePropiedad] = useState<CargaDeBorradores>(null);
   const [recargaBorradoresDePropiedad, setRecargaBorradoresDePropiedad] = useState(0);
   const [descartandoBorradorDePropiedad, setDescartandoBorradorDePropiedad] = useState<FilaDeBorrador | null>(null);
   // Al tocar «Nuevo contrato» con borradores guardados se ofrece seguir uno antes de empezar otro.
