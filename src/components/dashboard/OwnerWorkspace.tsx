@@ -944,7 +944,7 @@ function CollectionsView({
       </div>
       {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
         otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
-        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money">{item.monto}{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
+        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money"><span className="owner-monto">{item.monto}</span>{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
       </tbody></table></div>}
     </>}
   </>;
@@ -1006,8 +1006,10 @@ function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: Proy
     return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearMonto(projection.total)}</b><small>Todos los contratos ya están definidos</small></div>;
   }
 
-  const contractLabel = projection.aDefinir === 1 ? "contrato" : "contratos";
-  return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearMonto(projection.total)}</b><small>más {projection.aDefinir} {contractLabel} a definir según el índice</small></div>;
+  const sinContar = projection.aDefinir === 1
+    ? "No incluye 1 contrato que aumenta por un índice todavía sin publicar."
+    : `No incluye ${projection.aDefinir} contratos que aumentan por un índice todavía sin publicar.`;
+  return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearMonto(projection.total)}</b><small>{sinContar}</small></div>;
 }
 
 /**
@@ -2192,10 +2194,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   // El borrador que se está retomando en el asistente, si no es un contrato nuevo.
   const [wizardDraftId, setWizardDraftId] = useState<number | undefined>(undefined);
   // Los contratos a medio cargar de Inicio y Contratos. Se vuelven a leer cada vez que se cierra el asistente.
-  const [cargaBorradores, setCargaBorradores] = useState<{ ok: FilaDeBorrador[] } | LoadFailure | null>(null);
+  const [cargaBorradores, setCargaBorradores] = useState<CargaDeBorradores>(null);
   const [recargaBorradores, setRecargaBorradores] = useState(0);
   const [descartandoBorrador, setDescartandoBorrador] = useState<FilaDeBorrador | null>(null);
-  const [cargaBorradoresDePropiedad, setCargaBorradoresDePropiedad] = useState<{ ok: FilaDeBorrador[] } | LoadFailure | null>(null);
+  const [cargaBorradoresDePropiedad, setCargaBorradoresDePropiedad] = useState<CargaDeBorradores>(null);
   const [recargaBorradoresDePropiedad, setRecargaBorradoresDePropiedad] = useState(0);
   const [descartandoBorradorDePropiedad, setDescartandoBorradorDePropiedad] = useState<FilaDeBorrador | null>(null);
   // Al tocar «Nuevo contrato» con borradores guardados se ofrece seguir uno antes de empezar otro.
