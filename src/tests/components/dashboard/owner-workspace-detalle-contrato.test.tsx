@@ -23,6 +23,7 @@ vi.mock("@/lib/backend-client", () => ({
       attachDocument: vi.fn(),
       removeDocument: vi.fn(),
       terminate: vi.fn(),
+      setTenantNotifications: vi.fn(),
     },
   },
 }));
@@ -36,6 +37,7 @@ const mockAccess = vi.mocked(AlquiaBackendClient.contracts.getTenantAccess);
 const mockResend = vi.mocked(AlquiaBackendClient.contracts.resendTenantAccess);
 const mockRemoveDoc = vi.mocked(AlquiaBackendClient.contracts.removeDocument);
 const mockTerminate = vi.mocked(AlquiaBackendClient.contracts.terminate);
+const mockAvisos = vi.mocked(AlquiaBackendClient.contracts.setTenantNotifications);
 
 function contrato(over: Partial<ContractResponse> = {}): ContractResponse {
   return {
@@ -67,6 +69,7 @@ function contrato(over: Partial<ContractResponse> = {}): ContractResponse {
     incrementFrequencyMonths: 3,
     incrementValue: 8,
     currentRent: 478691,
+    tenantNotificationsEnabled: true,
     ...over,
   };
 }
@@ -272,6 +275,38 @@ describe("acceso del inquilino", () => {
     expect(ocupado).toHaveAttribute("aria-busy", "true");
     terminar();
     await waitFor(() => expect(screen.getByRole("button", { name: /Reenviar por correo/ })).toBeEnabled());
+  });
+
+  it("con los avisos apagados no deja reenviar el acceso y dice por qué", async () => {
+    await abrir(contrato({ tenantNotificationsEnabled: false }));
+
+    const reenviar = screen.getByRole("button", { name: /Reenviar por correo/ });
+    expect(reenviar).toBeDisabled();
+    expect(reenviar).toHaveAttribute("aria-describedby", "reenvio-sin-avisos-100");
+    expect(screen.getByText("Activá las notificaciones al inquilino para reenviar el acceso.")).toBeInTheDocument();
+    expect(mockResend).not.toHaveBeenCalled();
+  });
+
+  it("al activar los avisos, el reenvío vuelve a estar disponible", async () => {
+    mockAvisos.mockResolvedValue(contrato({ tenantNotificationsEnabled: true }));
+    await abrir(contrato({ tenantNotificationsEnabled: false }));
+
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Reenviar por correo/ })).toBeEnabled());
+    expect(screen.queryByText(/para reenviar el acceso/)).not.toBeInTheDocument();
+    expect(mockAvisos).toHaveBeenCalledWith(100, true);
+    expect(mockResend).not.toHaveBeenCalled();
+  });
+
+  it("si no se pueden cambiar los avisos, el interruptor queda como estaba", async () => {
+    mockAvisos.mockRejectedValue(new ApiError(500, "Boom"));
+    await abrir();
+
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cambiar los avisos al inquilino. Inténtelo de nuevo.");
+    expect(screen.getByRole("switch", { name: "Avisar al inquilino" })).toHaveAttribute("aria-checked", "true");
   });
 
   // Hoy el token vence a fin de mes (S-1), así que afirmar una vigencia sería falso.

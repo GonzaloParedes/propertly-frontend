@@ -248,7 +248,7 @@ export default function TenantPortal() {
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener");
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch { toast.error("No pudimos abrir el comprobante. Inténtelo de nuevo más tarde."); }
+    } catch (e) { console.error("Failed to open payment receipt", e); toast.error("No pudimos abrir el comprobante. Inténtelo de nuevo más tarde."); }
     finally { setViendoComprobante(null); }
   }
 

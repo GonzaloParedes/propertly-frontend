@@ -50,7 +50,8 @@ function ResendForm() {
         email: form.get("email") as string,
       });
       setSent(true);
-    } catch {
+    } catch (e) {
+      console.error("Email verification resend failed", e);
       setError(FALLBACK);
       setIsPending(false);
     }

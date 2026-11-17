@@ -109,3 +109,12 @@ estilos o refactors sin cambio de comportamiento.
 - **Convive con las demás reglas:** un change que toque UI respeta igual
   `docs/design/sistema-ui.md`, el manual de marca y la regla de Lucide; uno que
   toque tipos respeta «Modelo de datos: qué manda y qué se pide».
+
+## Datos opcionales del inquilino (ALQ-173)
+
+El alta manual, la carga desde PDF y la edición requieren sólo nombre y apellido. CUIT, correo y
+teléfono son opcionales y se validan cuando se completan. `TenantRequest`/`TenantResponse` admiten
+campos opcionales nulos; `TenantFormValues` conserva strings para los inputs controlados. Los
+adaptadores convierten datos ausentes a strings vacíos. Los avisos por contrato necesitan correo;
+los controles explican esa condición y el backend la vuelve a validar. El enlace del portal se
+puede copiar y compartir manualmente aun sin correo.

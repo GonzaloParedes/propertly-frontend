@@ -9,7 +9,7 @@ import { campo, cita, lectura } from "@/tests/lectura-de-contrato";
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     contractImports: { quota: vi.fn(), upload: vi.fn(), get: vi.fn(), retry: vi.fn(), complete: vi.fn(), discard: vi.fn(), document: vi.fn() },
-    contracts: { onboard: vi.fn() },
+    contracts: { onboard: vi.fn(), setTenantNotifications: vi.fn() },
     properties: { get: vi.fn() },
     tenants: { get: vi.fn() },
   },
@@ -29,6 +29,7 @@ vi.mock("@/components/dashboard/PdfPageViewer", async () => {
 import { AlquiaBackendClient } from "@/lib/backend-client";
 const importaciones = vi.mocked(AlquiaBackendClient.contractImports);
 const mockOnboard = vi.mocked(AlquiaBackendClient.contracts.onboard);
+const mockAvisos = vi.mocked(AlquiaBackendClient.contracts.setTenantNotifications);
 const mockPropiedad = vi.mocked(AlquiaBackendClient.properties.get);
 const mockInquilino = vi.mocked(AlquiaBackendClient.tenants.get);
 
@@ -79,8 +80,9 @@ async function confirmar(...nombres: string[]) {
 }
 
 async function completarContacto() {
-  await userEvent.type(screen.getByLabelText("Correo electrónico"), "lucia@correo.com");
-  await userEvent.type(screen.getByLabelText("Teléfono"), "1144552210");
+  if (!screen.queryByLabelText("Correo electrónico (opcional)")) await userEvent.click(boton(tarjeta("Correo y teléfono del inquilino"), "Corregir"));
+  await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "lucia@correo.com");
+  await userEvent.type(screen.getByLabelText("Teléfono (opcional)"), "1144552210");
 }
 
 /** Resuelve lo que la lectura de ejemplo deja pendiente: tipo, vencimiento y depósito por confirmar, y el contacto por completar. */
@@ -103,7 +105,7 @@ describe("la revisión muestra cada dato con su estado y su fuente", () => {
     expect(boton(vencimiento, "Está bien así")).toBeInTheDocument();
     expect(boton(vencimiento, "Corregir")).toBeInTheDocument();
 
-    expect(within(tarjeta("Correo y teléfono del inquilino")).getByText("Falta completar")).toBeInTheDocument();
+    expect(within(tarjeta("Correo y teléfono del inquilino")).queryByText("Falta completar")).not.toBeInTheDocument();
   });
 
   it("todo es de sólo lectura hasta «Corregir»", async () => {
@@ -138,16 +140,16 @@ describe("la revisión muestra cada dato con su estado y su fuente", () => {
 });
 
 describe("el contador y «Crear contrato»", () => {
-  it("con cuatro cosas por resolver, el botón está apagado y el pie dice cuántas quedan", async () => {
+  it("con tres cosas por resolver, el botón está apagado y el pie dice cuántas quedan", async () => {
     await hastaLaRevision();
-    expect(screen.getByText("Quedan 4 por resolver")).toBeInTheDocument();
+    expect(screen.getByText("Quedan 3 por resolver")).toBeInTheDocument();
     expect(crear()).toBeDisabled();
   });
 
   it("«Está bien así» resuelve un dato a revisar", async () => {
     await hastaLaRevision();
     await userEvent.click(boton(tarjeta("Vencimiento"), "Está bien así"));
-    expect(screen.getByText("Quedan 3 por resolver")).toBeInTheDocument();
+    expect(screen.getByText("Quedan 2 por resolver")).toBeInTheDocument();
     expect(within(tarjeta("Vencimiento")).getByText("Revisado")).toBeInTheDocument();
   });
 
@@ -159,19 +161,20 @@ describe("el contador y «Crear contrato»", () => {
     await userEvent.type(screen.getByLabelText("Día del mes (del 1 al 28)"), "15");
     await userEvent.click(boton(vencimiento, "Listo"));
     expect(within(vencimiento).getByText("Día 15 de cada mes")).toBeInTheDocument();
-    expect(screen.getByText("Quedan 3 por resolver")).toBeInTheDocument();
+    expect(screen.getByText("Quedan 2 por resolver")).toBeInTheDocument();
   });
 
-  it("completar el correo y el teléfono resuelve lo que faltaba", async () => {
+  it("completar los datos opcionales no agrega pendientes", async () => {
     await hastaLaRevision();
     await completarContacto();
     expect(screen.getByText("Quedan 3 por resolver")).toBeInTheDocument();
-    expect(within(tarjeta("Correo y teléfono del inquilino")).getByText("Completado")).toBeInTheDocument();
+    expect(screen.getByLabelText("Correo electrónico (opcional)")).toHaveValue("lucia@correo.com");
   });
 
   it("un correo incompleto lo marca y sigue faltando", async () => {
     await hastaLaRevision();
-    await userEvent.type(screen.getByLabelText("Correo electrónico"), "lucia@");
+    await userEvent.click(boton(tarjeta("Correo y teléfono del inquilino"), "Corregir"));
+    await userEvent.type(screen.getByLabelText("Correo electrónico (opcional)"), "lucia@");
     expect(screen.getByText("Ese correo no parece completo.")).toBeInTheDocument();
     expect(screen.getByText("Quedan 4 por resolver")).toBeInTheDocument();
   });
@@ -245,14 +248,14 @@ describe("cláusulas que no se cargan tal cual", () => {
     await hastaLaRevision(lectura({ "rent.dueDay": campo(30, "INFERRED", { validation: ["DUE_DAY_OUT_OF_RANGE"] }) }));
     const vencimiento = tarjeta("Vencimiento");
     expect(within(vencimiento).getByText("No se puede cargar así")).toBeInTheDocument();
-    expect(screen.getByText("Quedan 4 por resolver")).toBeInTheDocument();
+    expect(screen.getByText("Quedan 3 por resolver")).toBeInTheDocument();
     expect(within(vencimiento).getByText(/El contrato dice día 30, pero Alquia llega hasta el 28/)).toBeInTheDocument();
     expect(boton(vencimiento, "Cargarlo a mano")).toBeInTheDocument();
 
     await userEvent.click(boton(vencimiento, "Usar el día 28"));
     expect(within(vencimiento).getByText("Día 28 de cada mes")).toBeInTheDocument();
     expect(within(vencimiento).getByText(/El contrato dice día 30; se carga el 28/)).toBeInTheDocument();
-    expect(screen.getByText("Quedan 3 por resolver")).toBeInTheDocument();
+    expect(screen.getByText("Quedan 2 por resolver")).toBeInTheDocument();
 
     await userEvent.click(boton(vencimiento, "Deshacer"));
     expect(within(vencimiento).getByText("Sin elegir")).toBeInTheDocument();
@@ -303,7 +306,7 @@ describe("cláusulas que no se cargan tal cual", () => {
 
     await userEvent.type(within(inquilino).getByLabelText("Nombre"), "Lucía");
     await userEvent.type(within(inquilino).getByLabelText("Apellido"), "Benítez");
-    await userEvent.type(within(inquilino).getByLabelText("CUIT o CUIL"), "27334567899");
+    // First and last name are sufficient; tax ID can be added later.
     expect(crear()).toBeEnabled();
   });
 
@@ -365,13 +368,13 @@ describe("la propiedad y el inquilino que ya tiene", () => {
     expect(pedido.tenant).toEqual({ id: 7 });
   });
 
-  it("«Crear uno nuevo» vuelve a pedir el contacto y manda los datos leídos", async () => {
+  it("«Crear uno nuevo» permite agregar contacto opcional", async () => {
     await hastaLaRevision(lectura({}, { matches: coincidencias }));
     const inquilino = tarjeta("Inquilino");
     await userEvent.click(boton(inquilino, "Corregir"));
     await userEvent.click(within(inquilino).getByRole("radio", { name: /Crear uno nuevo/ }));
-    expect(screen.getByText("Quedan 3 por resolver")).toBeInTheDocument();
-    expect(within(screen.getByRole("article", { name: "Correo y teléfono del inquilino" })).getByText("Falta completar")).toBeInTheDocument();
+    expect(screen.getByText("Quedan 2 por resolver")).toBeInTheDocument();
+    expect(within(screen.getByRole("article", { name: "Correo y teléfono del inquilino" })).queryByText("Falta completar")).not.toBeInTheDocument();
   });
 });
 
@@ -799,5 +802,84 @@ describe("salir de la revisión", () => {
     await userEvent.click(screen.getByRole("button", { name: "Salir del asistente" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("avisos al inquilino al crear desde el PDF", () => {
+  it("nacen apagados y el alta no manda el flag", async () => {
+    await hastaLaRevision();
+    expect(screen.getByRole("switch", { name: "Avisar al inquilino" })).toHaveAttribute("aria-checked", "false");
+
+    await resolverTodo();
+    await userEvent.click(crear());
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(undefined));
+    expect(mockOnboard.mock.calls[0][0]).not.toHaveProperty("tenantNotificationsEnabled");
+    expect(mockAvisos).not.toHaveBeenCalled();
+  });
+
+  it("permite crear sin contacto y explica por qué los avisos están deshabilitados", async () => {
+    await hastaLaRevision();
+    const avisos = screen.getByRole("switch", { name: "Avisar al inquilino" });
+    expect(avisos).toBeDisabled();
+    expect(screen.getByText(/Agregue un correo electrónico al inquilino/)).toBeInTheDocument();
+    await confirmar("Tipo de propiedad", "Vencimiento", "Depósito en garantía");
+    expect(crear()).toBeEnabled();
+    await userEvent.click(crear());
+    await waitFor(() => expect(mockOnboard).toHaveBeenCalled());
+    expect(mockOnboard.mock.calls[0][0].tenant).toMatchObject({ new: { email: "", phoneNumber: "" } });
+    expect(mockAvisos).not.toHaveBeenCalled();
+  });
+
+  it("si los activa, el PUT va después del alta", async () => {
+    mockAvisos.mockResolvedValue({ id: 99 } as ContractResponse);
+    await hastaLaRevision();
+    await resolverTodo();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(crear());
+
+    await waitFor(() => expect(mockAvisos).toHaveBeenCalledWith(99, true));
+    expect(mockOnboard.mock.invocationCallOrder[0]).toBeLessThan(mockAvisos.mock.invocationCallOrder[0]);
+    expect(onComplete).toHaveBeenCalledWith({ avisosActivados: true });
+  });
+
+  it("si el PUT falla, el contrato queda creado y se avisa", async () => {
+    mockAvisos.mockRejectedValue(new ApiError(500, "x"));
+    await hastaLaRevision();
+    await resolverTodo();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(crear());
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true }));
+    expect(mockOnboard).toHaveBeenCalledTimes(1);
+    expect(importaciones.complete).toHaveBeenCalled();
+  });
+
+  it("si el PUT responde bien pero no se cierra la lectura, al terminar se informa que los avisos quedaron activos", async () => {
+    mockAvisos.mockResolvedValue({ id: 99 } as ContractResponse);
+    importaciones.complete.mockRejectedValue(new Error("sin red"));
+    await hastaLaRevision();
+    await resolverTodo();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(crear());
+
+    expect(await screen.findByRole("heading", { name: "El contrato se creó" })).toBeInTheDocument();
+    expect(screen.queryByText(/activar los avisos al inquilino/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Listo/ }));
+    expect(onComplete).toHaveBeenCalledWith({ avisosActivados: true });
+  });
+
+  it("si el PUT falla y no se cierra la lectura, el aviso queda en voseo", async () => {
+    mockAvisos.mockRejectedValue(new ApiError(500, "x"));
+    importaciones.complete.mockRejectedValue(new Error("sin red"));
+    await hastaLaRevision();
+    await resolverTodo();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(crear());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tampoco pudimos activar los avisos al inquilino. Podés activarlos desde el detalle del contrato.");
+    await userEvent.click(screen.getByRole("button", { name: /Listo/ }));
+    expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true });
   });
 });

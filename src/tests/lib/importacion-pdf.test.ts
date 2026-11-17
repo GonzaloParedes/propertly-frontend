@@ -152,8 +152,8 @@ describe("leerResultado", () => {
     expect(items.plazo.estado).toBe("ok");
   });
 
-  it("el correo y el teléfono que el contrato no trae «faltan»", () => {
-    expect(leerResultado(lectura()).items.contacto.estado).toBe("falta");
+  it("el correo y el teléfono que el contrato no trae son opcionales", () => {
+    expect(leerResultado(lectura()).items.contacto.estado).toBe("ok");
   });
 
   it("una cita que no se pudo verificar manda el dato a revisar, con el motivo en español", () => {
@@ -351,13 +351,13 @@ describe("pendientes", () => {
   it("lo revisable, lo que falta y nada más: cuenta cada cosa una vez", () => {
     const { lista } = pendientesDe(lectura());
     expect(lista.map((p) => `${p.id}:${p.razon}`)).toEqual([
-      "tipo:revisar", "contacto:falta", "vencimiento:revisar", "deposito:revisar",
+      "tipo:revisar", "vencimiento:revisar", "deposito:revisar",
     ]);
   });
 
   it("«Está bien así» resuelve un dato a revisar", () => {
     const { lista } = pendientesDe(lectura(), {}, {}, new Set<ItemId>(["tipo", "vencimiento", "deposito"]));
-    expect(lista.map((p) => p.id)).toEqual(["contacto"]);
+    expect(lista.map((p) => p.id)).toEqual([]);
   });
 
   it("completar el correo y el teléfono resuelve el contacto", () => {

@@ -155,6 +155,9 @@ export const AlquiaBackendClient = {
       apiGet<ContractResponse>(`/contracts/${id}`),
     update: (id: number, body: ContractRequest): Promise<ContractResponse> =>
       apiPut<ContractResponse>(`/contracts/${id}`, body),
+    // El alta no acepta el flag. Sólo el dueño: 404 si no lo es, 400 si falta `enabled`.
+    setTenantNotifications: (id: number, enabled: boolean): Promise<ContractResponse> =>
+      apiPut<ContractResponse>(`/contracts/${id}/tenant-notifications`, { enabled }),
     terminate: (id: number, body: ContractTerminateRequest): Promise<ContractResponse> =>
       apiPost<ContractResponse>(`/contracts/${id}/terminate`, body),
     // Programa las condiciones nuevas para un mes futuro: devuelve el sucesor
