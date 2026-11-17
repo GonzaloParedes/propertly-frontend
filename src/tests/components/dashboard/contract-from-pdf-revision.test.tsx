@@ -840,7 +840,7 @@ describe("avisos al inquilino al crear desde el PDF", () => {
 
     await waitFor(() => expect(mockAvisos).toHaveBeenCalledWith(99, true));
     expect(mockOnboard.mock.invocationCallOrder[0]).toBeLessThan(mockAvisos.mock.invocationCallOrder[0]);
-    expect(onComplete).toHaveBeenCalledWith(undefined);
+    expect(onComplete).toHaveBeenCalledWith({ avisosActivados: true });
   });
 
   it("si el PUT falla, el contrato queda creado y se avisa", async () => {
@@ -853,5 +853,33 @@ describe("avisos al inquilino al crear desde el PDF", () => {
     await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true }));
     expect(mockOnboard).toHaveBeenCalledTimes(1);
     expect(importaciones.complete).toHaveBeenCalled();
+  });
+
+  it("si el PUT responde bien pero no se cierra la lectura, al terminar se informa que los avisos quedaron activos", async () => {
+    mockAvisos.mockResolvedValue({ id: 99 } as ContractResponse);
+    importaciones.complete.mockRejectedValue(new Error("sin red"));
+    await hastaLaRevision();
+    await resolverTodo();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(crear());
+
+    expect(await screen.findByRole("heading", { name: "El contrato se creó" })).toBeInTheDocument();
+    expect(screen.queryByText(/activar los avisos al inquilino/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Listo/ }));
+    expect(onComplete).toHaveBeenCalledWith({ avisosActivados: true });
+  });
+
+  it("si el PUT falla y no se cierra la lectura, el aviso queda en voseo", async () => {
+    mockAvisos.mockRejectedValue(new ApiError(500, "x"));
+    importaciones.complete.mockRejectedValue(new Error("sin red"));
+    await hastaLaRevision();
+    await resolverTodo();
+    await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
+    await userEvent.click(crear());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tampoco pudimos activar los avisos al inquilino. Podés activarlos desde el detalle del contrato.");
+    await userEvent.click(screen.getByRole("button", { name: /Listo/ }));
+    expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true });
   });
 });

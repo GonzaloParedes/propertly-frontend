@@ -201,17 +201,17 @@ function PantallaDeFallo({ fallo, onReintentar, onOtroArchivo, onCargarAMano }: 
 }
 
 /** El contrato se creó pero no se pudo adjuntar el PDF. */
-function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete, avisosSinActivar = false }: Readonly<{
+function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete, avisos }: Readonly<{
   contratoId: number;
   onOpenContract?: (contratoId: number) => void;
   onComplete: (resultado?: ResultadoDelAlta) => void;
-  avisosSinActivar?: boolean;
+  avisos?: ResultadoDelAlta;
 }>) {
   return (
     <main className="owner-wizard__body">
       <h1>El contrato se creó</h1>
       <p><output>No pudimos adjuntar el PDF al contrato. El contrato está creado y no hace falta cargarlo de nuevo: puede adjuntar el archivo desde el detalle del contrato.</output></p>
-      {avisosSinActivar && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />Tampoco pudimos activar los avisos al inquilino. Puede activarlos desde el detalle del contrato.</p>}
+      {avisos?.avisosSinActivar && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />Tampoco pudimos activar los avisos al inquilino. Podés activarlos desde el detalle del contrato.</p>}
       <div className="owner-wizard-options">
         {onOpenContract && (
           <button type="button" className="owner-wizard-option" onClick={() => onOpenContract(contratoId)}>
@@ -219,7 +219,7 @@ function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete, avisosSi
             <span><b>Ver el contrato</b><small>Desde ahí puede adjuntar el PDF.</small></span>
           </button>
         )}
-        <button type="button" className="owner-wizard-option" onClick={() => onComplete(avisosSinActivar ? { avisosSinActivar: true } : undefined)}>
+        <button type="button" className="owner-wizard-option" onClick={() => onComplete(avisos)}>
           <span className="owner-wizard-option__icon"><Icon name="check" /></span>
           <span><b>Listo</b><small>Volver a sus contratos.</small></span>
         </button>
@@ -269,7 +269,8 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   const tieneCorreoInquilino = borrador?.inquilinoId != null
     ? correoExistente?.id === borrador.inquilinoId && correoValido(correoExistente.email ?? "")
     : correoValido(borrador?.correo ?? "");
-  const [avisosSinActivar, setAvisosSinActivar] = useState(false);
+  const [avisosDelAlta, setAvisosDelAlta] = useState<ResultadoDelAlta | undefined>();
+
   const [confirmandoSalida, setConfirmandoSalida] = useState<(() => void) | null>(null);
 
   // --- La lectura: se consulta hasta que termina ---
@@ -538,7 +539,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
         // Se reintenta una vez; si falla otra, se muestra el contrato como creado, sin el PDF.
       }
     }
-    setAvisosSinActivar(avisos?.avisosSinActivar === true);
+    setAvisosDelAlta(avisos);
     setCreado(contrato.id);
     setFase("creado");
     setGuardando(false);
@@ -663,7 +664,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
       )}
 
       {fase === "creado" && creado !== null && (
-        <PantallaCreadoSinPdf contratoId={creado} onOpenContract={onOpenContract} onComplete={onComplete} avisosSinActivar={avisosSinActivar} />
+        <PantallaCreadoSinPdf contratoId={creado} onOpenContract={onOpenContract} onComplete={onComplete} avisos={avisosDelAlta} />
       )}
 
       <footer className="owner-wizard__footer">

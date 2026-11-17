@@ -18,9 +18,10 @@ export function CartelAvisosInquilino({ activo, onChange, disabled = false, tien
       <Icon name="bell" />
       <div>
         <p><b>¿Querés notificar al inquilino?</b></p>
-        <p>Por ahora no le enviamos avisos de vencimiento ni de actualización. Puede activarlos ahora; si no, los activa después desde el detalle del contrato.</p>
+        <p>Por ahora no le enviamos avisos de vencimiento ni de actualización. Podés activarlos ahora; si no, los activás después desde el detalle del contrato.</p>
         {!tieneCorreo && <p>Agregue un correo electrónico al inquilino para activar los avisos. Puede crear el contrato sin avisos.</p>}
         <Interruptor label="Avisar al inquilino" checked={activo} disabled={disabled || !tieneCorreo} onChange={onChange} />
+
       </div>
     </aside>
   );
@@ -43,7 +44,8 @@ export function ControlAvisosInquilino({ enabled, onChange, tieneCorreo = true }
     setPending(true);
     try {
       await onChange(siguiente);
-    } catch {
+    } catch (e) {
+      console.error("Failed to toggle tenant notifications", e);
       setError("No pudimos cambiar los avisos al inquilino. Inténtelo de nuevo.");
     } finally {
       enCurso.current = false;
