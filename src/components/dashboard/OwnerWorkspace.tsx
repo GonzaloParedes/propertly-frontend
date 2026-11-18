@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
 import CreationWizard from "@/components/dashboard/CreationWizard";
@@ -25,6 +26,7 @@ import type {
   PropertyResponse,
   ReminderSettingsResponse,
   RentIncrementResponse,
+  TenantCreditCheckResponse,
   TenantFormValues,
   UserUpdateRequest,
 } from "@/lib/backend-types";
@@ -639,6 +641,7 @@ type TenantDetailProps = Readonly<{
   selectedId: string;
   tenants: readonly TenantRow[] | null;
   hasError: boolean;
+  demo?: boolean;
   onBack: () => void;
   onEdit: (tenant: TenantRow) => void;
   onArchive: (tenant: TenantRow) => void;
@@ -648,10 +651,46 @@ type TenantDetailProps = Readonly<{
   onResendPaymentLink: (contractId: number) => void | Promise<unknown>;
 }>;
 
+type CreditCheckState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "result"; data: TenantCreditCheckResponse }
+  | { status: "error" };
+
+const CREDIT_CHECK_DEMO: TenantCreditCheckResponse = {
+  noDebtsReported: false,
+  denominacion: "GARCIA PABLO MARTIN",
+  denominacionMismatch: false,
+  worstSituation: 1,
+  entityCount: 2,
+  totalAmountPesos: 850000,
+  hasLegalSituation: false,
+  hasJudicialProcess: false,
+  latestPeriod: "2026-09",
+};
+
+function formatPeriodoBcra(periodo: string): string {
+  const [year, month] = periodo.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+}
+
+function situacionLabel(s: number): string {
+  const labels: Record<number, string> = {
+    1: "Normal",
+    2: "Con seguimiento especial",
+    3: "Con problemas",
+    4: "Con alto riesgo de insolvencia",
+    5: "Irrecuperable",
+  };
+  return labels[s] ?? `Situación ${s}`;
+}
+
 function TenantDetail({
   selectedId,
   tenants,
   hasError,
+  demo = false,
   onBack,
   onEdit,
   onArchive,
@@ -660,6 +699,13 @@ function TenantDetail({
   onCopyPaymentLink,
   onResendPaymentLink,
 }: TenantDetailProps) {
+  const [creditCheck, setCreditCheck] = useState<CreditCheckState>({ status: "idle" });
+  const [lastSelectedId, setLastSelectedId] = useState(selectedId);
+  if (lastSelectedId !== selectedId) {
+    setLastSelectedId(selectedId);
+    setCreditCheck({ status: "idle" });
+  }
+
   const tenant = tenants?.find((item) => String(item.id) === selectedId);
   const breadcrumb = <nav className="owner-crumb"><button type="button" onClick={onBack}>Inquilinos</button><span>/</span><span>{tenant?.nombre ?? "…"}</span></nav>;
 
@@ -667,11 +713,116 @@ function TenantDetail({
     return <>{breadcrumb}<div className="owner-card">{hasError ? <LoadError title="No pudimos cargar este inquilino" card={false} /> : <Cargando>Cargando el inquilino…</Cargando>}</div></>;
   }
 
+  async function consultarBcra() {
+    if (!tenant) return;
+    setCreditCheck({ status: "loading" });
+    if (demo) {
+      await new Promise((r) => setTimeout(r, 600));
+      setCreditCheck({ status: "result", data: CREDIT_CHECK_DEMO });
+      return;
+    }
+    try {
+      const data = await AlquiaBackendClient.tenants.creditCheck(tenant.id);
+      setCreditCheck({ status: "result", data });
+    } catch {
+      setCreditCheck({ status: "error" });
+    }
+  }
+
   const description = [tenant.cuit, tenant.email, tenant.telefono].filter(Boolean).join(" · ");
   const headerAction = <>
     <Button tone="secondary" onClick={() => onEdit(tenant)}><Icon name="edit" size={18} />Editar datos</Button>
     <Button tone="danger" onClick={() => onArchive(tenant)}><Icon name="archive" size={18} />Archivar</Button>
   </>;
+
+  const creditCheckCard = (() => {
+    if (!tenant.cuit) {
+      return (
+        <div className="owner-card">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+            <h2 style={{ margin: 0 }}>Central de Deudores <small style={{ fontWeight: 400, fontSize: "0.8em" }}>BCRA</small></h2>
+            <Image src="/logos/bcra.svg" alt="BCRA" width={48} height={28} style={{ flexShrink: 0 }} />
+          </div>
+          <p className="owner-card__copy">Para consultar la situación crediticia en la Central de Deudores, el inquilino necesita tener un CUIT registrado.</p>
+          <Button tone="secondary" onClick={() => onEdit(tenant)}><Icon name="edit" size={18} />Editar inquilino</Button>
+        </div>
+      );
+    }
+    return (
+      <div className="owner-card">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+          <h2 style={{ margin: 0 }}>Central de Deudores <small style={{ fontWeight: 400, fontSize: "0.8em" }}>BCRA</small></h2>
+          <Image src="/logos/bcra.svg" alt="BCRA" width={48} height={28} style={{ flexShrink: 0 }} />
+        </div>
+        {creditCheck.status === "idle" && (
+          <>
+            <p className="owner-card__copy">Consultá si el inquilino tiene deudas informadas en la base de datos pública del BCRA. El resultado no se guarda.</p>
+            <Button tone="secondary" onClick={() => void consultarBcra()}>Consultar</Button>
+          </>
+        )}
+        {creditCheck.status === "loading" && <Cargando>Consultando al BCRA…</Cargando>}
+        {creditCheck.status === "result" && (() => {
+          const { data } = creditCheck;
+          if (data.noDebtsReported) {
+            return (
+              <>
+                <div className="bcra-ok">
+                  <div className="bcra-ok__icon"><Icon name="check" size={22} /></div>
+                  <div className="bcra-ok__body">
+                    <b>Sin deudas informadas</b>
+                    <small>No figura en la Central de Deudores del BCRA.</small>
+                  </div>
+                </div>
+                <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
+              </>
+            );
+          }
+          const sit = data.worstSituation ?? 1;
+          const verdictClass = sit === 1 ? "bcra-verdict--ok" : sit === 2 ? "bcra-verdict--warn" : "bcra-verdict--bad";
+          const stepClass = (n: number): string => {
+            if (n > sit) return "";
+            if (sit === 1) return "bcra-scale__step--1";
+            if (sit === 2) return "bcra-scale__step--2";
+            if (sit === 3) return "bcra-scale__step--3";
+            if (sit === 4) return "bcra-scale__step--4";
+            return "bcra-scale__step--5";
+          };
+          return (
+            <>
+              {data.denominacionMismatch && (
+                <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />El nombre en el BCRA (<b>{data.denominacion}</b>) no coincide con el registrado en Alquia.</p>
+              )}
+              <div className="bcra-scale">
+                <p className="bcra-scale__label">Situación crediticia</p>
+                <div className="bcra-scale__steps" role="meter" aria-valuenow={sit} aria-valuemin={1} aria-valuemax={5}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <div key={n} className={`bcra-scale__step${n <= sit ? ` ${stepClass(n)}` : ""}`} />
+                  ))}
+                </div>
+                <div className="bcra-scale__legend"><span>Normal</span><span>Irrecuperable</span></div>
+              </div>
+              <span className={`bcra-verdict ${verdictClass}`}>{situacionLabel(sit)}</span>
+              <dl className="owner-definition">
+                <div><dt>Entidades informantes</dt><dd>{data.entityCount}</dd></div>
+                <div><dt>Monto total</dt><dd>{formatearMonto(data.totalAmountPesos!)}</dd></div>
+                {data.hasLegalSituation && <div><dt>Situación jurídica</dt><dd>Sí</dd></div>}
+                {data.hasJudicialProcess && <div><dt>Proceso judicial</dt><dd>Sí</dd></div>}
+                {data.latestPeriod && <div><dt>Datos al</dt><dd>{formatPeriodoBcra(data.latestPeriod)}</dd></div>}
+              </dl>
+              <p className="owner-card__copy" style={{ fontSize: "0.78em", marginTop: "0.75rem" }}>Los datos los informan las entidades financieras. Su publicación no implica conformidad del BCRA. Para rectificar, comunicarse con la entidad que informó el dato.</p>
+              <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
+            </>
+          );
+        })()}
+        {creditCheck.status === "error" && (
+          <>
+            <p className="owner-card__copy">No pudimos obtener la información del BCRA en este momento. Podés consultar directamente en <a href="https://www.bcra.gob.ar/situacion-crediticia/" target="_blank" rel="noopener noreferrer">su sitio oficial</a>.</p>
+            <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Reintentar</Button>
+          </>
+        )}
+      </div>
+    );
+  })();
 
   return <>
     {breadcrumb}
@@ -700,6 +851,7 @@ function TenantDetail({
           <PaymentLinkBox contractId={tenant.contratoId} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={tenant.avisosAlInquilino && Boolean(tenant.email)} />
         </div>
       )}
+      {creditCheckCard}
     </section>
   </>;
 }
@@ -2883,7 +3035,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const detailContent: Record<Exclude<Detail, null>, React.ReactNode> = {
     property: <PropertyDetail demo={demo} demoProperty={selectedProperty} selectedId={selected} properties={propiedades} rawProperties={propiedadesCrudas} hasError={propiedadesError} contractStatusIsUnknown={sinDatoDeContrato} onBack={() => setDetail(null)} onCreateContract={() => void nuevoContrato(demo ? undefined : Number(selected))} onOpenDemoContract={(contractId) => openDetail("contract", contractId)} onArchive={(property) => { setErrorArchivar(null); setArchivando(property); }} onEdit={editarPropiedad} />,
     contract: <ContractDetail demo={demo} demoContract={selectedContract} contractLoad={cargaContrato} increments={aumentos} scheduledContract={programado} successorId={sucesorId} unconfirmedInvoices={cuotasSinConfirmar.filter((fila) => fila.contractId === contratoAbierto?.id)} onConfirmInvoice={pedirConfirmacion} onBack={() => setDetail(null)} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onOpenConditions={() => setConditionsOpen(true)} onBeginTermination={() => { setErrorContrato(null); setFechaFin(new Date().toISOString().slice(0, 10)); setFinalizando(true); }} onCopyDemoLink={() => toast.exito("Enlace copiado.")} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} onDownloadDocument={(contract) => descargarDocumento(contract)} onRemoveDocument={(contractId) => quitarDocumento(contractId)} onAttachDocument={(contractId, file) => adjuntarDocumento(contractId, file)} onSetTenantNotifications={(contractId, enabled) => cambiarAvisosAlInquilino(contractId, enabled)} />,
-    tenant: <TenantDetail onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => void nuevoContrato()} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
+    tenant: <TenantDetail demo={demo} onResendPaymentLink={(contractId) => reenviarEnlace(contractId)} selectedId={selected} tenants={inquilinos} hasError={inquilinosError} onBack={() => setDetail(null)} onEdit={editarInquilino} onArchive={prepararArchivoDeInquilino} onCreateContract={() => void nuevoContrato()} onOpenContract={(contractId) => openDetail("contract", String(contractId))} onCopyPaymentLink={(contractId) => copiarEnlace(contractId)} />,
   };
   const viewContent: Record<OwnerView, React.ReactNode> = {
     propiedades: <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => void nuevaPropiedad()} onOpenProperty={(propertyId) => openDetail("property", propertyId)} borradores={borradoresDePropiedad} onResumeDraft={retomarBorradorDePropiedad} onDiscardDraft={setDescartandoBorradorDePropiedad} />,

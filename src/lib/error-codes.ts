@@ -54,6 +54,8 @@ export const ERROR = {
   RENT_ESTIMATE_UNAVAILABLE: "urn:alquia:error:rent-estimate-unavailable",
   RENT_ESTIMATE_NO_DATA: "urn:alquia:error:rent-estimate-no-data",
   RENT_ESTIMATE_NOT_ENOUGH_DATA: "urn:alquia:error:rent-estimate-not-enough-data",
+  BCRA_NO_TAX_ID: "urn:alquia:error:bcra-no-tax-id",
+  BCRA_UNAVAILABLE: "urn:alquia:error:bcra-unavailable",
 } as const;
 
 export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
