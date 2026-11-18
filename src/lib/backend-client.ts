@@ -10,6 +10,7 @@ import type {
   UserUpdateRequest,
   TenantRequest,
   TenantResponse,
+  TenantCreditCheckResponse,
   PropertyRequest,
   PropertyResponse,
   RentEstimate,
@@ -120,6 +121,8 @@ export const AlquiaBackendClient = {
       apiPost<TenantResponse>(`/tenants/${id}/archive`),
     restore: (id: number): Promise<TenantResponse> =>
       apiPost<TenantResponse>(`/tenants/${id}/restore`),
+    creditCheck: (id: number): Promise<TenantCreditCheckResponse> =>
+      apiGet<TenantCreditCheckResponse>(`/tenants/${id}/credit-check`),
   },
 
   properties: {

@@ -82,6 +82,18 @@ export interface TenantResponse {
   phoneNumber?: string | null;
 }
 
+export interface TenantCreditCheckResponse {
+  noDebtsReported: boolean;
+  denominacion?: string | null;
+  denominacionMismatch: boolean;
+  worstSituation?: number | null;
+  entityCount?: number | null;
+  totalAmountPesos?: number | null;
+  hasLegalSituation: boolean;
+  hasJudicialProcess: boolean;
+  latestPeriod?: string | null;
+}
+
 // --- Properties ---
 
 // Las ocho de la lista de producto. Las cuatro últimas llegaron con la rama

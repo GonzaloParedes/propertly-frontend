@@ -998,3 +998,24 @@
   .owner-tutorial__acciones .owner-button--quiet{margin-right:0}
 }
 @media (prefers-reduced-motion:reduce){.owner-tutorial__tarjeta{scroll-behavior:auto}}
+
+/* ── BCRA credit check ─────────────────────────────────────────────────── */
+.bcra-ok{display:flex;align-items:center;gap:var(--esp-16);margin:var(--esp-20) 0 var(--esp-18);padding:var(--esp-20) 22px;border-radius:14px;background:var(--exito-bg)}
+.bcra-ok__icon{display:grid;width:48px;height:48px;flex:none;place-items:center;border-radius:999px;background:var(--exito);color:#fff}
+.bcra-ok__body b{display:block;color:var(--exito);font-size:17px}
+.bcra-ok__body small{display:block;margin-top:3px;color:var(--gris);font-size:14px}
+.bcra-scale{margin:var(--esp-20) 0 var(--esp-6)}
+.bcra-scale__label{margin-bottom:9px;color:var(--gris);font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.bcra-scale__steps{display:flex;gap:6px}
+.bcra-scale__step{flex:1;height:10px;border-radius:999px;background:var(--divisor);transition:background .2s}
+.bcra-scale__step--1{background:#1E874B}
+.bcra-scale__step--2{background:#4CAF50}
+.bcra-scale__step--warn{background:var(--adv)}
+.bcra-scale__step--3{background:var(--adv)}
+.bcra-scale__step--4{background:var(--error)}
+.bcra-scale__step--5{background:#9B1C2E}
+.bcra-scale__legend{display:flex;justify-content:space-between;margin-top:5px;color:var(--gris);font-size:12px}
+.bcra-verdict{display:inline-flex;align-items:center;gap:8px;margin:var(--esp-12) 0;padding:var(--esp-8) var(--esp-16);border-radius:999px;font-size:15px;font-weight:700}
+.bcra-verdict--ok{background:var(--exito-bg);color:var(--exito)}
+.bcra-verdict--warn{background:var(--warn-bg);color:var(--adv)}
+.bcra-verdict--bad{background:var(--error-bg);color:var(--error)}
