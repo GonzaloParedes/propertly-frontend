@@ -35,11 +35,24 @@ export default function Tutorial({ auto = false }: Readonly<{ auto?: boolean }>)
 
   const medir = useCallback((traerAVista: boolean) => {
     const nodo = anclaVisible(actual.anclas);
-    if (traerAVista) nodo?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-    const rect = nodo?.getBoundingClientRect() ?? null;
     const foco = focoRef.current;
     const tarjeta = tarjetaRef.current;
     if (!foco || !tarjeta) return;
+    if (traerAVista) nodo?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+
+    // El alto natural, sin el tope del paso anterior.
+    tarjeta.style.maxHeight = "";
+    const alto = tarjeta.offsetHeight || ALTO_ESTIMADO;
+    const viewport = { ancho: window.innerWidth, alto: window.innerHeight };
+    let rect = nodo?.getBoundingClientRect() ?? null;
+    let lugar = ubicarTarjeta(rect, alto, viewport);
+    if (traerAVista && nodo && lugar.recortada) {
+      // En un celular no entra ni arriba ni abajo: se sube el control al borde
+      // de arriba para dejarle a la tarjeta todo el lugar de abajo.
+      nodo.scrollIntoView?.({ block: "start", inline: "nearest" });
+      rect = nodo.getBoundingClientRect();
+      lugar = ubicarTarjeta(rect, alto, viewport);
+    }
 
     if (rect) {
       const pad = 6;
@@ -53,11 +66,10 @@ export default function Tutorial({ auto = false }: Readonly<{ auto?: boolean }>)
     }
     raizRef.current?.classList.toggle("owner-tutorial--con-foco", rect !== null);
 
-    const alto = tarjeta.offsetHeight || ALTO_ESTIMADO;
-    const lugar = ubicarTarjeta(rect, alto, { ancho: window.innerWidth, alto: window.innerHeight });
     tarjeta.style.top = `${lugar.top}px`;
     tarjeta.style.left = `${lugar.left}px`;
     tarjeta.style.width = `${lugar.width}px`;
+    tarjeta.style.maxHeight = `${lugar.maxHeight}px`;
     tarjeta.style.transform = "none";
   }, [actual]);
 
