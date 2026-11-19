@@ -1043,3 +1043,11 @@
   .owner-calc__counters{grid-template-columns:1fr;gap:0}
   .owner-calc__amount{font-size:28px}
 }
+.owner-tool__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-12)}
+.owner-tool__head h2{margin:0}
+.owner-tool__head small{font-weight:400;font-size:.8em}
+.owner-tool__head img{flex-shrink:0}
+.owner-tool__modos{margin-bottom:var(--esp-18)}
+.owner-tool__counters{margin-top:var(--esp-8)}
+.owner-calc>.owner-wizard-label:first-child{margin-top:0}
+.owner-calc~.rent-estimate{max-width:720px}
