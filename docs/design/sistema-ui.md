@@ -849,6 +849,13 @@ de `docs/backend/pedido-de-cambios-api.md`.
 | Andando contra el backend | Todavía con datos de ejemplo |
 |---|---|
 | **Todo el panel del propietario** (sus tres detalles, tres altas, el ajuste de cuotas y el cambio de condiciones a futuro) **y el portal del inquilino** | Cancelar o editar un cambio ya programado (el backend no lo ofrece) |
+| **Herramientas** (ALQ-145): la calculadora de aumentos por ICL/IPC contra `GET /tools/rent-increase` | — |
+
+La calculadora (`CalculadoraDeAumentos`) no usa la sesión ni el workspace, para
+poder montarla después en la landing pública. El mes del último aumento se elige
+con flechas (no hay `<select>`) y sólo llega hasta el último aumento que ya rige
+este mes: antes el índice de esos meses no está publicado y el backend responde
+`rent-increase-not-due`.
 
 Dos reglas que salieron de conectarlas, y que valen para las que faltan:
 

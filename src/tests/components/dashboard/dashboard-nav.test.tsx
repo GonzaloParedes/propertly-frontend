@@ -78,6 +78,10 @@ describe("ítems del menú", () => {
       "href",
       "/dashboard/cobranzas"
     );
+    expect(within(drawer).getByRole("link", { name: "Herramientas" })).toHaveAttribute(
+      "href",
+      "/dashboard/herramientas"
+    );
   });
 });
 

@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Bell,
   Building2,
+  Calculator,
   Calendar,
   Check,
   Clock,
@@ -29,6 +30,7 @@ import {
   TrendingUp,
   TriangleAlert,
   Users,
+  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -76,6 +78,8 @@ const MAP = {
   copy: Copy,
   help: CircleHelp,
   bell: Bell,
+  tools: Wrench,
+  calculator: Calculator,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof MAP;
