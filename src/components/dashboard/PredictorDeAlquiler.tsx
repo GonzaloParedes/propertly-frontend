@@ -6,6 +6,14 @@ import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import Counter from "@/components/ui/Counter";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { Currency, PropertyResponse } from "@/lib/backend-types";
+
+const DEMO_PROPIEDADES: PropertyResponse[] = [
+  { id: 1, street: "Av. Rivadavia", number: "2340", floorUnit: "5.º A", city: "CABA", province: "Buenos Aires", latitude: -34.6168, longitude: -58.4166, bedrooms: 2, bathrooms: 1, coveredArea: 68, category: "APARTMENT", activeContract: null },
+  { id: 2, street: "Lavalle", number: "950", floorUnit: "3.º B", city: "CABA", province: "Buenos Aires", latitude: -34.6029, longitude: -58.3817, bedrooms: 1, bathrooms: 1, coveredArea: 54, category: "APARTMENT", activeContract: null },
+  { id: 3, street: "Colón", number: "2255", floorUnit: "4.º D", city: "Vicente López", province: "Buenos Aires", latitude: -34.5241, longitude: -58.4754, bedrooms: 2, bathrooms: 1, coveredArea: 58, category: "APARTMENT", activeContract: null },
+  { id: 4, street: "Belgrano", number: "445", floorUnit: "PB", city: "Morón", province: "Buenos Aires", latitude: -34.6490, longitude: -58.6218, bedrooms: 3, bathrooms: 2, coveredArea: 92, category: "HOUSE", activeContract: null },
+  { id: 5, street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires", latitude: -34.4731, longitude: -58.5157, bedrooms: 0, coveredArea: 52, category: "COMMERCIAL_PREMISES", activeContract: null },
+];
 import type { Direccion } from "@/lib/borradores";
 import { formatearDireccion } from "@/lib/formato";
 
@@ -38,7 +46,7 @@ export function faltanteDeLaCarga(carga: CargaRapida): string | null {
  */
 export default function PredictorDeAlquiler({ demo = false }: Readonly<{ demo?: boolean }>) {
   // En el prototipo no hay sesión: no hay propiedades que traer.
-  const [propiedades, setPropiedades] = useState<PropertyResponse[] | null>(demo ? [] : null);
+  const [propiedades, setPropiedades] = useState<PropertyResponse[] | null>(demo ? DEMO_PROPIEDADES : null);
   const [modo, setModo] = useState<Modo | null>(null);
   const [elegida, setElegida] = useState<number | null>(null);
   const [carga, setCarga] = useState<CargaRapida>(CARGA_INICIAL);

@@ -12,6 +12,13 @@ import { copyDeError } from "@/lib/error-codes";
 
 const FALLBACK = "No pudimos obtener la información del BCRA en este momento.";
 
+const DEMO_INQUILINOS: Array<{ id: number; nombre: string; cuit: string }> = [
+  { id: 1, nombre: "Jorge Paletta", cuit: "20224567899" },
+  { id: 2, nombre: "Marta Suárez", cuit: "27248910556" },
+  { id: 3, nombre: "Diego Ferrari", cuit: "20301154829" },
+  { id: 4, nombre: "Ana Ferreyra", cuit: "27289041139" },
+];
+
 /** Los inquilinos que se pueden consultar: los que tienen un CUIT/CUIL completo. */
 export function inquilinosConCuit(tenants: TenantResponse[]): Array<{ id: number; nombre: string; cuit: string }> {
   return tenants
@@ -30,7 +37,7 @@ export default function ConsultaBcra({ demo = false }: Readonly<{ demo?: boolean
   const [consultando, setConsultando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CreditCheckResponse | null>(null);
-  const [inquilinos, setInquilinos] = useState<ReturnType<typeof inquilinosConCuit>>([]);
+  const [inquilinos, setInquilinos] = useState<ReturnType<typeof inquilinosConCuit>>(demo ? DEMO_INQUILINOS : []);
 
   useEffect(() => {
     if (demo) return;
