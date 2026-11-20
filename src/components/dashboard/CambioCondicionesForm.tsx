@@ -16,7 +16,7 @@ import {
   type CondicionesNuevas,
   type MetodoActualizacion,
 } from "@/lib/cambio-condiciones";
-import { formatearPeriodo } from "@/lib/formato";
+import { formatearPeriodo, simboloDe } from "@/lib/formato";
 
 /**
  * El backend distingue cada rechazo con un `type` estable (RFC 9457). Los que el
@@ -110,7 +110,7 @@ export default function CambioCondicionesForm({
     return <>
       <div className="owner-dialog__body">
         <p>Desde <b>{formatearPeriodo(c.mes)}</b> rigen estas condiciones:</p>
-        <ul>{resumenDeCondiciones(c).map((linea) => <li key={linea}>{linea}</li>)}</ul>
+        <ul>{resumenDeCondiciones(c, contrato.currency).map((linea) => <li key={linea}>{linea}</li>)}</ul>
         <p>Las cuotas anteriores a ese mes no cambian, estén pagas o no: el contrato actual
           sigue vigente hasta entonces.</p>
       </div>
@@ -139,7 +139,7 @@ export default function CambioCondicionesForm({
         <label className="owner-wizard-field">
           <span>Nuevo alquiler por mes</span>
           <div className="owner-dialog-money">
-            <i aria-hidden="true">$</i>
+            <i aria-hidden="true">{simboloDe(contrato.currency)}</i>
             <input inputMode="numeric" aria-label="Nuevo alquiler mensual"
               value={c.alquiler ? Number(c.alquiler).toLocaleString("es-AR") : ""}
               onChange={(e) => cambiar({ alquiler: e.target.value.replace(/\D/g, "") })} />

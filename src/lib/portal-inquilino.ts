@@ -105,11 +105,11 @@ export function buildFilasInquilino(
     // lo manda. Sin recargo, lo que se adeuda es el total —así lo define el propio
     // backend (`amountDue = total` cuando no hay `lateFee`)—, así que caer al total
     // deja la pantalla correcta en vez de romperla con `undefined.toLocaleString`.
-    monto: formatearMonto(invoice.amountDue ?? invoice.total),
+    monto: formatearMonto(invoice.amountDue ?? invoice.total, invoice.currency),
     recargo: vistaDeRecargo(invoice, "inquilino"),
     recargoEnCurso: recargoEnCurso(invoice),
-    importeBase: formatearMonto(invoice.baseAmount),
-    ajustes: invoice.adjustments.map((a) => describirAjuste(a, invoice.baseAmount)),
+    importeBase: formatearMonto(invoice.baseAmount, invoice.currency),
+    ajustes: invoice.adjustments.map((a) => describirAjuste(a, invoice.baseAmount, invoice.currency)),
     estado: estadoDeCuota(invoice),
     confirmada: invoice.confirmed,
     pago: pagoRelevante(invoice),
@@ -126,7 +126,7 @@ export function buildImportesPendientesInquilino(
   return (preInvoices ?? []).map((preInvoice) => ({
     contractId: preInvoice.contractId,
     periodoISO: preInvoice.period.slice(0, 7),
-    monto: formatearMonto(preInvoice.amount),
+    monto: formatearMonto(preInvoice.amount, preInvoice.currency),
   }));
 }
 

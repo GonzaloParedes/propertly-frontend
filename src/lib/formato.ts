@@ -5,19 +5,44 @@ export function formatearDireccion(property: PropertyResponse): string {
   return property.floorUnit ? `${base}, ${property.floorUnit}` : base;
 }
 
-export function formatearMonto(monto: number): string {
-  return `$ ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+/**
+ * Un monto en la moneda de su contrato: `US$` para dólares y `$` para pesos,
+ * sin convertir. `moneda` ausente significa pesos (el backend no la exige y las
+ * cuotas heredan la del contrato). Todo monto de un contrato pasa por acá con
+ * su moneda: omitirla en un contrato en dólares es el bug ALQ-187.
+ */
+export function formatearMonto(monto: number, moneda?: Currency): string {
+  return `${simboloDe(moneda)} ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+}
+
+/** Alias histórico de `formatearMonto` con la moneda explícita. */
+export function formatearImporte(monto: number, moneda: Currency | undefined): string {
+  return formatearMonto(monto, moneda);
+}
+
+/** «$» o «US$». */
+export function simboloDe(moneda: Currency | undefined): string {
+  return moneda === "USD" ? "US$" : "$";
+}
+
+/** Montos agrupados por moneda: nunca se suman pesos con dólares. */
+export type TotalesPorMoneda = Partial<Record<Currency, number>>;
+
+/** Suma `monto` al total de su moneda, en el lugar. */
+export function sumarEnMoneda(totales: TotalesPorMoneda, monto: number, moneda: Currency | undefined): void {
+  const clave = moneda ?? "ARS";
+  totales[clave] = (totales[clave] ?? 0) + monto;
 }
 
 /**
- * Como `formatearMonto`, pero respeta la moneda: `US$` para dólares y `$` para
- * pesos. `moneda` ausente significa pesos (las cuotas heredan la del contrato y
- * el backend no la exige). Lo usan el detalle de contrato, la importación de PDF
- * y la predicción de alquiler.
+ * «$ 450.000 · US$ 1.200». Pesos primero; una moneda en cero no se muestra, salvo
+ * que todas lo estén (entonces «$ 0», como antes de separar por moneda).
  */
-export function formatearImporte(monto: number, moneda: Currency | undefined): string {
-  const simbolo = moneda === "USD" ? "US$" : "$";
-  return `${simbolo} ${monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+export function formatearTotales(totales: TotalesPorMoneda): string {
+  const partes = (["ARS", "USD"] as const)
+    .filter((moneda) => (totales[moneda] ?? 0) !== 0)
+    .map((moneda) => formatearMonto(totales[moneda] ?? 0, moneda));
+  return partes.length > 0 ? partes.join(" · ") : formatearMonto(0);
 }
 
 const MESES = [

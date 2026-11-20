@@ -75,6 +75,17 @@ describe("buildFilasInquilino", () => {
     expect(fila.estado).toBe("Vencida");
   });
 
+  it("muestra los importes en dólares si el contrato es en dólares", () => {
+    const [fila] = buildFilasInquilino([cuota({ currency: "USD", baseAmount: 1000, total: 1100, amountDue: 1100 })]);
+    expect(fila.monto).toBe("US$ 1.100");
+    expect(fila.importeBase).toBe("US$ 1.000");
+  });
+
+  it("las proyecciones respetan la moneda", () => {
+    const [importe] = buildImportesPendientesInquilino([{ contractId: 5, currency: "USD", period: "2026-10-01", amount: 1000 }]);
+    expect(importe.monto).toBe("US$ 1.000");
+  });
+
   it("usa el mismo criterio de estado que Cobranzas: un pago esperando gana", () => {
     const conPago = cuota({ status: "DUE", payments: [pago()] });
     expect(buildFilasInquilino([conPago])[0].estado).toBe("Pago a confirmar");

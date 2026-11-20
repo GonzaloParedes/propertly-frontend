@@ -88,12 +88,32 @@ describe("resumenDeCobranza", () => {
       cuota({ id: 2, status: "PENDING", total: 505000, amountDue: 505000 }),
       cuota({ id: 3, status: "DUE", total: 478691, amountDue: 478691 }),
     ]);
-    expect(r.cobrado).toBe(430000);
-    expect(r.aVencer).toBe(505000);
-    expect(r.vencido).toBe(478691);
-    expect(r.emitido).toBe(1413691);
+    expect(r.cobrado).toEqual({ ARS: 430000 });
+    expect(r.aVencer).toEqual({ ARS: 505000 });
+    expect(r.vencido).toEqual({ ARS: 478691 });
+    expect(r.emitido).toEqual({ ARS: 1413691 });
     expect(r.cobradas).toBe(1);
     expect(r.cuotas).toBe(3);
+  });
+
+  // ALQ-187: un alquiler en dólares no se suma a uno en pesos.
+  it("separa los montos por moneda", () => {
+    const r = resumenDeCobranza([
+      cuota({ id: 1, status: "PAID", amountDue: 430000, payments: [{ id: 1, invoiceId: 1, status: "CONFIRMED", submittedByTenant: false }] }),
+      cuota({ id: 2, currency: "USD", status: "PAID", amountDue: 1200, payments: [{ id: 2, invoiceId: 2, status: "CONFIRMED", submittedByTenant: false }] }),
+      cuota({ id: 3, currency: "USD", status: "DUE", amountDue: 800 }),
+    ]);
+    expect(r.cobrado).toEqual({ ARS: 430000, USD: 1200 });
+    expect(r.vencido).toEqual({ USD: 800 });
+    expect(r.emitido).toEqual({ ARS: 430000, USD: 2000 });
+  });
+
+  it("con un backend sin moneda en la cuota, usa la del contrato", () => {
+    const r = resumenDeCobranza(
+      [cuota({ id: 1, contractId: 200, status: "PENDING", amountDue: 1500 })],
+      [CONTRATO, { ...CONTRATO, id: 200, currency: "USD" }]
+    );
+    expect(r.aVencer).toEqual({ USD: 1500 });
   });
 
   it("un pago esperando confirmación no cuenta como cobrado", () => {
@@ -103,8 +123,8 @@ describe("resumenDeCobranza", () => {
       payments: [{ id: 9, invoiceId: 1, status: "AWAITING_CONFIRMATION", submittedByTenant: true }],
     });
     const r = resumenDeCobranza([esperando]);
-    expect(r.cobrado).toBe(0);
-    expect(r.vencido).toBe(520000);
+    expect(r.cobrado).toEqual({});
+    expect(r.vencido).toEqual({ ARS: 520000 });
   });
 
   it("uno esperando pero no vencido todavía cuenta por vencer", () => {
@@ -113,17 +133,18 @@ describe("resumenDeCobranza", () => {
       total: 520000, amountDue: 520000, lateFee: null,
       payments: [{ id: 9, invoiceId: 1, status: "AWAITING_CONFIRMATION", submittedByTenant: true }],
     });
-    expect(resumenDeCobranza([esperando]).aVencer).toBe(520000);
+    expect(resumenDeCobranza([esperando]).aVencer).toEqual({ ARS: 520000 });
   });
 
   it("un mes sin cuotas no inventa montos", () => {
     expect(resumenDeCobranza([])).toEqual({
-      cobrado: 0,
-      aVencer: 0,
-      vencido: 0,
-      emitido: 0,
+      cobrado: {},
+      aVencer: {},
+      vencido: {},
+      emitido: {},
       cuotas: 0,
       cobradas: 0,
+      cantidades: { cobrado: 0, aVencer: 0, vencido: 0 },
     });
   });
 });
@@ -131,18 +152,32 @@ describe("resumenDeCobranza", () => {
 describe("proporciones", () => {
   it("reparte en porcentaje sobre lo emitido", () => {
     const p = proporciones({
-      cobrado: 250,
-      aVencer: 250,
-      vencido: 500,
-      emitido: 1000,
+      cobrado: { ARS: 250 },
+      aVencer: { ARS: 250 },
+      vencido: { ARS: 500 },
+      emitido: { ARS: 1000 },
       cuotas: 3,
       cobradas: 1,
+      cantidades: { cobrado: 1, aVencer: 1, vencido: 1 },
     });
     expect(p).toEqual({ cobrado: 25, aVencer: 25, vencido: 50 });
   });
 
+  it("con pesos y dólares reparte por cantidad de cuotas, sin convertir", () => {
+    const p = proporciones({
+      cobrado: { ARS: 900000 },
+      aVencer: { USD: 1000 },
+      vencido: { USD: 500 },
+      emitido: { ARS: 900000, USD: 1500 },
+      cuotas: 4,
+      cobradas: 2,
+      cantidades: { cobrado: 2, aVencer: 1, vencido: 1 },
+    });
+    expect(p).toEqual({ cobrado: 50, aVencer: 25, vencido: 25 });
+  });
+
   it("sin nada emitido no divide por cero", () => {
-    const p = proporciones({ cobrado: 0, aVencer: 0, vencido: 0, emitido: 0, cuotas: 0, cobradas: 0 });
+    const p = proporciones({ cobrado: {}, aVencer: {}, vencido: {}, emitido: {}, cuotas: 0, cobradas: 0, cantidades: { cobrado: 0, aVencer: 0, vencido: 0 } });
     expect(p).toEqual({ cobrado: 0, aVencer: 0, vencido: 0 });
   });
 });
@@ -161,13 +196,21 @@ describe("proyeccionDelMes", () => {
       CONTRATO,
       { ...CONTRATO, id: 200 },
     ]);
-    expect(r.total).toBe(998691);
+    expect(r.total).toEqual({ ARS: 998691 });
     expect(r.aDefinir).toBe(0);
+  });
+
+  it("proyecta por moneda: no suma dólares con pesos", () => {
+    const r = proyeccionDelMes(
+      [pre(100, 478691), { ...pre(200, 1200), currency: "USD" }],
+      [CONTRATO, { ...CONTRATO, id: 200, currency: "USD" }]
+    );
+    expect(r.total).toEqual({ ARS: 478691, USD: 1200 });
   });
 
   it("cuenta aparte el contrato sin proyección, sin estimarlo", () => {
     const r = proyeccionDelMes([pre(100, 478691)], [CONTRATO, { ...CONTRATO, id: 200 }]);
-    expect(r.total).toBe(478691);
+    expect(r.total).toEqual({ ARS: 478691 });
     expect(r.aDefinir).toBe(1);
   });
 
@@ -244,6 +287,18 @@ describe("avisosPendientes", () => {
     expect(vencidas?.cuerpo).toContain("$ 998.691");
     // La más antigua mide el atraso real.
     expect(vencidas?.cuerpo).toContain("hace 18 días");
+  });
+
+  it("el total de vencidas no mezcla monedas", () => {
+    const avisos = avisosPendientes(
+      [
+        cuota({ id: 1, status: "DUE", amountDue: 478691, dueDate: "2026-09-10" }),
+        cuota({ id: 2, currency: "USD", status: "DUE", amountDue: 1200, dueDate: "2026-09-20" }),
+      ],
+      [CONTRATO],
+      HOY
+    );
+    expect(avisos.find((a) => a.id === "vencidas")?.cuerpo).toContain("$ 478.691 · US$ 1.200 en total");
   });
 
   it("una sola vencida se dice en singular", () => {

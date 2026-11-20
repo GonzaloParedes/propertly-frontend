@@ -64,7 +64,7 @@ import {
   type FilaPropiedad,
 } from "@/lib/propiedades";
 import { CATEGORIAS, etiquetaCategoria } from "@/lib/propiedad";
-import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
+import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo, formatearTotales, simboloDe } from "@/lib/formato";
 import {
   avisosPendientes,
   contratosVigentes,
@@ -284,7 +284,10 @@ function separarCalleYNumero(direccion: string): { calle: string; numero: string
  * resto de sus pantallas.
  */
 const inicioDemo = {
-  cobranza: { cobrado: 430000, aVencer: 505000, vencido: 998691, emitido: 1933691, cuotas: 4, cobradas: 1 },
+  cobranza: {
+    cobrado: { ARS: 430000 }, aVencer: { ARS: 505000 }, vencido: { ARS: 998691 }, emitido: { ARS: 1933691 },
+    cuotas: 4, cobradas: 1, cantidades: { cobrado: 1, aVencer: 1, vencido: 2 },
+  },
   cartera: { total: 5, conContrato: 4, sinAlquilar: 1 },
   avisos: [
     { id: "d1", tono: "info" as const, accion: "Revisar",
@@ -333,7 +336,7 @@ const inicioDemo = {
   })) as ContractResponse[],
 };
 
-const proyeccionDemo: Proyeccion = { total: 1451986, aDefinir: 1 };
+const proyeccionDemo: Proyeccion = { total: { ARS: 1451986 }, aDefinir: 1 };
 
 const AVISOS_DEMO: ReminderSettingsResponse = {
   daysBeforeDue: 7,
@@ -1156,13 +1159,13 @@ function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: Proy
   }
 
   if (projection.aDefinir === 0) {
-    return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearMonto(projection.total)}</b><small>Todos los contratos ya están definidos</small></div>;
+    return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearTotales(projection.total)}</b><small>Todos los contratos ya están definidos</small></div>;
   }
 
   const sinContar = projection.aDefinir === 1
     ? "No incluye 1 contrato que aumenta por un índice todavía sin publicar."
     : `No incluye ${projection.aDefinir} contratos que aumentan por un índice todavía sin publicar.`;
-  return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearMonto(projection.total)}</b><small>{sinContar}</small></div>;
+  return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearTotales(projection.total)}</b><small>{sinContar}</small></div>;
 }
 
 /**
@@ -1258,6 +1261,7 @@ function Overview({
 
   const { cobranza, cartera, avisos, contratos, tieneContratos } = data;
   const percent = proporciones(cobranza);
+  const hayEmitido = Object.values(cobranza.emitido).some((monto) => (monto ?? 0) > 0);
   const cuotasCobradasLabel = cobranza.cuotas === 1 ? "cuota cobrada" : "cuotas cobradas";
   return <>
     {header}
@@ -1265,10 +1269,10 @@ function Overview({
       <div className="owner-portfolio__money">
         <p className="owner-eyebrow">COBRANZA DE {currentMonth.toUpperCase()}</p>
         {cobranza.cuotas === 0 ? <div className="owner-portfolio__empty"><EmptyArt name="cobranzas" /><div><b>Todavía no hay cuotas emitidas este mes</b><span>Se emiten solas a partir de sus contratos activos.</span></div></div> : <>
-          <strong>{formatearMonto(cobranza.cobrado)}</strong>
-          <p>de {formatearMonto(cobranza.emitido)} emitidos este mes · {cobranza.cobradas} de {cobranza.cuotas} {cuotasCobradasLabel}</p>
-          <div className="owner-meter" aria-label={cobranza.emitido > 0 ? `${percent.cobrado}% cobrado, ${percent.aVencer}% por vencer y ${percent.vencido}% vencido` : "Sin montos emitidos"}>{cobranza.cobrado > 0 && <i className="owner-meter__ok" style={{ flexGrow: cobranza.cobrado }} />}{cobranza.aVencer > 0 && <i className="owner-meter__warn" style={{ flexGrow: cobranza.aVencer }} />}{cobranza.vencido > 0 && <i className="owner-meter__bad" style={{ flexGrow: cobranza.vencido }} />}</div>
-          <div className="owner-key"><span><Icon name="check" />Cobrado <b>{formatearMonto(cobranza.cobrado)}</b></span><span><Icon name="clock" />A vencer <b>{formatearMonto(cobranza.aVencer)}</b></span><span><Icon name="x" />Vencido <b>{formatearMonto(cobranza.vencido)}</b></span></div>
+          <strong>{formatearTotales(cobranza.cobrado)}</strong>
+          <p>de {formatearTotales(cobranza.emitido)} emitidos este mes · {cobranza.cobradas} de {cobranza.cuotas} {cuotasCobradasLabel}</p>
+          <div className="owner-meter" aria-label={hayEmitido ? `${percent.cobrado}% cobrado, ${percent.aVencer}% por vencer y ${percent.vencido}% vencido` : "Sin montos emitidos"}>{percent.cobrado > 0 && <i className="owner-meter__ok" style={{ flexGrow: percent.cobrado }} />}{percent.aVencer > 0 && <i className="owner-meter__warn" style={{ flexGrow: percent.aVencer }} />}{percent.vencido > 0 && <i className="owner-meter__bad" style={{ flexGrow: percent.vencido }} />}</div>
+          <div className="owner-key"><span><Icon name="check" />Cobrado <b>{formatearTotales(cobranza.cobrado)}</b></span><span><Icon name="clock" />A vencer <b>{formatearTotales(cobranza.aVencer)}</b></span><span><Icon name="x" />Vencido <b>{formatearTotales(cobranza.vencido)}</b></span></div>
         </>}
       </div>
       <div className="owner-portfolio__summary">
@@ -1277,7 +1281,7 @@ function Overview({
       </div>
     </section>
     <ActionsSection avisos={avisos} borradores={borradores} borradoresDePropiedad={borradoresDePropiedad} hayContratos={contratos.length > 0} onOpenCollections={onOpenCollections} onResumeDraft={onResumeDraft} onDiscardDraft={onDiscardDraft} onRetryDrafts={onRetryDrafts} onResumePropertyDraft={onResumePropertyDraft} onDiscardPropertyDraft={onDiscardPropertyDraft} onRetryPropertyDrafts={onRetryPropertyDrafts} />
-    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
+    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent, contract.currency)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
 
@@ -1849,7 +1853,7 @@ function useOverviewLoad({ enabled, setOverview, setProjection }: Readonly<{
     const contracts = AlquiaBackendClient.contracts.list();
     Promise.all([AlquiaBackendClient.invoices.list({ period: periodoCorriente(today) }), AlquiaBackendClient.properties.list(), contracts]).then(([invoices, properties, loadedContracts]) => {
       if (cancelled) return;
-      setOverview({ cobranza: resumenDeCobranza(invoices), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts), tieneContratos: loadedContracts.length > 0 });
+      setOverview({ cobranza: resumenDeCobranza(invoices, loadedContracts), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts), tieneContratos: loadedContracts.length > 0 });
     }).catch(() => {
       if (!cancelled) setOverview({ error: true });
     });
@@ -1948,14 +1952,15 @@ function InvoiceAdjustmentDialog({
     form.value > 0
       ? describirAjuste(
           { id: -1, name: form.nombre, kind: form.kind, valueType: form.valueType, value: form.value },
-          invoice.importeBase
+          invoice.importeBase,
+          invoice.moneda
         )
       : null;
   const detallePreview = previewLinea?.detalle ? ` · ${previewLinea.detalle}` : "";
   const previewTexto = previewLinea
     ? `Este ítem: ${previewLinea.efecto}${detallePreview}`
     : "Agregá un ítem: nombre, tipo (suma o resta) y valor (monto o porcentaje).";
-  return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Suma o resta</legend><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></fieldset><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Tipo de valor</legend><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></fieldset><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : "$"}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
+  return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase, invoice.moneda)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase, invoice.moneda); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total, invoice.moneda)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Suma o resta</legend><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></fieldset><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Tipo de valor</legend><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></fieldset><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : simboloDe(invoice.moneda)}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
 }
 
 function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza; onClose: () => void; onChanged: (mensaje: string) => void }>) {
@@ -1984,7 +1989,7 @@ function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza
     }
   }
   function guardar() {
-    const importe = validarImporteDeRecargo(texto, editable!.maximo);
+    const importe = validarImporteDeRecargo(texto, editable!.maximo, editable!.moneda);
     if ("error" in importe) {
       setError(importe.error);
       return;
@@ -1995,11 +2000,11 @@ function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza
   return <Dialog title="Recargo por atraso" onClose={onClose}><div className="owner-dialog__body">
     <p>{row.direccion} · cuota de {row.periodo}.</p>
     <dl className="owner-definition">
-      <div><dt>Recargo de hoy</dt><dd>{formatearMonto(editable.actual)}</dd></div>
+      <div><dt>Recargo de hoy</dt><dd>{formatearMonto(editable.actual, editable.moneda)}</dd></div>
       {editable.modificado && <div><dt>Recargo modificado</dt><dd>No es el que calcula el contrato</dd></div>}
     </dl>
     {cambiando && <label className="owner-wizard-field"><span>Nuevo recargo</span><input ref={campo} inputMode="decimal" placeholder="Ej: 3.000" value={texto} aria-invalid={error !== null} onChange={(event) => { setTexto(event.target.value); setError(null); }} /></label>}
-    {cambiando && editable.maximo !== null && <p className="owner-dialog__hint">Entre {formatearMonto(0)} y {formatearMonto(editable.maximo)}, el recargo de hoy según el contrato.</p>}
+    {cambiando && editable.maximo !== null && <p className="owner-dialog__hint">Entre {formatearMonto(0, editable.moneda)} y {formatearMonto(editable.maximo, editable.moneda)}, el recargo de hoy según el contrato.</p>}
     {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
   </div><div className="owner-dialog__foot">
     {cambiando ? <>

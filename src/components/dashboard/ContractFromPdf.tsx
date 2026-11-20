@@ -646,6 +646,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
                         onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }}
                         inicioISO={b.inicio}
                         alquiler={Number(b.alquiler)}
+                        moneda={b.moneda}
                         frecuenciaMeses={Number(b.frecuencia)}
                         tieneRecargo={hayPunitorios}
                         diaVencimiento={Number(b.dia)}

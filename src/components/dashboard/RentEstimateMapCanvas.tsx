@@ -218,7 +218,7 @@ export default function RentEstimateMapCanvas({
                 </>
               )}
               <br />
-              {formatearMonto(listing.monthlyRent)}
+              {formatearMonto(listing.monthlyRent, listing.currency)}
               {listing.url && (
                 <>
                   <br />

@@ -48,7 +48,7 @@ export function describirActualizacion(contract: ContractResponse): string {
     return `Ajusta por ${contract.incrementIndexName ?? "índice"} ${cada}`;
   }
   if (contract.incrementMethod === "FIXED_AMOUNT") {
-    return `Sube ${formatearMonto(contract.incrementValue ?? 0)} ${cada}`;
+    return `Sube ${formatearMonto(contract.incrementValue ?? 0, contract.currency)} ${cada}`;
   }
   return `Sube ${contract.incrementValue ?? 0} % ${cada}`;
 }
@@ -81,7 +81,7 @@ export function buildFilasContrato(
         actualizacion: describirActualizacion(contract),
         fin: formatearFecha(fin),
         finISO: fin,
-        alquiler: formatearMonto(contract.currentRent),
+        alquiler: formatearMonto(contract.currentRent, contract.currency),
         estado: estadoDeContrato(contract, hoyISO),
         sucesorId: contract.successorContractId ?? null,
       };

@@ -419,7 +419,7 @@ function tarjetaOpcional(ctx: Contexto, id: GrupoDeCondiciones, extra: { sinSopo
   if (!item.presente && !sumados.has(id)) return null;
   const sinSoporte = item.noSePuede !== null;
   const decidido = decisiones[id] !== undefined;
-  return tarjeta(id, resumenDeGrupo(b.otras, id), {
+  return tarjeta(id, resumenDeGrupo(b.otras, id, b.moneda), {
     porQue: sinSoporte ? explicacion(item, moneda) : undefined,
     detalle: sinSoporte && extra.sinSoporte && decidido ? extra.resultado : undefined,
     corregible: !sinSoporte,
@@ -442,7 +442,7 @@ function tarjetaDeGarantias({ lectura, b, sumados, erroresDelBackend, tarjeta, p
   if (!item.presente && !sumados.has("garantias")) return null;
   const valor = b.otras.garantias.length > 0
     ? <ul className="owner-pdf-item__value owner-pdf-item__lista">{b.otras.garantias.map((garantia) => <li key={garantia.id}>{describirBorrador(garantia)}</li>)}</ul>
-    : resumenDeGrupo(b.otras, "garantias");
+    : resumenDeGrupo(b.otras, "garantias", b.moneda);
   // La tarjeta muestra sus motivos sólo al revisar; con algo por completar (el garante sin datos, una
   // garantía a medias) también tienen que verse.
   const porCompletar = pendientePor("garantias")?.razon === "falta" && item.motivos.length > 0;

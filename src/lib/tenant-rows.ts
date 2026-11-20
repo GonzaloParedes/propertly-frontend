@@ -93,7 +93,7 @@ export function buildTenantRows(
       contratoId: contrato?.id ?? null,
       avisosAlInquilino: contrato?.tenantNotificationsEnabled === true,
       direccion: contrato ? formatearDireccion(contrato.property) : null,
-      alquiler: contrato ? formatearMonto(contrato.currentRent) : null,
+      alquiler: contrato ? formatearMonto(contrato.currentRent, contrato.currency) : null,
       estado: contrato ? estadoDeCuotas(cuotas) : "Sin contrato",
     };
   });

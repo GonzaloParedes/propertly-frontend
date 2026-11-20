@@ -150,6 +150,8 @@ export type PropertyCategory =
 export interface ActiveContractSummary {
   id: number;
   currentRent: number;
+  /** La del contrato. Ausente = ARS (backends anteriores a ALQ-187). */
+  currency?: Currency;
   status: ContractStatus;
 }
 
@@ -526,6 +528,8 @@ export interface AdjustmentResponse {
 export interface InvoiceResponse {
   id: number;
   contractId: number;
+  /** La del contrato: una cuota no tiene moneda propia. Ausente = ARS. */
+  currency?: Currency;
   period: string;
   dueDate: string;
   baseAmount: number;
@@ -557,6 +561,8 @@ export interface TenantCalendarInvoiceResponse extends InvoiceResponse {
 /** Importe proyectado, todavía no emitido ni confirmado como cuota. */
 export interface TenantCalendarPreInvoiceResponse {
   contractId: number;
+  /** La del contrato. Ausente = ARS. */
+  currency?: Currency;
   period: string;
   amount: number;
 }
@@ -621,6 +627,8 @@ export interface InvoiceListParams {
  */
 export interface PreInvoiceResponse {
   contractId: number;
+  /** La del contrato. Ausente = ARS. */
+  currency?: Currency;
   period: string;
   amount: number;
 }

@@ -144,3 +144,16 @@ describe("validarImporteDeRecargo", () => {
     expect(validarImporteDeRecargo("6.750", 6750)).toEqual({ valor: 6750 });
   });
 });
+
+describe("recargo en dólares (ALQ-187)", () => {
+  it("muestra el recargo y el máximo en la moneda de la cuota", () => {
+    const enDolares = { ...cuota(recargo({ amount: 15, nextDayAmount: 20 }), 1015), currency: "USD" as const };
+    expect(vistaDeRecargo(enDolares, "propietario")?.monto).toBe("US$ 15");
+    expect(recargoEditable(enDolares)?.moneda).toBe("USD");
+    expect(validarImporteDeRecargo("20", 15, "USD")).toEqual({ error: "El máximo es US$ 15, el recargo de hoy según el contrato." });
+  });
+
+  it("acepta un importe escrito con «US$»", () => {
+    expect(validarImporteDeRecargo("US$ 10", 15, "USD")).toEqual({ valor: 10 });
+  });
+});

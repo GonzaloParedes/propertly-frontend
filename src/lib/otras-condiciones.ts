@@ -1,4 +1,5 @@
-import type { CommissionPayer, ContractTerms, LateFeeMethod } from "@/lib/backend-types";
+import type { CommissionPayer, ContractTerms, Currency, LateFeeMethod } from "@/lib/backend-types";
+import { simboloDe } from "@/lib/formato";
 import { armarGarantias, hayErrores, validarGarantias, type GarantiaBorrador } from "@/lib/garantias";
 
 /**
@@ -116,14 +117,15 @@ export function armarOtrasCondiciones(o: OtrasCondiciones): Partial<ContractTerm
   return terminos;
 }
 
-const PESOS = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
+/** El monto en la moneda del alquiler (el depósito no puede ir en otra). Ausente = pesos. */
+const MONTO = (n: number, moneda?: Currency) => `${simboloDe(moneda)} ${n.toLocaleString("es-AR")}`;
 const PORCENTAJE = (texto: string) => `${texto.trim().replace(".", ",")} %`;
 
-function montoDePunitorios(p: PunitoriosBorrador, method: LateFeeMethod): string {
+function montoDePunitorios(p: PunitoriosBorrador, method: LateFeeMethod, moneda?: Currency): string {
   const { unidad, sufijo } = definicionDeMetodo(method);
   const valor = numeroDecimal(p.value);
   if (Number.isNaN(valor)) return "—";
-  if (unidad === "$") return `${PESOS(valor)} ${sufijo}`;
+  if (unidad === "$") return `${MONTO(valor, moneda)} ${sufijo}`;
   return `${PORCENTAJE(p.value)} ${sufijo.replace(/^% /, "")}`;
 }
 
@@ -133,9 +135,9 @@ function textoDeGracia(graceDays: string): string {
   return ` · ${graceDays} ${unidad} de gracia`;
 }
 
-export function describirPunitorios(p: PunitoriosBorrador): string {
+export function describirPunitorios(p: PunitoriosBorrador, moneda?: Currency): string {
   if (p.method === null) return "Sin cargar";
-  return `${montoDePunitorios(p, p.method)}${textoDeGracia(p.graceDays)}`;
+  return `${montoDePunitorios(p, p.method, moneda)}${textoDeGracia(p.graceDays)}`;
 }
 
 function textoDeGarantias(cantidad: number): string {
@@ -144,17 +146,17 @@ function textoDeGarantias(cantidad: number): string {
 }
 
 /** Una línea por grupo, para la lista del paso y para la revisión. */
-export function resumenDeGrupo(o: OtrasCondiciones, grupo: GrupoDeCondiciones): string {
+export function resumenDeGrupo(o: OtrasCondiciones, grupo: GrupoDeCondiciones, moneda?: Currency): string {
   switch (grupo) {
     case "deposito":
-      return o.deposito === "" ? "Sin cargar" : PESOS(Number(o.deposito));
+      return o.deposito === "" ? "Sin cargar" : MONTO(Number(o.deposito), moneda);
     case "comision": {
       if (o.comision === "") return "Sin cargar";
       const quien = QUIEN_PAGA.find((q) => q.valor === o.quienPagaComision)?.etiqueta.toLowerCase();
       return quien ? `${PORCENTAJE(o.comision)} · ${quien}` : PORCENTAJE(o.comision);
     }
     case "punitorios":
-      return describirPunitorios(o.punitorios);
+      return describirPunitorios(o.punitorios, moneda);
     case "garantias":
       return textoDeGarantias(o.garantias.length);
   }

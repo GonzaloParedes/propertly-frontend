@@ -1,7 +1,8 @@
 import { estadoDeCuota, type EstadoCuota } from "@/lib/cobranzas";
-import { formatearDireccion, formatearFecha, formatearMonto } from "@/lib/formato";
+import { formatearDireccion, formatearFecha, formatearMonto, formatearTotales, sumarEnMoneda, type TotalesPorMoneda } from "@/lib/formato";
 import type {
   ContractResponse,
+  Currency,
   InvoiceResponse,
   PreInvoiceResponse,
   PropertyResponse,
@@ -24,12 +25,15 @@ export function periodoSiguiente(hoyISO: string): string {
 // --- Cobranza del mes ---
 
 export interface ResumenCobranza {
-  cobrado: number;
-  aVencer: number;
-  vencido: number;
-  emitido: number;
+  /** Por moneda: un contrato en dólares no se suma a uno en pesos (ALQ-187). */
+  cobrado: TotalesPorMoneda;
+  aVencer: TotalesPorMoneda;
+  vencido: TotalesPorMoneda;
+  emitido: TotalesPorMoneda;
   cuotas: number;
   cobradas: number;
+  /** Cuántas cuotas cayeron en cada estado: la barra las usa si hay más de una moneda. */
+  cantidades: { cobrado: number; aVencer: number; vencido: number };
 }
 
 /**
@@ -42,50 +46,82 @@ export interface ResumenCobranza {
  *
  * Una cuota con el pago esperando confirmación **no** está cobrada —todavía
  * falta que el propietario lo acepte—, así que cuenta según su vencimiento.
+ *
+ * Cada importe se acumula en la moneda de su contrato. `contracts` sólo hace
+ * falta con un backend anterior a ALQ-187, que no manda la moneda en la cuota.
  */
-export function resumenDeCobranza(invoices: InvoiceResponse[]): ResumenCobranza {
+export function resumenDeCobranza(
+  invoices: InvoiceResponse[],
+  contracts: ContractResponse[] = []
+): ResumenCobranza {
   const resumen: ResumenCobranza = {
-    cobrado: 0,
-    aVencer: 0,
-    vencido: 0,
-    emitido: 0,
+    cobrado: {},
+    aVencer: {},
+    vencido: {},
+    emitido: {},
     cuotas: invoices.length,
     cobradas: 0,
+    cantidades: { cobrado: 0, aVencer: 0, vencido: 0 },
+  };
+  const monedaDe = monedaDeCuota(contracts);
+  const sumar = (clave: "cobrado" | "aVencer" | "vencido", invoice: InvoiceResponse) => {
+    sumarEnMoneda(resumen[clave], invoice.amountDue, monedaDe(invoice));
+    resumen.cantidades[clave] += 1;
   };
 
   for (const invoice of invoices) {
-    resumen.emitido += invoice.amountDue;
+    sumarEnMoneda(resumen.emitido, invoice.amountDue, monedaDe(invoice));
     const estado: EstadoCuota = estadoDeCuota(invoice);
     if (estado === "Pagada") {
-      resumen.cobrado += invoice.amountDue;
+      sumar("cobrado", invoice);
       resumen.cobradas += 1;
     } else if (estado === "Vencida") {
-      resumen.vencido += invoice.amountDue;
+      sumar("vencido", invoice);
     } else if (estado === "Pago a confirmar") {
       // El pago está cargado pero sin aceptar: se ubica por su vencimiento, que
       // es lo que determina si ya debería estar cobrada.
-      if (invoice.status === "DUE") resumen.vencido += invoice.amountDue;
-      else resumen.aVencer += invoice.amountDue;
+      sumar(invoice.status === "DUE" ? "vencido" : "aVencer", invoice);
     } else {
-      resumen.aVencer += invoice.amountDue;
+      sumar("aVencer", invoice);
     }
   }
 
   return resumen;
 }
 
-/** Los tres porcentajes de la barra. Sin nada emitido, los tres en cero. */
+/** La moneda de una cuota: la suya o, con un backend anterior a ALQ-187, la de su contrato. */
+function monedaDeCuota(contracts: ContractResponse[]): (invoice: InvoiceResponse) => Currency | undefined {
+  const porContrato = new Map(contracts.map((c) => [c.id, c.currency]));
+  return (invoice) => invoice.currency ?? porContrato.get(invoice.contractId);
+}
+
+function monedasCon(totales: TotalesPorMoneda): Currency[] {
+  return (Object.keys(totales) as Currency[]).filter((m) => (totales[m] ?? 0) !== 0);
+}
+
+/**
+ * Los tres porcentajes de la barra. Con una sola moneda, sobre lo emitido; con
+ * pesos y dólares a la vez no hay un total común sin convertir, así que la barra
+ * reparte por cantidad de cuotas. Sin nada emitido, los tres en cero.
+ */
 export function proporciones(resumen: ResumenCobranza): {
   cobrado: number;
   aVencer: number;
   vencido: number;
 } {
-  if (resumen.emitido <= 0) return { cobrado: 0, aVencer: 0, vencido: 0 };
-  const pct = (monto: number) => Math.round((monto / resumen.emitido) * 100);
+  const monedas = monedasCon(resumen.emitido);
+  if (monedas.length === 0) return { cobrado: 0, aVencer: 0, vencido: 0 };
+  if (monedas.length === 1) {
+    const [moneda] = monedas;
+    const emitido = resumen.emitido[moneda] ?? 0;
+    const pct = (totales: TotalesPorMoneda) => Math.round(((totales[moneda] ?? 0) / emitido) * 100);
+    return { cobrado: pct(resumen.cobrado), aVencer: pct(resumen.aVencer), vencido: pct(resumen.vencido) };
+  }
+  const pct = (cantidad: number) => Math.round((cantidad / resumen.cuotas) * 100);
   return {
-    cobrado: pct(resumen.cobrado),
-    aVencer: pct(resumen.aVencer),
-    vencido: pct(resumen.vencido),
+    cobrado: pct(resumen.cantidades.cobrado),
+    aVencer: pct(resumen.cantidades.aVencer),
+    vencido: pct(resumen.cantidades.vencido),
   };
 }
 
@@ -93,8 +129,9 @@ export function proporciones(resumen: ResumenCobranza): {
 
 export interface Proyeccion {
   /** `null` cuando ningún contrato es determinable todavía: un «$ 0» ahí diría
-   *  que no va a cobrar nada, que es lo contrario de «no se sabe». */
-  total: number | null;
+   *  que no va a cobrar nada, que es lo contrario de «no se sabe». Por moneda,
+   *  como la cobranza: pesos y dólares no se suman. */
+  total: TotalesPorMoneda | null;
   /** Contratos vigentes sin proyección para ese mes. */
   aDefinir: number;
 }
@@ -112,7 +149,11 @@ export function proyeccionDelMes(
   const vigentes = contracts.filter((c) => c.status === "ACTIVE");
   const conProyeccion = new Set(preInvoices.map((p) => p.contractId));
   const aDefinir = vigentes.filter((c) => !conProyeccion.has(c.id)).length;
-  const total = preInvoices.reduce((suma, p) => suma + p.amount, 0);
+  const monedaDeContrato = new Map(contracts.map((c) => [c.id, c.currency]));
+  const total: TotalesPorMoneda = {};
+  for (const p of preInvoices) {
+    sumarEnMoneda(total, p.amount, p.currency ?? monedaDeContrato.get(p.contractId));
+  }
   return { total: preInvoices.length === 0 ? null : total, aDefinir };
 }
 
@@ -159,6 +200,9 @@ export function avisosPendientes(
     const contrato = porContrato.get(invoice.contractId);
     return contrato ? formatearDireccion(contrato.property) : "Una propiedad";
   };
+  // Backends anteriores a ALQ-187 no mandan la moneda en la cuota: sale del contrato.
+  const monedaDe = (invoice: InvoiceResponse) =>
+    invoice.currency ?? porContrato.get(invoice.contractId)?.currency;
   const inquilinoDe = (invoice: InvoiceResponse) => {
     const contrato = porContrato.get(invoice.contractId);
     return contrato ? `${contrato.tenant.firstName} ${contrato.tenant.lastName}` : "El inquilino";
@@ -175,7 +219,7 @@ export function avisosPendientes(
       tono: "info",
       titulo: `${inquilinoDe(invoice)} cargó un pago y espera su confirmación`,
       cuerpo: [
-        `${direccionDe(invoice)} · ${formatearMonto(invoice.amountDue)}`,
+        `${direccionDe(invoice)} · ${formatearMonto(invoice.amountDue, monedaDe(invoice))}`,
         cuando && `Subió el comprobante ${cuando}.`,
       ]
         .filter(Boolean)
@@ -197,7 +241,9 @@ export function avisosPendientes(
 
   const vencidas = invoices.filter((i) => estadoDeCuota(i) === "Vencida");
   if (vencidas.length > 0) {
-    const total = vencidas.reduce((suma, i) => suma + i.amountDue, 0);
+    // Por moneda: sumar pesos con dólares daría un número que no existe.
+    const total: TotalesPorMoneda = {};
+    for (const i of vencidas) sumarEnMoneda(total, i.amountDue, monedaDe(i));
     // La más vieja fija el «desde cuándo»: es la que mide el atraso real.
     const masVieja = vencidas.reduce((a, b) => (a.dueDate <= b.dueDate ? a : b), vencidas[0]);
     const cuando = hace(masVieja.dueDate, hoyISO);
@@ -209,7 +255,7 @@ export function avisosPendientes(
           ? "Una cuota vencida sin pago"
           : `${vencidas.length} cuotas vencidas sin pago`,
       cuerpo: [
-        `${formatearMonto(total)} en total`,
+        `${formatearTotales(total)} en total`,
         cuando && `La más antigua venció ${cuando}.`,
       ]
         .filter(Boolean)

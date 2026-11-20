@@ -110,6 +110,18 @@ describe("buildFilasCobranza", () => {
     expect(fila.monto).toBe("$ 478.691");
   });
 
+  // ALQ-187: un contrato en dólares mostraba sus cuotas como pesos.
+  it("muestra el monto en la moneda del contrato", () => {
+    const [fila] = buildFilasCobranza([invoice({ currency: "USD", amountDue: 1200, total: 1200 })], [contract({ currency: "USD" })]);
+    expect(fila.monto).toBe("US$ 1.200");
+    expect(fila.moneda).toBe("USD");
+  });
+
+  it("con un backend sin moneda en la cuota, usa la del contrato", () => {
+    const [fila] = buildFilasCobranza([invoice({ amountDue: 1200, total: 1200 })], [contract({ currency: "USD" })]);
+    expect(fila.monto).toBe("US$ 1.200");
+  });
+
   // El backend manda LocalDate sin zona; pasarlo por new Date() lo correría un
   // día para atrás en Argentina.
   it("no corre la fecha de vencimiento un día", () => {
