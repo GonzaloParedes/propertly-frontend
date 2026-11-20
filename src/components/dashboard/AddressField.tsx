@@ -5,6 +5,7 @@ import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { AddressSuggestionResponse } from "@/lib/backend-types";
 import type { Direccion } from "@/lib/borradores";
 import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
+import MapPickerField from "@/components/dashboard/MapPickerField";
 
 /**
  * El buscador de direcciones del alta de propiedad: sugiere con `/address-lookup/autocomplete`
@@ -64,6 +65,7 @@ export default function AddressField({ value, demo, onSelect, onClear }: Readonl
   const [abierto, setAbierto] = useState(false);
   const [activo, setActivo] = useState(0);
   const [falloResolver, setFalloResolver] = useState(false);
+  const [mapa, setMapa] = useState(false);
 
   const q = query.trim();
   const { sugerencias, buscando } = useSugerencias(query, demo);
@@ -82,7 +84,7 @@ export default function AddressField({ value, demo, onSelect, onClear }: Readonl
     );
   }
 
-  const elegir = (d: Direccion) => { onSelect(d); setAbierto(false); setQuery(""); };
+  const elegir = (d: Direccion) => { onSelect(d); setAbierto(false); setQuery(""); setMapa(false); };
   const elegirSugerencia = async (sugerencia: AddressSuggestionResponse) => {
     setFalloResolver(false);
     try {
@@ -100,6 +102,16 @@ export default function AddressField({ value, demo, onSelect, onClear }: Readonl
       setFalloResolver(true);
     }
   };
+
+  if (mapa) {
+    return (
+      <MapPickerField
+        initialStreet={query.trim()}
+        onConfirm={elegir}
+        onCancel={() => setMapa(false)}
+      />
+    );
+  }
 
   return (
     <div className="owner-ac">
@@ -140,6 +152,8 @@ export default function AddressField({ value, demo, onSelect, onClear }: Readonl
       {q.length >= MIN_BUSQUEDA && !buscando && sugerencias.length === 0 && (
         <p className="owner-ac__empty">
           No encontramos esa dirección.{" "}
+          <button type="button" onClick={() => setMapa(true)}>Marcar en el mapa</button>
+          {" · "}
           <button type="button" onClick={() => elegir({ street: query.trim(), number: "", city: "", province: "", postalCode: "", latitude: null, longitude: null })}>
             Usarla igual
           </button>
