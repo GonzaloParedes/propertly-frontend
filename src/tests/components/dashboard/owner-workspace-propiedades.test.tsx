@@ -378,7 +378,7 @@ describe("archivar", () => {
     conDatos([MITRE]);
     render(<OwnerWorkspace initialView="propiedades" />);
     await userEvent.click(await screen.findByText("Mitre 78"));
-    await userEvent.click(await screen.findByRole("button", { name: /Archivar/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Eliminar/ }));
   }
 
   it("aclara que la propiedad sale de la lista y su historia se conserva", async () => {
@@ -389,18 +389,18 @@ describe("archivar", () => {
     expect(mockArchive).not.toHaveBeenCalled();
   });
 
-  it("archiva y vuelve a pedir la lista sin la archivada", async () => {
+  it("elimina y vuelve a pedir la lista sin la eliminada", async () => {
     await abrirDialogo();
     mockArchive.mockResolvedValueOnce({} as never);
     mockProperties.mockResolvedValue([]);
 
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Archivar" })
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Eliminar" })
     );
 
     await screen.findByText("Todavía no cargó ninguna propiedad");
     expect(mockArchive).toHaveBeenCalledWith(2);
-    expect(await screen.findByText(/Propiedad archivada/)).toBeInTheDocument();
+    expect(await screen.findByText(/Propiedad eliminada/)).toBeInTheDocument();
   });
 
   it("explica el 409 y deja la propiedad donde estaba", async () => {
@@ -408,11 +408,11 @@ describe("archivar", () => {
     mockArchive.mockRejectedValueOnce(new ApiError(409, "Request violates a data constraint"));
 
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Archivar" })
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Eliminar" })
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "No se puede archivar: la propiedad tiene datos asociados"
+      "No se puede eliminar: la propiedad tiene datos asociados"
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     // El error de un diálogo abierto va adentro, no a un toast.

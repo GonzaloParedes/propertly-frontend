@@ -418,7 +418,7 @@ describe("detalle · archivar", () => {
     conDatos({ tenants: [MARTA], contracts: [] });
     render(<OwnerWorkspace initialView="inquilinos" />);
     await userEvent.click(await screen.findByRole("button", { name: "Marta Suárez" }));
-    await userEvent.click(await screen.findByRole("button", { name: /Archivar/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Eliminar/ }));
     return screen.getByRole("dialog");
   }
 
@@ -434,21 +434,21 @@ describe("detalle · archivar", () => {
     const dialogo = await abrirDialogo();
     mockTenants.mockResolvedValue([]);
 
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Archivar" }));
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Eliminar" }));
 
     await waitFor(() => expect(mockArchive).toHaveBeenCalledWith(2));
     expect(await screen.findByText("Todavía no cargó ningún inquilino")).toBeInTheDocument();
-    expect(await screen.findByText(/Inquilino archivado/)).toBeInTheDocument();
+    expect(await screen.findByText(/Inquilino eliminado/)).toBeInTheDocument();
   });
 
   it("explica el 409 y el inquilino sigue en la lista", async () => {
     mockArchive.mockRejectedValueOnce(new ApiError(409, "Request violates a data constraint"));
     const dialogo = await abrirDialogo();
 
-    await userEvent.click(within(dialogo).getByRole("button", { name: "Archivar" }));
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Eliminar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "No se puede archivar: el inquilino tiene datos asociados"
+      "No se puede eliminar: el inquilino tiene datos asociados"
     );
   });
 });

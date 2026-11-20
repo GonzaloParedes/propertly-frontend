@@ -359,9 +359,9 @@ const CUENTA_DEMO = {
 function mensajeDeErrorArchivar(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
   if (err instanceof ApiError && err.status === 409) {
-    return "No se puede archivar: la propiedad tiene datos asociados, como un contrato.";
+    return "No se puede eliminar: la propiedad tiene datos asociados, como un contrato.";
   }
-  return "No pudimos archivar la propiedad. Inténtelo de nuevo más tarde.";
+  return "No pudimos eliminar la propiedad. Inténtelo de nuevo más tarde.";
 }
 
 /** Los pocos 400 de cobranzas que el propietario puede resolver solo. */
@@ -427,8 +427,8 @@ function mensajeErrorDePropiedad(err: unknown): string {
 
 function mensajeErrorAlArchivarInquilino(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.status === 409) return "No se puede archivar: el inquilino tiene datos asociados, como un contrato.";
-  return "No pudimos archivar el inquilino. Inténtelo de nuevo más tarde.";
+  if (err instanceof ApiError && err.status === 409) return "No se puede eliminar: el inquilino tiene datos asociados, como un contrato.";
+  return "No pudimos eliminar el inquilino. Inténtelo de nuevo más tarde.";
 }
 
 function mensajeErrorAlAdjuntarDocumento(err: unknown): string {
@@ -732,7 +732,7 @@ function TenantDetail({
   const description = [tenant.cuit, tenant.email, tenant.telefono].filter(Boolean).join(" · ");
   const headerAction = <>
     <Button tone="secondary" onClick={() => onEdit(tenant)}><Icon name="edit" size={18} />Editar datos</Button>
-    <Button tone="danger" onClick={() => onArchive(tenant)}><Icon name="archive" size={18} />Archivar</Button>
+    <Button tone="danger" onClick={() => onArchive(tenant)}><Icon name="trash" size={18} />Eliminar</Button>
   </>;
 
   const creditCheckCard = (() => {
@@ -1305,7 +1305,7 @@ function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemo
   onCreateContract: () => void;
   onOpenDemoContract: (contractId: string) => void;
 }>) {
-  const headerActions = <><Button tone="secondary"><Icon name="edit" size={18} />Editar</Button><Button tone="danger"><Icon name="archive" size={18} />Archivar</Button></>;
+  const headerActions = <><Button tone="secondary"><Icon name="edit" size={18} />Editar</Button><Button tone="danger"><Icon name="trash" size={18} />Eliminar</Button></>;
   const rent = demoProperty.tenant ? <div className="owner-current-rent"><p className="owner-eyebrow">ALQUILER ACTUAL</p><b>{demoProperty.rent}</b><small>por mes</small></div> : null;
   const contractCard = demoProperty.tenant
     ? <button type="button" className="owner-contract-callout" onClick={() => onOpenDemoContract(demoProperty.id)}><span><Icon name="file" /></span><div><b>Contrato con {demoProperty.tenant}</b><small>Ver condiciones, documento y próximas cuotas</small></div><Icon name="arrow" /></button>
@@ -1368,7 +1368,7 @@ function PropertyDetail({
   const contractTitle = rawProperty.tenant
     ? `Contrato con ${rawProperty.tenant.firstName} ${rawProperty.tenant.lastName}`
     : "Contrato vigente";
-  const headerActions = <><Button tone="secondary" onClick={() => onEdit(rawProperty)}><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="archive" size={18} />Archivar</Button></>;
+  const headerActions = <><Button tone="secondary" onClick={() => onEdit(rawProperty)}><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="trash" size={18} />Eliminar</Button></>;
   const category = etiquetaCategoria(rawProperty.category);
 
   return <>
@@ -2018,8 +2018,8 @@ function RemoveInvoiceAdjustmentDialog({ error, isBusy, onClose, onRemove }: Rea
 }
 
 function ArchiveTenantDialog({ tenant, error, isBusy, onClose, onArchive }: Readonly<{ tenant: TenantRow; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
-  const buttonLabel = isBusy ? "Archivando…" : "Archivar";
-  return <Dialog title="Archivar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> sale de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarlo cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  const buttonLabel = isBusy ? "Eliminando…" : "Eliminar";
+  return <Dialog title="Eliminar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> va a ser eliminado de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function isPropertyValid(property: PropertyRequest | null): boolean {
@@ -2060,8 +2060,8 @@ function PropertyEditDialog({ property, error, isBusy, isValid, onClose, onChang
 }
 
 function ArchivePropertyDialog({ property, error, isBusy, onClose, onArchive }: Readonly<{ property: FilaPropiedad; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
-  const buttonLabel = isBusy ? "Archivando…" : "Archivar";
-  return <Dialog title="Archivar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> sale de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarla cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  const buttonLabel = isBusy ? "Eliminando…" : "Eliminar";
+  return <Dialog title="Eliminar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> va a ser eliminada de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function TerminateContractDialog({ endDate, error, isBusy, onClose, onEndDateChange, onTerminate }: Readonly<{ endDate: string; error: string | null; isBusy: boolean; onClose: () => void; onEndDateChange: (date: string) => void; onTerminate: () => void }>) {
@@ -2870,7 +2870,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function archivarInquilino(fila: TenantRow) {
-    if (demo) { setArchivandoInquilino(null); toast.exito("Inquilino archivado."); return; }
+    if (demo) { setArchivandoInquilino(null); toast.exito("Inquilino eliminado."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);
     try {
@@ -2878,7 +2878,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       setArchivandoInquilino(null);
       setDetail(null);
       setRecargaInquilinos((n) => n + 1);
-      toast.exito("Inquilino archivado.");
+      toast.exito("Inquilino eliminado.");
     } catch (err) {
       setErrorAjustes(mensajeErrorAlArchivarInquilino(err));
     } finally {
@@ -2910,7 +2910,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function archivarPropiedad(fila: FilaPropiedad) {
-    if (demo) { setArchivando(null); toast.exito("Propiedad archivada."); return; }
+    if (demo) { setArchivando(null); toast.exito("Propiedad eliminada."); return; }
     setErrorArchivar(null);
     setGuardandoArchivado(true);
     try {
@@ -2921,7 +2921,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       // pantalla es «lo que el backend tiene», y filtrarla acá la escondería
       // aunque el archivado no hubiera quedado firme.
       setRecargaPropiedades((n) => n + 1);
-      toast.exito("Propiedad archivada.");
+      toast.exito("Propiedad eliminada.");
     } catch (err) {
       setErrorArchivar(mensajeDeErrorArchivar(err));
     } finally {
