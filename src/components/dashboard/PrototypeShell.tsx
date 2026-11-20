@@ -3,6 +3,7 @@
 import { useState } from "react";
 import DashboardNav, { type WorkspaceView } from "@/components/dashboard/DashboardNav";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
+import ReportarProblema from "@/components/dashboard/ReportarProblema";
 import Tutorial from "@/components/dashboard/Tutorial";
 import { ThemeProvider } from "@/context/theme-context";
 
@@ -14,6 +15,7 @@ export default function PrototypeShell() {
       <div className="min-h-screen" style={{ background: "var(--superficie)" }}>
         <DashboardNav activeView={view} onNavigate={setView} />
         <Tutorial />
+        <ReportarProblema />
         <OwnerWorkspace initialView="inicio" activeView={view} onNavigate={setView} demo />
       </div>
     </ThemeProvider>

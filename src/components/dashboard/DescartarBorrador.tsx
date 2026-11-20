@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Spinner } from "@/components/ui/Spinner";
-import { Icon } from "@/components/ui/Icon";
 import Dialog from "@/components/ui/Dialog";
 import { copyDeError } from "@/lib/error-codes";
+import { AlertaDeError } from "@/components/dashboard/ReportarProblema";
 
 /**
  * Pide confirmar antes de borrar un borrador: se pierden los datos y el PDF, y no hay vuelta atrás.
@@ -36,7 +36,7 @@ export default function DescartarBorrador({ etiqueta, conPdf, descartar, onCance
   return <Dialog title="¿Descartar este borrador?" onClose={ocupado ? undefined : onCancel}>
     <div className="owner-dialog__body">
       <p>Se borran los datos cargados de <b>{etiqueta}</b>{conPdf ? " y el PDF que adjuntó" : ""}. No se puede deshacer.</p>
-      {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
+      {error && <AlertaDeError mensaje={error} />}
     </div>
     <div className="owner-dialog__foot">
       <button type="button" className="owner-button owner-button--quiet" onClick={onCancel} disabled={ocupado}>Volver</button>

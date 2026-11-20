@@ -633,7 +633,7 @@
 .owner-load-error__icon{display:grid;width:56px;height:56px;place-items:center;border-radius:50%;
   background:var(--error-bg);color:var(--error)}
 .owner-load-error b{color:var(--tinta);font:700 18px var(--font-nunito-sans),sans-serif}
-.owner-load-error>span:last-child{color:var(--gris);font:400 16px var(--font-nunito-sans),sans-serif}
+.owner-load-error__hint{color:var(--gris);font:400 16px var(--font-nunito-sans),sans-serif}
 
 /* «Importe sin confirmar» es lo que el propietario tiene que resolver en esa
    cuota, así que no puede leerse como una nota al pie: va como aviso de
@@ -1019,6 +1019,21 @@
 .bcra-verdict--ok{background:var(--exito-bg);color:var(--exito)}
 .bcra-verdict--warn{background:var(--warn-bg);color:var(--adv)}
 .bcra-verdict--bad{background:var(--error-bg);color:var(--error)}
+
+/* «Reportar un problema» (ALQ-184). El textarea hereda el campo del asistente:
+   misma superficie, mismo anillo al enfocar; sólo se le saca el borde nativo. */
+.owner-reporte .owner-wizard-chips{margin:0 0 var(--esp-16)}
+.owner-reporte__descripcion textarea{min-width:0;width:100%;resize:vertical;border:0;outline:0;background:transparent;color:var(--tinta);font:400 17px/1.45 var(--font-nunito-sans),sans-serif}
+.owner-reporte__descripcion textarea::placeholder{color:var(--placeholder)}
+.owner-dialog__body>.owner-reporte__adjunto{display:flex;align-items:flex-start;gap:var(--esp-8);margin:var(--esp-14) 0 0;color:var(--gris);font-size:15px;overflow-wrap:anywhere}
+.owner-reporte__adjunto svg{flex:none;margin-top:2px}
+.owner-wizard-alert__texto{flex:1;min-width:0}
+.owner-alert-reporte{flex:none;min-height:40px;padding:0 var(--esp-8);border:0;border-radius:10px;background:transparent;color:var(--tinta);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif;text-decoration:underline;text-underline-offset:3px}
+.owner-alert-reporte:hover{background:color-mix(in srgb,currentColor 8%,transparent)}
+@media (max-width:600px){.owner-wizard-alert:has(.owner-alert-reporte){flex-wrap:wrap}.owner-alert-reporte{margin-left:calc(19px + var(--esp-8))}}
+.owner-nav__reporte{margin-top:var(--esp-12);gap:var(--esp-10);white-space:nowrap;letter-spacing:-.01em}.owner-nav__reporte svg{flex:none}
+@media (max-width:900px){.owner-drawer .owner-nav__reporte{margin-top:auto;padding-top:var(--esp-18);border-radius:0;box-shadow:inset 0 1px 0 var(--divisor)}.owner-drawer .owner-nav__reporte+.owner-nav__logout{margin-top:0;padding-top:var(--esp-10);box-shadow:none}}
+
 /* ALQ-191: «Es persona jurídica» alterna entre nombre+apellido y razón social. */
 .owner-wizard-checkbox{display:inline-flex;align-items:center;gap:var(--esp-10);min-height:40px;color:var(--tinta);cursor:pointer;font:600 16px var(--font-nunito-sans),sans-serif}.owner-wizard-checkbox input{width:20px;height:20px;margin:0;accent-color:var(--indigo);cursor:pointer}
 

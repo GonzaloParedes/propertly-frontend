@@ -835,3 +835,17 @@ export interface PropertyDraftRequest {
 export interface PropertyDraftUpdateRequest extends PropertyDraftRequest {
   version: number;
 }
+
+// --- Reportes del propietario (ALQ-184) ---
+
+export type FeedbackType = "BUG" | "SUGGESTION" | "OTHER";
+
+/** `POST /feedback`: lo que escribe el propietario más el contexto que adjunta el front. */
+export interface FeedbackRequest {
+  type: FeedbackType;
+  description: string;
+  pageUrl?: string;
+  userAgent?: string;
+  errorMessage?: string;
+  sentryEventId?: string;
+}

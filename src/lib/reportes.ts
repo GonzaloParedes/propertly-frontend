@@ -1,0 +1,57 @@
+/**
+ * «Reportar un problema» (ALQ-184). El diálogo vive una sola vez en el panel
+ * y se abre con un evento, igual que el tutorial: así lo abren tanto la
+ * navegación como el «Avisanos de este error» de cualquier alerta, sin pasar
+ * callbacks por toda la app.
+ */
+import * as Sentry from "@sentry/nextjs";
+import type { FeedbackRequest, FeedbackType } from "@/lib/backend-types";
+
+export const REPORTE_ABRIR = "alquia:reportar";
+
+export const TIPOS_DE_REPORTE: readonly { valor: FeedbackType; etiqueta: string }[] = [
+  { valor: "BUG", etiqueta: "Error" },
+  { valor: "SUGGESTION", etiqueta: "Sugerencia" },
+  { valor: "OTHER", etiqueta: "Otro" },
+];
+
+export const MAXIMO_DESCRIPCION = 4000;
+
+/** Lo que trae el diálogo cuando se abre desde una alerta de error. */
+export type ContextoDeReporte = Readonly<{ mensajeDeError?: string }>;
+
+export function abrirReporte(contexto: ContextoDeReporte = {}): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<ContextoDeReporte>(REPORTE_ABRIR, { detail: contexto }));
+}
+
+/**
+ * El ID que se adjunta para encontrar el evento en Sentry. Con un mensaje de
+ * error se registra uno nuevo en el momento: el último evento podría ser de
+ * otra cosa. Sin mensaje, se manda el último, si hubo. Sentry nunca frena el envío.
+ */
+function idDeSentry(mensajeDeError: string | undefined): string | undefined {
+  try {
+    if (mensajeDeError) {
+      return Sentry.captureMessage(`Reporte de propietario: ${mensajeDeError}`, "warning");
+    }
+    return Sentry.lastEventId();
+  } catch {
+    return undefined;
+  }
+}
+
+const recortar = (valor: string, maximo: number) => (valor.length > maximo ? valor.slice(0, maximo) : valor);
+
+/** Arma el cuerpo de `POST /feedback` con el contexto que se adjunta solo. */
+export function armarReporte(tipo: FeedbackType, descripcion: string, contexto: ContextoDeReporte): FeedbackRequest {
+  const mensajeDeError = contexto.mensajeDeError?.trim() || undefined;
+  return {
+    type: tipo,
+    description: descripcion.trim(),
+    pageUrl: recortar(window.location.href, 2000),
+    userAgent: recortar(window.navigator.userAgent, 500),
+    errorMessage: mensajeDeError && recortar(mensajeDeError, 2000),
+    sentryEventId: idDeSentry(mensajeDeError),
+  };
+}

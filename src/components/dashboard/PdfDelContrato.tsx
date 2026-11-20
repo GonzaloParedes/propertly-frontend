@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatearBytes } from "@/lib/importacion-pdf";
+import { AlertaDeError } from "@/components/dashboard/ReportarProblema";
 
 /**
  * El PDF firmado, opcional, en la revisión del contrato. Queda guardado tal cual: no se lee solo ni
@@ -37,6 +38,6 @@ export default function PdfDelContrato({ habilitado, documento, ocupado, error, 
     )}
     <input ref={input} type="file" accept="application/pdf,.pdf" className="sr-only" tabIndex={-1} aria-hidden="true" aria-label="Archivo del contrato firmado"
       onChange={(e) => { const elegido = e.target.files?.[0]; e.target.value = ""; if (elegido) onElegir(elegido); }} />
-    {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
+    {error && <AlertaDeError mensaje={error} />}
   </section>;
 }

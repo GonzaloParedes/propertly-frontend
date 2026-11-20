@@ -49,6 +49,7 @@ import type {
   PropertyDraftSummary,
   PropertyDraftRequest,
   PropertyDraftUpdateRequest,
+  FeedbackRequest,
   RentIncreaseParams,
   RentIncreaseResponse,
 } from "@/lib/backend-types";
@@ -90,6 +91,10 @@ export const AlquiaBackendClient = {
       apiPost("/auth/confirm-email", body, { retry: false }),
     resendVerification: (body: ResendVerificationRequest): Promise<void> =>
       apiPost("/auth/resend-verification", body, { retry: false }),
+  },
+
+  feedback: {
+    send: (body: FeedbackRequest): Promise<void> => apiPost("/feedback", body),
   },
 
   users: {
