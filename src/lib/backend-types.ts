@@ -82,6 +82,9 @@ export interface TenantResponse {
   phoneNumber?: string | null;
 }
 
+/** `GET /tools/credit-check`: el resultado del BCRA para cualquier CUIT/CUIL (ALQ-145). */
+export type CreditCheckResponse = Omit<TenantCreditCheckResponse, "denominacionMismatch">;
+
 export interface TenantCreditCheckResponse {
   noDebtsReported: boolean;
   denominacion?: string | null;
@@ -92,6 +95,54 @@ export interface TenantCreditCheckResponse {
   hasLegalSituation: boolean;
   hasJudicialProcess: boolean;
   latestPeriod?: string | null;
+}
+
+// --- Herramientas (ALQ-145) ---
+
+export type PriceIndex = "ICL" | "IPC";
+
+/** Los meses van como `yyyy-MM` («2026-05»), igual en el pedido y en la respuesta. */
+export interface RentIncreaseParams {
+  index: PriceIndex;
+  amount: number;
+  lastAdjustment: string;
+  frequencyMonths: number;
+}
+
+export interface RentIncreaseMonthlyRate {
+  period: string;
+  /** Tasa del mes en porcentaje, como la publica el índice. */
+  rate: number;
+  /** El mes todavía no estaba publicado y repite la tasa del anterior. */
+  estimated: boolean;
+}
+
+export interface RentIncreaseResponse {
+  index: PriceIndex;
+  amount: number;
+  lastAdjustment: string;
+  frequencyMonths: number;
+  /** Mes desde el que rige el nuevo alquiler. */
+  effectiveFrom: string;
+  /** Aumento acumulado en porcentaje, redondeado a dos decimales. */
+  increasePercentage: number;
+  increaseAmount: number;
+  newAmount: number;
+  lastMonthEstimated: boolean;
+  months: RentIncreaseMonthlyRate[];
+}
+
+/** `POST /tools/rent-estimate`: una propiedad que no está cargada, con lo mínimo. */
+export interface RentEstimateToolRequest {
+  city?: string | null;
+  province?: string | null;
+  latitude: number;
+  longitude: number;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  coveredArea: number;
+  category?: PropertyCategory | null;
+  currency: Currency;
 }
 
 // --- Properties ---

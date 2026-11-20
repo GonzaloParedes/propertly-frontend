@@ -49,6 +49,10 @@ import type {
   PropertyDraftSummary,
   PropertyDraftRequest,
   PropertyDraftUpdateRequest,
+  RentIncreaseParams,
+  RentIncreaseResponse,
+  CreditCheckResponse,
+  RentEstimateToolRequest,
 } from "@/lib/backend-types";
 
 /**
@@ -310,6 +314,15 @@ export const AlquiaBackendClient = {
       apiDelete<InvoiceResponse>(`/invoices/${id}/late-fee`),
     schemaChange: (id: number, body: SchemaChangeRequest): Promise<ContractResponse> =>
       apiPost<ContractResponse>(`/invoices/${id}/schema-change`, body),
+  },
+
+  tools: {
+    rentIncrease: (params: RentIncreaseParams): Promise<RentIncreaseResponse> =>
+      apiGet<RentIncreaseResponse>(`/tools/rent-increase${buildQuery(params)}`),
+    creditCheck: (taxId: string): Promise<CreditCheckResponse> =>
+      apiGet<CreditCheckResponse>(`/tools/credit-check${buildQuery({ taxId })}`),
+    rentEstimate: (body: RentEstimateToolRequest): Promise<RentEstimate> =>
+      apiPost<RentEstimate>("/tools/rent-estimate", body),
   },
 
   addressLookup: {

@@ -14,7 +14,7 @@ import { abrirTutorial } from "@/lib/tutorial";
 /** Tocar el ítem de la pantalla actual no remonta la página: el workspace escucha esto para volver al listado. */
 export const NAV_RESET_EVENT = "alquia:nav-reset";
 
-export type WorkspaceView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "configuracion";
+export type WorkspaceView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "herramientas" | "configuracion";
 
 const ITEMS = [
   { label: "Inicio", href: "/dashboard", view: "inicio" as const, icon: "home" as const },
@@ -22,6 +22,7 @@ const ITEMS = [
   { label: "Contratos", href: "/dashboard/contratos", view: "contratos" as const, icon: "file" as const },
   { label: "Inquilinos", href: "/dashboard/inquilinos", view: "inquilinos" as const, icon: "users" as const },
   { label: "Cobranzas", href: "/dashboard/cobranzas", view: "cobranzas" as const, icon: "card" as const },
+  { label: "Herramientas", href: "/dashboard/herramientas", view: "herramientas" as const, icon: "tools" as const },
   { label: "Configuración", href: "/dashboard/configuracion", view: "configuracion" as const, icon: "settings" as const },
 ];
 

@@ -56,6 +56,9 @@ export const ERROR = {
   RENT_ESTIMATE_NOT_ENOUGH_DATA: "urn:alquia:error:rent-estimate-not-enough-data",
   BCRA_NO_TAX_ID: "urn:alquia:error:bcra-no-tax-id",
   BCRA_UNAVAILABLE: "urn:alquia:error:bcra-unavailable",
+  RENT_INCREASE_NOT_DUE: "urn:alquia:error:rent-increase-not-due",
+  INDEX_DATA_NOT_PUBLISHED: "urn:alquia:error:index-data-not-published",
+  INDEX_PROVIDER_UNAVAILABLE: "urn:alquia:error:index-provider-unavailable",
 } as const;
 
 export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
@@ -124,6 +127,12 @@ const COPY: Record<string, string> = {
     "El estimador está disponible, pero todavía no hay propiedades cargadas para estimar.",
   [ERROR.RENT_ESTIMATE_NOT_ENOUGH_DATA]:
     "No hay suficientes propiedades cerca para estimar el alquiler de esta propiedad.",
+  [ERROR.RENT_INCREASE_NOT_DUE]:
+    "Ese aumento todavía no se puede calcular: los meses que lo componen aún no se publicaron.",
+  [ERROR.INDEX_DATA_NOT_PUBLISHED]:
+    "Todavía no están publicados los valores del índice para esos meses. Pruebe con un período anterior.",
+  [ERROR.INDEX_PROVIDER_UNAVAILABLE]:
+    "No pudimos consultar los índices en este momento. Inténtelo de nuevo en unos minutos.",
 };
 
 export const FALLBACK = "No se pudo completar la acción. Inténtelo de nuevo más tarde.";

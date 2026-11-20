@@ -1019,3 +1019,35 @@
 .bcra-verdict--ok{background:var(--exito-bg);color:var(--exito)}
 .bcra-verdict--warn{background:var(--warn-bg);color:var(--adv)}
 .bcra-verdict--bad{background:var(--error-bg);color:var(--error)}
+
+/* Herramientas (ALQ-145): el listado reusa .owner-row; la calculadora, las piezas del asistente. */
+.owner-row--herramienta{grid-template-columns:44px minmax(0,1fr) auto}
+.owner-row--herramienta .owner-row__arrow{grid-column:3}
+.owner-calc{max-width:720px}
+.owner-calc__form>.owner-wizard-label:first-child{margin-top:0}
+.owner-calc .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-12);color:var(--gris);font:700 15px/1.2 var(--font-nunito-sans),sans-serif;letter-spacing:0}
+.owner-calc__counters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--esp-26)}
+.owner-calc__mes strong{min-width:7.5ch;font-size:22px;text-transform:capitalize}
+.owner-calc .owner-wizard-counter button:disabled{cursor:not-allowed;opacity:.45}
+.owner-calc__submit{margin-top:var(--esp-32)}
+.owner-calc__submit:disabled{cursor:progress;opacity:.8}
+.owner-calc__result{margin-top:var(--esp-32);padding-top:var(--esp-26);box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-calc__amount{margin:var(--esp-8) 0 0;font:700 34px/1.1 var(--font-quicksand),sans-serif;letter-spacing:-.02em}
+.owner-calc__increase{margin:var(--esp-8) 0 0;color:var(--gris)}
+.owner-calc__increase b{color:var(--tinta)}
+.owner-calc__months dt::first-letter{text-transform:uppercase}
+.owner-calc__months dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.owner-calc__note{display:flex;gap:var(--esp-8);margin:var(--esp-14) 0 0;color:var(--gris);font-size:15px}
+.owner-calc__note svg{flex:none;margin-top:3px}
+@media (max-width:720px){
+  .owner-calc__counters{grid-template-columns:1fr;gap:0}
+  .owner-calc__amount{font-size:28px}
+}
+.owner-tool__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-12)}
+.owner-tool__head h2{margin:0}
+.owner-tool__head small{font-weight:400;font-size:.8em}
+.owner-tool__head img{flex-shrink:0}
+.owner-tool__modos{margin-bottom:var(--esp-18)}
+.owner-tool__counters{margin-top:var(--esp-8)}
+.owner-calc>.owner-wizard-label:first-child{margin-top:0}
+.owner-calc~.rent-estimate{max-width:720px}

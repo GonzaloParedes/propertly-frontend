@@ -9,6 +9,8 @@ import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
+import Herramientas from "@/components/dashboard/Herramientas";
+import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import PaymentReceiptUpload from "@/components/dashboard/PaymentReceiptUpload";
 import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
@@ -110,7 +112,7 @@ import { ERROR, copyDeError } from "@/lib/error-codes";
 import CambioCondicionesForm from "@/components/dashboard/CambioCondicionesForm";
 import { useAuth } from "@/context/auth-context";
 
-export type OwnerView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "configuracion";
+export type OwnerView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "herramientas" | "configuracion";
 type Detail = "property" | "contract" | "tenant" | null;
 type Creation = "property" | "contract" | "tenant" | null;
 
@@ -359,9 +361,9 @@ const CUENTA_DEMO = {
 function mensajeDeErrorArchivar(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
   if (err instanceof ApiError && err.status === 409) {
-    return "No se puede archivar: la propiedad tiene datos asociados, como un contrato.";
+    return "No se puede eliminar: la propiedad tiene datos asociados, como un contrato.";
   }
-  return "No pudimos archivar la propiedad. Inténtelo de nuevo más tarde.";
+  return "No pudimos eliminar la propiedad. Inténtelo de nuevo más tarde.";
 }
 
 /** Los pocos 400 de cobranzas que el propietario puede resolver solo. */
@@ -427,8 +429,8 @@ function mensajeErrorDePropiedad(err: unknown): string {
 
 function mensajeErrorAlArchivarInquilino(err: unknown): string {
   if (err instanceof AuthExpiredError) return "Su sesión expiró. Vuelva a iniciar sesión.";
-  if (err instanceof ApiError && err.status === 409) return "No se puede archivar: el inquilino tiene datos asociados, como un contrato.";
-  return "No pudimos archivar el inquilino. Inténtelo de nuevo más tarde.";
+  if (err instanceof ApiError && err.status === 409) return "No se puede eliminar: el inquilino tiene datos asociados, como un contrato.";
+  return "No pudimos eliminar el inquilino. Inténtelo de nuevo más tarde.";
 }
 
 function mensajeErrorAlAdjuntarDocumento(err: unknown): string {
@@ -669,23 +671,6 @@ const CREDIT_CHECK_DEMO: TenantCreditCheckResponse = {
   latestPeriod: "2026-09",
 };
 
-function formatPeriodoBcra(periodo: string): string {
-  const [year, month] = periodo.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-}
-
-function situacionLabel(s: number): string {
-  const labels: Record<number, string> = {
-    1: "Normal",
-    2: "Con seguimiento especial",
-    3: "Con problemas",
-    4: "Con alto riesgo de insolvencia",
-    5: "Irrecuperable",
-  };
-  return labels[s] ?? `Situación ${s}`;
-}
-
 function TenantDetail({
   selectedId,
   tenants,
@@ -732,7 +717,7 @@ function TenantDetail({
   const description = [tenant.cuit, tenant.email, tenant.telefono].filter(Boolean).join(" · ");
   const headerAction = <>
     <Button tone="secondary" onClick={() => onEdit(tenant)}><Icon name="edit" size={18} />Editar datos</Button>
-    <Button tone="danger" onClick={() => onArchive(tenant)}><Icon name="archive" size={18} />Archivar</Button>
+    <Button tone="danger" onClick={() => onArchive(tenant)}><Icon name="trash" size={18} />Eliminar</Button>
   </>;
 
   const creditCheckCard = (() => {
@@ -761,59 +746,9 @@ function TenantDetail({
           </>
         )}
         {creditCheck.status === "loading" && <Cargando>Consultando al BCRA…</Cargando>}
-        {creditCheck.status === "result" && (() => {
-          const { data } = creditCheck;
-          if (data.noDebtsReported) {
-            return (
-              <>
-                <div className="bcra-ok">
-                  <div className="bcra-ok__icon"><Icon name="check" size={22} /></div>
-                  <div className="bcra-ok__body">
-                    <b>Sin deudas informadas</b>
-                    <small>No figura en la Central de Deudores del BCRA.</small>
-                  </div>
-                </div>
-                <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
-              </>
-            );
-          }
-          const sit = data.worstSituation ?? 1;
-          const verdictClass = sit === 1 ? "bcra-verdict--ok" : sit === 2 ? "bcra-verdict--warn" : "bcra-verdict--bad";
-          const stepClass = (n: number): string => {
-            if (n > sit) return "";
-            if (sit === 1) return "bcra-scale__step--1";
-            if (sit === 2) return "bcra-scale__step--2";
-            if (sit === 3) return "bcra-scale__step--3";
-            if (sit === 4) return "bcra-scale__step--4";
-            return "bcra-scale__step--5";
-          };
-          return (
-            <>
-              {data.denominacionMismatch && (
-                <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />El nombre en el BCRA (<b>{data.denominacion}</b>) no coincide con el registrado en Alquia.</p>
-              )}
-              <div className="bcra-scale">
-                <p className="bcra-scale__label">Situación crediticia</p>
-                <div className="bcra-scale__steps" role="meter" aria-valuenow={sit} aria-valuemin={1} aria-valuemax={5}>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <div key={n} className={`bcra-scale__step${n <= sit ? ` ${stepClass(n)}` : ""}`} />
-                  ))}
-                </div>
-                <div className="bcra-scale__legend"><span>Normal</span><span>Irrecuperable</span></div>
-              </div>
-              <span className={`bcra-verdict ${verdictClass}`}>{situacionLabel(sit)}</span>
-              <dl className="owner-definition">
-                <div><dt>Entidades informantes</dt><dd>{data.entityCount}</dd></div>
-                <div><dt>Monto total</dt><dd>{formatearMonto(data.totalAmountPesos!)}</dd></div>
-                {data.hasLegalSituation && <div><dt>Situación jurídica</dt><dd>Sí</dd></div>}
-                {data.hasJudicialProcess && <div><dt>Proceso judicial</dt><dd>Sí</dd></div>}
-                {data.latestPeriod && <div><dt>Datos al</dt><dd>{formatPeriodoBcra(data.latestPeriod)}</dd></div>}
-              </dl>
-              <p className="owner-card__copy" style={{ fontSize: "0.78em", marginTop: "0.75rem" }}>Los datos los informan las entidades financieras. Su publicación no implica conformidad del BCRA. Para rectificar, comunicarse con la entidad que informó el dato.</p>
-              <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
-            </>
-          );
-        })()}
+        {creditCheck.status === "result" && (
+          <ResultadoBcra data={creditCheck.data} denominacionMismatch={creditCheck.data.denominacionMismatch} onReset={() => setCreditCheck({ status: "idle" })} />
+        )}
         {creditCheck.status === "error" && (
           <>
             <p className="owner-card__copy">No pudimos obtener la información del BCRA en este momento. Podés consultar directamente en <a href="https://www.bcra.gob.ar/situacion-crediticia/" target="_blank" rel="noopener noreferrer">su sitio oficial</a>.</p>
@@ -1305,7 +1240,7 @@ function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemo
   onCreateContract: () => void;
   onOpenDemoContract: (contractId: string) => void;
 }>) {
-  const headerActions = <><Button tone="secondary"><Icon name="edit" size={18} />Editar</Button><Button tone="danger"><Icon name="archive" size={18} />Archivar</Button></>;
+  const headerActions = <><Button tone="secondary"><Icon name="edit" size={18} />Editar</Button><Button tone="danger"><Icon name="trash" size={18} />Eliminar</Button></>;
   const rent = demoProperty.tenant ? <div className="owner-current-rent"><p className="owner-eyebrow">ALQUILER ACTUAL</p><b>{demoProperty.rent}</b><small>por mes</small></div> : null;
   const contractCard = demoProperty.tenant
     ? <button type="button" className="owner-contract-callout" onClick={() => onOpenDemoContract(demoProperty.id)}><span><Icon name="file" /></span><div><b>Contrato con {demoProperty.tenant}</b><small>Ver condiciones, documento y próximas cuotas</small></div><Icon name="arrow" /></button>
@@ -1368,7 +1303,7 @@ function PropertyDetail({
   const contractTitle = rawProperty.tenant
     ? `Contrato con ${rawProperty.tenant.firstName} ${rawProperty.tenant.lastName}`
     : "Contrato vigente";
-  const headerActions = <><Button tone="secondary" onClick={() => onEdit(rawProperty)}><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="archive" size={18} />Archivar</Button></>;
+  const headerActions = <><Button tone="secondary" onClick={() => onEdit(rawProperty)}><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="trash" size={18} />Eliminar</Button></>;
   const category = etiquetaCategoria(rawProperty.category);
 
   return <>
@@ -2018,8 +1953,8 @@ function RemoveInvoiceAdjustmentDialog({ error, isBusy, onClose, onRemove }: Rea
 }
 
 function ArchiveTenantDialog({ tenant, error, isBusy, onClose, onArchive }: Readonly<{ tenant: TenantRow; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
-  const buttonLabel = isBusy ? "Archivando…" : "Archivar";
-  return <Dialog title="Archivar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> sale de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarlo cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  const buttonLabel = isBusy ? "Eliminando…" : "Eliminar";
+  return <Dialog title="Eliminar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> va a ser eliminado de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function isPropertyValid(property: PropertyRequest | null): boolean {
@@ -2060,8 +1995,8 @@ function PropertyEditDialog({ property, error, isBusy, isValid, onClose, onChang
 }
 
 function ArchivePropertyDialog({ property, error, isBusy, onClose, onArchive }: Readonly<{ property: FilaPropiedad; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
-  const buttonLabel = isBusy ? "Archivando…" : "Archivar";
-  return <Dialog title="Archivar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> sale de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva, y puede volver a mostrarla cuando quiera.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  const buttonLabel = isBusy ? "Eliminando…" : "Eliminar";
+  return <Dialog title="Eliminar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> va a ser eliminada de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function TerminateContractDialog({ endDate, error, isBusy, onClose, onEndDateChange, onTerminate }: Readonly<{ endDate: string; error: string | null; isBusy: boolean; onClose: () => void; onEndDateChange: (date: string) => void; onTerminate: () => void }>) {
@@ -2870,7 +2805,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function archivarInquilino(fila: TenantRow) {
-    if (demo) { setArchivandoInquilino(null); toast.exito("Inquilino archivado."); return; }
+    if (demo) { setArchivandoInquilino(null); toast.exito("Inquilino eliminado."); return; }
     setErrorAjustes(null);
     setGuardandoAjustes(true);
     try {
@@ -2878,7 +2813,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       setArchivandoInquilino(null);
       setDetail(null);
       setRecargaInquilinos((n) => n + 1);
-      toast.exito("Inquilino archivado.");
+      toast.exito("Inquilino eliminado.");
     } catch (err) {
       setErrorAjustes(mensajeErrorAlArchivarInquilino(err));
     } finally {
@@ -2910,7 +2845,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   }
 
   async function archivarPropiedad(fila: FilaPropiedad) {
-    if (demo) { setArchivando(null); toast.exito("Propiedad archivada."); return; }
+    if (demo) { setArchivando(null); toast.exito("Propiedad eliminada."); return; }
     setErrorArchivar(null);
     setGuardandoArchivado(true);
     try {
@@ -2921,7 +2856,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
       // pantalla es «lo que el backend tiene», y filtrarla acá la escondería
       // aunque el archivado no hubiera quedado firme.
       setRecargaPropiedades((n) => n + 1);
-      toast.exito("Propiedad archivada.");
+      toast.exito("Propiedad eliminada.");
     } catch (err) {
       setErrorArchivar(mensajeDeErrorArchivar(err));
     } finally {
@@ -3042,6 +2977,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
     cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
+    herramientas: <Herramientas demo={demo} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} borradoresDePropiedad={borradoresDePropiedadDeInicio} onResumePropertyDraft={retomarBorradorDePropiedad} onDiscardPropertyDraft={setDescartandoBorradorDePropiedad} onRetryPropertyDrafts={() => setRecargaBorradoresDePropiedad((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };
