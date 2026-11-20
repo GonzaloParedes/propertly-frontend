@@ -146,6 +146,43 @@ describe("guardado exitoso", () => {
     );
   });
 
+  // ALQ-191: tildado, se pide la razón social en lugar de nombre y apellido.
+  it("con «Es persona jurídica» pide la razón social y la manda sin nombre ni apellido", async () => {
+    mockCreate.mockResolvedValueOnce({
+      id: 1, firstName: null, lastName: null, legalEntity: true, businessName: "Gómez Hermanos S.R.L.",
+      taxId: null, email: null, phoneNumber: null,
+    });
+    renderWizard();
+    await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Es persona jurídica" }));
+    expect(screen.queryByLabelText("Nombre")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Apellido")).not.toBeInTheDocument();
+    expect(screen.getByText(/La razón social es obligatoria/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar inquilino" })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Razón social"), "  Gómez Hermanos S.R.L. ");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar inquilino" }));
+
+    await waitFor(() =>
+      expect(mockCreate).toHaveBeenCalledWith({
+        legalEntity: true,
+        businessName: "Gómez Hermanos S.R.L.",
+        taxId: null,
+        email: null,
+        phoneNumber: null,
+      })
+    );
+  });
+
+  it("sin el tilde no pide razón social", async () => {
+    renderWizard();
+    expect(screen.getByRole("checkbox", { name: "Es persona jurídica" })).not.toBeChecked();
+    expect(screen.queryByLabelText("Razón social")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Nombre"), "Jorge");
+    expect(screen.getByRole("button", { name: "Guardar inquilino" })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Apellido"), "Paletta");
+    expect(screen.getByRole("button", { name: "Guardar inquilino" })).toBeEnabled();
+  });
+
   it("manda el CUIT sin guiones aunque en pantalla se vea formateado", async () => {
     mockCreate.mockResolvedValueOnce({
       id: 1, firstName: "Jorge", lastName: "Paletta", taxId: CUIT_VALIDO,
@@ -2489,7 +2526,7 @@ describe("asistente de contrato · retomar un borrador", () => {
     });
 
     it("«Atrás» desde el primer paso de la carga vuelve al paso del contrato donde estaba", async () => {
-      retomar({ paso: 2, propiedad: { id: 10, nuevo: false, borrador: null }, desvio: { tipo: "tenant", paso: 1 }, formularioInquilino: { nombre: "Ana", apellido: "", cuit: "", correo: "", telefono: "" } });
+      retomar({ paso: 2, propiedad: { id: 10, nuevo: false, borrador: null }, desvio: { tipo: "tenant", paso: 1 }, formularioInquilino: { nombre: "Ana", apellido: "", personaJuridica: false, razonSocial: "", cuit: "", correo: "", telefono: "" } });
       expect(await screen.findByLabelText("Nombre")).toHaveValue("Ana");
 
       await userEvent.click(screen.getByRole("button", { name: /Atrás/ }));

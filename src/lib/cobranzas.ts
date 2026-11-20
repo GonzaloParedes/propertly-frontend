@@ -1,9 +1,11 @@
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { coincideTexto } from "@/lib/busqueda";
 import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo, hoyEnArgentina } from "@/lib/formato";
 import { recargoEditable, recargoEnCurso, vistaDeRecargo, type RecargoEditable, type RecargoVista } from "@/lib/recargo";
 import type {
   AdjustmentResponse,
   ContractResponse,
+  Currency,
   InvoiceResponse,
   PaymentResponse,
 } from "@/lib/backend-types";
@@ -45,6 +47,8 @@ export interface FilaCobranza {
   periodo: string;
   /** Lo que se adeuda hoy: el total de la cuota más el recargo por atraso. */
   monto: string;
+  /** La del contrato. Los importes en crudo de abajo están en esta moneda. */
+  moneda?: Currency;
   recargo: RecargoVista | null;
   /** Null si no hay recargo que cambiar: contrato sin punitorios, cuota paga o recargo en cero. */
   recargoEditable: RecargoEditable | null;
@@ -123,17 +127,20 @@ export function buildFilasCobranza(
   const porContrato = new Map(contracts.map((c) => [c.id, c]));
 
   return invoices
-    .map((invoice) => {
-      const contrato = porContrato.get(invoice.contractId);
+    .map((cuota) => {
+      const contrato = porContrato.get(cuota.contractId);
+      // Backends anteriores a ALQ-187 no mandan la moneda en la cuota: sale del contrato.
+      const invoice = { ...cuota, currency: cuota.currency ?? contrato?.currency };
       const estado = estadoDeCuota(invoice);
       return {
         invoiceId: invoice.id,
         contractId: invoice.contractId,
         direccion: contrato ? formatearDireccion(contrato.property) : "—",
-        inquilino: contrato ? `${contrato.tenant.firstName} ${contrato.tenant.lastName}` : "—",
+        inquilino: contrato ? nombreDeInquilino(contrato.tenant) : "—",
         periodo: formatearPeriodo(invoice.period),
         // Fallback al total si el backend es anterior a los recargos (sin `amountDue`).
-        monto: formatearMonto(invoice.amountDue ?? invoice.total),
+        monto: formatearMonto(invoice.amountDue ?? invoice.total, invoice.currency),
+        moneda: invoice.currency,
         recargo: vistaDeRecargo(invoice, "propietario"),
         recargoEditable: recargoEditable(invoice),
         sinConfirmar: avisoSinConfirmar(invoice, hoyISO),

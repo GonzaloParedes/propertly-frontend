@@ -1,3 +1,4 @@
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { formatearCuit, soloDigitos } from "@/lib/cuit";
 import { formatearDireccion, formatearMonto } from "@/lib/formato";
 import type {
@@ -24,6 +25,9 @@ export interface TenantRow {
    */
   nombrePila: string;
   apellido: string;
+  /** Persona jurídica (ALQ-191): se muestra y se edita por su razón social. */
+  personaJuridica: boolean;
+  razonSocial: string;
   cuit: string;
   email: string;
   telefono: string;
@@ -84,16 +88,18 @@ export function buildTenantRows(
 
     return {
       id: tenant.id,
-      nombre: `${tenant.firstName} ${tenant.lastName}`,
-      nombrePila: tenant.firstName,
-      apellido: tenant.lastName,
+      nombre: nombreDeInquilino(tenant),
+      nombrePila: tenant.firstName ?? "",
+      apellido: tenant.lastName ?? "",
+      personaJuridica: tenant.legalEntity === true,
+      razonSocial: tenant.businessName ?? "",
       cuit: formatearDocumento(tenant.taxId ?? ""),
       email: tenant.email ?? "",
       telefono: tenant.phoneNumber ?? "",
       contratoId: contrato?.id ?? null,
       avisosAlInquilino: contrato?.tenantNotificationsEnabled === true,
       direccion: contrato ? formatearDireccion(contrato.property) : null,
-      alquiler: contrato ? formatearMonto(contrato.currentRent) : null,
+      alquiler: contrato ? formatearMonto(contrato.currentRent, contrato.currency) : null,
       estado: contrato ? estadoDeCuotas(cuotas) : "Sin contrato",
     };
   });

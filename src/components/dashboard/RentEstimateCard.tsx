@@ -40,18 +40,7 @@ const MONEDAS: ReadonlyArray<readonly [Currency, string]> = [
   ["USD", "En dólares"],
 ];
 
-type Props =
-  | { propertyId: number; estimar?: never; faltante?: never; lead?: string }
-  /**
-   * Para una propiedad que no está cargada (Herramientas): `estimar` hace el pedido y
-   * `faltante`, si viene, explica qué dato falta y deshabilita el botón.
-   */
-  | { propertyId?: never; estimar: (moneda: Currency) => Promise<RentEstimate>; faltante?: string | null; lead?: string };
-
-const LEAD =
-  "Estimá a cuánto alquilar esta propiedad según el mercado. Útil al terminar un contrato, para fijar el nuevo alquiler.";
-
-export default function RentEstimateCard({ propertyId, estimar: estimarCon, faltante = null, lead = LEAD }: Readonly<Props>) {
+export default function RentEstimateCard({ propertyId }: Readonly<{ propertyId: number }>) {
   const [estado, setEstado] = useState<Estado>("idle");
   const [moneda, setMoneda] = useState<Currency>("ARS");
   const [estimate, setEstimate] = useState<RentEstimate | null>(null);
@@ -82,7 +71,7 @@ export default function RentEstimateCard({ propertyId, estimar: estimarCon, falt
         timeouts.current.push(window.setTimeout(resolve, MIN_MS));
       });
       const [data] = await Promise.all([
-        estimarCon ? estimarCon(moneda) : AlquiaBackendClient.properties.getRentEstimate(propertyId, moneda),
+        AlquiaBackendClient.properties.getRentEstimate(propertyId, moneda),
         piso,
       ]);
       if (!montado.current) return;
@@ -111,7 +100,10 @@ export default function RentEstimateCard({ propertyId, estimar: estimarCon, falt
 
       {estado === "idle" && (
         <>
-          <p className="rent-estimate__lead">{lead}</p>
+          <p className="rent-estimate__lead">
+            Estimá a cuánto alquilar esta propiedad según el mercado. Útil al terminar un contrato,
+            para fijar el nuevo alquiler.
+          </p>
           <p className="owner-eyebrow rent-estimate__moneda-label">MONEDA</p>
           <fieldset className="owner-fieldset owner-wizard-chips rent-estimate__moneda">
             <legend className="sr-only">Moneda de la estimación</legend>
@@ -126,12 +118,10 @@ export default function RentEstimateCard({ propertyId, estimar: estimarCon, falt
               </button>
             ))}
           </fieldset>
-          <button type="button" className="owner-button owner-button--secondary" onClick={estimar}
-            disabled={Boolean(faltante)} aria-describedby={faltante ? "rent-estimate-faltante" : undefined}>
+          <button type="button" className="owner-button owner-button--secondary" onClick={estimar}>
             <Icon name="trend" size={18} />
             Sugerir alquiler
           </button>
-          {faltante && <p id="rent-estimate-faltante" className="owner-wizard-help">{faltante}</p>}
         </>
       )}
 

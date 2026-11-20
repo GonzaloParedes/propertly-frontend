@@ -1,5 +1,5 @@
 import { formatearMonto, formatearPeriodo } from "@/lib/formato";
-import type { ContractResponse, ScheduledSchemaChangeRequest } from "@/lib/backend-types";
+import type { ContractResponse, Currency, ScheduledSchemaChangeRequest } from "@/lib/backend-types";
 
 /** Cómo sube el alquiler, en los términos del asistente de contratos. */
 export type MetodoActualizacion = "FIXED_PERCENTAGE" | "ICL" | "IPC";
@@ -100,10 +100,10 @@ export function armarPedido(c: CondicionesNuevas): ScheduledSchemaChangeRequest 
 }
 
 /** Lo que rige desde el mes elegido, en una línea por condición. */
-export function resumenDeCondiciones(c: CondicionesNuevas): string[] {
+export function resumenDeCondiciones(c: CondicionesNuevas, moneda?: Currency): string[] {
   const cada = `cada ${c.frecuencia} ${c.frecuencia === 1 ? "mes" : "meses"}`;
   return [
-    `Alquiler de ${formatearMonto(Number(c.alquiler))} por mes`,
+    `Alquiler de ${formatearMonto(Number(c.alquiler), moneda)} por mes`,
     `Vence el día ${c.diaVencimiento}`,
     c.metodo === "FIXED_PERCENTAGE" ? `Sube ${c.porcentaje} % ${cada}` : `Ajusta por ${c.metodo} ${cada}`,
   ];

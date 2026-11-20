@@ -1,5 +1,5 @@
 import { formatearDiaMes, formatearMonto } from "@/lib/formato";
-import type { InvoiceResponse, LateFeeResponse } from "@/lib/backend-types";
+import type { Currency, InvoiceResponse, LateFeeResponse } from "@/lib/backend-types";
 
 /**
  * Cómo se muestra el recargo por atraso de una cuota. Todos los importes
@@ -31,11 +31,11 @@ function marcaDeModificado(lateFee: LateFeeResponse, quien: Quien): RecargoVista
   return lateFee.amount > 0 ? "Recargo modificado" : "Recargo perdonado";
 }
 
-function detalleDeRecargo(lateFee: LateFeeResponse): string | null {
+function detalleDeRecargo(lateFee: LateFeeResponse, moneda: Currency | undefined): string | null {
   switch (lateFee.state) {
     case "NOT_STARTED": {
       if (lateFee.nextDayAmount <= 0) return null;
-      const cuanto = formatearMonto(lateFee.nextDayAmount);
+      const cuanto = formatearMonto(lateFee.nextDayAmount, moneda);
       const desde = formatearDiaMes(lateFee.accruesFrom);
       return lateFee.method === "FIXED_ONCE"
         ? `Desde el ${desde} se suma una multa de ${cuanto}`
@@ -52,7 +52,7 @@ function detalleDeRecargo(lateFee: LateFeeResponse): string | null {
 
 function importeDesdeManana(invoice: InvoiceResponse, lateFee: LateFeeResponse): string | null {
   if (lateFee.state !== "ACCRUING" || lateFee.nextDayAmount === lateFee.amount) return null;
-  return formatearMonto(redondear(invoice.amountDue - lateFee.amount + lateFee.nextDayAmount));
+  return formatearMonto(redondear(invoice.amountDue - lateFee.amount + lateFee.nextDayAmount), invoice.currency);
 }
 
 export function vistaDeRecargo(invoice: InvoiceResponse, quien: Quien): RecargoVista | null {
@@ -66,8 +66,8 @@ export function vistaDeRecargo(invoice: InvoiceResponse, quien: Quien): RecargoV
 
   return {
     etiqueta: "Recargo por atraso",
-    monto: corre ? formatearMonto(lateFee.amount) : null,
-    detalle: detalleDeRecargo(lateFee),
+    monto: corre ? formatearMonto(lateFee.amount, invoice.currency) : null,
+    detalle: detalleDeRecargo(lateFee, invoice.currency),
     desdeManana: importeDesdeManana(invoice, lateFee),
     modificado,
   };
@@ -88,6 +88,8 @@ export interface RecargoEditable {
   actual: number;
   maximo: number | null;
   modificado: boolean;
+  /** La del contrato, para mostrar `actual` y `maximo` con su símbolo. */
+  moneda?: Currency;
 }
 
 export function recargoEditable(invoice: InvoiceResponse): RecargoEditable | null {
@@ -99,12 +101,13 @@ export function recargoEditable(invoice: InvoiceResponse): RecargoEditable | nul
     actual: lateFee.amount,
     maximo: lateFee.overridden ? null : lateFee.amount,
     modificado: lateFee.overridden,
+    moneda: invoice.currency,
   };
 }
 
 /** «3.000», «3000,50» o «3000.5»: lo que escribiría el propietario, no un número ya limpio. */
 function leerImporte(texto: string): number {
-  const limpio = texto.trim().replace(/\s|\$/g, "");
+  const limpio = texto.trim().replace(/US|\s|\$/gi, "");
   if (limpio.includes(",")) return Number(limpio.replace(/\./g, "").replace(",", "."));
   if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) return Number(limpio.replace(/\./g, ""));
   return Number(limpio);
@@ -113,12 +116,16 @@ function leerImporte(texto: string): number {
 export type ImporteDeRecargo = { valor: number } | { error: string };
 
 /** El importe a fijar: de 0 al máximo, si se lo conoce. El backend vuelve a validar el tope. */
-export function validarImporteDeRecargo(texto: string, maximo: number | null): ImporteDeRecargo {
+export function validarImporteDeRecargo(
+  texto: string,
+  maximo: number | null,
+  moneda?: Currency
+): ImporteDeRecargo {
   if (texto.trim() === "") return { error: "Escriba el importe del recargo. Con 0 queda perdonado." };
   const valor = leerImporte(texto);
   if (!Number.isFinite(valor) || valor < 0) return { error: "Escriba un importe válido, por ejemplo 3.000." };
   if (maximo !== null && valor > maximo) {
-    return { error: `El máximo es ${formatearMonto(maximo)}, el recargo de hoy según el contrato.` };
+    return { error: `El máximo es ${formatearMonto(maximo, moneda)}, el recargo de hoy según el contrato.` };
   }
   return { valor: redondear(valor) };
 }

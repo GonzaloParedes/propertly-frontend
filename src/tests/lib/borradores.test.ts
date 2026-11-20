@@ -121,7 +121,7 @@ describe("el desvío y lo escrito sin confirmar (versión 2)", () => {
     formularioPropiedad: {
       direccion: DIRECCION, unidad: "3B", categoria: "APARTMENT", bedrooms: 2, bathrooms: 1, superficie: "58", mascotas: true, amoblada: false,
     },
-    formularioInquilino: { nombre: "Ana", apellido: "", cuit: "20-30115482-9", correo: "", telefono: "" },
+    formularioInquilino: { nombre: "Ana", apellido: "", personaJuridica: false, razonSocial: "", cuit: "20-30115482-9", correo: "", telefono: "" },
   });
 
   it("ida y vuelta de una propiedad nueva a medio cargar, en su cuarto paso y sin confirmar", () => {
@@ -187,7 +187,16 @@ describe("un borrador de la versión 1", () => {
 
     expect(leido?.formularioPropiedad).toEqual(formularioDePropiedad(PROPIEDAD));
     expect(leido?.formularioPropiedad.direccion?.street).toBe("Lavalle");
-    expect(leido?.formularioInquilino).toEqual({ nombre: "Pablo", apellido: "Pérez", cuit: "20-30115482-9", correo: "p@e.com", telefono: "1155600183" });
+    expect(leido?.formularioInquilino).toEqual({ nombre: "Pablo", apellido: "Pérez", personaJuridica: false, razonSocial: "", cuit: "20-30115482-9", correo: "p@e.com", telefono: "1155600183" });
+  });
+
+  // ALQ-191: un inquilino empresa confirmado no tiene nombre ni apellido, y el borrador igual se lee.
+  it("rearma el formulario de una persona jurídica confirmada", () => {
+    const inquilino = { legalEntity: true, businessName: "Gómez Hermanos S.R.L.", taxId: null, email: null, phoneNumber: null };
+    const leido = deserializar(enVersion1({ inquilino: { id: null, nuevo: true, borrador: { pedido: inquilino, etiqueta: "Gómez Hermanos S.R.L." } } }));
+
+    expect(leido?.inquilino.borrador?.pedido).toEqual(inquilino);
+    expect(leido?.formularioInquilino).toEqual({ nombre: "", apellido: "", personaJuridica: true, razonSocial: "Gómez Hermanos S.R.L.", cuit: "", correo: "", telefono: "" });
   });
 
   it("sin nada confirmado, los formularios quedan vacíos", () => {

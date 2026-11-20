@@ -9,6 +9,7 @@
  * La versión simulada que se ve en /prototipo es `ContractFromPdfDemo`.
  */
 
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FileUp } from "lucide-react";
 import { ArcoDeEspera, Spinner } from "@/components/ui/Spinner";
@@ -295,7 +296,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
       AlquiaBackendClient.tenants.get(inquilinoId)
         .then((inquilino) => {
           setCorreoExistente({ id: inquilino.id, email: inquilino.email ?? null });
-          setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` }));
+          setExistentes((previos) => ({ ...previos, inquilino: nombreDeInquilino(inquilino) }));
         })
         .catch(() => {});
     }
@@ -480,7 +481,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
     AlquiaBackendClient.tenants.get(existente)
       .then((inquilino) => {
           setCorreoExistente({ id: inquilino.id, email: inquilino.email ?? null });
-          setExistentes((previos) => ({ ...previos, inquilino: `${inquilino.firstName} ${inquilino.lastName}` }));
+          setExistentes((previos) => ({ ...previos, inquilino: nombreDeInquilino(inquilino) }));
         })
       .catch(() => {});
     setAviso({ mensaje: "Ya tiene cargado a ese inquilino con el mismo CUIT o teléfono. Lo dejamos elegido: revise y cree el contrato de nuevo." });
@@ -646,6 +647,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
                         onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }}
                         inicioISO={b.inicio}
                         alquiler={Number(b.alquiler)}
+                        moneda={b.moneda}
                         frecuenciaMeses={Number(b.frecuencia)}
                         tieneRecargo={hayPunitorios}
                         diaVencimiento={Number(b.dia)}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import type { Currency } from "@/lib/backend-types";
 import { consecuenciaDe, faltaResponder, nombreDeMes, NINGUNO, type RespuestaPagadoHasta } from "@/lib/transcurridos";
 
 /** Hasta acá se muestran todos los meses como chips; con más (un contrato que empezó hace rato) se elige el mes y el año por separado. */
@@ -102,7 +103,7 @@ function ElegirMes({ meses, value, onChange }: Readonly<{ meses: string[]; value
  * respuesta cambia lo que ve él y lo que recibe el inquilino. Debajo de la
  * elección va lo que va a pasar, antes de crear nada.
  */
-export default function PagosTranscurridos({ meses, value, onChange, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento, obligatorio, aviso }: Readonly<{
+export default function PagosTranscurridos({ meses, value, onChange, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento, obligatorio, aviso, moneda }: Readonly<{
   meses: string[];
   value: RespuestaPagadoHasta;
   onChange: (respuesta: RespuestaPagadoHasta) => void;
@@ -115,9 +116,11 @@ export default function PagosTranscurridos({ meses, value, onChange, inicioISO, 
   obligatorio: boolean;
   /** Un aviso propio de la pantalla, por ejemplo cuando el backend corrigió la lista. */
   aviso?: string | null;
+  /** La del alquiler. Ausente = ARS. */
+  moneda?: Currency;
 }>) {
   if (meses.length === 0) return null;
-  const consecuencia = consecuenciaDe({ meses, respuesta: value, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento });
+  const consecuencia = consecuenciaDe({ meses, respuesta: value, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento, moneda });
   const opcion = (clave: string, etiqueta: string) => {
     const elegida = value === clave;
     return (

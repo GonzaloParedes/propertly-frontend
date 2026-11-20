@@ -323,6 +323,40 @@ describe("detalle · editar datos", () => {
     }));
   });
 
+  // ALQ-191: una empresa se lista y se edita por su razón social.
+  it("lista a una persona jurídica por su razón social y la edita sin nombre ni apellido", async () => {
+    const empresa = { id: 1, firstName: null, lastName: null, legalEntity: true, businessName: "Gómez Hermanos S.R.L.", taxId: null, email: null, phoneNumber: null };
+    conDatos({ tenants: [empresa], contracts: [] });
+    mockUpdate.mockResolvedValueOnce({ ...empresa, businessName: "Gómez Hnos. S.R.L." });
+    render(<OwnerWorkspace initialView="inquilinos" />);
+    await userEvent.click(await screen.findByText("Gómez Hermanos S.R.L."));
+    await userEvent.click(await screen.findByRole("button", { name: /Editar datos/ }));
+    const dialogo = screen.getByRole("dialog");
+    expect(within(dialogo).getByRole("checkbox", { name: "Es persona jurídica" })).toBeChecked();
+    expect(within(dialogo).queryByLabelText("Nombre")).not.toBeInTheDocument();
+    const razonSocial = within(dialogo).getByLabelText("Razón social");
+    await userEvent.clear(razonSocial);
+    expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeDisabled();
+    await userEvent.type(razonSocial, "Gómez Hnos. S.R.L.");
+    await userEvent.click(within(dialogo).getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith(1, {
+      legalEntity: true, businessName: "Gómez Hnos. S.R.L.", taxId: null, email: null, phoneNumber: null,
+    }));
+  });
+
+  it("al destildar «Es persona jurídica» vuelve a pedir nombre y apellido", async () => {
+    const dialogo = await abrirEdicion();
+    const casilla = within(dialogo).getByRole("checkbox", { name: "Es persona jurídica" });
+    expect(casilla).not.toBeChecked();
+    await userEvent.click(casilla);
+    expect(within(dialogo).queryByLabelText("Nombre")).not.toBeInTheDocument();
+    expect(within(dialogo).getByLabelText("Razón social")).toHaveValue("");
+    expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeDisabled();
+    await userEvent.click(casilla);
+    expect(within(dialogo).getByLabelText("Nombre")).toHaveValue("Jorge");
+    expect(within(dialogo).getByRole("button", { name: "Guardar" })).toBeEnabled();
+  });
+
   it("explica que debe desactivar avisos antes de quitar el correo", async () => {
     mockUpdate.mockRejectedValueOnce(new ApiError(400, "Email required", ERROR.TENANT_EMAIL_REQUIRED_FOR_NOTIFICATIONS));
     const dialogo = await abrirEdicion();

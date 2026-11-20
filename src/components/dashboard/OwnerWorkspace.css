@@ -774,13 +774,6 @@
    de reposo (no se escala como antes). */
 .rent-map-pin--active .rent-map-pin__num{background:#A79AF0;opacity:1}
 
-/* ── Map picker — fallback de AddressField (ALQ-197) ───────────────── */
-.owner-map-picker{margin-top:var(--esp-12)}
-.owner-map-picker .rent-map{height:300px}
-.owner-map-picker__hint{margin:var(--esp-10) var(--esp-2) 0;color:var(--gris);font-size:15px}
-.owner-map-picker__hint strong{color:var(--tinta)}
-.owner-map-picker__actions{display:flex;align-items:center;gap:var(--esp-14);flex-wrap:wrap;margin-top:var(--esp-16)}
-
 /* ── Contrato desde el PDF (PROTOTIPO) ─────────────────────────────
    Ver docs/design/propuesta-contrato-desde-pdf.md. Radios y anillos
    copiados de los hermanos: zona de carga = .owner-wizard-field,
@@ -1026,6 +1019,8 @@
 .bcra-verdict--ok{background:var(--exito-bg);color:var(--exito)}
 .bcra-verdict--warn{background:var(--warn-bg);color:var(--adv)}
 .bcra-verdict--bad{background:var(--error-bg);color:var(--error)}
+/* ALQ-191: «Es persona jurídica» alterna entre nombre+apellido y razón social. */
+.owner-wizard-checkbox{display:inline-flex;align-items:center;gap:var(--esp-10);min-height:40px;color:var(--tinta);cursor:pointer;font:600 16px var(--font-nunito-sans),sans-serif}.owner-wizard-checkbox input{width:20px;height:20px;margin:0;accent-color:var(--indigo);cursor:pointer}
 
 /* Herramientas (ALQ-145): el listado reusa .owner-row; la calculadora, las piezas del asistente. */
 .owner-row--herramienta{grid-template-columns:44px minmax(0,1fr) auto}
@@ -1050,11 +1045,3 @@
   .owner-calc__counters{grid-template-columns:1fr;gap:0}
   .owner-calc__amount{font-size:28px}
 }
-.owner-tool__head{display:flex;align-items:center;justify-content:space-between;gap:var(--esp-12)}
-.owner-tool__head h2{margin:0}
-.owner-tool__head small{font-weight:400;font-size:.8em}
-.owner-tool__head img{flex-shrink:0}
-.owner-tool__modos{margin-bottom:var(--esp-18)}
-.owner-tool__counters{margin-top:var(--esp-8)}
-.owner-calc>.owner-wizard-label:first-child{margin-top:0}
-.owner-calc~.rent-estimate{max-width:720px}

@@ -89,7 +89,7 @@ export function buildFilasPropiedad(
       direccion,
       ciudad: property.city,
       detalle: detallePropiedad(property),
-      alquiler: contrato ? formatearMonto(contrato.currentRent) : null,
+      alquiler: contrato ? formatearMonto(contrato.currentRent, contrato.currency) : null,
       contratoId: contrato?.id ?? null,
       estado: estadoDePropiedad(property, contrato ? porContrato.get(contrato.id) ?? [] : []),
       dormitorios: property.bedrooms ?? null,

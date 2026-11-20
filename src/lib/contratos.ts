@@ -1,3 +1,4 @@
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { coincideTexto } from "@/lib/busqueda";
 import { formatearDireccion, formatearFecha, formatearMonto } from "@/lib/formato";
 import type { ContractResponse } from "@/lib/backend-types";
@@ -48,7 +49,7 @@ export function describirActualizacion(contract: ContractResponse): string {
     return `Ajusta por ${contract.incrementIndexName ?? "índice"} ${cada}`;
   }
   if (contract.incrementMethod === "FIXED_AMOUNT") {
-    return `Sube ${formatearMonto(contract.incrementValue ?? 0)} ${cada}`;
+    return `Sube ${formatearMonto(contract.incrementValue ?? 0, contract.currency)} ${cada}`;
   }
   return `Sube ${contract.incrementValue ?? 0} % ${cada}`;
 }
@@ -77,11 +78,11 @@ export function buildFilasContrato(
       return {
         id: contract.id,
         direccion: formatearDireccion(contract.property),
-        inquilino: `${contract.tenant.firstName} ${contract.tenant.lastName}`,
+        inquilino: nombreDeInquilino(contract.tenant),
         actualizacion: describirActualizacion(contract),
         fin: formatearFecha(fin),
         finISO: fin,
-        alquiler: formatearMonto(contract.currentRent),
+        alquiler: formatearMonto(contract.currentRent, contract.currency),
         estado: estadoDeContrato(contract, hoyISO),
         sucesorId: contract.successorContractId ?? null,
       };

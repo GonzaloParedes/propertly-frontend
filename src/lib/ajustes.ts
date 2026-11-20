@@ -3,6 +3,7 @@ import type {
   AdjustmentKind,
   AdjustmentResponse,
   AdjustmentValueType,
+  Currency,
   InvoiceAdjustmentRequest,
 } from "@/lib/backend-types";
 
@@ -29,13 +30,14 @@ export interface LineaAjuste {
 
 export function describirAjuste(
   ajuste: AdjustmentResponse,
-  importeBase: number
+  importeBase: number,
+  moneda?: Currency
 ): LineaAjuste {
   const efecto = efectoDeAjuste(ajuste, importeBase);
   return {
     id: ajuste.id,
     nombre: ajuste.name,
-    efecto: `${efecto < 0 ? "−" : "+"} ${formatearMonto(Math.abs(efecto))}`,
+    efecto: `${efecto < 0 ? "−" : "+"} ${formatearMonto(Math.abs(efecto), moneda)}`,
     detalle:
       ajuste.valueType === "PERCENTAGE" ? `${ajuste.value} % del importe base` : null,
   };

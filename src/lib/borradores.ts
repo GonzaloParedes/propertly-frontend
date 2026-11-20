@@ -56,7 +56,7 @@ export type FormularioDePropiedad = {
 };
 
 /** Lo escrito en la carga de un inquilino nuevo, esté confirmado o no. */
-export type FormularioDeInquilino = { nombre: string; apellido: string; cuit: string; correo: string; telefono: string };
+export type FormularioDeInquilino = { nombre: string; apellido: string; personaJuridica: boolean; razonSocial: string; cuit: string; correo: string; telefono: string };
 
 /** Lo que el asistente de «Nuevo contrato» va juntando, y lo único que hace falta para retomarlo. */
 export type EstadoDelBorrador = {
@@ -138,6 +138,8 @@ export function formularioDeInquilino(pedido: TenantRequest | undefined): Formul
   return {
     nombre: pedido?.firstName ?? "",
     apellido: pedido?.lastName ?? "",
+    personaJuridica: pedido?.legalEntity === true,
+    razonSocial: pedido?.businessName ?? "",
     cuit: pedido ? formatearCuit(pedido.taxId ?? "") : "",
     correo: pedido?.email ?? "",
     telefono: pedido?.phoneNumber ?? "",
@@ -225,8 +227,9 @@ function sanearElegido<T>(valor: unknown, esPedido: (pedido: Objeto) => boolean)
 const esPropiedad = (pedido: Objeto) =>
   [pedido.street, pedido.number, pedido.city, pedido.province].every(esTexto) && CATEGORIAS.some(({ valor }) => valor === pedido.category);
 
+// Persona jurídica (ALQ-191): basta la razón social. Persona física: nombre y apellido.
 const esInquilino = (pedido: Objeto) =>
-  [pedido.firstName, pedido.lastName].every(esTexto) &&
+  (pedido.legalEntity === true ? esTexto(pedido.businessName) : [pedido.firstName, pedido.lastName].every(esTexto)) &&
   [pedido.taxId, pedido.email, pedido.phoneNumber].every((value) => value == null || esTexto(value));
 
 const textoONada = (valor: unknown): string => (esTexto(valor) ? valor : "");
@@ -263,7 +266,7 @@ export function sanearFormularioPropiedad(valor: unknown): FormularioDePropiedad
 
 function sanearFormularioInquilino(valor: unknown): FormularioDeInquilino | null {
   if (!esObjeto(valor)) return null;
-  return { nombre: textoONada(valor.nombre), apellido: textoONada(valor.apellido), cuit: textoONada(valor.cuit), correo: textoONada(valor.correo), telefono: textoONada(valor.telefono) };
+  return { nombre: textoONada(valor.nombre), apellido: textoONada(valor.apellido), personaJuridica: valor.personaJuridica === true, razonSocial: textoONada(valor.razonSocial), cuit: textoONada(valor.cuit), correo: textoONada(valor.correo), telefono: textoONada(valor.telefono) };
 }
 
 function sanearDesvio(valor: unknown): DesvioDelBorrador | null {

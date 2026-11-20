@@ -1,3 +1,4 @@
+import type { Currency } from "@/lib/backend-types";
 import { formatearMonto } from "@/lib/formato";
 
 /** «2026-06» a partir de una fecha ISO. */
@@ -90,15 +91,16 @@ function fraseDeCobradas(cobradas: string[], hoyISO: string): string {
   return `${rango(cobradas, hoyISO)} ${verbo} (sin comprobante).`;
 }
 
-function frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO }: Readonly<{
+function frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO, moneda }: Readonly<{
   deuda: string[];
   totalDeuda: number | null;
+  moneda?: Currency;
   tieneRecargo: boolean;
   hoyISO: string;
 }>): string[] {
   if (deuda.length === 0) return ["No queda deuda."];
   const verbo = deuda.length === 1 ? "queda como deuda" : "quedan como deuda";
-  const detalle = totalDeuda === null ? "" : `: ${formatearMonto(totalDeuda)}`;
+  const detalle = totalDeuda === null ? "" : `: ${formatearMonto(totalDeuda, moneda)}`;
   return [
     `${rango(deuda, hoyISO)} ${verbo}${detalle}.`,
     "Su inquilino va a recibir el aviso de cuota vencida.",
@@ -123,7 +125,7 @@ export interface Consecuencia {
  * inicial. Después de un aumento, el importe lo calcula el backend (en un contrato
  * por índice ni siquiera existe todavía) y decir un total sería inventarlo.
  */
-export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento = 1 }: Readonly<{
+export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento = 1, moneda }: Readonly<{
   meses: string[];
   respuesta: RespuestaPagadoHasta;
   inicioISO: string;
@@ -132,6 +134,8 @@ export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenc
   tieneRecargo: boolean;
   hoyISO: string;
   diaVencimiento?: number;
+  /** La del alquiler. Ausente = ARS. */
+  moneda?: Currency;
 }>): Consecuencia | null {
   if (meses.length === 0 || respuesta === "") return null;
   const hasta = respuesta === NINGUNO ? null : respuesta;
@@ -143,6 +147,6 @@ export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenc
   const antesDelAumento = deuda.every((m) => m < sumarMeses(mes(inicioISO), frecuenciaMeses));
   const totalDeuda = deuda.length > 0 && antesDelAumento && alquiler > 0 ? alquiler * deuda.length : null;
 
-  const frases = [fraseDeCobradas(cobradas, hoyISO), ...frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO }), ...(pendientes.length ? [`${rango(pendientes, hoyISO)} ${pendientes.length === 1 ? "queda impaga y aún no venció" : "quedan impagas y aún no vencieron"}.`] : [])];
+  const frases = [fraseDeCobradas(cobradas, hoyISO), ...frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO, moneda }), ...(pendientes.length ? [`${rango(pendientes, hoyISO)} ${pendientes.length === 1 ? "queda impaga y aún no venció" : "quedan impagas y aún no vencieron"}.`] : [])];
   return { cobradas, deuda, totalDeuda, frases };
 }

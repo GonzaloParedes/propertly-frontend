@@ -1,5 +1,7 @@
 "use client";
 
+import { nombreCompleto, nombreDeInquilino, nombreParaElPedido, type CamposDeNombre } from "@/lib/inquilino";
+import { CamposDeNombreDelInquilino } from "@/components/dashboard/CamposDeNombreDelInquilino";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
@@ -10,7 +12,6 @@ import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import Herramientas from "@/components/dashboard/Herramientas";
-import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import PaymentReceiptUpload from "@/components/dashboard/PaymentReceiptUpload";
 import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
@@ -65,7 +66,7 @@ import {
   type FilaPropiedad,
 } from "@/lib/propiedades";
 import { CATEGORIAS, etiquetaCategoria } from "@/lib/propiedad";
-import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo } from "@/lib/formato";
+import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo, formatearTotales, simboloDe } from "@/lib/formato";
 import {
   avisosPendientes,
   contratosVigentes,
@@ -150,6 +151,8 @@ const inquilinosDemo: TenantRow[] = [
     nombre: tenant.name,
     nombrePila: tenant.name.split(" ")[0],
     apellido: tenant.name.split(" ").slice(1).join(" "),
+    personaJuridica: false,
+    razonSocial: "",
     cuit: tenant.tax,
     email: tenant.email,
     telefono: "+5491144552210",
@@ -159,7 +162,7 @@ const inquilinosDemo: TenantRow[] = [
     alquiler: tenant.property.rent,
     estado: tenant.property.state === "Sin alquilar" ? ("Al día" as const) : tenant.property.state,
   })),
-  { id: 90, nombre: "Luis Cabrera", nombrePila: "Luis", apellido: "Cabrera",
+  { id: 90, nombre: "Luis Cabrera", nombrePila: "Luis", apellido: "Cabrera", personaJuridica: false, razonSocial: "",
     cuit: "20-31447290-0", email: "luis.cabrera@gmail.com", telefono: "+5491155667788",
     contratoId: null, avisosAlInquilino: false, direccion: null, alquiler: null, estado: "Sin contrato" },
 ];
@@ -285,7 +288,10 @@ function separarCalleYNumero(direccion: string): { calle: string; numero: string
  * resto de sus pantallas.
  */
 const inicioDemo = {
-  cobranza: { cobrado: 430000, aVencer: 505000, vencido: 998691, emitido: 1933691, cuotas: 4, cobradas: 1 },
+  cobranza: {
+    cobrado: { ARS: 430000 }, aVencer: { ARS: 505000 }, vencido: { ARS: 998691 }, emitido: { ARS: 1933691 },
+    cuotas: 4, cobradas: 1, cantidades: { cobrado: 1, aVencer: 1, vencido: 2 },
+  },
   cartera: { total: 5, conContrato: 4, sinAlquilar: 1 },
   avisos: [
     { id: "d1", tono: "info" as const, accion: "Revisar",
@@ -334,7 +340,7 @@ const inicioDemo = {
   })) as ContractResponse[],
 };
 
-const proyeccionDemo: Proyeccion = { total: 1451986, aDefinir: 1 };
+const proyeccionDemo: Proyeccion = { total: { ARS: 1451986 }, aDefinir: 1 };
 
 const AVISOS_DEMO: ReminderSettingsResponse = {
   daysBeforeDue: 7,
@@ -671,6 +677,23 @@ const CREDIT_CHECK_DEMO: TenantCreditCheckResponse = {
   latestPeriod: "2026-09",
 };
 
+function formatPeriodoBcra(periodo: string): string {
+  const [year, month] = periodo.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+}
+
+function situacionLabel(s: number): string {
+  const labels: Record<number, string> = {
+    1: "Normal",
+    2: "Con seguimiento especial",
+    3: "Con problemas",
+    4: "Con alto riesgo de insolvencia",
+    5: "Irrecuperable",
+  };
+  return labels[s] ?? `Situación ${s}`;
+}
+
 function TenantDetail({
   selectedId,
   tenants,
@@ -746,9 +769,59 @@ function TenantDetail({
           </>
         )}
         {creditCheck.status === "loading" && <Cargando>Consultando al BCRA…</Cargando>}
-        {creditCheck.status === "result" && (
-          <ResultadoBcra data={creditCheck.data} denominacionMismatch={creditCheck.data.denominacionMismatch} onReset={() => setCreditCheck({ status: "idle" })} />
-        )}
+        {creditCheck.status === "result" && (() => {
+          const { data } = creditCheck;
+          if (data.noDebtsReported) {
+            return (
+              <>
+                <div className="bcra-ok">
+                  <div className="bcra-ok__icon"><Icon name="check" size={22} /></div>
+                  <div className="bcra-ok__body">
+                    <b>Sin deudas informadas</b>
+                    <small>No figura en la Central de Deudores del BCRA.</small>
+                  </div>
+                </div>
+                <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
+              </>
+            );
+          }
+          const sit = data.worstSituation ?? 1;
+          const verdictClass = sit === 1 ? "bcra-verdict--ok" : sit === 2 ? "bcra-verdict--warn" : "bcra-verdict--bad";
+          const stepClass = (n: number): string => {
+            if (n > sit) return "";
+            if (sit === 1) return "bcra-scale__step--1";
+            if (sit === 2) return "bcra-scale__step--2";
+            if (sit === 3) return "bcra-scale__step--3";
+            if (sit === 4) return "bcra-scale__step--4";
+            return "bcra-scale__step--5";
+          };
+          return (
+            <>
+              {data.denominacionMismatch && (
+                <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />El nombre en el BCRA (<b>{data.denominacion}</b>) no coincide con el registrado en Alquia.</p>
+              )}
+              <div className="bcra-scale">
+                <p className="bcra-scale__label">Situación crediticia</p>
+                <div className="bcra-scale__steps" role="meter" aria-valuenow={sit} aria-valuemin={1} aria-valuemax={5}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <div key={n} className={`bcra-scale__step${n <= sit ? ` ${stepClass(n)}` : ""}`} />
+                  ))}
+                </div>
+                <div className="bcra-scale__legend"><span>Normal</span><span>Irrecuperable</span></div>
+              </div>
+              <span className={`bcra-verdict ${verdictClass}`}>{situacionLabel(sit)}</span>
+              <dl className="owner-definition">
+                <div><dt>Entidades informantes</dt><dd>{data.entityCount}</dd></div>
+                <div><dt>Monto total</dt><dd>{formatearMonto(data.totalAmountPesos!)}</dd></div>
+                {data.hasLegalSituation && <div><dt>Situación jurídica</dt><dd>Sí</dd></div>}
+                {data.hasJudicialProcess && <div><dt>Proceso judicial</dt><dd>Sí</dd></div>}
+                {data.latestPeriod && <div><dt>Datos al</dt><dd>{formatPeriodoBcra(data.latestPeriod)}</dd></div>}
+              </dl>
+              <p className="owner-card__copy" style={{ fontSize: "0.78em", marginTop: "0.75rem" }}>Los datos los informan las entidades financieras. Su publicación no implica conformidad del BCRA. Para rectificar, comunicarse con la entidad que informó el dato.</p>
+              <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
+            </>
+          );
+        })()}
         {creditCheck.status === "error" && (
           <>
             <p className="owner-card__copy">No pudimos obtener la información del BCRA en este momento. Podés consultar directamente en <a href="https://www.bcra.gob.ar/situacion-crediticia/" target="_blank" rel="noopener noreferrer">su sitio oficial</a>.</p>
@@ -1090,13 +1163,13 @@ function ProjectedSummary({ projection, nextMonth }: Readonly<{ projection: Proy
   }
 
   if (projection.aDefinir === 0) {
-    return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearMonto(projection.total)}</b><small>Todos los contratos ya están definidos</small></div>;
+    return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearTotales(projection.total)}</b><small>Todos los contratos ya están definidos</small></div>;
   }
 
   const sinContar = projection.aDefinir === 1
     ? "No incluye 1 contrato que aumenta por un índice todavía sin publicar."
     : `No incluye ${projection.aDefinir} contratos que aumentan por un índice todavía sin publicar.`;
-  return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearMonto(projection.total)}</b><small>{sinContar}</small></div>;
+  return <div><p className="owner-eyebrow">PROYECTADO · {nextMonth.toUpperCase()}</p><b>{formatearTotales(projection.total)}</b><small>{sinContar}</small></div>;
 }
 
 /**
@@ -1192,6 +1265,7 @@ function Overview({
 
   const { cobranza, cartera, avisos, contratos, tieneContratos } = data;
   const percent = proporciones(cobranza);
+  const hayEmitido = Object.values(cobranza.emitido).some((monto) => (monto ?? 0) > 0);
   const cuotasCobradasLabel = cobranza.cuotas === 1 ? "cuota cobrada" : "cuotas cobradas";
   return <>
     {header}
@@ -1199,10 +1273,10 @@ function Overview({
       <div className="owner-portfolio__money">
         <p className="owner-eyebrow">COBRANZA DE {currentMonth.toUpperCase()}</p>
         {cobranza.cuotas === 0 ? <div className="owner-portfolio__empty"><EmptyArt name="cobranzas" /><div><b>Todavía no hay cuotas emitidas este mes</b><span>Se emiten solas a partir de sus contratos activos.</span></div></div> : <>
-          <strong>{formatearMonto(cobranza.cobrado)}</strong>
-          <p>de {formatearMonto(cobranza.emitido)} emitidos este mes · {cobranza.cobradas} de {cobranza.cuotas} {cuotasCobradasLabel}</p>
-          <div className="owner-meter" aria-label={cobranza.emitido > 0 ? `${percent.cobrado}% cobrado, ${percent.aVencer}% por vencer y ${percent.vencido}% vencido` : "Sin montos emitidos"}>{cobranza.cobrado > 0 && <i className="owner-meter__ok" style={{ flexGrow: cobranza.cobrado }} />}{cobranza.aVencer > 0 && <i className="owner-meter__warn" style={{ flexGrow: cobranza.aVencer }} />}{cobranza.vencido > 0 && <i className="owner-meter__bad" style={{ flexGrow: cobranza.vencido }} />}</div>
-          <div className="owner-key"><span><Icon name="check" />Cobrado <b>{formatearMonto(cobranza.cobrado)}</b></span><span><Icon name="clock" />A vencer <b>{formatearMonto(cobranza.aVencer)}</b></span><span><Icon name="x" />Vencido <b>{formatearMonto(cobranza.vencido)}</b></span></div>
+          <strong>{formatearTotales(cobranza.cobrado)}</strong>
+          <p>de {formatearTotales(cobranza.emitido)} emitidos este mes · {cobranza.cobradas} de {cobranza.cuotas} {cuotasCobradasLabel}</p>
+          <div className="owner-meter" aria-label={hayEmitido ? `${percent.cobrado}% cobrado, ${percent.aVencer}% por vencer y ${percent.vencido}% vencido` : "Sin montos emitidos"}>{percent.cobrado > 0 && <i className="owner-meter__ok" style={{ flexGrow: percent.cobrado }} />}{percent.aVencer > 0 && <i className="owner-meter__warn" style={{ flexGrow: percent.aVencer }} />}{percent.vencido > 0 && <i className="owner-meter__bad" style={{ flexGrow: percent.vencido }} />}</div>
+          <div className="owner-key"><span><Icon name="check" />Cobrado <b>{formatearTotales(cobranza.cobrado)}</b></span><span><Icon name="clock" />A vencer <b>{formatearTotales(cobranza.aVencer)}</b></span><span><Icon name="x" />Vencido <b>{formatearTotales(cobranza.vencido)}</b></span></div>
         </>}
       </div>
       <div className="owner-portfolio__summary">
@@ -1211,7 +1285,7 @@ function Overview({
       </div>
     </section>
     <ActionsSection avisos={avisos} borradores={borradores} borradoresDePropiedad={borradoresDePropiedad} hayContratos={contratos.length > 0} onOpenCollections={onOpenCollections} onResumeDraft={onResumeDraft} onDiscardDraft={onDiscardDraft} onRetryDrafts={onRetryDrafts} onResumePropertyDraft={onResumePropertyDraft} onDiscardPropertyDraft={onDiscardPropertyDraft} onRetryPropertyDrafts={onRetryPropertyDrafts} />
-    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
+    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent, contract.currency)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
 
@@ -1301,7 +1375,7 @@ function PropertyDetail({
   const { details, preferences } = propertyCharacteristics(rawProperty);
   const address = [property.direccion, rawProperty.city, rawProperty.postalCode, rawProperty.province].filter(Boolean).join(", ");
   const contractTitle = rawProperty.tenant
-    ? `Contrato con ${rawProperty.tenant.firstName} ${rawProperty.tenant.lastName}`
+    ? `Contrato con ${nombreDeInquilino(rawProperty.tenant)}`
     : "Contrato vigente";
   const headerActions = <><Button tone="secondary" onClick={() => onEdit(rawProperty)}><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="trash" size={18} />Eliminar</Button></>;
   const category = etiquetaCategoria(rawProperty.category);
@@ -1629,7 +1703,7 @@ function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink, re
 }
 
 function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink, onSetTenantNotifications }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown>; onSetTenantNotifications: (contractId: number, enabled: boolean) => Promise<unknown> }>) {
-  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled && Boolean(contract.tenant.email)} /><ControlAvisosInquilino tieneCorreo={Boolean(contract.tenant.email)} enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
+  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{nombreDeInquilino(contract.tenant)}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled && Boolean(contract.tenant.email)} /><ControlAvisosInquilino tieneCorreo={Boolean(contract.tenant.email)} enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
 }
 
 function ContractDocumentCard({ contract, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>; onRemoveDocument: (contractId: number) => void | Promise<unknown>; onAttachDocument: (contractId: number, file: File) => void | Promise<unknown> }>) {
@@ -1676,7 +1750,7 @@ function ContractDetail({
 
   const contract = contractLoad.ok;
   const address = formatearDireccion(contract.property);
-  const tenantName = `${contract.tenant.firstName} ${contract.tenant.lastName}`;
+  const tenantName = nombreDeInquilino(contract.tenant);
   const isActive = contract.status === "ACTIVE";
   const nextUpdate = proximaActualizacion(contract);
   const conditions = condicionesComerciales(contract);
@@ -1783,7 +1857,7 @@ function useOverviewLoad({ enabled, setOverview, setProjection }: Readonly<{
     const contracts = AlquiaBackendClient.contracts.list();
     Promise.all([AlquiaBackendClient.invoices.list({ period: periodoCorriente(today) }), AlquiaBackendClient.properties.list(), contracts]).then(([invoices, properties, loadedContracts]) => {
       if (cancelled) return;
-      setOverview({ cobranza: resumenDeCobranza(invoices), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts), tieneContratos: loadedContracts.length > 0 });
+      setOverview({ cobranza: resumenDeCobranza(invoices, loadedContracts), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts), tieneContratos: loadedContracts.length > 0 });
     }).catch(() => {
       if (!cancelled) setOverview({ error: true });
     });
@@ -1882,14 +1956,15 @@ function InvoiceAdjustmentDialog({
     form.value > 0
       ? describirAjuste(
           { id: -1, name: form.nombre, kind: form.kind, valueType: form.valueType, value: form.value },
-          invoice.importeBase
+          invoice.importeBase,
+          invoice.moneda
         )
       : null;
   const detallePreview = previewLinea?.detalle ? ` · ${previewLinea.detalle}` : "";
   const previewTexto = previewLinea
     ? `Este ítem: ${previewLinea.efecto}${detallePreview}`
     : "Agregá un ítem: nombre, tipo (suma o resta) y valor (monto o porcentaje).";
-  return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Suma o resta</legend><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></fieldset><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Tipo de valor</legend><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></fieldset><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : "$"}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
+  return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase, invoice.moneda)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase, invoice.moneda); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total, invoice.moneda)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Suma o resta</legend><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></fieldset><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Tipo de valor</legend><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></fieldset><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : simboloDe(invoice.moneda)}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
 }
 
 function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza; onClose: () => void; onChanged: (mensaje: string) => void }>) {
@@ -1918,7 +1993,7 @@ function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza
     }
   }
   function guardar() {
-    const importe = validarImporteDeRecargo(texto, editable!.maximo);
+    const importe = validarImporteDeRecargo(texto, editable!.maximo, editable!.moneda);
     if ("error" in importe) {
       setError(importe.error);
       return;
@@ -1929,11 +2004,11 @@ function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza
   return <Dialog title="Recargo por atraso" onClose={onClose}><div className="owner-dialog__body">
     <p>{row.direccion} · cuota de {row.periodo}.</p>
     <dl className="owner-definition">
-      <div><dt>Recargo de hoy</dt><dd>{formatearMonto(editable.actual)}</dd></div>
+      <div><dt>Recargo de hoy</dt><dd>{formatearMonto(editable.actual, editable.moneda)}</dd></div>
       {editable.modificado && <div><dt>Recargo modificado</dt><dd>No es el que calcula el contrato</dd></div>}
     </dl>
     {cambiando && <label className="owner-wizard-field"><span>Nuevo recargo</span><input ref={campo} inputMode="decimal" placeholder="Ej: 3.000" value={texto} aria-invalid={error !== null} onChange={(event) => { setTexto(event.target.value); setError(null); }} /></label>}
-    {cambiando && editable.maximo !== null && <p className="owner-dialog__hint">Entre {formatearMonto(0)} y {formatearMonto(editable.maximo)}, el recargo de hoy según el contrato.</p>}
+    {cambiando && editable.maximo !== null && <p className="owner-dialog__hint">Entre {formatearMonto(0, editable.moneda)} y {formatearMonto(editable.maximo, editable.moneda)}, el recargo de hoy según el contrato.</p>}
     {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
   </div><div className="owner-dialog__foot">
     {cambiando ? <>
@@ -2034,7 +2109,7 @@ function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, o
   const invalidPhone = tenant.phoneNumber.length > 0 && !telefonoValido(tenant.phoneNumber);
   const taxIdError = soloDigitos(tenant.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><CamposDeNombreDelInquilino valores={camposDeNombreDe(tenant)} onChange={(cambio) => onChange(conCamposDeNombre(tenant, cambio))} /><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ account: UserUpdateRequest; email: string | undefined; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (account: UserUpdateRequest) => void; onSave: () => void }>) {
@@ -2056,9 +2131,24 @@ function isAccountValid(account: UserUpdateRequest | null): boolean {
   return Boolean(account.firstName.trim()) && Boolean(account.lastName.trim()) && cuitValido(account.taxId) && telefonoValido(account.phoneNumber);
 }
 
+/** El formulario de edición en los términos de `CamposDeNombre`, y de vuelta. */
+function camposDeNombreDe(tenant: TenantFormValues): CamposDeNombre {
+  return { personaJuridica: tenant.legalEntity, nombre: tenant.firstName, apellido: tenant.lastName, razonSocial: tenant.businessName };
+}
+
+function conCamposDeNombre(tenant: TenantFormValues, cambio: Partial<CamposDeNombre>): TenantFormValues {
+  return {
+    ...tenant,
+    legalEntity: cambio.personaJuridica ?? tenant.legalEntity,
+    firstName: cambio.nombre ?? tenant.firstName,
+    lastName: cambio.apellido ?? tenant.lastName,
+    businessName: cambio.razonSocial ?? tenant.businessName,
+  };
+}
+
 function isTenantValid(tenant: TenantFormValues | null): boolean {
   if (!tenant) return false;
-  return Boolean(tenant.firstName.trim()) && Boolean(tenant.lastName.trim()) && (!tenant.taxId.trim() || cuitValido(tenant.taxId)) && (!tenant.email.trim() || correoValido(tenant.email)) && (!tenant.phoneNumber.trim() || telefonoValido(tenant.phoneNumber));
+  return nombreCompleto(camposDeNombreDe(tenant)) && (!tenant.taxId.trim() || cuitValido(tenant.taxId)) && (!tenant.email.trim() || correoValido(tenant.email)) && (!tenant.phoneNumber.trim() || telefonoValido(tenant.phoneNumber));
 }
 
 function loadedData<T>(demo: boolean, demoData: T, loadState: { ok: T } | LoadFailure | null): T | null {
@@ -2673,8 +2763,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     setErrorAjustes(null);
     setInquilinoEditadoId(tenant.id);
     setEditandoInquilino({
+      legalEntity: tenant.personaJuridica,
       firstName: tenant.nombrePila,
       lastName: tenant.apellido,
+      businessName: tenant.razonSocial,
       taxId: tenant.cuit,
       email: tenant.email,
       phoneNumber: tenant.telefono,
@@ -2787,8 +2879,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     setGuardandoAjustes(true);
     try {
       await AlquiaBackendClient.tenants.update(id, {
-        firstName: datos.firstName.trim(),
-        lastName: datos.lastName.trim(),
+        ...nombreParaElPedido(camposDeNombreDe(datos)),
         taxId: soloDigitos(datos.taxId) || null,
         email: datos.email.trim() || null,
         phoneNumber: soloDigitosTelefono(datos.phoneNumber) || null,
@@ -2977,7 +3068,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
     cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
-    herramientas: <Herramientas demo={demo} />,
+    herramientas: <Herramientas />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} borradoresDePropiedad={borradoresDePropiedadDeInicio} onResumePropertyDraft={retomarBorradorDePropiedad} onDiscardPropertyDraft={setDescartandoBorradorDePropiedad} onRetryPropertyDrafts={() => setRecargaBorradoresDePropiedad((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };

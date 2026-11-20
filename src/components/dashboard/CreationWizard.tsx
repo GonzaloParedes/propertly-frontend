@@ -7,13 +7,14 @@ import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/tele
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { ERROR, copyDeError, idDelContratoActivo, idDelInquilinoExistente } from "@/lib/error-codes";
 import { AlquiaBackendClient } from "@/lib/backend-client";
-import type { ContractDraft, PropertyCategory, PropertyDraft, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
+import type { AddressSuggestionResponse, ContractDraft, PropertyCategory, PropertyDraft, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
 import Counter from "@/components/ui/Counter";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
-import AddressField, { etiquetaDireccion } from "@/components/dashboard/AddressField";
 import { correoValido } from "@/lib/correo";
+import { nombreCompleto, nombreDeInquilino, nombreParaElPedido, type CamposDeNombre } from "@/lib/inquilino";
+import { CamposDeNombreDelInquilino } from "@/components/dashboard/CamposDeNombreDelInquilino";
 import { hoyEnArgentina } from "@/lib/formato";
 import { faltaResponder, mesesElegibles, mesesTranscurridos, paidThroughDe, periodosDelBackend, respuestaVigenteDe, type RespuestaPagadoHasta } from "@/lib/transcurridos";
 import PagosTranscurridos from "@/components/dashboard/PagosTranscurridos";
@@ -73,6 +74,138 @@ function mensajeDeErrorPropiedad(err: unknown): string {
 
 type WizardKind = "property" | "contract" | "tenant";
 
+
+/** `Direccion` (en `borradores.ts`) tiene los mismos campos que `PropertyRequest`. */
+const etiquetaDireccion = (d: Direccion) => `${d.street} ${d.number}`;
+
+/** Sólo para /prototipo: sin sesión `/address-lookup` daría 401. */
+const DIRECCIONES_DEMO: (Direccion & AddressSuggestionResponse)[] = [
+  { reference: "demo-1", label: "Lavalle 950", street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
+  { reference: "demo-2", label: "Av. Rivadavia 2340", street: "Av. Rivadavia", number: "2340", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
+  { reference: "demo-3", label: "Mitre 78", street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires", postalCode: "", latitude: null, longitude: null },
+];
+
+/** El backend no busca por debajo de 3 caracteres (app.address-lookup.min-query-length). */
+const MIN_BUSQUEDA = 3;
+
+/** Sugerencias de `/address-lookup/autocomplete`, con espera al tipeo y descarte de respuestas viejas. */
+function useSugerencias(query: string, demo: boolean) {
+  const q = query.trim();
+  const [resultado, setResultado] = useState<{ q: string; lista: AddressSuggestionResponse[] }>({ q: "", lista: [] });
+
+  useEffect(() => {
+    if (demo || q.length < MIN_BUSQUEDA) return;
+    let vigente = true;
+    const t = setTimeout(() => {
+      AlquiaBackendClient.addressLookup.autocomplete(q)
+        .then((lista) => vigente && setResultado({ q, lista }))
+        .catch(() => vigente && setResultado({ q, lista: [] }));
+    }, 250);
+    return () => { vigente = false; clearTimeout(t); };
+  }, [q, demo]);
+
+  if (demo) {
+    const n = q.toLowerCase();
+    return { sugerencias: q.length < MIN_BUSQUEDA ? [] : DIRECCIONES_DEMO.filter((d) => d.label.toLowerCase().includes(n)), buscando: false };
+  }
+  return { sugerencias: q.length < MIN_BUSQUEDA ? [] : resultado.lista, buscando: q.length >= MIN_BUSQUEDA && resultado.q !== q };
+}
+
+/** Combobox accesible: flechas para moverse, Enter para elegir, Escape para cerrar. */
+function AddressField({ value, demo, onSelect, onClear }: Readonly<{
+  demo: boolean;
+  value: Direccion | null;
+  onSelect: (d: Direccion) => void;
+  onClear: () => void;
+}>) {
+  const [query, setQuery] = useState("");
+  const [abierto, setAbierto] = useState(false);
+  const [activo, setActivo] = useState(0);
+  const [falloResolver, setFalloResolver] = useState(false);
+
+  const q = query.trim();
+  const { sugerencias, buscando } = useSugerencias(query, demo);
+
+  if (value) {
+    return (
+      <div className="owner-ac-chosen">
+        <span className="owner-ac-chosen__body">
+          <b>{etiquetaDireccion(value)}</b>
+          <small>{[value.city, value.province].filter(Boolean).join(" · ") || "Falta la ciudad"}</small>
+        </span>
+        <button type="button" className="owner-ac-chosen__change" onClick={() => { onClear(); setQuery(""); }}>
+          Cambiar
+        </button>
+      </div>
+    );
+  }
+
+  const elegir = (d: Direccion) => { onSelect(d); setAbierto(false); setQuery(""); };
+  const elegirSugerencia = async (sugerencia: AddressSuggestionResponse) => {
+    setFalloResolver(false);
+    try {
+      const r = demo
+        ? DIRECCIONES_DEMO.find((d) => d.reference === sugerencia.reference)!
+        : await AlquiaBackendClient.addressLookup.resolve(sugerencia.reference);
+      const conCoordenadas = r.latitude != null && r.longitude != null;
+      elegir({
+        street: r.street ?? "", number: r.number ?? "", city: r.city ?? "", province: r.province ?? "",
+        postalCode: r.postalCode ?? "",
+        latitude: conCoordenadas ? r.latitude : null, longitude: conCoordenadas ? r.longitude : null,
+      });
+    } catch (e) {
+      console.error("Failed to resolve address suggestion", e);
+      setFalloResolver(true);
+    }
+  };
+
+  return (
+    <div className="owner-ac">
+      <div className="owner-ac__box">
+        <Icon name="search" />
+        <input
+          role="combobox"
+          aria-expanded={abierto && sugerencias.length > 0}
+          aria-controls="ac-lista"
+          aria-autocomplete="list"
+          aria-activedescendant={abierto && sugerencias.length ? `ac-opt-${activo}` : undefined}
+          aria-label="Buscar la dirección"
+          placeholder="Empezá a escribir la calle…"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setAbierto(true); setActivo(0); }}
+          onKeyDown={(e) => {
+            if (!sugerencias.length) return;
+            if (e.key === "ArrowDown") { e.preventDefault(); setAbierto(true); setActivo((i) => (i + 1) % sugerencias.length); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); setActivo((i) => (i - 1 + sugerencias.length) % sugerencias.length); }
+            else if (e.key === "Enter") { e.preventDefault(); void elegirSugerencia(sugerencias[activo]); }
+            else if (e.key === "Escape") { setAbierto(false); }
+          }}
+        />
+      </div>
+      {abierto && sugerencias.length > 0 && (
+        <ul className="owner-ac__list" id="ac-lista" role="listbox" aria-label="Direcciones sugeridas">
+          {sugerencias.map((d, i) => (
+            <li key={d.reference} id={`ac-opt-${i}`} role="option" aria-selected={i === activo}>
+              <button type="button" className={i === activo ? "is-active" : ""}
+                onMouseEnter={() => setActivo(i)} onClick={() => void elegirSugerencia(d)}>
+                <b>{d.label}</b>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {falloResolver && <p className="owner-ac__empty" role="alert">No pudimos obtener esa dirección. Elija otra o inténtelo de nuevo.</p>}
+      {q.length >= MIN_BUSQUEDA && !buscando && sugerencias.length === 0 && (
+        <p className="owner-ac__empty">
+          No encontramos esa dirección.{" "}
+          <button type="button" onClick={() => elegir({ street: query.trim(), number: "", city: "", province: "", postalCode: "", latitude: null, longitude: null })}>
+            Usarla igual
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** En el wizard los íconos van un pelín más grandes (22) que el resto de la app (21). */
 function Icon({ name, size = 22 }: Readonly<{ name: IconName; size?: number }>) {
@@ -203,8 +336,7 @@ function descripcionCaracteristicas({
 }
 
 function TenantWizardStep({
-  firstName,
-  lastName,
+  nombre,
   taxId,
   email,
   phone,
@@ -213,22 +345,21 @@ function TenantWizardStep({
   isPhoneValid,
   error,
   erroresBackend,
-  onFirstNameChange,
-  onLastNameChange,
+  onNombreChange,
   onTaxIdChange,
   onEmailChange,
   onPhoneChange,
 }: Readonly<{
-  firstName: string; lastName: string; taxId: string; email: string; phone: string;
+  nombre: CamposDeNombre; taxId: string; email: string; phone: string;
   isTaxIdValid: boolean; isEmailValid: boolean; isPhoneValid: boolean; error: string | null; erroresBackend: Record<string, string>;
-  onFirstNameChange: (value: string) => void; onLastNameChange: (value: string) => void;
+  onNombreChange: (cambio: Partial<CamposDeNombre>) => void;
   onTaxIdChange: (value: string) => void; onEmailChange: (value: string) => void; onPhoneChange: (value: string) => void;
 }>) {
   const taxIdError = soloDigitos(taxId).length < 11
     ? "Faltan dígitos: son 11 en total."
     : "El número no es válido. Revise que no haya un dígito cambiado.";
   const aviso = (...campos: string[]) => <Aviso texto={avisoDeCampo(erroresBackend, "tenant", ...campos)} />;
-  return <><h1>¿Quién es el inquilino?</h1><p>Nombre y apellido son obligatorios. Puede completar los demás datos después. Para activar avisos al inquilino necesita un correo electrónico.</p><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={firstName} onChange={(event) => onFirstNameChange(event.target.value)} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={lastName} onChange={(event) => onLastNameChange(event.target.value)} /></label></div>{aviso("firstName", "lastName")}<label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}{aviso("taxId")}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}{aviso("email")}<label className="owner-wizard-field"><span>Teléfono (opcional)</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{aviso("phoneNumber")}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div></>;
+  return <><h1>¿Quién es el inquilino?</h1><p>{nombre.personaJuridica ? "La razón social es obligatoria." : "Nombre y apellido son obligatorios."} Puede completar los demás datos después. Para activar avisos al inquilino necesita un correo electrónico.</p><div className="owner-wizard-stack"><CamposDeNombreDelInquilino valores={nombre} onChange={onNombreChange} aviso={nombre.personaJuridica ? aviso("businessName") : aviso("firstName", "lastName")} /><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}{aviso("taxId")}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}{aviso("email")}<label className="owner-wizard-field"><span>Teléfono (opcional)</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{aviso("phoneNumber")}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div></>;
 }
 
 /**
@@ -467,7 +598,7 @@ function useListasDeContrato(activo: boolean): CargaDeListas {
             })),
           inquilinos: inquilinos.map((t: TenantResponse) => ({
             id: t.id,
-            titulo: `${t.firstName} ${t.lastName}`,
+            titulo: nombreDeInquilino(t),
             detalle: t.email ?? "Sin correo",
             email: t.email,
           })),
@@ -551,10 +682,10 @@ function nombreDelInquilinoExistente(conflicto: Conflicto | null, listas: CargaD
   return listas.inquilinos.find((o) => o.id === conflicto.id)?.titulo ?? null;
 }
 
-function faltanDatosDelInquilino({ nombre, apellido, cuitOk, correoOk, telefonoOk }: Readonly<{
-  nombre: string; apellido: string; cuitOk: boolean; correoOk: boolean; telefonoOk: boolean;
+function faltanDatosDelInquilino({ nombre, cuitOk, correoOk, telefonoOk }: Readonly<{
+  nombre: CamposDeNombre; cuitOk: boolean; correoOk: boolean; telefonoOk: boolean;
 }>): boolean {
-  return !nombre.trim() || !apellido.trim() || !cuitOk || !correoOk || !telefonoOk;
+  return !nombreCompleto(nombre) || !cuitOk || !correoOk || !telefonoOk;
 }
 
 /** No se eligió uno que ya existe ni se dejó un borrador nuevo. */
@@ -922,7 +1053,7 @@ const ESTADO_VACIO: EstadoDelBorrador = {
   paso: 1,
   desvio: null,
   formularioPropiedad: { direccion: null, unidad: "", categoria: null, bedrooms: null, bathrooms: null, superficie: "", mascotas: false, amoblada: false },
-  formularioInquilino: { nombre: "", apellido: "", cuit: "", correo: "", telefono: "" },
+  formularioInquilino: { nombre: "", apellido: "", personaJuridica: false, razonSocial: "", cuit: "", correo: "", telefono: "" },
   propiedad: { id: null, nuevo: false, borrador: null },
   inquilino: { id: null, nuevo: false, borrador: null },
   alquiler: "", diaVencimiento: 1, plazo: 36, inicio: "", metodo: "FIXED_PERCENTAGE", porcentaje: "", frecuencia: 6,
@@ -994,7 +1125,7 @@ function hayAlgoPropio(args: Readonly<{
   // Con la propiedad ya elegida (se abrió desde ella) el primer paso es el 2.
   const pasoInicial = preseleccionada ? 2 : 1;
   return ubicacionCompleta(formularioPropiedad.direccion)
-    || Object.values(formularioInquilino).some((campo) => campo.trim() !== "")
+    || Object.values(formularioInquilino).some((campo) => typeof campo === "string" && campo.trim() !== "")
     || borradorPropiedad !== null
     || borradorInquilino !== null
     || pasoContrato > pasoInicial;
@@ -1177,6 +1308,15 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   const [amoblada, setAmoblada] = useState(formularioPropiedad.amoblada);
   const [nombre, setNombre] = useState(formularioInquilino.nombre);
   const [apellido, setApellido] = useState(formularioInquilino.apellido);
+  const [personaJuridica, setPersonaJuridica] = useState(formularioInquilino.personaJuridica);
+  const [razonSocial, setRazonSocial] = useState(formularioInquilino.razonSocial);
+  const camposDeNombre: CamposDeNombre = { personaJuridica, nombre, apellido, razonSocial };
+  function cambiarNombre(cambio: Partial<CamposDeNombre>) {
+    if (cambio.personaJuridica !== undefined) setPersonaJuridica(cambio.personaJuridica);
+    if (cambio.nombre !== undefined) setNombre(cambio.nombre);
+    if (cambio.apellido !== undefined) setApellido(cambio.apellido);
+    if (cambio.razonSocial !== undefined) setRazonSocial(cambio.razonSocial);
+  }
   const [cuit, setCuit] = useState(formularioInquilino.cuit);
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
@@ -1207,8 +1347,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   const correoOk = !correo.trim() || correoValido(correo);
   const telefonoOk = !telefono.trim() || telefonoValido(telefono);
   const tenantStep = <TenantWizardStep
-    firstName={nombre}
-    lastName={apellido}
+    nombre={camposDeNombre}
     taxId={cuit}
     email={correo}
     phone={telefono}
@@ -1217,8 +1356,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     isPhoneValid={telefonoOk}
     error={errorGuardado}
     erroresBackend={erroresBackend}
-    onFirstNameChange={setNombre}
-    onLastNameChange={setApellido}
+    onNombreChange={cambiarNombre}
     onTaxIdChange={setCuit}
     onEmailChange={setCorreo}
     onPhoneChange={setTelefono}
@@ -1253,7 +1391,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   };
   const pendientes = pasosPendientes(banderas, otrasCondicionesValidas(otras));
   const bloqueadoPorTipo: Record<WizardKind, boolean> = {
-    tenant: faltanDatosDelInquilino({ nombre, apellido, cuitOk, correoOk, telefonoOk }),
+    tenant: faltanDatosDelInquilino({ nombre: camposDeNombre, cuitOk, correoOk, telefonoOk }),
     property: propiedadBloqueada(step, direccion, categoria),
     contract: contratoBloqueadoEn(step, banderas, pendientes),
   };
@@ -1265,7 +1403,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     paso: pasoContrato,
     desvio: desvio ? { tipo: desvio, paso: pasoDesvio } : null,
     formularioPropiedad: { direccion, unidad, categoria, bedrooms, bathrooms, superficie, mascotas, amoblada },
-    formularioInquilino: { nombre, apellido, cuit, correo, telefono },
+    formularioInquilino: { nombre, apellido, personaJuridica, razonSocial, cuit, correo, telefono },
     propiedad: { id: propiedadElegida, nuevo: propiedadNueva, borrador: borradorPropiedad },
     inquilino: { id: inquilinoElegido, nuevo: inquilinoNuevo, borrador: borradorInquilino },
     alquiler, diaVencimiento, plazo: term, inicio, metodo: method, porcentaje, frecuencia, otras, pagadoHasta,
@@ -1293,8 +1431,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   // Lo que el asistente suelto guarda y el desvío del contrato sólo anota como borrador.
   function armarInquilino(): TenantRequest {
     return {
-      firstName: nombre.trim(),
-      lastName: apellido.trim(),
+      ...nombreParaElPedido(camposDeNombre),
       // Sin guiones: @ValidTaxId acepta los dos formatos, pero guardar siempre
       // igual evita que el mismo CUIT entre dos veces con distinto formato y
       // esquive el chequeo de duplicados, que compara el string tal cual.
@@ -1346,7 +1483,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
   function terminarInquilino() {
     if (tipo === "tenant") return onComplete();
     sinErroresDe("tenant");
-    setBorradorInquilino({ pedido: armarInquilino(), etiqueta: `${nombre.trim()} ${apellido.trim()}` });
+    setBorradorInquilino({ pedido: armarInquilino(), etiqueta: nombreDeInquilino(nombreParaElPedido(camposDeNombre)) });
     setInquilinoNuevo(true);
     volverAlContrato();
   }

@@ -56,34 +56,50 @@ export interface UserUpdateRequest {
 
 // --- Tenants ---
 
+/**
+ * Persona física (`legalEntity` ausente o false): nombre y apellido obligatorios.
+ * Persona jurídica: razón social (`businessName`) obligatoria, sin nombre ni apellido.
+ * El backend descarta los campos del otro tipo (ALQ-191).
+ */
 export interface TenantRequest {
-  firstName: string;
-  lastName: string;
+  firstName?: string | null;
+  lastName?: string | null;
   taxId?: string | null;
   email?: string | null;
   phoneNumber?: string | null;
+  legalEntity?: boolean;
+  businessName?: string | null;
 }
 
 /** Controlled input values; empty optional fields are accepted by the API. */
 export interface TenantFormValues {
+  legalEntity: boolean;
   firstName: string;
   lastName: string;
+  businessName: string;
   taxId: string;
   email: string;
   phoneNumber: string;
 }
 
-export interface TenantResponse {
+/** Lo mínimo para nombrar a un inquilino: ver `nombreDeInquilino`. */
+export interface NombreDeInquilino {
+  firstName?: string | null;
+  lastName?: string | null;
+  legalEntity?: boolean;
+  businessName?: string | null;
+}
+
+export interface TenantResponse extends NombreDeInquilino {
   id: number;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   taxId?: string | null;
   email?: string | null;
   phoneNumber?: string | null;
+  /** Razón social si es persona jurídica; si no, «nombre apellido». */
+  displayName?: string;
 }
-
-/** `GET /tools/credit-check`: el resultado del BCRA para cualquier CUIT/CUIL (ALQ-145). */
-export type CreditCheckResponse = Omit<TenantCreditCheckResponse, "denominacionMismatch">;
 
 export interface TenantCreditCheckResponse {
   noDebtsReported: boolean;
@@ -132,19 +148,6 @@ export interface RentIncreaseResponse {
   months: RentIncreaseMonthlyRate[];
 }
 
-/** `POST /tools/rent-estimate`: una propiedad que no está cargada, con lo mínimo. */
-export interface RentEstimateToolRequest {
-  city?: string | null;
-  province?: string | null;
-  latitude: number;
-  longitude: number;
-  bedrooms?: number | null;
-  bathrooms?: number | null;
-  coveredArea: number;
-  category?: PropertyCategory | null;
-  currency: Currency;
-}
-
 // --- Properties ---
 
 // Las ocho de la lista de producto. Las cuatro últimas llegaron con la rama
@@ -166,6 +169,8 @@ export type PropertyCategory =
 export interface ActiveContractSummary {
   id: number;
   currentRent: number;
+  /** La del contrato. Ausente = ARS (backends anteriores a ALQ-187). */
+  currency?: Currency;
   status: ContractStatus;
 }
 
@@ -542,6 +547,8 @@ export interface AdjustmentResponse {
 export interface InvoiceResponse {
   id: number;
   contractId: number;
+  /** La del contrato: una cuota no tiene moneda propia. Ausente = ARS. */
+  currency?: Currency;
   period: string;
   dueDate: string;
   baseAmount: number;
@@ -573,16 +580,15 @@ export interface TenantCalendarInvoiceResponse extends InvoiceResponse {
 /** Importe proyectado, todavía no emitido ni confirmado como cuota. */
 export interface TenantCalendarPreInvoiceResponse {
   contractId: number;
+  /** La del contrato. Ausente = ARS. */
+  currency?: Currency;
   period: string;
   amount: number;
 }
 
 export interface TenantCalendarResponse {
   /** Identidad mínima, derivada de la sesión del enlace para el encabezado. */
-  tenant: {
-    firstName: string;
-    lastName: string;
-  };
+  tenant: NombreDeInquilino & { displayName?: string };
   coverage: TenantCalendarCoverage[];
   invoices: TenantCalendarInvoiceResponse[];
   preInvoices: TenantCalendarPreInvoiceResponse[];
@@ -637,6 +643,8 @@ export interface InvoiceListParams {
  */
 export interface PreInvoiceResponse {
   contractId: number;
+  /** La del contrato. Ausente = ARS. */
+  currency?: Currency;
   period: string;
   amount: number;
 }
