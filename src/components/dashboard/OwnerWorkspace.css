@@ -994,12 +994,22 @@
 .owner-tutorial__acciones{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--esp-10);margin-top:var(--esp-20)}
 .owner-tutorial__acciones .owner-button--quiet{margin-right:auto}
 .owner-tutorial__acciones .owner-button{min-height:48px}
-@media (max-width:620px){
+/* Si la tarjeta se achica para no tapar el control, el texto se desplaza y las
+   acciones quedan siempre a la vista. */
+.owner-tutorial__acciones{position:sticky;bottom:calc(-1 * var(--esp-26));margin-top:var(--esp-12);margin-bottom:calc(-1 * var(--esp-26));padding:var(--esp-8) 0 var(--esp-26);background:var(--elev)}
+/* El header de celular es sticky: sin margen, el control subido quedaría debajo. */
+@media (max-width:900px){.owner-tutorial-ancla,[data-tutorial]{scroll-margin-top:80px}}
+@media (max-width:620px),(max-height:500px){
   .owner-tutorial__tarjeta{padding:var(--esp-20)}
-  .owner-tutorial__acciones{flex-direction:column-reverse;align-items:stretch}
-  .owner-tutorial__acciones .owner-button{width:100%}
-  .owner-tutorial__acciones .owner-button--quiet{margin-right:0}
+  .owner-tutorial__recorrido{margin-top:var(--esp-12)}
+  .owner-tutorial__acciones{bottom:calc(-1 * var(--esp-20));margin-top:var(--esp-8);margin-bottom:calc(-1 * var(--esp-20));padding-bottom:var(--esp-20);gap:var(--esp-8)}
+  /* Atrás y Siguiente comparten fila; Saltear baja como enlace. Antes eran tres
+     botones apilados y la tarjeta no entraba sin tapar «Nuevo contrato» (ALQ-185). */
+  .owner-tutorial__acciones .owner-button{flex:1 1 0;min-width:0}
+  .owner-tutorial__acciones .owner-button--quiet{order:3;flex-basis:100%;min-height:40px;margin-right:0}
 }
+/* Celular apaisado: «Paso X de 3» ya dice dónde está; las pastillas no entran. */
+@media (max-height:500px){.owner-tutorial__recorrido{display:none}}
 @media (prefers-reduced-motion:reduce){.owner-tutorial__tarjeta{scroll-behavior:auto}}
 
 /* ── BCRA credit check ─────────────────────────────────────────────────── */

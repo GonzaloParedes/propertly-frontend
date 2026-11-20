@@ -90,36 +90,89 @@ export function anclaVisible(anclas: readonly string[]): HTMLElement | null {
   return null;
 }
 
+const SEPARACION = 14;
+/** Debajo de esto la tarjeta ya no se puede leer: mejor que tape el control. */
+const ALTO_MINIMO = 180;
+const ANCHO_MINIMO = 280;
+
+export type LugarDeTarjeta = Readonly<{
+  top: number;
+  left: number;
+  width: number;
+  /** Alto disponible. Si es menor que el de la tarjeta, la tarjeta se desplaza adentro. */
+  maxHeight: number;
+  /** La tarjeta no entra entera sin tapar el control señalado. */
+  recortada: boolean;
+}>;
+
+function entre(valor: number, minimo: number, maximo: number): number {
+  return Math.min(Math.max(valor, minimo), Math.max(minimo, maximo));
+}
+
 /**
  * La tarjeta queda al lado del control señalado. Si no entra a la derecha,
- * baja; si tampoco entra abajo, sube. Sin ancla, queda centrada.
+ * baja; si tampoco entra abajo, sube; si tampoco, va a un costado más angosta.
+ * En un celular puede no entrar entera en ningún lado: entonces va del lado con
+ * más lugar y se achica, pero nunca tapa el control. Sin ancla, queda centrada.
  */
 export function ubicarTarjeta(
   rect: Caja | null,
   alto: number,
   viewport: { ancho: number; alto: number },
-): { top: number; left: number; width: number } {
+): LugarDeTarjeta {
   const width = Math.min(ANCHO_TARJETA, Math.max(0, viewport.ancho - MARGEN * 2));
+  const altoUtil = Math.max(0, viewport.alto - MARGEN * 2);
   if (!rect) {
     return {
       top: Math.max(MARGEN, (viewport.alto - alto) / 2),
       left: Math.max(MARGEN, (viewport.ancho - width) / 2),
       width,
+      maxHeight: altoUtil,
+      recortada: false,
     };
   }
 
-  let left = rect.right + 14;
-  let top = rect.top;
-  if (left + width > viewport.ancho - MARGEN) {
-    left = rect.left;
-    top = rect.bottom + 14;
+  const aLaDerecha = rect.right + SEPARACION;
+  if (aLaDerecha + width <= viewport.ancho - MARGEN) {
+    return {
+      top: entre(rect.top, MARGEN, viewport.alto - MARGEN - alto),
+      left: aLaDerecha,
+      width,
+      maxHeight: altoUtil,
+      recortada: false,
+    };
   }
-  if (top + alto > viewport.alto - MARGEN) {
-    const arriba = rect.top - alto - 14;
-    top = arriba >= MARGEN ? arriba : MARGEN;
+
+  const left = entre(rect.left, MARGEN, viewport.ancho - MARGEN - width);
+  const abajo = rect.bottom + SEPARACION;
+  const lugarAbajo = viewport.alto - MARGEN - abajo;
+  const lugarArriba = rect.top - SEPARACION - MARGEN;
+
+  if (alto <= lugarAbajo) return { top: abajo, left, width, maxHeight: lugarAbajo, recortada: false };
+  if (alto <= lugarArriba) {
+    return { top: rect.top - SEPARACION - alto, left, width, maxHeight: lugarArriba, recortada: false };
   }
-  if (left + width > viewport.ancho - MARGEN) {
-    left = viewport.ancho - MARGEN - width;
+
+  // Celular apaisado: no hay alto, pero sí ancho al costado para una tarjeta más angosta.
+  const lugarDerecha = viewport.ancho - MARGEN - aLaDerecha;
+  const lugarIzquierda = rect.left - SEPARACION - MARGEN;
+  const costado = Math.max(lugarDerecha, lugarIzquierda);
+  if (costado >= ANCHO_MINIMO) {
+    const angosta = Math.min(width, costado);
+    return {
+      top: entre(rect.top, MARGEN, viewport.alto - MARGEN - alto),
+      left: lugarDerecha >= lugarIzquierda ? aLaDerecha : rect.left - SEPARACION - angosta,
+      width: angosta,
+      maxHeight: altoUtil,
+      recortada: false,
+    };
   }
-  return { top: Math.max(MARGEN, top), left: Math.max(MARGEN, left), width };
+
+  const mayor = Math.max(lugarAbajo, lugarArriba);
+  if (mayor < ALTO_MINIMO) {
+    return { top: MARGEN, left, width, maxHeight: altoUtil, recortada: true };
+  }
+  return lugarAbajo >= lugarArriba
+    ? { top: abajo, left, width, maxHeight: lugarAbajo, recortada: true }
+    : { top: MARGEN, left, width, maxHeight: lugarArriba, recortada: true };
 }
