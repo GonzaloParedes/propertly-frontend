@@ -109,7 +109,8 @@ export default function PagosTranscurridos({ meses, value, onChange, inicioISO, 
   onChange: (respuesta: RespuestaPagadoHasta) => void;
   inicioISO: string;
   alquiler: number;
-  frecuenciaMeses: number;
+  /** null: el contrato no se ajusta. */
+  frecuenciaMeses: number | null;
   tieneRecargo: boolean;
   hoyISO: string;
   diaVencimiento: number;

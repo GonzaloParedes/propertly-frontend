@@ -50,6 +50,7 @@ const METODOS: [MetodoActualizacion, string][] = [
   ["FIXED_PERCENTAGE", "Porcentaje fijo"],
   ["ICL", "Según el ICL"],
   ["IPC", "Según el IPC"],
+  ["NONE", "Sin ajuste"],
 ];
 
 export default function CambioCondicionesForm({
@@ -151,8 +152,8 @@ export default function CambioCondicionesForm({
       <div className="owner-dialog-counters">
         <Counter label="Día de vencimiento" value={c.diaVencimiento} unit="del mes" min={1} max={28}
           onChange={(dia) => cambiar({ diaVencimiento: dia })} />
-        <Counter label="Se actualiza cada" value={c.frecuencia} unit={c.frecuencia === 1 ? "mes" : "meses"} min={1}
-          onChange={(n) => cambiar({ frecuencia: n })} />
+        {c.metodo !== "NONE" && <Counter label="Se actualiza cada" value={c.frecuencia} unit={c.frecuencia === 1 ? "mes" : "meses"} min={1}
+          onChange={(n) => cambiar({ frecuencia: n })} />}
       </div>
       {campoError("diaVencimiento")}
       {campoError("frecuencia")}

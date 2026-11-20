@@ -16,6 +16,7 @@ import {
   Link2,
   LogOut,
   Menu,
+  MessageSquareWarning,
   Minus,
   Moon,
   Paperclip,
@@ -78,6 +79,7 @@ const MAP = {
   copy: Copy,
   help: CircleHelp,
   bell: Bell,
+  report: MessageSquareWarning,
   tools: Wrench,
   calculator: Calculator,
 } satisfies Record<string, LucideIcon>;

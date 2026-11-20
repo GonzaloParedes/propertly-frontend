@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen } from "@/tests/render";
 import DashboardLayout from "@/app/dashboard/layout";
 
 const mockReplace = vi.fn();

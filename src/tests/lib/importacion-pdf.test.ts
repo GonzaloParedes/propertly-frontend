@@ -518,3 +518,52 @@ describe("itemsConErrorDelServidor", () => {
     expect(itemsConErrorDelServidor(null)).toEqual([]);
   });
 });
+
+describe("contrato sin ajuste (ALQ-188)", () => {
+  const sinAjuste = lectura({
+    "rent.currency": campo("USD"),
+    "increments.method": campo("NONE", "INFERRED", { note: "El contrato no menciona ninguna actualización" }),
+    "increments.indexName": campo(null, "MISSING"),
+    "increments.value": campo(null, "MISSING"),
+    "increments.frequencyMonths": campo(null, "MISSING"),
+  });
+
+  it("la lectura propone «Sin ajuste» y lo deja para revisar, no como dato faltante", () => {
+    const { borrador, items } = leerResultado(sinAjuste);
+    expect(borrador).toMatchObject({ metodo: "NONE", valorDeActualizacion: "", frecuencia: "" });
+    expect(items.actualizacion.estado).toBe("revisar");
+  });
+
+  it("sin ajuste está completo sin frecuencia", () => {
+    const { borrador } = leerResultado(sinAjuste);
+    expect(datosCompletos("actualizacion", borrador)).toBe(true);
+  });
+
+  it("el alta va sin frecuencia, índice ni valor, en la moneda del contrato", () => {
+    const { borrador } = leerResultado(sinAjuste);
+    const { contract } = armarAlta(borrador, {}, undefined);
+    expect(contract).toMatchObject({ incrementMethod: "NONE", currency: "USD" });
+    expect(contract).not.toHaveProperty("incrementFrequencyMonths");
+    expect(contract).not.toHaveProperty("incrementIndexName");
+    expect(contract).not.toHaveProperty("incrementValue");
+  });
+
+  it("si el propietario elige «Sin ajuste» en la revisión, el alta y los valores finales lo reflejan", () => {
+    const leida = leerResultado(lectura());
+    const borrador = { ...leida.borrador, metodo: "NONE" as const };
+    expect(armarAlta(borrador, {}, undefined).contract.incrementMethod).toBe("NONE");
+    const cierre = armarCierre(leida, borrador, {}, new Set<ItemId>(["actualizacion"]), 77);
+    expect(cierre.finalValues).toMatchObject({ "increments.method": "NONE" });
+    expect(cierre.finalValues).not.toHaveProperty("increments.frequencyMonths");
+    expect(cierre.finalValues).not.toHaveProperty("increments.indexName");
+    expect(cierre.fieldActions["increments.method"]).toBe("CORRECTED");
+  });
+
+  it("una frecuencia leída junto con «Sin ajuste» se explica en español", () => {
+    const { items } = leerResultado(lectura({
+      "increments.method": campo("NONE"),
+      "increments.frequencyMonths": campo(6, "LITERAL", { validation: ["must be empty when the rent does not adjust"] }),
+    }));
+    expect(items.actualizacion.motivos).toContain("Un contrato sin ajuste no lleva frecuencia, índice ni valor.");
+  });
+});

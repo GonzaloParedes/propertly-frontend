@@ -123,14 +123,15 @@ export interface Consecuencia {
  * El total de la deuda sólo se dice cuando todos los meses adeudados caen antes del
  * primer aumento (`frecuenciaMeses` desde el inicio): ahí cada cuota es el alquiler
  * inicial. Después de un aumento, el importe lo calcula el backend (en un contrato
- * por índice ni siquiera existe todavía) y decir un total sería inventarlo.
+ * por índice ni siquiera existe todavía) y decir un total sería inventarlo. Un contrato
+ * sin ajuste (`frecuenciaMeses` null) no tiene aumentos: el total siempre se puede decir.
  */
 export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenciaMeses, tieneRecargo, hoyISO, diaVencimiento = 1, moneda }: Readonly<{
   meses: string[];
   respuesta: RespuestaPagadoHasta;
   inicioISO: string;
   alquiler: number;
-  frecuenciaMeses: number;
+  frecuenciaMeses: number | null;
   tieneRecargo: boolean;
   hoyISO: string;
   diaVencimiento?: number;
@@ -144,7 +145,8 @@ export function consecuenciaDe({ meses, respuesta, inicioISO, alquiler, frecuenc
   const deuda = impagas.filter((m) => `${m}-${String(diaVencimiento).padStart(2, "0")}` <= hoyISO);
   const pendientes = impagas.filter((m) => !deuda.includes(m));
 
-  const antesDelAumento = deuda.every((m) => m < sumarMeses(mes(inicioISO), frecuenciaMeses));
+  const antesDelAumento = frecuenciaMeses === null
+    || deuda.every((m) => m < sumarMeses(mes(inicioISO), frecuenciaMeses));
   const totalDeuda = deuda.length > 0 && antesDelAumento && alquiler > 0 ? alquiler * deuda.length : null;
 
   const frases = [fraseDeCobradas(cobradas, hoyISO), ...frasesDeDeuda({ deuda, totalDeuda, tieneRecargo, hoyISO, moneda }), ...(pendientes.length ? [`${rango(pendientes, hoyISO)} ${pendientes.length === 1 ? "queda impaga y aún no venció" : "quedan impagas y aún no vencieron"}.`] : [])];

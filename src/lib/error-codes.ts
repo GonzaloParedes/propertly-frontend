@@ -56,6 +56,7 @@ export const ERROR = {
   RENT_ESTIMATE_NOT_ENOUGH_DATA: "urn:alquia:error:rent-estimate-not-enough-data",
   BCRA_NO_TAX_ID: "urn:alquia:error:bcra-no-tax-id",
   BCRA_UNAVAILABLE: "urn:alquia:error:bcra-unavailable",
+  FEEDBACK_RATE_LIMITED: "urn:alquia:error:feedback-rate-limited",
   RENT_INCREASE_NOT_DUE: "urn:alquia:error:rent-increase-not-due",
   INDEX_DATA_NOT_PUBLISHED: "urn:alquia:error:index-data-not-published",
   INDEX_PROVIDER_UNAVAILABLE: "urn:alquia:error:index-provider-unavailable",
@@ -127,6 +128,8 @@ const COPY: Record<string, string> = {
     "El estimador está disponible, pero todavía no hay propiedades cargadas para estimar.",
   [ERROR.RENT_ESTIMATE_NOT_ENOUGH_DATA]:
     "No hay suficientes propiedades cerca para estimar el alquiler de esta propiedad.",
+  [ERROR.FEEDBACK_RATE_LIMITED]:
+    "Ya nos mandó varios reportes en la última hora. Espere un rato y vuelva a intentarlo.",
   [ERROR.RENT_INCREASE_NOT_DUE]:
     "Ese aumento todavía no se puede calcular: los meses que lo componen aún no se publicaron.",
   [ERROR.INDEX_DATA_NOT_PUBLISHED]:

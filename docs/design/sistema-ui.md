@@ -377,7 +377,7 @@ no se revisó. No se resuelven en masa — se miran con la pantalla abierta.
 | No son espaciado | `36 · 38 · 48 · 54 · 56 · 68 · 80 · 96 · 238` | ~16 | **No forzar a la escala.** |
 
 La última fila importa: `238px` es el ancho del menú lateral
-(`.owner-content · margin`) y la mayoría del resto son gutters de página de
+(`.owner-workspace · padding-left`) y la mayoría del resto son gutters de página de
 `.owner-content` por breakpoint. Son constantes de layout, no ritmo vertical.
 Merecen tokens propios (`--ancho-menu`, `--gutter-*`), no un `--esp-*`.
 
@@ -849,13 +849,20 @@ de `docs/backend/pedido-de-cambios-api.md`.
 | Andando contra el backend | Todavía con datos de ejemplo |
 |---|---|
 | **Todo el panel del propietario** (sus tres detalles, tres altas, el ajuste de cuotas y el cambio de condiciones a futuro) **y el portal del inquilino** | Cancelar o editar un cambio ya programado (el backend no lo ofrece) |
-| **Herramientas** (ALQ-145): la calculadora de aumentos por ICL/IPC contra `GET /tools/rent-increase` | — |
+| **Herramientas** (ALQ-145): la calculadora de aumentos por ICL/IPC (`GET /tools/rent-increase`), la consulta de deudores del BCRA (`GET /tools/credit-check`) y el predictor de alquiler (`/properties/{id}/rent-estimate` o `POST /tools/rent-estimate`) | — |
 
 La calculadora (`CalculadoraDeAumentos`) no usa la sesión ni el workspace, para
 poder montarla después en la landing pública. El mes del último aumento se elige
 con flechas (no hay `<select>`) y sólo llega hasta el último aumento que ya rige
 este mes: antes el índice de esos meses no está publicado y el backend responde
 `rent-increase-not-due`.
+
+La consulta del BCRA acepta cualquier CUIT/CUIL u ofrece los inquilinos que tienen uno, y su
+resultado (`ResultadoBcra`) es el mismo del detalle del inquilino. El predictor estima una
+propiedad cargada o una carga rápida (dirección de la lista, dormitorios, baños y metros) con la
+misma `RentEstimateCard` del detalle; sin coordenadas no se puede estimar, así que una dirección
+«usada igual» deja el botón deshabilitado con el motivo a la vista. El buscador de direcciones
+(`AddressField`) salió del asistente para que lo usen los dos.
 
 Dos reglas que salieron de conectarlas, y que valen para las que faltan:
 

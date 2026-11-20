@@ -44,7 +44,8 @@ export interface ProximaActualizacion {
  * backend ya soporta ese corte. Sin fecha no hay hito que mostrar.
  */
 export function proximaActualizacion(contract: ContractResponse): ProximaActualizacion | null {
-  if (!contract.nextIncrementDate) return null;
+  // Un contrato sin ajuste (ALQ-188) nunca tiene próxima actualización.
+  if (contract.incrementMethod === "NONE" || !contract.nextIncrementDate) return null;
   return {
     fecha: formatearFecha(contract.nextIncrementDate),
     importe:
@@ -56,6 +57,7 @@ export function proximaActualizacion(contract: ContractResponse): ProximaActuali
 
 /** «Sube 8 % cada 3 meses», «Ajusta por ICL cada 6 meses». */
 export function comoSeActualiza(contract: ContractResponse): string {
+  if (contract.incrementMethod === "NONE") return "Sin ajuste: el monto queda fijo";
   const cada = `cada ${contract.incrementFrequencyMonths} ${contract.incrementFrequencyMonths === 1 ? "mes" : "meses"}`;
   if (contract.incrementMethod === "INDEX") {
     return `Ajusta por ${contract.incrementIndexName ?? "índice"} ${cada}`;

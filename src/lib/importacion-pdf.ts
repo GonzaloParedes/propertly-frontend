@@ -181,7 +181,8 @@ export interface ItemLeido {
 }
 
 /** Hacia dónde se actualiza el alquiler, como lo elige el propietario. */
-export type MetodoDeActualizacion = "FIXED_PERCENTAGE" | "FIXED_AMOUNT" | "ICL" | "IPC";
+/** `NONE`: sin ajuste, el monto queda fijo y no lleva frecuencia (ALQ-188). */
+export type MetodoDeActualizacion = "FIXED_PERCENTAGE" | "FIXED_AMOUNT" | "ICL" | "IPC" | "NONE";
 
 /** Todo lo que el propietario revisa, en texto como se escribe. Arranca con lo que leyó el backend. */
 export interface Borrador {
@@ -239,6 +240,7 @@ const MOTIVOS: Record<string, string> = {
   "inconsistent with start date and term": "La fecha de fin no coincide con el inicio y el plazo.",
   "required for index method": "Falta decir a qué índice se actualiza.",
   "required for fixed method": "Falta el valor de la actualización.",
+  "must be empty when the rent does not adjust": "Un contrato sin ajuste no lleva frecuencia, índice ni valor.",
 };
 
 const MOTIVO_DE_GARANTIAS = "Las garantías se leyeron del contrato: confirme que son las correctas. Se guardan con el contrato al crearlo.";
@@ -324,6 +326,7 @@ function actualizacionDe(campos: Campos): Pick<Borrador, "metodo" | "valorDeActu
   const valor = numeroTexto(valorDe(campos, "increments.value"));
   if (metodo === "FIXED_PERCENTAGE" || metodo === "FIXED_AMOUNT") return { metodo, valorDeActualizacion: valor };
   if (metodo === "INDEX" && (indice === "ICL" || indice === "IPC")) return { metodo: indice, valorDeActualizacion: "" };
+  if (metodo === "NONE") return { metodo: "NONE", valorDeActualizacion: "" };
   return { metodo: null, valorDeActualizacion: "" };
 }
 
@@ -415,8 +418,14 @@ function motivosDe(campos: Campos, claves: string[]): string[] {
   return [...new Set(frases)];
 }
 
+/** Sin ajuste no tiene frecuencia: lo único obligatorio es el método. */
+function obligatoriasDe(id: ItemId, campos: Campos): string[] {
+  if (id === "actualizacion" && valorDe(campos, "increments.method") === "NONE") return ["increments.method"];
+  return OBLIGATORIAS[id] ?? [];
+}
+
 function estadoDe(id: ItemId, campos: Campos, claves: string[]): EstadoDeItem {
-  const obligatorias = OBLIGATORIAS[id] ?? [];
+  const obligatorias = obligatoriasDe(id, campos);
   const delItem = claves.map((clave) => campos[clave]).filter((campo): campo is ImportField => campo !== undefined);
   if (delItem.some((campo) => campo.status === "UNSUPPORTED")) return "noSePuede";
   if (obligatorias.some((clave) => !hayValor(campos[clave]?.value))) return "falta";
@@ -608,6 +617,7 @@ export function datosCompletos(id: ItemId, b: Borrador): boolean {
     case "plazo":
       return /^\d{4}-\d{2}-\d{2}$/.test(b.inicio) && Number(b.plazo) >= 1;
     case "actualizacion": {
+      if (b.metodo === "NONE") return true;
       if (b.metodo === null || Number(b.frecuencia) < 1) return false;
       const conValor = b.metodo === "FIXED_PERCENTAGE" || b.metodo === "FIXED_AMOUNT";
       return !conValor || numeroDecimal(b.valorDeActualizacion) > 0;
@@ -699,6 +709,7 @@ function datosDeActualizacion(b: Borrador): Pick<ContractTerms, "incrementMethod
   if (b.metodo === "FIXED_PERCENTAGE" || b.metodo === "FIXED_AMOUNT") {
     return { incrementMethod: b.metodo, incrementValue: numeroDecimal(b.valorDeActualizacion) };
   }
+  if (b.metodo === "NONE") return { incrementMethod: "NONE" };
   return { incrementMethod: "INDEX", incrementIndexName: b.metodo ?? undefined };
 }
 
@@ -714,7 +725,8 @@ export function armarAlta(borrador: Borrador, decisiones: Decisiones, elapsed: E
       startDate: b.inicio,
       termMonths: Number(b.plazo),
       dueDay: Number(b.dia),
-      incrementFrequencyMonths: Number(b.frecuencia),
+      // Sin ajuste no lleva frecuencia: el backend la rechaza.
+      ...(b.metodo === "NONE" ? {} : { incrementFrequencyMonths: Number(b.frecuencia) }),
       ...datosDeActualizacion(b),
       ...armarOtrasCondiciones(b.otras),
     },
@@ -732,9 +744,11 @@ export function valoresFinales(borrador: Borrador, decisiones: Decisiones): Reco
     "rent.dueDay": Number(b.dia),
     "dates.startDate": b.inicio,
     "dates.termMonths": Number(b.plazo),
-    "increments.frequencyMonths": Number(b.frecuencia),
+    "increments.frequencyMonths": b.metodo === "NONE" ? null : Number(b.frecuencia),
   };
-  if (b.metodo === "FIXED_PERCENTAGE" || b.metodo === "FIXED_AMOUNT") {
+  if (b.metodo === "NONE") {
+    valores["increments.method"] = "NONE";
+  } else if (b.metodo === "FIXED_PERCENTAGE" || b.metodo === "FIXED_AMOUNT") {
     valores["increments.method"] = b.metodo;
     valores["increments.value"] = numeroDecimal(b.valorDeActualizacion);
   } else if (b.metodo !== null) {

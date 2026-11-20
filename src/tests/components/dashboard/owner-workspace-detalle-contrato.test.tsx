@@ -177,6 +177,13 @@ describe("próxima actualización", () => {
     await abrir();
     expect(screen.queryByText("Próxima actualización")).not.toBeInTheDocument();
   });
+
+  it("un contrato sin ajuste (ALQ-188) no muestra hito ni aumentos pendientes, en ARS o USD", async () => {
+    await abrir(contrato({ incrementMethod: "NONE", incrementValue: undefined, incrementFrequencyMonths: undefined, currency: "USD" }));
+    expect(screen.queryByText("Próxima actualización")).not.toBeInTheDocument();
+    expect(await screen.findByText(/no tiene ajustes: todas las cuotas tienen el mismo monto/)).toBeInTheDocument();
+    expect(screen.queryByText(/Todavía no se aplicó ningún aumento/)).not.toBeInTheDocument();
+  });
 });
 
 // --- Condiciones ---

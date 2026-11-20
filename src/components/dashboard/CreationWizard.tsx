@@ -7,11 +7,12 @@ import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/tele
 import { ApiError, AuthExpiredError } from "@/lib/api";
 import { ERROR, copyDeError, idDelContratoActivo, idDelInquilinoExistente } from "@/lib/error-codes";
 import { AlquiaBackendClient } from "@/lib/backend-client";
-import type { AddressSuggestionResponse, ContractDraft, PropertyCategory, PropertyDraft, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
+import type { ContractDraft, PropertyCategory, PropertyDraft, PropertyRequest, PropertyResponse, TenantRequest, TenantResponse } from "@/lib/backend-types";
 import { CATEGORIAS, detallePropiedad } from "@/lib/propiedad";
 import Counter from "@/components/ui/Counter";
 import { Cargando, Spinner } from "@/components/ui/Spinner";
 import { Icon as AppIcon, type IconName } from "@/components/ui/Icon";
+import AddressField, { etiquetaDireccion } from "@/components/dashboard/AddressField";
 import { correoValido } from "@/lib/correo";
 import { nombreCompleto, nombreDeInquilino, nombreParaElPedido, type CamposDeNombre } from "@/lib/inquilino";
 import { CamposDeNombreDelInquilino } from "@/components/dashboard/CamposDeNombreDelInquilino";
@@ -34,6 +35,7 @@ import { armarContenidoDeBorradorDePropiedad, deserializarBorradorDePropiedad, t
 import { CartelAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import { armarOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
 import { avisoDeCampo, ubicacionDeErrores, type Ubicacion } from "@/lib/errores-de-alta";
+import { AlertaDeError } from "@/components/dashboard/ReportarProblema";
 
 /**
  * El backend distingue cada condición con un `type` estable (RFC 9457): los dos
@@ -74,138 +76,6 @@ function mensajeDeErrorPropiedad(err: unknown): string {
 
 type WizardKind = "property" | "contract" | "tenant";
 
-
-/** `Direccion` (en `borradores.ts`) tiene los mismos campos que `PropertyRequest`. */
-const etiquetaDireccion = (d: Direccion) => `${d.street} ${d.number}`;
-
-/** Sólo para /prototipo: sin sesión `/address-lookup` daría 401. */
-const DIRECCIONES_DEMO: (Direccion & AddressSuggestionResponse)[] = [
-  { reference: "demo-1", label: "Lavalle 950", street: "Lavalle", number: "950", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
-  { reference: "demo-2", label: "Av. Rivadavia 2340", street: "Av. Rivadavia", number: "2340", city: "CABA", province: "Ciudad Autónoma de Buenos Aires", postalCode: "", latitude: null, longitude: null },
-  { reference: "demo-3", label: "Mitre 78", street: "Mitre", number: "78", city: "San Isidro", province: "Buenos Aires", postalCode: "", latitude: null, longitude: null },
-];
-
-/** El backend no busca por debajo de 3 caracteres (app.address-lookup.min-query-length). */
-const MIN_BUSQUEDA = 3;
-
-/** Sugerencias de `/address-lookup/autocomplete`, con espera al tipeo y descarte de respuestas viejas. */
-function useSugerencias(query: string, demo: boolean) {
-  const q = query.trim();
-  const [resultado, setResultado] = useState<{ q: string; lista: AddressSuggestionResponse[] }>({ q: "", lista: [] });
-
-  useEffect(() => {
-    if (demo || q.length < MIN_BUSQUEDA) return;
-    let vigente = true;
-    const t = setTimeout(() => {
-      AlquiaBackendClient.addressLookup.autocomplete(q)
-        .then((lista) => vigente && setResultado({ q, lista }))
-        .catch(() => vigente && setResultado({ q, lista: [] }));
-    }, 250);
-    return () => { vigente = false; clearTimeout(t); };
-  }, [q, demo]);
-
-  if (demo) {
-    const n = q.toLowerCase();
-    return { sugerencias: q.length < MIN_BUSQUEDA ? [] : DIRECCIONES_DEMO.filter((d) => d.label.toLowerCase().includes(n)), buscando: false };
-  }
-  return { sugerencias: q.length < MIN_BUSQUEDA ? [] : resultado.lista, buscando: q.length >= MIN_BUSQUEDA && resultado.q !== q };
-}
-
-/** Combobox accesible: flechas para moverse, Enter para elegir, Escape para cerrar. */
-function AddressField({ value, demo, onSelect, onClear }: Readonly<{
-  demo: boolean;
-  value: Direccion | null;
-  onSelect: (d: Direccion) => void;
-  onClear: () => void;
-}>) {
-  const [query, setQuery] = useState("");
-  const [abierto, setAbierto] = useState(false);
-  const [activo, setActivo] = useState(0);
-  const [falloResolver, setFalloResolver] = useState(false);
-
-  const q = query.trim();
-  const { sugerencias, buscando } = useSugerencias(query, demo);
-
-  if (value) {
-    return (
-      <div className="owner-ac-chosen">
-        <span className="owner-ac-chosen__body">
-          <b>{etiquetaDireccion(value)}</b>
-          <small>{[value.city, value.province].filter(Boolean).join(" · ") || "Falta la ciudad"}</small>
-        </span>
-        <button type="button" className="owner-ac-chosen__change" onClick={() => { onClear(); setQuery(""); }}>
-          Cambiar
-        </button>
-      </div>
-    );
-  }
-
-  const elegir = (d: Direccion) => { onSelect(d); setAbierto(false); setQuery(""); };
-  const elegirSugerencia = async (sugerencia: AddressSuggestionResponse) => {
-    setFalloResolver(false);
-    try {
-      const r = demo
-        ? DIRECCIONES_DEMO.find((d) => d.reference === sugerencia.reference)!
-        : await AlquiaBackendClient.addressLookup.resolve(sugerencia.reference);
-      const conCoordenadas = r.latitude != null && r.longitude != null;
-      elegir({
-        street: r.street ?? "", number: r.number ?? "", city: r.city ?? "", province: r.province ?? "",
-        postalCode: r.postalCode ?? "",
-        latitude: conCoordenadas ? r.latitude : null, longitude: conCoordenadas ? r.longitude : null,
-      });
-    } catch (e) {
-      console.error("Failed to resolve address suggestion", e);
-      setFalloResolver(true);
-    }
-  };
-
-  return (
-    <div className="owner-ac">
-      <div className="owner-ac__box">
-        <Icon name="search" />
-        <input
-          role="combobox"
-          aria-expanded={abierto && sugerencias.length > 0}
-          aria-controls="ac-lista"
-          aria-autocomplete="list"
-          aria-activedescendant={abierto && sugerencias.length ? `ac-opt-${activo}` : undefined}
-          aria-label="Buscar la dirección"
-          placeholder="Empezá a escribir la calle…"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setAbierto(true); setActivo(0); }}
-          onKeyDown={(e) => {
-            if (!sugerencias.length) return;
-            if (e.key === "ArrowDown") { e.preventDefault(); setAbierto(true); setActivo((i) => (i + 1) % sugerencias.length); }
-            else if (e.key === "ArrowUp") { e.preventDefault(); setActivo((i) => (i - 1 + sugerencias.length) % sugerencias.length); }
-            else if (e.key === "Enter") { e.preventDefault(); void elegirSugerencia(sugerencias[activo]); }
-            else if (e.key === "Escape") { setAbierto(false); }
-          }}
-        />
-      </div>
-      {abierto && sugerencias.length > 0 && (
-        <ul className="owner-ac__list" id="ac-lista" role="listbox" aria-label="Direcciones sugeridas">
-          {sugerencias.map((d, i) => (
-            <li key={d.reference} id={`ac-opt-${i}`} role="option" aria-selected={i === activo}>
-              <button type="button" className={i === activo ? "is-active" : ""}
-                onMouseEnter={() => setActivo(i)} onClick={() => void elegirSugerencia(d)}>
-                <b>{d.label}</b>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {falloResolver && <p className="owner-ac__empty" role="alert">No pudimos obtener esa dirección. Elija otra o inténtelo de nuevo.</p>}
-      {q.length >= MIN_BUSQUEDA && !buscando && sugerencias.length === 0 && (
-        <p className="owner-ac__empty">
-          No encontramos esa dirección.{" "}
-          <button type="button" onClick={() => elegir({ street: query.trim(), number: "", city: "", province: "", postalCode: "", latitude: null, longitude: null })}>
-            Usarla igual
-          </button>
-        </p>
-      )}
-    </div>
-  );
-}
 
 /** En el wizard los íconos van un pelín más grandes (22) que el resto de la app (21). */
 function Icon({ name, size = 22 }: Readonly<{ name: IconName; size?: number }>) {
@@ -304,6 +174,8 @@ function datosDeActualizacion(
   if (method === "FIXED_PERCENTAGE") {
     return { incrementMethod: "FIXED_PERCENTAGE" as const, incrementValue: Number(porcentaje) };
   }
+  // Sin ajuste (ALQ-188): el backend rechaza frecuencia, índice y valor.
+  if (method === "NONE") return { incrementMethod: "NONE" as const };
   return { incrementMethod: "INDEX" as const, incrementIndexName: method };
 }
 
@@ -359,7 +231,7 @@ function TenantWizardStep({
     ? "Faltan dígitos: son 11 en total."
     : "El número no es válido. Revise que no haya un dígito cambiado.";
   const aviso = (...campos: string[]) => <Aviso texto={avisoDeCampo(erroresBackend, "tenant", ...campos)} />;
-  return <><h1>¿Quién es el inquilino?</h1><p>{nombre.personaJuridica ? "La razón social es obligatoria." : "Nombre y apellido son obligatorios."} Puede completar los demás datos después. Para activar avisos al inquilino necesita un correo electrónico.</p><div className="owner-wizard-stack"><CamposDeNombreDelInquilino valores={nombre} onChange={onNombreChange} aviso={nombre.personaJuridica ? aviso("businessName") : aviso("firstName", "lastName")} /><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}{aviso("taxId")}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}{aviso("email")}<label className="owner-wizard-field"><span>Teléfono (opcional)</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{aviso("phoneNumber")}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div></>;
+  return <><h1>¿Quién es el inquilino?</h1><p>{nombre.personaJuridica ? "La razón social es obligatoria." : "Nombre y apellido son obligatorios."} Puede completar los demás datos después. Para activar avisos al inquilino necesita un correo electrónico.</p><div className="owner-wizard-stack"><CamposDeNombreDelInquilino valores={nombre} onChange={onNombreChange} aviso={nombre.personaJuridica ? aviso("businessName") : aviso("firstName", "lastName")} /><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={taxId} aria-invalid={taxId.length > 0 && !isTaxIdValid} onChange={(event) => onTaxIdChange(formatearCuit(event.target.value))} /></label>{taxId.length > 0 && !isTaxIdValid && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}{aviso("taxId")}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={email} aria-invalid={email.length > 0 && !isEmailValid} onChange={(event) => onEmailChange(event.target.value)} /></label>{email.length > 0 && !isEmailValid && <p className="owner-wizard-error" role="alert">Ese correo no parece completo.</p>}{aviso("email")}<label className="owner-wizard-field"><span>Teléfono (opcional)</span><input type="tel" inputMode="tel" placeholder="Ej: 11 4455 2210" value={phone} aria-invalid={phone.length > 0 && !isPhoneValid} onChange={(event) => onPhoneChange(event.target.value)} /></label>{phone.length > 0 && !isPhoneValid && <p className="owner-wizard-error" role="alert">{errorDeTelefono(phone)}</p>}{aviso("phoneNumber")}{error && <AlertaDeError mensaje={error} />}</div></>;
 }
 
 /**
@@ -431,7 +303,7 @@ function ContractTermStep({ startDate, term, isStartDateValid, erroresBackend, o
 }
 
 function ContractIndexStep({ method, percentage, frequency, erroresBackend, onMethodChange, onPercentageChange, onFrequencyChange }: Readonly<{ method: ContractMethod; percentage: string; frequency: number; erroresBackend: Record<string, string>; onMethodChange: (method: ContractMethod) => void; onPercentageChange: (value: string) => void; onFrequencyChange: (value: number) => void }>) {
-  return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" placeholder="Ej. 8" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementMethod", "incrementValue", "incrementIndexName")} /><p className="owner-wizard-label">Cada cuánto se actualiza</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div><Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementFrequencyMonths")} />{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
+  return <><h1>¿Cómo se actualiza el alquiler?</h1><p>Alquia aplica la actualización cuando corresponde. Usted no tiene que hacer nada.</p><div className="owner-wizard-options owner-wizard-options--grid owner-wizard-options--par" role="radiogroup"><Option selected={method === "FIXED_PERCENTAGE"} icon="trend" title="Un porcentaje" description="Sube un % fijo" onClick={() => onMethodChange("FIXED_PERCENTAGE")} /><Option selected={method === "ICL"} icon="trend" title="Según el ICL" description="Índice del BCRA" onClick={() => onMethodChange("ICL")} /><Option selected={method === "IPC"} icon="trend" title="Según el IPC" description="Inflación INDEC" onClick={() => onMethodChange("IPC")} /><Option selected={method === "NONE"} icon="minus" title="Sin ajuste" description="El monto queda fijo" onClick={() => onMethodChange("NONE")} /></div>{method === "FIXED_PERCENTAGE" && <label className="owner-wizard-field owner-wizard-field--amount"><span className="sr-only">Porcentaje de aumento</span><input inputMode="decimal" placeholder="Ej. 8" value={percentage} aria-label="Porcentaje de aumento" onChange={(event) => onPercentageChange(event.target.value.replace(/[^\d.]/g, ""))} /><span>% cada vez</span></label>}<Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementMethod", "incrementValue", "incrementIndexName")} />{method === "NONE" ? <small className="owner-wizard-help">Todas las cuotas van a tener el mismo monto durante todo el contrato.</small> : <><p className="owner-wizard-label">Cada cuánto se actualiza</p><div className="owner-wizard-chips">{[3, 4, 6, 12].map((months) => <button key={months} type="button" aria-pressed={frequency === months} onClick={() => onFrequencyChange(months)}>Cada {months} meses</button>)}</div><Aviso texto={avisoDeCampo(erroresBackend, "contract", "incrementFrequencyMonths")} /></>}{method === "FIXED_PERCENTAGE" && <small className="owner-wizard-help">Cada aumento se calcula sobre el alquiler vigente, no sobre el inicial.</small>}</>;
 }
 
 function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, startDate, method, percentage, frequency, otras, pendientes, error, cantidadErrores, conflictSection, elapsedSection, pdfSection, avisarAlInquilino, tieneCorreoInquilino, onAvisarAlInquilino, onCambiar }: Readonly<{ lists: CargaDeListas; propiedad: SeleccionDeContrato; inquilino: SeleccionDeContrato; rent: string; dueDay: number; term: number; startDate: string; method: ContractMethod; percentage: string; frequency: number; otras: Condiciones; pendientes: number[]; error: string | null; cantidadErrores: number; conflictSection: React.ReactNode; elapsedSection: React.ReactNode; pdfSection: React.ReactNode; avisarAlInquilino: boolean; tieneCorreoInquilino: boolean; onAvisarAlInquilino: (value: boolean) => void; onCambiar: (paso: number) => void }>) {
@@ -442,10 +314,12 @@ function ContractReviewStep({ lists, propiedad, inquilino, rent, dueDay, term, s
   const tenantName = inquilino.borradorElegido && inquilino.borrador !== null
     ? `Inquilino nuevo: ${inquilino.borrador}`
     : loadedLists?.inquilinos.find((option) => option.id === inquilino.id)?.titulo ?? "Sin cargar";
-  const adjustment = method === "FIXED_PERCENTAGE" ? `${percentage} % cada ${frequency} meses` : `Según el ${method} · cada ${frequency} meses`;
+  const adjustment = method === "NONE"
+    ? "Sin ajuste · el monto queda fijo"
+    : method === "FIXED_PERCENTAGE" ? `${percentage} % cada ${frequency} meses` : `Según el ${method} · cada ${frequency} meses`;
   // Lo que falta no se muestra con valores a medias («$ por mes · vence el día 1»): se dice que falta.
   const valor = (paso: number, texto: string) => pendientes.includes(paso) ? "Falta completar" : texto;
-  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, use «Cambiar» en la sección correspondiente. Recién al crear el contrato se guarda todo junto.</p>{cantidadErrores > 0 && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{cantidadErrores === 1 ? "Hay 1 dato para corregir." : `Hay ${cantidadErrores} datos para corregir.`} Use «Cambiar» en cada sección para llegar a ellos.</p>}<Summary rows={[["Propiedad", valor(1, propertyName), () => onCambiar(1)], ["Inquilino", valor(2, tenantName), () => onCambiar(2)], ["Alquiler inicial", valor(3, `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`), () => onCambiar(3)], ["Plazo", valor(4, `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`), () => onCambiar(4)], ["Actualización", valor(5, adjustment), () => onCambiar(5)], ["Otras condiciones", valor(6, resumenDeOtrasCondiciones(otras)), () => onCambiar(6)]]} />{pendientes.length > 0 && <FaltaCompletar pendientes={pendientes} onCambiar={onCambiar} />}{conflictSection}{elapsedSection}{pdfSection}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}<CartelAvisosInquilino tieneCorreo={tieneCorreoInquilino} activo={avisarAlInquilino && tieneCorreoInquilino} onChange={onAvisarAlInquilino} /><aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
+  return <><h1>Revise que esté todo bien</h1><p>Si algo no cierra, use «Cambiar» en la sección correspondiente. Recién al crear el contrato se guarda todo junto.</p>{cantidadErrores > 0 && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{cantidadErrores === 1 ? "Hay 1 dato para corregir." : `Hay ${cantidadErrores} datos para corregir.`} Use «Cambiar» en cada sección para llegar a ellos.</p>}<Summary rows={[["Propiedad", valor(1, propertyName), () => onCambiar(1)], ["Inquilino", valor(2, tenantName), () => onCambiar(2)], ["Alquiler inicial", valor(3, `$ ${montoConSeparadores(rent)} por mes · vence el día ${dueDay}`), () => onCambiar(3)], ["Plazo", valor(4, `${term} meses · termina el ${fechaDeFin(startDate, term) ?? "—"}`), () => onCambiar(4)], ["Actualización", valor(5, adjustment), () => onCambiar(5)], ["Otras condiciones", valor(6, resumenDeOtrasCondiciones(otras)), () => onCambiar(6)]]} />{pendientes.length > 0 && <FaltaCompletar pendientes={pendientes} onCambiar={onCambiar} />}{conflictSection}{elapsedSection}{pdfSection}{error && <AlertaDeError mensaje={error} />}<CartelAvisosInquilino tieneCorreo={tieneCorreoInquilino} activo={avisarAlInquilino && tieneCorreoInquilino} onChange={onAvisarAlInquilino} /><aside className="owner-wizard-note"><Icon name="trend" />Las próximas cuotas se calculan automáticamente según las condiciones que definió.</aside></>;
 }
 
 /** Lo que impide crear el contrato todavía, con un acceso directo a cada paso. */
@@ -908,7 +782,7 @@ function PropertyWizardStep({
         ["Características", caracteristicas],
         ["Estado", "Sin alquilar"],
       ]} />
-      {errorGuardado && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{errorGuardado}</p>}
+      {errorGuardado && <AlertaDeError mensaje={errorGuardado} />}
       <aside className="owner-wizard-note"><Icon name="trend" />Para empezar a cobrarla necesita un contrato, que la vincula con un inquilino y define el alquiler.</aside>
     </>;
 }
@@ -1015,7 +889,7 @@ function RetomarBorrador({ draftId, draftKind = "contract", ...props }: PropsDel
   if (carga.fase === "error") {
     return <PanelDelBorrador titulo={titulo} onClose={props.onClose}>
       <h1>No pudimos abrir el borrador</h1>
-      <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{carga.mensaje}</p>
+      <AlertaDeError mensaje={carga.mensaje} />
       <div className="owner-wizard-acciones">
         <button type="button" className="owner-button owner-button--quiet" onClick={props.onClose}>Volver</button>
         <button type="button" className="owner-button owner-button--secondary" onClick={() => { setCarga({ fase: "cargando" }); setIntento((n) => n + 1); }}>Reintentar</button>
@@ -1591,7 +1465,8 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
         startDate: inicio,
         termMonths: term,
         dueDay: diaVencimiento,
-        incrementFrequencyMonths: frecuencia,
+        // Sin ajuste no lleva frecuencia: el backend la rechaza.
+        ...(method === "NONE" ? {} : { incrementFrequencyMonths: frecuencia }),
         // El backend separa el cómo del qué, y es excluyente: FIXED_PERCENTAGE
         // exige incrementValue y prohíbe incrementIndexName, INDEX al revés.
         // Mandar los dos, o ninguno, es un 400.
@@ -1720,7 +1595,7 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     erroresBackend={erroresBackend}
     cantidadErrores={Object.keys(erroresBackend).length}
     conflictSection={conflictSection}
-    elapsedSection={<PagosTranscurridos meses={mesesPorPagar} value={respuestaVigente} onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }} inicioISO={inicio} alquiler={Number(alquiler)} frecuenciaMeses={frecuencia} tieneRecargo={punitoriosCargados(otras.punitorios)} hoyISO={hoyArgentina} diaVencimiento={diaVencimiento} obligatorio={obligatorios.length > 0} aviso={avisoCuotas ? "La selección ya no está disponible. Elija nuevamente." : null} />}
+    elapsedSection={<PagosTranscurridos meses={mesesPorPagar} value={respuestaVigente} onChange={(valor) => { setPagadoHasta(valor); setAvisoCuotas(false); }} inicioISO={inicio} alquiler={Number(alquiler)} frecuenciaMeses={method === "NONE" ? null : frecuencia} tieneRecargo={punitoriosCargados(otras.punitorios)} hoyISO={hoyArgentina} diaVencimiento={diaVencimiento} obligatorio={obligatorios.length > 0} aviso={avisoCuotas ? "La selección ya no está disponible. Elija nuevamente." : null} />}
     pdfSection={<PdfDelContrato habilitado={guardaBorrador} documento={pdf.documento} ocupado={pdf.ocupado} error={pdf.error} onElegir={(archivo) => void pdf.adjuntar(archivo)} onQuitar={() => void pdf.quitar()} />}
     avisarAlInquilino={avisarAlInquilino}
     tieneCorreoInquilino={tieneCorreoInquilino}

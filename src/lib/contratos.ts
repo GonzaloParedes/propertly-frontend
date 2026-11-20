@@ -44,6 +44,7 @@ export function estadoDeContrato(contract: ContractResponse, hoyISO: string): Es
  * fijo pudo entrar por otra vía y no puede quedar sin describir.
  */
 export function describirActualizacion(contract: ContractResponse): string {
+  if (contract.incrementMethod === "NONE") return "Sin ajuste";
   const cada = `cada ${contract.incrementFrequencyMonths} ${contract.incrementFrequencyMonths === 1 ? "mes" : "meses"}`;
   if (contract.incrementMethod === "INDEX") {
     return `Ajusta por ${contract.incrementIndexName ?? "índice"} ${cada}`;

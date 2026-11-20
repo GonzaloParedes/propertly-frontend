@@ -69,7 +69,7 @@ describe("ubicación de la tarjeta", () => {
   const viewport = { ancho: 1200, alto: 800 };
 
   it("sin ancla queda centrada", () => {
-    expect(ubicarTarjeta(null, 280, viewport)).toEqual({ top: 260, left: 410, width: 380 });
+    expect(ubicarTarjeta(null, 280, viewport)).toMatchObject({ top: 260, left: 410, width: 380 });
   });
 
   it("a un ítem del menú la pone a la derecha", () => {
@@ -89,5 +89,36 @@ describe("ubicación de la tarjeta", () => {
       viewport,
     );
     expect(lugar.top).toBe(700 - 280 - 14);
+  });
+});
+
+describe("ubicación de la tarjeta en un celular", () => {
+  // «Nuevo contrato» en un iPhone SE: media pantalla, a la derecha.
+  const celular = { ancho: 375, alto: 667 };
+  const nuevoContrato = { top: 198, right: 361, bottom: 256, left: 187, width: 174, height: 58 };
+
+  it("si no entra entera, no tapa el control señalado", () => {
+    const lugar = ubicarTarjeta(nuevoContrato, 480, celular);
+    expect(lugar.recortada).toBe(true);
+    expect(lugar.top).toBeGreaterThanOrEqual(nuevoContrato.bottom);
+    expect(lugar.top + lugar.maxHeight).toBeLessThanOrEqual(celular.alto - 16);
+  });
+
+  it("con el control arriba de todo, entra entera debajo", () => {
+    const arriba = { ...nuevoContrato, top: 74, bottom: 132 };
+    const lugar = ubicarTarjeta(arriba, 410, celular);
+    expect(lugar.recortada).toBe(false);
+    expect(lugar.top).toBe(132 + 14);
+    expect(lugar.left).toBe(16);
+    expect(lugar.width).toBe(343);
+  });
+
+  it("apaisado, va al costado más angosta en vez de taparlo", () => {
+    const apaisado = { ancho: 844, alto: 390 };
+    const control = { top: 74, right: 447, bottom: 138, left: 243, width: 204, height: 64 };
+    const lugar = ubicarTarjeta(control, 330, apaisado);
+    expect(lugar.recortada).toBe(false);
+    expect(lugar.left).toBeGreaterThanOrEqual(control.right);
+    expect(lugar.left + lugar.width).toBeLessThanOrEqual(apaisado.ancho - 16);
   });
 });

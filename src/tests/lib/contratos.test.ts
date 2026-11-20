@@ -162,3 +162,11 @@ describe("resumenContratos", () => {
     expect(resumenContratos([])).toBe("Todavía no cargó ningún contrato.");
   });
 });
+
+describe("describirActualizacion · sin ajuste (ALQ-188)", () => {
+  it("un contrato sin ajuste se lee «Sin ajuste», sin frecuencia", () => {
+    expect(describirActualizacion(contract({
+      incrementMethod: "NONE", incrementValue: undefined, incrementFrequencyMonths: undefined,
+    }))).toBe("Sin ajuste");
+  });
+});

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { AlertaDeError } from "@/components/dashboard/ReportarProblema";
 
 /**
  * El alta no manda el flag: el contrato nace con los avisos apagados y, si el
@@ -59,7 +60,7 @@ export function ControlAvisosInquilino({ enabled, onChange, tieneCorreo = true }
       <p>Vencimientos y actualizaciones. Apagado, no le enviamos ninguno.</p>
       {!tieneCorreo && <p>Agregue un correo electrónico desde los datos del inquilino para activar los avisos.</p>}
       <Interruptor label="Avisar al inquilino" checked={enabled} disabled={pending || (!enabled && !tieneCorreo)} onChange={(value) => void cambiar(value)} />
-      {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
+      {error && <AlertaDeError mensaje={error} />}
     </div>
   );
 }

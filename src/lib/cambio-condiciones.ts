@@ -2,7 +2,8 @@ import { formatearMonto, formatearPeriodo } from "@/lib/formato";
 import type { ContractResponse, Currency, ScheduledSchemaChangeRequest } from "@/lib/backend-types";
 
 /** Cómo sube el alquiler, en los términos del asistente de contratos. */
-export type MetodoActualizacion = "FIXED_PERCENTAGE" | "ICL" | "IPC";
+/** `NONE`: sin ajuste, el monto queda fijo (ALQ-188). */
+export type MetodoActualizacion = "FIXED_PERCENTAGE" | "ICL" | "IPC" | "NONE";
 
 export interface CondicionesNuevas {
   /** Primer día del mes desde el que rigen, «2026-10-01». */
@@ -58,11 +59,12 @@ export function condicionesIniciales(contract: ContractResponse, meses: MesElegi
     mes: meses[0]?.valor ?? "",
     alquiler: String(Math.round(contract.currentRent)),
     diaVencimiento: contract.dueDay,
-    metodo: indice ?? "FIXED_PERCENTAGE",
+    metodo: contract.incrementMethod === "NONE" ? "NONE" : indice ?? "FIXED_PERCENTAGE",
     porcentaje: contract.incrementMethod === "FIXED_PERCENTAGE" && contract.incrementValue != null
       ? String(contract.incrementValue)
       : "",
-    frecuencia: contract.incrementFrequencyMonths,
+    // Un contrato sin ajuste no tiene frecuencia: si se pasa a uno que ajusta, arranca en 6.
+    frecuencia: contract.incrementFrequencyMonths ?? 6,
   };
 }
 
@@ -75,7 +77,7 @@ export function validarCondiciones(c: CondicionesNuevas, meses: MesElegible[]): 
   if (!Number.isInteger(c.diaVencimiento) || c.diaVencimiento < 1 || c.diaVencimiento > 28) {
     errores.diaVencimiento = "El día de vencimiento va del 1 al 28.";
   }
-  if (!Number.isInteger(c.frecuencia) || c.frecuencia < 1) errores.frecuencia = "La actualización es cada 1 mes o más.";
+  if (c.metodo !== "NONE" && (!Number.isInteger(c.frecuencia) || c.frecuencia < 1)) errores.frecuencia = "La actualización es cada 1 mes o más.";
   if (c.metodo === "FIXED_PERCENTAGE" && !(Number(c.porcentaje) > 0)) {
     errores.porcentaje = "Escriba un porcentaje mayor a cero.";
   }
@@ -85,13 +87,13 @@ export function validarCondiciones(c: CondicionesNuevas, meses: MesElegible[]): 
 /**
  * El backend separa el cómo del qué y es excluyente: FIXED_PERCENTAGE exige
  * `incrementValue` y prohíbe `incrementIndexName`; INDEX al revés. Mandar los
- * dos, o ninguno, es un 400.
+ * dos, o ninguno, es un 400. NONE no lleva ni frecuencia, ni índice, ni valor.
  */
 export function armarPedido(c: CondicionesNuevas): ScheduledSchemaChangeRequest {
+  const base = { effectiveFrom: c.mes, rentBaseline: Number(c.alquiler), dueDay: c.diaVencimiento };
+  if (c.metodo === "NONE") return { ...base, incrementMethod: "NONE" };
   return {
-    effectiveFrom: c.mes,
-    rentBaseline: Number(c.alquiler),
-    dueDay: c.diaVencimiento,
+    ...base,
     incrementFrequencyMonths: c.frecuencia,
     ...(c.metodo === "FIXED_PERCENTAGE"
       ? { incrementMethod: "FIXED_PERCENTAGE" as const, incrementValue: Number(c.porcentaje) }
@@ -105,6 +107,7 @@ export function resumenDeCondiciones(c: CondicionesNuevas, moneda?: Currency): s
   return [
     `Alquiler de ${formatearMonto(Number(c.alquiler), moneda)} por mes`,
     `Vence el día ${c.diaVencimiento}`,
-    c.metodo === "FIXED_PERCENTAGE" ? `Sube ${c.porcentaje} % ${cada}` : `Ajusta por ${c.metodo} ${cada}`,
+    c.metodo === "NONE" ? "Sin ajuste: el monto queda fijo"
+      : c.metodo === "FIXED_PERCENTAGE" ? `Sube ${c.porcentaje} % ${cada}` : `Ajusta por ${c.metodo} ${cada}`,
   ];
 }

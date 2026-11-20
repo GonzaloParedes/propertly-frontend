@@ -10,6 +10,7 @@ import { AlquiaBackendClient } from "@/lib/backend-client";
 import { contarCuotasPendientes } from "@/lib/cobranzas";
 import { Icon } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
+import { abrirReporte } from "@/lib/reportes";
 
 /** Tocar el ítem de la pantalla actual no remonta la página: el workspace escucha esto para volver al listado. */
 export const NAV_RESET_EVENT = "alquia:nav-reset";
@@ -98,6 +99,13 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
     return pathname.startsWith(href);
   }
 
+  function reportarProblema() {
+    setOpen(false);
+    abrirReporte();
+  }
+
+  const botonDeReporte = <button type="button" className="owner-nav__link owner-nav__reporte" aria-haspopup="dialog" onClick={reportarProblema}><Icon name="report" /><span>Reportar un problema</span></button>;
+
   function verTutorial() {
     setOpen(false);
     abrirTutorial();
@@ -152,6 +160,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
           <span className="owner-avatar" aria-hidden="true">{iniciales}</span>
           <span className="owner-nav__profile-text"><strong>{nombre}</strong>{user && <small>{user.email}</small>}</span>
         </div>
+        {botonDeReporte}
         <div className="owner-nav__footer">
           <button type="button" className="owner-nav__logout" onClick={() => void logout()}><Icon name="logout" /><span>Cerrar sesión</span></button>
           <ThemeToggle />
@@ -162,6 +171,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
         <div className="owner-drawer__top"><Image src={logoSrc} alt="Alquia" width={124} height={40} /><div className="owner-drawer__top-end"><ThemeToggle /><button ref={closeRef} type="button" className="owner-icon-button" aria-label="Cerrar menú" onClick={() => setOpen(false)}><Icon name="close" /></button></div></div>
         <p className="owner-nav__group">CARTERA</p>
         {navigation()}
+        {botonDeReporte}
         <button type="button" className="owner-nav__logout" onClick={() => void logout()}><Icon name="logout" /><span>Cerrar sesión</span></button>
       </aside>
     </>

@@ -498,6 +498,28 @@ describe("asistente de contrato", () => {
     expect(contract).not.toHaveProperty("incrementValue");
   });
 
+  // ALQ-188: sin ajuste no se pregunta la frecuencia y el backend rechaza recibirla.
+  it("crea el contrato sin ajuste sin frecuencia, índice ni valor", async () => {
+    mockCrearContrato.mockResolvedValueOnce({ id: 1 } as never);
+    await avanzarHasta(5, { porcentaje: "" });
+    await userEvent.click(screen.getByRole("radio", { name: /Sin ajuste/ }));
+    expect(screen.queryByText("Cada cuánto se actualiza")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cada 6 meses" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Porcentaje de aumento")).not.toBeInTheDocument();
+    expect(screen.getByText(/mismo monto durante todo el contrato/)).toBeInTheDocument();
+    await seguir();
+    await seguir();
+    expect(screen.getByText("Sin ajuste · el monto queda fijo")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Crear contrato" }));
+
+    await waitFor(() => expect(mockCrearContrato).toHaveBeenCalled());
+    const { contract } = mockCrearContrato.mock.calls[0][0];
+    expect(contract.incrementMethod).toBe("NONE");
+    expect(contract).not.toHaveProperty("incrementFrequencyMonths");
+    expect(contract).not.toHaveProperty("incrementIndexName");
+    expect(contract).not.toHaveProperty("incrementValue");
+  });
+
   it("traduce el 400 de la propiedad ya alquilada", async () => {
     mockCrearContrato.mockRejectedValueOnce(
       new ApiError(409, "Property already has an active contract", ERROR.PROPERTY_HAS_ACTIVE_CONTRACT)

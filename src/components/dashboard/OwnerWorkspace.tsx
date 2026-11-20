@@ -12,6 +12,7 @@ import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import Herramientas from "@/components/dashboard/Herramientas";
+import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import PaymentReceiptUpload from "@/components/dashboard/PaymentReceiptUpload";
 import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
@@ -112,6 +113,8 @@ import { useCambioDeDia } from "@/hooks/useCambioDeDia";
 import { ERROR, copyDeError } from "@/lib/error-codes";
 import CambioCondicionesForm from "@/components/dashboard/CambioCondicionesForm";
 import { useAuth } from "@/context/auth-context";
+import { AlertaDeError } from "@/components/dashboard/ReportarProblema";
+import { abrirReporte } from "@/lib/reportes";
 
 export type OwnerView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "herramientas" | "configuracion";
 type Detail = "property" | "contract" | "tenant" | null;
@@ -472,7 +475,7 @@ function Status({ children }: Readonly<{ children: string }>) {
 
 /** Error al cargar una pantalla o bloque: ícono + qué falló, centrado. `card={false}` dentro de un contenedor que ya es una tarjeta. */
 function LoadError({ title, card = true }: Readonly<{ title: string; card?: boolean }>) {
-  const body = <div role="alert" className="owner-load-error"><span className="owner-load-error__icon"><Icon name="alert" size={26} /></span><b>{title}</b><span>Inténtelo de nuevo más tarde.</span></div>;
+  const body = <div role="alert" className="owner-load-error"><span className="owner-load-error__icon"><Icon name="alert" size={26} /></span><b>{title}</b><span className="owner-load-error__hint">Inténtelo de nuevo más tarde.</span><button type="button" className="owner-alert-reporte" aria-haspopup="dialog" onClick={() => abrirReporte({ mensajeDeError: title })}>Avisanos de este error</button></div>;
   return card ? <div className="owner-card">{body}</div> : body;
 }
 
@@ -677,23 +680,6 @@ const CREDIT_CHECK_DEMO: TenantCreditCheckResponse = {
   latestPeriod: "2026-09",
 };
 
-function formatPeriodoBcra(periodo: string): string {
-  const [year, month] = periodo.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-}
-
-function situacionLabel(s: number): string {
-  const labels: Record<number, string> = {
-    1: "Normal",
-    2: "Con seguimiento especial",
-    3: "Con problemas",
-    4: "Con alto riesgo de insolvencia",
-    5: "Irrecuperable",
-  };
-  return labels[s] ?? `Situación ${s}`;
-}
-
 function TenantDetail({
   selectedId,
   tenants,
@@ -769,59 +755,9 @@ function TenantDetail({
           </>
         )}
         {creditCheck.status === "loading" && <Cargando>Consultando al BCRA…</Cargando>}
-        {creditCheck.status === "result" && (() => {
-          const { data } = creditCheck;
-          if (data.noDebtsReported) {
-            return (
-              <>
-                <div className="bcra-ok">
-                  <div className="bcra-ok__icon"><Icon name="check" size={22} /></div>
-                  <div className="bcra-ok__body">
-                    <b>Sin deudas informadas</b>
-                    <small>No figura en la Central de Deudores del BCRA.</small>
-                  </div>
-                </div>
-                <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
-              </>
-            );
-          }
-          const sit = data.worstSituation ?? 1;
-          const verdictClass = sit === 1 ? "bcra-verdict--ok" : sit === 2 ? "bcra-verdict--warn" : "bcra-verdict--bad";
-          const stepClass = (n: number): string => {
-            if (n > sit) return "";
-            if (sit === 1) return "bcra-scale__step--1";
-            if (sit === 2) return "bcra-scale__step--2";
-            if (sit === 3) return "bcra-scale__step--3";
-            if (sit === 4) return "bcra-scale__step--4";
-            return "bcra-scale__step--5";
-          };
-          return (
-            <>
-              {data.denominacionMismatch && (
-                <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />El nombre en el BCRA (<b>{data.denominacion}</b>) no coincide con el registrado en Alquia.</p>
-              )}
-              <div className="bcra-scale">
-                <p className="bcra-scale__label">Situación crediticia</p>
-                <div className="bcra-scale__steps" role="meter" aria-valuenow={sit} aria-valuemin={1} aria-valuemax={5}>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <div key={n} className={`bcra-scale__step${n <= sit ? ` ${stepClass(n)}` : ""}`} />
-                  ))}
-                </div>
-                <div className="bcra-scale__legend"><span>Normal</span><span>Irrecuperable</span></div>
-              </div>
-              <span className={`bcra-verdict ${verdictClass}`}>{situacionLabel(sit)}</span>
-              <dl className="owner-definition">
-                <div><dt>Entidades informantes</dt><dd>{data.entityCount}</dd></div>
-                <div><dt>Monto total</dt><dd>{formatearMonto(data.totalAmountPesos!)}</dd></div>
-                {data.hasLegalSituation && <div><dt>Situación jurídica</dt><dd>Sí</dd></div>}
-                {data.hasJudicialProcess && <div><dt>Proceso judicial</dt><dd>Sí</dd></div>}
-                {data.latestPeriod && <div><dt>Datos al</dt><dd>{formatPeriodoBcra(data.latestPeriod)}</dd></div>}
-              </dl>
-              <p className="owner-card__copy" style={{ fontSize: "0.78em", marginTop: "0.75rem" }}>Los datos los informan las entidades financieras. Su publicación no implica conformidad del BCRA. Para rectificar, comunicarse con la entidad que informó el dato.</p>
-              <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
-            </>
-          );
-        })()}
+        {creditCheck.status === "result" && (
+          <ResultadoBcra data={creditCheck.data} denominacionMismatch={creditCheck.data.denominacionMismatch} onReset={() => setCreditCheck({ status: "idle" })} />
+        )}
         {creditCheck.status === "error" && (
           <>
             <p className="owner-card__copy">No pudimos obtener la información del BCRA en este momento. Podés consultar directamente en <a href="https://www.bcra.gob.ar/situacion-crediticia/" target="_blank" rel="noopener noreferrer">su sitio oficial</a>.</p>
@@ -1285,7 +1221,7 @@ function Overview({
       </div>
     </section>
     <ActionsSection avisos={avisos} borradores={borradores} borradoresDePropiedad={borradoresDePropiedad} hayContratos={contratos.length > 0} onOpenCollections={onOpenCollections} onResumeDraft={onResumeDraft} onDiscardDraft={onDiscardDraft} onRetryDrafts={onRetryDrafts} onResumePropertyDraft={onResumePropertyDraft} onDiscardPropertyDraft={onDiscardPropertyDraft} onRetryPropertyDrafts={onRetryPropertyDrafts} />
-    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent, contract.currency)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
+    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{nombreDeInquilino(contract.tenant)} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent, contract.currency)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
 
@@ -1626,6 +1562,9 @@ function ContractAdjustmentHistory({
   if (increments === null) {
     return <div className="owner-card"><h2>Historial de aumentos</h2><Cargando>Cargando el historial…</Cargando></div>;
   }
+  if (lines.length === 0 && contract.incrementMethod === "NONE") {
+    return <div className="owner-card"><h2>Historial de aumentos</h2><p className="owner-list-note">Este contrato no tiene ajustes: todas las cuotas tienen el mismo monto.</p></div>;
+  }
   if (lines.length === 0) {
     return <div className="owner-card"><h2>Historial de aumentos</h2><p className="owner-list-note">Todavía no se aplicó ningún aumento. {comoSeActualiza(contract)}.</p></div>;
   }
@@ -1964,7 +1903,7 @@ function InvoiceAdjustmentDialog({
   const previewTexto = previewLinea
     ? `Este ítem: ${previewLinea.efecto}${detallePreview}`
     : "Agregá un ítem: nombre, tipo (suma o resta) y valor (monto o porcentaje).";
-  return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase, invoice.moneda)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase, invoice.moneda); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total, invoice.moneda)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Suma o resta</legend><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></fieldset><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Tipo de valor</legend><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></fieldset><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : simboloDe(invoice.moneda)}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
+  return <Dialog title="Ajustar el importe de la cuota" onClose={onClose}><div className="owner-dialog__body"><p>{invoice.direccion} · cuota de {invoice.periodo}.</p><dl className="owner-definition"><div><dt>Importe base</dt><dd>{formatearMonto(invoice.importeBase, invoice.moneda)}</dd></div>{invoice.ajustes.map((adjustment) => { const line = describirAjuste(adjustment, invoice.importeBase, invoice.moneda); const detail = line.detalle ? ` · ${line.detalle}` : ""; return <div key={line.id} className="owner-ajuste-item"><dt>{line.nombre}{detail}</dt><dd>{line.efecto}</dd><div className="owner-ajuste-item__acciones"><button type="button" className="owner-ajuste-accion" disabled={isBusy} onClick={() => onStartEdit(adjustment)}><Icon name="edit" size={15} />Editar</button><button type="button" className="owner-ajuste-accion owner-ajuste-accion--quitar" disabled={isBusy} onClick={() => onRemove(line.id)}><Icon name="x" size={15} />Quitar</button></div></div>; })}<div><dt>Total</dt><dd><b>{formatearMonto(total, invoice.moneda)}</b></dd></div></dl><div className="owner-wizard-stack"><label className="owner-wizard-field"><span className="sr-only">Nombre del ítem</span><input placeholder="Ítem — ej.: Baño roto" value={form.nombre} onChange={(event) => onFormChange({ ...form, nombre: event.target.value })} /></label><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Suma o resta</legend><button type="button" aria-pressed={esSuma} onClick={() => onFormChange({ ...form, kind: "SURCHARGE" })}>Suma (recargo)</button><button type="button" aria-pressed={!esSuma} onClick={() => onFormChange({ ...form, kind: "DISCOUNT" })}>Resta (descuento)</button></fieldset><fieldset className="owner-fieldset owner-wizard-chips"><legend className="sr-only">Tipo de valor</legend><button type="button" aria-pressed={!esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "FIXED_AMOUNT" })}>Monto fijo</button><button type="button" aria-pressed={esPorcentaje} onClick={() => onFormChange({ ...form, valueType: "PERCENTAGE" })}>Porcentaje</button></fieldset><label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : simboloDe(invoice.moneda)}</span><input inputMode="numeric" aria-label={esPorcentaje ? "Porcentaje del ítem" : "Monto del ítem"} value={form.value || ""} onChange={(event) => onFormChange({ ...form, value: Number(event.target.value.replace(/\D/g, "")) })} />{esPorcentaje && <span>del importe base</span>}</label><output className="owner-wizard-help">{previewTexto}</output><div className="owner-wizard-actions">{editingId !== null && <Button tone="quiet" onClick={onCancelEdit} disabled={isBusy}>Cancelar edición</Button>}<Button disabled={isBusy || !puedeGuardar} onClick={onSave}>{saveLabel}</Button></div></div><aside className="owner-wizard-note"><Icon name="alert" />Se puede ajustar mientras la cuota no esté confirmada. Al confirmarla, el importe queda cerrado.</aside>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cerrar</Button></div></Dialog>;
 }
 
 function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza; onClose: () => void; onChanged: (mensaje: string) => void }>) {
@@ -2009,7 +1948,7 @@ function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza
     </dl>
     {cambiando && <label className="owner-wizard-field"><span>Nuevo recargo</span><input ref={campo} inputMode="decimal" placeholder="Ej: 3.000" value={texto} aria-invalid={error !== null} onChange={(event) => { setTexto(event.target.value); setError(null); }} /></label>}
     {cambiando && editable.maximo !== null && <p className="owner-dialog__hint">Entre {formatearMonto(0, editable.moneda)} y {formatearMonto(editable.maximo, editable.moneda)}, el recargo de hoy según el contrato.</p>}
-    {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
+    {error && <AlertaDeError mensaje={error} />}
   </div><div className="owner-dialog__foot">
     {cambiando ? <>
       <Button tone="quiet" disabled={ocupado} onClick={() => { setCambiando(false); setError(null); }}>Cancelar</Button>
@@ -2024,12 +1963,12 @@ function LateFeeDialog({ row, onClose, onChanged }: Readonly<{ row: FilaCobranza
 
 function RemoveInvoiceAdjustmentDialog({ error, isBusy, onClose, onRemove }: Readonly<{ error: string | null; isBusy: boolean; onClose: () => void; onRemove: () => void }>) {
   const buttonLabel = isBusy ? "Quitando…" : "Quitar";
-  return <Dialog title="Quitar este ajuste" onClose={onClose}><div className="owner-dialog__body"><p>El total de la cuota vuelve a calcularse sin él.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onRemove}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Quitar este ajuste" onClose={onClose}><div className="owner-dialog__body"><p>El total de la cuota vuelve a calcularse sin él.</p>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onRemove}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function ArchiveTenantDialog({ tenant, error, isBusy, onClose, onArchive }: Readonly<{ tenant: TenantRow; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
   const buttonLabel = isBusy ? "Eliminando…" : "Eliminar";
-  return <Dialog title="Eliminar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> va a ser eliminado de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Eliminar este inquilino" onClose={onClose}><div className="owner-dialog__body"><p><b>{tenant.nombre}</b> va a ser eliminado de la lista de inquilinos. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function isPropertyValid(property: PropertyRequest | null): boolean {
@@ -2066,17 +2005,17 @@ function PropertyEditDialog({ property, error, isBusy, isValid, onClose, onChang
       <button type="button" aria-pressed={Boolean(property.furnished)} onClick={() => onChange({ ...property, furnished: !property.furnished })}>Amoblado</button>
     </div>
     <PropertyLocationMap latitude={property.latitude} longitude={property.longitude} onChange={({ latitude, longitude }) => onChange({ ...property, latitude, longitude })} />
-  </div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  </div>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function ArchivePropertyDialog({ property, error, isBusy, onClose, onArchive }: Readonly<{ property: FilaPropiedad; error: string | null; isBusy: boolean; onClose: () => void; onArchive: () => void }>) {
   const buttonLabel = isBusy ? "Eliminando…" : "Eliminar";
-  return <Dialog title="Eliminar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> va a ser eliminada de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Eliminar esta propiedad" onClose={onClose}><div className="owner-dialog__body"><p><b>{property.direccion}</b> va a ser eliminada de la lista de propiedades. Su historia —contratos, cuotas y pagos— se conserva como registro.</p>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} onClick={onArchive}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function TerminateContractDialog({ endDate, error, isBusy, onClose, onEndDateChange, onTerminate }: Readonly<{ endDate: string; error: string | null; isBusy: boolean; onClose: () => void; onEndDateChange: (date: string) => void; onTerminate: () => void }>) {
   const buttonLabel = isBusy ? "Finalizando…" : "Finalizar contrato";
-  return <Dialog title="Finalizar este contrato" onClose={onClose}><div className="owner-dialog__body"><p>El contrato queda terminado desde la fecha que indique. <b>Las cuotas posteriores que todavía no estén pagas se eliminan</b>; las ya cobradas y su historial se conservan.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="owner-wizard-label">FECHA DE TERMINACIÓN</span><input type="date" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} /></label>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} disabled={!endDate} onClick={onTerminate}>{buttonLabel}</Button></div></Dialog>;
+  return <Dialog title="Finalizar este contrato" onClose={onClose}><div className="owner-dialog__body"><p>El contrato queda terminado desde la fecha que indique. <b>Las cuotas posteriores que todavía no estén pagas se eliminan</b>; las ya cobradas y su historial se conservan.</p><label className="owner-wizard-field owner-wizard-field--medium"><span className="owner-wizard-label">FECHA DE TERMINACIÓN</span><input type="date" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} /></label>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button tone="danger" busy={isBusy} disabled={!endDate} onClick={onTerminate}>{buttonLabel}</Button></div></Dialog>;
 }
 
 function PaymentReviewDialog({ row, error, isBusy, onClose, onViewReceipt, onRejectPayment, onConfirmPayment }: Readonly<{ row: FilaCobranza; error: string | null; isBusy: boolean; onClose: () => void; onViewReceipt: (paymentId: number) => void | Promise<unknown>; onRejectPayment: (paymentId: number) => Promise<void>; onConfirmPayment: (paymentId: number) => Promise<void> }>) {
@@ -2109,7 +2048,7 @@ function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, o
   const invalidPhone = tenant.phoneNumber.length > 0 && !telefonoValido(tenant.phoneNumber);
   const taxIdError = soloDigitos(tenant.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><CamposDeNombreDelInquilino valores={camposDeNombreDe(tenant)} onChange={(cambio) => onChange(conCamposDeNombre(tenant, cambio))} /><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><CamposDeNombreDelInquilino valores={camposDeNombreDe(tenant)} onChange={(cambio) => onChange(conCamposDeNombre(tenant, cambio))} /><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ account: UserUpdateRequest; email: string | undefined; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (account: UserUpdateRequest) => void; onSave: () => void }>) {
@@ -2117,13 +2056,13 @@ function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, on
   const invalidPhone = account.phoneNumber.length > 0 && !telefonoValido(account.phoneNumber);
   const taxIdError = soloDigitos(account.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={account.firstName} onChange={(event) => onChange({ ...account, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={account.lastName} onChange={(event) => onChange({ ...account, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={account.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...account, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={account.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...account, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(account.phoneNumber)}</p>}<p className="owner-card__copy">Su correo es <b>{email}</b> y no se puede cambiar desde acá.</p></div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={account.firstName} onChange={(event) => onChange({ ...account, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={account.lastName} onChange={(event) => onChange({ ...account, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={account.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...account, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Teléfono</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={account.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...account, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(account.phoneNumber)}</p>}<p className="owner-card__copy">Su correo es <b>{email}</b> y no se puede cambiar desde acá.</p></div>{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function ReminderSettingsDialog({ settings, error, isBusy, onClose, onChange, onSave }: Readonly<{ settings: ReminderSettingsResponse; error: string | null; isBusy: boolean; onClose: () => void; onChange: (settings: ReminderSettingsResponse) => void; onSave: () => void }>) {
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
   const schedule = settings.enabled ? <div className="owner-reminder-rows"><Counter label="Días antes del vencimiento" value={settings.daysBeforeDue} unit="días" min={DIAS_MIN} max={DIAS_MAX} onChange={(value) => onChange({ ...settings, daysBeforeDue: value })} /><SwitchRow label="Avisar el día del vencimiento" checked={settings.dueDateReminderEnabled} onChange={(value) => onChange({ ...settings, dueDateReminderEnabled: value })} /><Counter label="Días después del vencimiento" value={settings.daysAfterDue} unit="días" min={DIAS_MIN} max={DIAS_MAX} onChange={(value) => onChange({ ...settings, daysAfterDue: value })} /></div> : null;
-  return <Dialog title="Editar recordatorios" onClose={onClose}><div className="owner-dialog__body owner-dialog__body--reminders"><p>Estos avisos le llegan al inquilino por correo. El aviso de cuota confirmada se envía siempre, aunque los recordatorios estén apagados.</p><SwitchRow label="Enviar recordatorios" checked={settings.enabled} onChange={(value) => onChange({ ...settings, enabled: value })} />{schedule}{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar recordatorios" onClose={onClose}><div className="owner-dialog__body owner-dialog__body--reminders"><p>Estos avisos le llegan al inquilino por correo. El aviso de cuota confirmada se envía siempre, aunque los recordatorios estén apagados.</p><SwitchRow label="Enviar recordatorios" checked={settings.enabled} onChange={(value) => onChange({ ...settings, enabled: value })} />{schedule}{error && <AlertaDeError mensaje={error} />}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function isAccountValid(account: UserUpdateRequest | null): boolean {
@@ -3068,7 +3007,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
     cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
-    herramientas: <Herramientas />,
+    herramientas: <Herramientas demo={demo} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} borradoresDePropiedad={borradoresDePropiedadDeInicio} onResumePropertyDraft={retomarBorradorDePropiedad} onDiscardPropertyDraft={setDescartandoBorradorDePropiedad} onRetryPropertyDrafts={() => setRecargaBorradoresDePropiedad((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };

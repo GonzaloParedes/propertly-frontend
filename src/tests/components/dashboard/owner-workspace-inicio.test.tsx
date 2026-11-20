@@ -342,6 +342,15 @@ describe("contratos vigentes", () => {
     expect(screen.getByText(/Jorge Paletta · termina el 29\/02\/2028/)).toBeInTheDocument();
   });
 
+  // ALQ-191: un inquilino empresa se nombra por su razón social.
+  it("nombra al inquilino persona jurídica por su razón social", async () => {
+    conDatos({ contracts: [{ ...CONTRATO, tenant: { ...CONTRATO.tenant, firstName: null, lastName: null, legalEntity: true, businessName: "Gómez Hermanos S.R.L." } }] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(await screen.findByText(/Gómez Hermanos S\.R\.L\. · termina el 29\/02\/2028/)).toBeInTheDocument();
+    expect(screen.queryByText(/null/)).not.toBeInTheDocument();
+  });
+
   it("no lista los que ya terminaron", async () => {
     conDatos({ contracts: [{ ...CONTRATO, status: "TERMINATED" }] });
     render(<OwnerWorkspace initialView="inicio" />);

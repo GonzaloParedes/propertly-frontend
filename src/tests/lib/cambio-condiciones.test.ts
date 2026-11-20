@@ -127,3 +127,24 @@ describe("resumenDeCondiciones", () => {
     expect(lineas[2]).toBe("Sube 10 % cada 6 meses");
   });
 });
+
+describe("cambio de condiciones · sin ajuste (ALQ-188)", () => {
+  const meses = mesesElegibles(contrato(), "2026-09-28");
+
+  it("un contrato sin ajuste arranca en «Sin ajuste» y con una frecuencia por si se cambia a uno que ajusta", () => {
+    const c = condicionesIniciales(contrato({ incrementMethod: "NONE", incrementValue: undefined, incrementFrequencyMonths: undefined }), meses);
+    expect(c.metodo).toBe("NONE");
+    expect(c.frecuencia).toBe(6);
+  });
+
+  it("pasar a sin ajuste manda el pedido sin frecuencia, índice ni valor, y no valida la frecuencia", () => {
+    const c: CondicionesNuevas = { ...condicionesIniciales(contrato(), meses), metodo: "NONE", frecuencia: 0 };
+    expect(validarCondiciones(c, meses)).toEqual({});
+    const pedido = armarPedido(c);
+    expect(pedido.incrementMethod).toBe("NONE");
+    expect(pedido).not.toHaveProperty("incrementFrequencyMonths");
+    expect(pedido).not.toHaveProperty("incrementIndexName");
+    expect(pedido).not.toHaveProperty("incrementValue");
+    expect(resumenDeCondiciones(c)).toContain("Sin ajuste: el monto queda fijo");
+  });
+});
