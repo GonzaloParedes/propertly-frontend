@@ -774,6 +774,13 @@
    de reposo (no se escala como antes). */
 .rent-map-pin--active .rent-map-pin__num{background:#A79AF0;opacity:1}
 
+/* ── Map picker — fallback de AddressField (ALQ-197) ───────────────── */
+.owner-map-picker{margin-top:var(--esp-12)}
+.owner-map-picker .rent-map{height:300px}
+.owner-map-picker__hint{margin:var(--esp-10) var(--esp-2) 0;color:var(--gris);font-size:15px}
+.owner-map-picker__hint strong{color:var(--tinta)}
+.owner-map-picker__actions{display:flex;align-items:center;gap:var(--esp-14);flex-wrap:wrap;margin-top:var(--esp-16)}
+
 /* ── Contrato desde el PDF (PROTOTIPO) ─────────────────────────────
    Ver docs/design/propuesta-contrato-desde-pdf.md. Radios y anillos
    copiados de los hermanos: zona de carga = .owner-wizard-field,
