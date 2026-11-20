@@ -37,6 +37,7 @@ function fechaDeFin(inicioISO: string, meses: number): string {
 
 function describirActualizacion(b: Borrador): string {
   if (b.metodo === null) return "Sin cargar";
+  if (b.metodo === "NONE") return "Sin ajuste · el monto queda fijo";
   const cada = b.frecuencia ? ` · cada ${b.frecuencia} meses` : "";
   if (b.metodo === "FIXED_PERCENTAGE") return `${b.valorDeActualizacion.replace(".", ",") || "—"} %${cada}`;
   if (b.metodo === "FIXED_AMOUNT") return `${b.valorDeActualizacion ? pesos(Number(b.valorDeActualizacion), b.moneda) : "—"} más${cada}`;
@@ -48,6 +49,7 @@ const METODOS: { valor: MetodoDeActualizacion; etiqueta: string }[] = [
   { valor: "FIXED_AMOUNT", etiqueta: "Un monto fijo" },
   { valor: "ICL", etiqueta: "Según el ICL" },
   { valor: "IPC", etiqueta: "Según el IPC" },
+  { valor: "NONE", etiqueta: "Sin ajuste" },
 ];
 
 /** Qué se le explica al propietario de cada cláusula que la app no carga tal cual, y qué puede hacer. */
@@ -407,7 +409,9 @@ function tarjetaDeActualizacion(ctx: Contexto) {
       {(esPorcentaje || b.metodo === "FIXED_AMOUNT") && (
         <label className="owner-wizard-field owner-wizard-field--amount"><span>{esPorcentaje ? "%" : "$"}</span><input inputMode="decimal" aria-label={esPorcentaje ? "Porcentaje de actualización" : "Monto de actualización"} value={b.valorDeActualizacion} onChange={(e) => set({ valorDeActualizacion: esPorcentaje ? soloDecimal(e.target.value) : soloNumeros(e.target.value) })} /></label>
       )}
-      <label className="owner-wizard-field owner-wizard-field--medium"><span>Cada cuántos meses</span><input inputMode="numeric" value={b.frecuencia} onChange={(e) => set({ frecuencia: soloNumeros(e.target.value) })} /></label>
+      {b.metodo === "NONE"
+        ? <small className="owner-wizard-help">Todas las cuotas van a tener el mismo monto durante todo el contrato.</small>
+        : <label className="owner-wizard-field owner-wizard-field--medium"><span>Cada cuántos meses</span><input inputMode="numeric" value={b.frecuencia} onChange={(e) => set({ frecuencia: soloNumeros(e.target.value) })} /></label>}
     </div>,
   });
 }

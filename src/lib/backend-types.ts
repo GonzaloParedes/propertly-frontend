@@ -291,7 +291,8 @@ export interface RentEstimate {
 
 // --- Contracts ---
 
-export type IncrementMethod = "FIXED_PERCENTAGE" | "FIXED_AMOUNT" | "INDEX";
+/** `NONE`: el alquiler no se ajusta nunca (ALQ-188); va sin frecuencia, índice ni valor. */
+export type IncrementMethod = "FIXED_PERCENTAGE" | "FIXED_AMOUNT" | "INDEX" | "NONE";
 export type ContractStatus = "ACTIVE" | "SCHEDULED" | "TERMINATED" | "EXPIRED" | "SUPERSEDED";
 
 export type Currency = "ARS" | "USD";
@@ -352,7 +353,8 @@ export interface ContractRequest {
   /** Día de vencimiento. El backend lo acota a 1–28: febrero fija el techo. */
   dueDay: number;
   incrementMethod: IncrementMethod;
-  incrementFrequencyMonths: number;
+  /** Obligatoria salvo con `NONE`, que la prohíbe. */
+  incrementFrequencyMonths?: number;
   incrementIndexName?: string;
   incrementValue?: number;
   /** Ausente = ARS. El backend no la exige y las cuotas heredan la del contrato. */
@@ -414,7 +416,8 @@ export interface ContractResponse {
   actualEndDate?: string;
   status: ContractStatus;
   incrementMethod: IncrementMethod;
-  incrementFrequencyMonths: number;
+  /** Obligatoria salvo con `NONE`, que la prohíbe. */
+  incrementFrequencyMonths?: number;
   incrementIndexName?: string;
   incrementValue?: number;
   /** Ausente = ARS. El backend no la exige y las cuotas heredan la del contrato. */
@@ -605,7 +608,8 @@ export interface SchemaChangeRequest {
   rentBaseline: number;
   dueDay: number;
   incrementMethod: IncrementMethod;
-  incrementFrequencyMonths: number;
+  /** Obligatoria salvo con `NONE`, que la prohíbe. */
+  incrementFrequencyMonths?: number;
   incrementIndexName?: string;
   incrementValue?: number;
 }

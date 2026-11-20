@@ -28,7 +28,8 @@ const LARGO_MAXIMO_DE_ETIQUETA = 160;
 
 export const SIN_ETIQUETA = "Contrato sin propiedad ni inquilino";
 
-export type MetodoDeActualizacion = "FIXED_PERCENTAGE" | "ICL" | "IPC";
+/** `NONE`: sin ajuste, el monto queda fijo (ALQ-188). */
+export type MetodoDeActualizacion = "FIXED_PERCENTAGE" | "ICL" | "IPC" | "NONE";
 
 /** Un registro nuevo que sólo existe como pedido hasta «Crear contrato», con cómo se lo nombra. */
 export type NuevoEnBorrador<T> = { pedido: T; etiqueta: string };
@@ -169,7 +170,7 @@ const esObjeto = (valor: unknown): valor is Objeto => typeof valor === "object" 
 const esTexto = (valor: unknown): valor is string => typeof valor === "string";
 const esEntero = (valor: unknown): valor is number => typeof valor === "number" && Number.isInteger(valor);
 
-const METODOS: readonly MetodoDeActualizacion[] = ["FIXED_PERCENTAGE", "ICL", "IPC"];
+const METODOS: readonly MetodoDeActualizacion[] = ["FIXED_PERCENTAGE", "ICL", "IPC", "NONE"];
 const QUIEN_PAGA: readonly CommissionPayer[] = ["LANDLORD", "TENANT", "SHARED"];
 const METODOS_DE_PUNITORIOS: readonly LateFeeMethod[] = ["PERCENT_PER_DAY", "PERCENT_PER_MONTH", "PERCENT_PER_YEAR", "FIXED_PER_DAY", "FIXED_ONCE"];
 const TIPOS_DE_GARANTIA: readonly GuaranteeType[] = ["PERSONAL", "PROPERTY", "SURETY_INSURANCE"];

@@ -295,3 +295,25 @@ describe("descripcionDocumento", () => {
     expect(descripcionDocumento({ ...CONTRATO, documentContentType: "image/jpeg" })).toBe("Imagen");
   });
 });
+
+describe("contrato sin ajuste (ALQ-188)", () => {
+  const sinAjuste: ContractResponse = {
+    ...CONTRATO,
+    currency: "USD",
+    incrementMethod: "NONE",
+    incrementFrequencyMonths: undefined,
+    incrementValue: undefined,
+    nextIncrementDate: undefined,
+    nextIncrementRent: undefined,
+  };
+
+  it("no tiene próxima actualización", () => {
+    expect(proximaActualizacion(sinAjuste)).toBeNull();
+    // Aunque llegara una fecha, un contrato sin ajuste no muestra el hito.
+    expect(proximaActualizacion({ ...sinAjuste, nextIncrementDate: "2026-11-01" })).toBeNull();
+  });
+
+  it("dice que el monto queda fijo, sin hablar de frecuencia", () => {
+    expect(comoSeActualiza(sinAjuste)).toBe("Sin ajuste: el monto queda fijo");
+  });
+});

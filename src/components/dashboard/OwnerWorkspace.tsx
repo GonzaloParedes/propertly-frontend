@@ -1628,6 +1628,9 @@ function ContractAdjustmentHistory({
   if (increments === null) {
     return <div className="owner-card"><h2>Historial de aumentos</h2><Cargando>Cargando el historial…</Cargando></div>;
   }
+  if (lines.length === 0 && contract.incrementMethod === "NONE") {
+    return <div className="owner-card"><h2>Historial de aumentos</h2><p className="owner-list-note">Este contrato no tiene ajustes: todas las cuotas tienen el mismo monto.</p></div>;
+  }
   if (lines.length === 0) {
     return <div className="owner-card"><h2>Historial de aumentos</h2><p className="owner-list-note">Todavía no se aplicó ningún aumento. {comoSeActualiza(contract)}.</p></div>;
   }

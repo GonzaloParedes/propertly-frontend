@@ -148,3 +148,11 @@ describe("meses elegibles y vencimientos", () => {
     expect(periodosDelBackend({ elapsed: "invalid" })).toBeNull();
   });
 });
+
+describe("consecuenciaDe · contrato sin ajuste (ALQ-188)", () => {
+  it("sin frecuencia no hay aumentos: el total de la deuda siempre se puede decir", () => {
+    const meses = ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08"];
+    const c = consecuenciaDe({ meses, inicioISO: "2025-01-01", alquiler: 1000, frecuenciaMeses: null, tieneRecargo: false, hoyISO: "2025-09-20", respuesta: NINGUNO });
+    expect(c?.totalDeuda).toBe(8000);
+  });
+});

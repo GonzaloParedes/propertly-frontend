@@ -883,3 +883,42 @@ describe("avisos al inquilino al crear desde el PDF", () => {
     expect(onComplete).toHaveBeenCalledWith({ avisosSinActivar: true });
   });
 });
+
+describe("contrato sin ajuste (ALQ-188)", () => {
+  const sinAjuste = () => lectura({
+    "increments.method": campo("NONE", "INFERRED", { note: "El contrato no menciona ninguna actualización" }),
+    "increments.indexName": campo(null, "MISSING"),
+    "increments.value": campo(null, "MISSING"),
+    "increments.frequencyMonths": campo(null, "MISSING"),
+  });
+
+  it("la lectura propone «Sin ajuste», no pide frecuencia y el alta sale sin ella", async () => {
+    await hastaLaRevision(sinAjuste());
+    const actualizacion = tarjeta("Actualización");
+    expect(within(actualizacion).getByText("Sin ajuste · el monto queda fijo")).toBeInTheDocument();
+    await userEvent.click(boton(actualizacion, "Corregir"));
+    expect(within(actualizacion).getByRole("button", { name: "Sin ajuste" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(actualizacion).queryByText("Cada cuántos meses")).not.toBeInTheDocument();
+    await userEvent.click(boton(actualizacion, "Listo"));
+    await resolverTodo();
+
+    await userEvent.click(crear());
+
+    await waitFor(() => expect(mockOnboard).toHaveBeenCalledTimes(1));
+    const { contract } = mockOnboard.mock.calls[0][0];
+    expect(contract).toMatchObject({ incrementMethod: "NONE" });
+    expect(contract).not.toHaveProperty("incrementFrequencyMonths");
+    expect(contract).not.toHaveProperty("incrementIndexName");
+  });
+
+  it("elegir «Sin ajuste» en la revisión oculta la frecuencia; volver a un índice la muestra", async () => {
+    await hastaLaRevision();
+    const actualizacion = tarjeta("Actualización");
+    await userEvent.click(boton(actualizacion, "Corregir"));
+    expect(within(actualizacion).getByText("Cada cuántos meses")).toBeInTheDocument();
+    await userEvent.click(within(actualizacion).getByRole("button", { name: "Sin ajuste" }));
+    expect(within(actualizacion).queryByText("Cada cuántos meses")).not.toBeInTheDocument();
+    await userEvent.click(within(actualizacion).getByRole("button", { name: "Según el IPC" }));
+    expect(within(actualizacion).getByText("Cada cuántos meses")).toBeInTheDocument();
+  });
+});

@@ -648,7 +648,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
                         inicioISO={b.inicio}
                         alquiler={Number(b.alquiler)}
                         moneda={b.moneda}
-                        frecuenciaMeses={Number(b.frecuencia)}
+                        frecuenciaMeses={b.metodo === "NONE" ? null : Number(b.frecuencia)}
                         tieneRecargo={hayPunitorios}
                         diaVencimiento={Number(b.dia)}
                         obligatorio={obligatorios.length > 0}
