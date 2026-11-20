@@ -162,6 +162,19 @@ describe("PredictorDeAlquiler", () => {
     }));
   });
 
+  it("mientras trae las propiedades muestra la espera, no la carga rápida", async () => {
+    let responder: (lista: PropertyResponse[]) => void = () => {};
+    client.properties.list.mockReturnValue(new Promise<PropertyResponse[]>((resolve) => { responder = resolve; }));
+    render(<PredictorDeAlquiler />);
+
+    expect(screen.getByText("Cargando sus propiedades…")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Buscar la dirección" })).not.toBeInTheDocument();
+
+    responder([{ id: 7, street: "Mitre", number: "78", city: "San Isidro" } as PropertyResponse]);
+    expect(await screen.findByRole("button", { name: "Mitre 78" })).toBeInTheDocument();
+    expect(screen.queryByText("Cargando sus propiedades…")).not.toBeInTheDocument();
+  });
+
   it("con propiedades cargadas deja elegir una y usa su estimación", async () => {
     client.properties.list.mockResolvedValue([
       { id: 7, street: "Mitre", number: "78", city: "San Isidro" } as PropertyResponse,

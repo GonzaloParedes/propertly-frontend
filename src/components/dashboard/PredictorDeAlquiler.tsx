@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AddressField from "@/components/dashboard/AddressField";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import Counter from "@/components/ui/Counter";
+import { Cargando } from "@/components/ui/Spinner";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { Currency, PropertyResponse } from "@/lib/backend-types";
 
@@ -61,7 +62,7 @@ export default function PredictorDeAlquiler({ demo = false }: Readonly<{ demo?: 
   }, [demo]);
 
   // Sin propiedades cargadas no hay nada que elegir: se arranca por la carga rápida.
-  const modoActual: Modo = modo ?? (propiedades && propiedades.length > 0 ? "propiedad" : "rapida");
+  const modoActual: Modo = modo ?? (propiedades !== null && propiedades.length > 0 ? "propiedad" : "rapida");
   const cambiarCarga = (cambios: Partial<CargaRapida>) => setCarga((actual) => ({ ...actual, ...cambios }));
   const faltante = faltanteDeLaCarga(carga);
 
@@ -79,15 +80,19 @@ export default function PredictorDeAlquiler({ demo = false }: Readonly<{ demo?: 
     });
   }
 
+  // Hasta que llega la lista no se sabe si arrancar por sus propiedades o por la carga
+  // rápida: mostrar la carga rápida y después cambiarla hace saltar la pantalla.
+  if (propiedades === null) return <div className="owner-card"><Cargando>Cargando sus propiedades…</Cargando></div>;
+
   return <>
-    {propiedades && propiedades.length > 0 && (
+    {propiedades.length > 0 && (
       <div className="owner-wizard-chips owner-tool__modos" role="group" aria-label="Qué propiedad estimar">
         <button type="button" aria-pressed={modoActual === "propiedad"} onClick={() => setModo("propiedad")}>Una propiedad suya</button>
         <button type="button" aria-pressed={modoActual === "rapida"} onClick={() => setModo("rapida")}>Otra propiedad</button>
       </div>
     )}
 
-    {modoActual === "propiedad" && propiedades && <>
+    {modoActual === "propiedad" && <>
       <div className="owner-card owner-calc">
         <p className="owner-wizard-label">Propiedad</p>
         <div className="owner-wizard-chips" role="group" aria-label="Propiedades">
