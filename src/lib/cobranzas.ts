@@ -1,3 +1,4 @@
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { coincideTexto } from "@/lib/busqueda";
 import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo, hoyEnArgentina } from "@/lib/formato";
 import { recargoEditable, recargoEnCurso, vistaDeRecargo, type RecargoEditable, type RecargoVista } from "@/lib/recargo";
@@ -135,7 +136,7 @@ export function buildFilasCobranza(
         invoiceId: invoice.id,
         contractId: invoice.contractId,
         direccion: contrato ? formatearDireccion(contrato.property) : "—",
-        inquilino: contrato ? `${contrato.tenant.firstName} ${contrato.tenant.lastName}` : "—",
+        inquilino: contrato ? nombreDeInquilino(contrato.tenant) : "—",
         periodo: formatearPeriodo(invoice.period),
         // Fallback al total si el backend es anterior a los recargos (sin `amountDue`).
         monto: formatearMonto(invoice.amountDue ?? invoice.total, invoice.currency),

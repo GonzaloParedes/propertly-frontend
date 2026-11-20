@@ -1,3 +1,4 @@
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { estadoDeCuota, type EstadoCuota } from "@/lib/cobranzas";
 import { formatearDireccion, formatearFecha, formatearMonto, formatearTotales, sumarEnMoneda, type TotalesPorMoneda } from "@/lib/formato";
 import type {
@@ -205,7 +206,7 @@ export function avisosPendientes(
     invoice.currency ?? porContrato.get(invoice.contractId)?.currency;
   const inquilinoDe = (invoice: InvoiceResponse) => {
     const contrato = porContrato.get(invoice.contractId);
-    return contrato ? `${contrato.tenant.firstName} ${contrato.tenant.lastName}` : "El inquilino";
+    return contrato ? nombreDeInquilino(contrato.tenant) : "El inquilino";
   };
 
   const avisos: Aviso[] = [];

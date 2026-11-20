@@ -1019,6 +1019,8 @@
 .bcra-verdict--ok{background:var(--exito-bg);color:var(--exito)}
 .bcra-verdict--warn{background:var(--warn-bg);color:var(--adv)}
 .bcra-verdict--bad{background:var(--error-bg);color:var(--error)}
+/* ALQ-191: «Es persona jurídica» alterna entre nombre+apellido y razón social. */
+.owner-wizard-checkbox{display:inline-flex;align-items:center;gap:var(--esp-10);min-height:40px;color:var(--tinta);cursor:pointer;font:600 16px var(--font-nunito-sans),sans-serif}.owner-wizard-checkbox input{width:20px;height:20px;margin:0;accent-color:var(--indigo);cursor:pointer}
 
 /* Herramientas (ALQ-145): el listado reusa .owner-row; la calculadora, las piezas del asistente. */
 .owner-row--herramienta{grid-template-columns:44px minmax(0,1fr) auto}

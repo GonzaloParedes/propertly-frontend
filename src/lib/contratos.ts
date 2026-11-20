@@ -1,3 +1,4 @@
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { coincideTexto } from "@/lib/busqueda";
 import { formatearDireccion, formatearFecha, formatearMonto } from "@/lib/formato";
 import type { ContractResponse } from "@/lib/backend-types";
@@ -77,7 +78,7 @@ export function buildFilasContrato(
       return {
         id: contract.id,
         direccion: formatearDireccion(contract.property),
-        inquilino: `${contract.tenant.firstName} ${contract.tenant.lastName}`,
+        inquilino: nombreDeInquilino(contract.tenant),
         actualizacion: describirActualizacion(contract),
         fin: formatearFecha(fin),
         finISO: fin,

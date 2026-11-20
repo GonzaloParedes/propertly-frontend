@@ -1,5 +1,6 @@
 "use client";
 
+import { nombreDeInquilino } from "@/lib/inquilino";
 import { useEffect, useRef, useState } from "react";
 import { usePaymentEvents } from "@/hooks/usePaymentEvents";
 import { useCambioDeDia } from "@/hooks/useCambioDeDia";
@@ -276,7 +277,7 @@ export default function TenantPortal() {
     setAnioSeleccionado(siguiente); setPeriodoSeleccionado(null);
   }
 
-  const nombreInquilino = estado.calendar.tenant ? `${estado.calendar.tenant.firstName} ${estado.calendar.tenant.lastName}`.trim() : null;
+  const nombreInquilino = estado.calendar.tenant ? nombreDeInquilino(estado.calendar.tenant) : null;
 
   return <main className="tenant-portal tenant-portal--calendar">
     <header className="tenant-header">{nombreInquilino && <p className="tenant-header__greeting">Hola, {nombreInquilino}</p>}<h1>Sus cuotas</h1><p>Elija un mes para ver el detalle de su cuota y su comprobante.</p></header>

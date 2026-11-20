@@ -132,6 +132,8 @@ describe("buildTenantRows", () => {
       // campos, y partir el nombre por el espacio erra con apellidos compuestos.
       nombrePila: "Jorge",
       apellido: "Paletta",
+      personaJuridica: false,
+      razonSocial: "",
       cuit: "20-22456789-9",
       email: "jorge@ejemplo.com",
       telefono: "+5491144552210",

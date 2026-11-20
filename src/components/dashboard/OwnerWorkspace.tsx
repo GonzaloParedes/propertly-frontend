@@ -1,5 +1,7 @@
 "use client";
 
+import { nombreCompleto, nombreDeInquilino, nombreParaElPedido, type CamposDeNombre } from "@/lib/inquilino";
+import { CamposDeNombreDelInquilino } from "@/components/dashboard/CamposDeNombreDelInquilino";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { NAV_RESET_EVENT } from "./DashboardNav";
@@ -149,6 +151,8 @@ const inquilinosDemo: TenantRow[] = [
     nombre: tenant.name,
     nombrePila: tenant.name.split(" ")[0],
     apellido: tenant.name.split(" ").slice(1).join(" "),
+    personaJuridica: false,
+    razonSocial: "",
     cuit: tenant.tax,
     email: tenant.email,
     telefono: "+5491144552210",
@@ -158,7 +162,7 @@ const inquilinosDemo: TenantRow[] = [
     alquiler: tenant.property.rent,
     estado: tenant.property.state === "Sin alquilar" ? ("Al día" as const) : tenant.property.state,
   })),
-  { id: 90, nombre: "Luis Cabrera", nombrePila: "Luis", apellido: "Cabrera",
+  { id: 90, nombre: "Luis Cabrera", nombrePila: "Luis", apellido: "Cabrera", personaJuridica: false, razonSocial: "",
     cuit: "20-31447290-0", email: "luis.cabrera@gmail.com", telefono: "+5491155667788",
     contratoId: null, avisosAlInquilino: false, direccion: null, alquiler: null, estado: "Sin contrato" },
 ];
@@ -1281,7 +1285,7 @@ function Overview({
       </div>
     </section>
     <ActionsSection avisos={avisos} borradores={borradores} borradoresDePropiedad={borradoresDePropiedad} hayContratos={contratos.length > 0} onOpenCollections={onOpenCollections} onResumeDraft={onResumeDraft} onDiscardDraft={onDiscardDraft} onRetryDrafts={onRetryDrafts} onResumePropertyDraft={onResumePropertyDraft} onDiscardPropertyDraft={onDiscardPropertyDraft} onRetryPropertyDrafts={onRetryPropertyDrafts} />
-    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{contract.tenant.firstName} {contract.tenant.lastName} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent, contract.currency)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
+    <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{nombreDeInquilino(contract.tenant)} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent, contract.currency)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
 
@@ -1371,7 +1375,7 @@ function PropertyDetail({
   const { details, preferences } = propertyCharacteristics(rawProperty);
   const address = [property.direccion, rawProperty.city, rawProperty.postalCode, rawProperty.province].filter(Boolean).join(", ");
   const contractTitle = rawProperty.tenant
-    ? `Contrato con ${rawProperty.tenant.firstName} ${rawProperty.tenant.lastName}`
+    ? `Contrato con ${nombreDeInquilino(rawProperty.tenant)}`
     : "Contrato vigente";
   const headerActions = <><Button tone="secondary" onClick={() => onEdit(rawProperty)}><Icon name="edit" size={18} />Editar</Button><Button tone="danger" onClick={() => onArchive(property)}><Icon name="trash" size={18} />Eliminar</Button></>;
   const category = etiquetaCategoria(rawProperty.category);
@@ -1699,7 +1703,7 @@ function PaymentLinkBox({ contractId, onCopyPaymentLink, onResendPaymentLink, re
 }
 
 function ContractAccessCard({ contract, onCopyPaymentLink, onResendPaymentLink, onSetTenantNotifications }: Readonly<{ contract: ContractResponse; onCopyPaymentLink: (contractId: number) => void | Promise<unknown>; onResendPaymentLink: (contractId: number) => void | Promise<unknown>; onSetTenantNotifications: (contractId: number, enabled: boolean) => Promise<unknown> }>) {
-  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{contract.tenant.firstName} {contract.tenant.lastName}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled && Boolean(contract.tenant.email)} /><ControlAvisosInquilino tieneCorreo={Boolean(contract.tenant.email)} enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
+  return <div className="owner-card"><h2>Inquilino y acceso de pago</h2><div className="owner-tenant-card"><span className="owner-row__icon"><Icon name="users" /></span><div><b>{nombreDeInquilino(contract.tenant)}</b><small>{contract.tenant.email}</small></div></div><PaymentLinkBox contractId={contract.id} onCopyPaymentLink={onCopyPaymentLink} onResendPaymentLink={onResendPaymentLink} resendEnabled={contract.tenantNotificationsEnabled && Boolean(contract.tenant.email)} /><ControlAvisosInquilino tieneCorreo={Boolean(contract.tenant.email)} enabled={contract.tenantNotificationsEnabled} onChange={(enabled) => onSetTenantNotifications(contract.id, enabled)} /></div>;
 }
 
 function ContractDocumentCard({ contract, onDownloadDocument, onRemoveDocument, onAttachDocument }: Readonly<{ contract: ContractResponse; onDownloadDocument: (contract: ContractResponse) => void | Promise<unknown>; onRemoveDocument: (contractId: number) => void | Promise<unknown>; onAttachDocument: (contractId: number, file: File) => void | Promise<unknown> }>) {
@@ -1746,7 +1750,7 @@ function ContractDetail({
 
   const contract = contractLoad.ok;
   const address = formatearDireccion(contract.property);
-  const tenantName = `${contract.tenant.firstName} ${contract.tenant.lastName}`;
+  const tenantName = nombreDeInquilino(contract.tenant);
   const isActive = contract.status === "ACTIVE";
   const nextUpdate = proximaActualizacion(contract);
   const conditions = condicionesComerciales(contract);
@@ -2105,7 +2109,7 @@ function TenantEditDialog({ tenant, error, isBusy, isValid, onClose, onChange, o
   const invalidPhone = tenant.phoneNumber.length > 0 && !telefonoValido(tenant.phoneNumber);
   const taxIdError = soloDigitos(tenant.taxId).length < 11 ? "Faltan dígitos: son 11 en total." : "El número no es válido. Revise que no haya un dígito cambiado.";
   const saveLabel = isBusy ? "Guardando…" : "Guardar";
-  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><div className="owner-wizard-duo"><label className="owner-wizard-field"><span>Nombre</span><input placeholder="Ej: María" value={tenant.firstName} onChange={(event) => onChange({ ...tenant, firstName: event.target.value })} /></label><label className="owner-wizard-field"><span>Apellido</span><input placeholder="Ej: Gómez" value={tenant.lastName} onChange={(event) => onChange({ ...tenant, lastName: event.target.value })} /></label></div><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
+  return <Dialog title="Editar datos del inquilino" onClose={onClose}><div className="owner-dialog__body"><div className="owner-wizard-stack"><CamposDeNombreDelInquilino valores={camposDeNombreDe(tenant)} onChange={(cambio) => onChange(conCamposDeNombre(tenant, cambio))} /><label className="owner-wizard-field"><span>CUIT o CUIL (opcional)</span><input inputMode="numeric" placeholder="Ej: 20-12345678-9" value={tenant.taxId} aria-invalid={invalidTaxId} onChange={(event) => onChange({ ...tenant, taxId: formatearCuit(event.target.value) })} /></label>{invalidTaxId && <p className="owner-wizard-error" role="alert">{taxIdError}</p>}<label className="owner-wizard-field"><span>Correo electrónico (opcional)</span><input type="email" placeholder="Ej: maria@correo.com" value={tenant.email} aria-invalid={tenant.email.length > 0 && !correoValido(tenant.email)} onChange={(event) => onChange({ ...tenant, email: event.target.value })} /></label><label className="owner-wizard-field"><span>Teléfono (opcional)</span><input inputMode="tel" placeholder="Ej: 11 4455 2210" value={tenant.phoneNumber} aria-invalid={invalidPhone} onChange={(event) => onChange({ ...tenant, phoneNumber: event.target.value })} /></label>{invalidPhone && <p className="owner-wizard-error" role="alert">{errorDeTelefono(tenant.phoneNumber)}</p>}</div>{error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}</div><div className="owner-dialog__foot"><Button tone="quiet" onClick={onClose} disabled={isBusy}>Cancelar</Button><Button busy={isBusy} disabled={!isValid} onClick={onSave}>{saveLabel}</Button></div></Dialog>;
 }
 
 function AccountEditDialog({ account, email, error, isBusy, isValid, onClose, onChange, onSave }: Readonly<{ account: UserUpdateRequest; email: string | undefined; error: string | null; isBusy: boolean; isValid: boolean; onClose: () => void; onChange: (account: UserUpdateRequest) => void; onSave: () => void }>) {
@@ -2127,9 +2131,24 @@ function isAccountValid(account: UserUpdateRequest | null): boolean {
   return Boolean(account.firstName.trim()) && Boolean(account.lastName.trim()) && cuitValido(account.taxId) && telefonoValido(account.phoneNumber);
 }
 
+/** El formulario de edición en los términos de `CamposDeNombre`, y de vuelta. */
+function camposDeNombreDe(tenant: TenantFormValues): CamposDeNombre {
+  return { personaJuridica: tenant.legalEntity, nombre: tenant.firstName, apellido: tenant.lastName, razonSocial: tenant.businessName };
+}
+
+function conCamposDeNombre(tenant: TenantFormValues, cambio: Partial<CamposDeNombre>): TenantFormValues {
+  return {
+    ...tenant,
+    legalEntity: cambio.personaJuridica ?? tenant.legalEntity,
+    firstName: cambio.nombre ?? tenant.firstName,
+    lastName: cambio.apellido ?? tenant.lastName,
+    businessName: cambio.razonSocial ?? tenant.businessName,
+  };
+}
+
 function isTenantValid(tenant: TenantFormValues | null): boolean {
   if (!tenant) return false;
-  return Boolean(tenant.firstName.trim()) && Boolean(tenant.lastName.trim()) && (!tenant.taxId.trim() || cuitValido(tenant.taxId)) && (!tenant.email.trim() || correoValido(tenant.email)) && (!tenant.phoneNumber.trim() || telefonoValido(tenant.phoneNumber));
+  return nombreCompleto(camposDeNombreDe(tenant)) && (!tenant.taxId.trim() || cuitValido(tenant.taxId)) && (!tenant.email.trim() || correoValido(tenant.email)) && (!tenant.phoneNumber.trim() || telefonoValido(tenant.phoneNumber));
 }
 
 function loadedData<T>(demo: boolean, demoData: T, loadState: { ok: T } | LoadFailure | null): T | null {
@@ -2744,8 +2763,10 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     setErrorAjustes(null);
     setInquilinoEditadoId(tenant.id);
     setEditandoInquilino({
+      legalEntity: tenant.personaJuridica,
       firstName: tenant.nombrePila,
       lastName: tenant.apellido,
+      businessName: tenant.razonSocial,
       taxId: tenant.cuit,
       email: tenant.email,
       phoneNumber: tenant.telefono,
@@ -2858,8 +2879,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     setGuardandoAjustes(true);
     try {
       await AlquiaBackendClient.tenants.update(id, {
-        firstName: datos.firstName.trim(),
-        lastName: datos.lastName.trim(),
+        ...nombreParaElPedido(camposDeNombreDe(datos)),
         taxId: soloDigitos(datos.taxId) || null,
         email: datos.email.trim() || null,
         phoneNumber: soloDigitosTelefono(datos.phoneNumber) || null,
