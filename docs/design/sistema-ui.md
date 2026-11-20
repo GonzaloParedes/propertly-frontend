@@ -377,7 +377,7 @@ no se revisó. No se resuelven en masa — se miran con la pantalla abierta.
 | No son espaciado | `36 · 38 · 48 · 54 · 56 · 68 · 80 · 96 · 238` | ~16 | **No forzar a la escala.** |
 
 La última fila importa: `238px` es el ancho del menú lateral
-(`.owner-content · margin`) y la mayoría del resto son gutters de página de
+(`.owner-workspace · padding-left`) y la mayoría del resto son gutters de página de
 `.owner-content` por breakpoint. Son constantes de layout, no ritmo vertical.
 Merecen tokens propios (`--ancho-menu`, `--gutter-*`), no un `--esp-*`.
 
