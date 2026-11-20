@@ -101,6 +101,9 @@ export interface TenantResponse extends NombreDeInquilino {
   displayName?: string;
 }
 
+/** `GET /tools/credit-check`: el resultado del BCRA para cualquier CUIT/CUIL (ALQ-145). */
+export type CreditCheckResponse = Omit<TenantCreditCheckResponse, "denominacionMismatch">;
+
 export interface TenantCreditCheckResponse {
   noDebtsReported: boolean;
   denominacion?: string | null;
@@ -146,6 +149,19 @@ export interface RentIncreaseResponse {
   newAmount: number;
   lastMonthEstimated: boolean;
   months: RentIncreaseMonthlyRate[];
+}
+
+/** `POST /tools/rent-estimate`: una propiedad que no está cargada, con lo mínimo. */
+export interface RentEstimateToolRequest {
+  city?: string | null;
+  province?: string | null;
+  latitude: number;
+  longitude: number;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  coveredArea: number;
+  category?: PropertyCategory | null;
+  currency: Currency;
 }
 
 // --- Properties ---

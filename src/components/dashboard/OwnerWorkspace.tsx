@@ -12,6 +12,7 @@ import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import Herramientas from "@/components/dashboard/Herramientas";
+import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import PaymentReceiptUpload from "@/components/dashboard/PaymentReceiptUpload";
 import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
@@ -679,23 +680,6 @@ const CREDIT_CHECK_DEMO: TenantCreditCheckResponse = {
   latestPeriod: "2026-09",
 };
 
-function formatPeriodoBcra(periodo: string): string {
-  const [year, month] = periodo.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-}
-
-function situacionLabel(s: number): string {
-  const labels: Record<number, string> = {
-    1: "Normal",
-    2: "Con seguimiento especial",
-    3: "Con problemas",
-    4: "Con alto riesgo de insolvencia",
-    5: "Irrecuperable",
-  };
-  return labels[s] ?? `Situación ${s}`;
-}
-
 function TenantDetail({
   selectedId,
   tenants,
@@ -771,59 +755,9 @@ function TenantDetail({
           </>
         )}
         {creditCheck.status === "loading" && <Cargando>Consultando al BCRA…</Cargando>}
-        {creditCheck.status === "result" && (() => {
-          const { data } = creditCheck;
-          if (data.noDebtsReported) {
-            return (
-              <>
-                <div className="bcra-ok">
-                  <div className="bcra-ok__icon"><Icon name="check" size={22} /></div>
-                  <div className="bcra-ok__body">
-                    <b>Sin deudas informadas</b>
-                    <small>No figura en la Central de Deudores del BCRA.</small>
-                  </div>
-                </div>
-                <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
-              </>
-            );
-          }
-          const sit = data.worstSituation ?? 1;
-          const verdictClass = sit === 1 ? "bcra-verdict--ok" : sit === 2 ? "bcra-verdict--warn" : "bcra-verdict--bad";
-          const stepClass = (n: number): string => {
-            if (n > sit) return "";
-            if (sit === 1) return "bcra-scale__step--1";
-            if (sit === 2) return "bcra-scale__step--2";
-            if (sit === 3) return "bcra-scale__step--3";
-            if (sit === 4) return "bcra-scale__step--4";
-            return "bcra-scale__step--5";
-          };
-          return (
-            <>
-              {data.denominacionMismatch && (
-                <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />El nombre en el BCRA (<b>{data.denominacion}</b>) no coincide con el registrado en Alquia.</p>
-              )}
-              <div className="bcra-scale">
-                <p className="bcra-scale__label">Situación crediticia</p>
-                <div className="bcra-scale__steps" role="meter" aria-valuenow={sit} aria-valuemin={1} aria-valuemax={5}>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <div key={n} className={`bcra-scale__step${n <= sit ? ` ${stepClass(n)}` : ""}`} />
-                  ))}
-                </div>
-                <div className="bcra-scale__legend"><span>Normal</span><span>Irrecuperable</span></div>
-              </div>
-              <span className={`bcra-verdict ${verdictClass}`}>{situacionLabel(sit)}</span>
-              <dl className="owner-definition">
-                <div><dt>Entidades informantes</dt><dd>{data.entityCount}</dd></div>
-                <div><dt>Monto total</dt><dd>{formatearMonto(data.totalAmountPesos!)}</dd></div>
-                {data.hasLegalSituation && <div><dt>Situación jurídica</dt><dd>Sí</dd></div>}
-                {data.hasJudicialProcess && <div><dt>Proceso judicial</dt><dd>Sí</dd></div>}
-                {data.latestPeriod && <div><dt>Datos al</dt><dd>{formatPeriodoBcra(data.latestPeriod)}</dd></div>}
-              </dl>
-              <p className="owner-card__copy" style={{ fontSize: "0.78em", marginTop: "0.75rem" }}>Los datos los informan las entidades financieras. Su publicación no implica conformidad del BCRA. Para rectificar, comunicarse con la entidad que informó el dato.</p>
-              <Button tone="quiet" small onClick={() => setCreditCheck({ status: "idle" })}>Volver a consultar</Button>
-            </>
-          );
-        })()}
+        {creditCheck.status === "result" && (
+          <ResultadoBcra data={creditCheck.data} denominacionMismatch={creditCheck.data.denominacionMismatch} onReset={() => setCreditCheck({ status: "idle" })} />
+        )}
         {creditCheck.status === "error" && (
           <>
             <p className="owner-card__copy">No pudimos obtener la información del BCRA en este momento. Podés consultar directamente en <a href="https://www.bcra.gob.ar/situacion-crediticia/" target="_blank" rel="noopener noreferrer">su sitio oficial</a>.</p>
@@ -3073,7 +3007,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
     cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
-    herramientas: <Herramientas />,
+    herramientas: <Herramientas demo={demo} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} borradoresDePropiedad={borradoresDePropiedadDeInicio} onResumePropertyDraft={retomarBorradorDePropiedad} onDiscardPropertyDraft={setDescartandoBorradorDePropiedad} onRetryPropertyDrafts={() => setRecargaBorradoresDePropiedad((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };

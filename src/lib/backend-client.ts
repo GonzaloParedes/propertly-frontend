@@ -52,6 +52,8 @@ import type {
   FeedbackRequest,
   RentIncreaseParams,
   RentIncreaseResponse,
+  CreditCheckResponse,
+  RentEstimateToolRequest,
 } from "@/lib/backend-types";
 
 /**
@@ -322,6 +324,10 @@ export const AlquiaBackendClient = {
   tools: {
     rentIncrease: (params: RentIncreaseParams): Promise<RentIncreaseResponse> =>
       apiGet<RentIncreaseResponse>(`/tools/rent-increase${buildQuery(params)}`),
+    creditCheck: (taxId: string): Promise<CreditCheckResponse> =>
+      apiGet<CreditCheckResponse>(`/tools/credit-check${buildQuery({ taxId })}`),
+    rentEstimate: (body: RentEstimateToolRequest): Promise<RentEstimate> =>
+      apiPost<RentEstimate>("/tools/rent-estimate", body),
   },
 
   addressLookup: {
