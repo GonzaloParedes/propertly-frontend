@@ -218,7 +218,7 @@ export interface Borrador {
 }
 
 /** Lo que el propietario eligió ante una cláusula que no se carga tal cual. */
-export type Decision = "usar28" | "sinPunitorios" | "sinDeposito";
+export type Decision = "usar28" | "sinPunitorios" | "sinDeposito" | "descartar";
 export type Decisiones = Partial<Record<ItemId, Decision>>;
 
 export interface Lectura {
@@ -502,6 +502,7 @@ function sinSoporteDe(
 ): Map<ItemId, SinSoporte> {
   const noSePuede = new Map<ItemId, SinSoporte>();
   for (const entrada of Array.isArray(lista) ? lista : []) {
+    if (entrada.field.startsWith("landlord")) continue;
     const { item, motivo } = clasificarNoSePuede(entrada.field, entrada.reason);
     sumarSinSoporte(noSePuede, item, motivo, citasDe(entrada.evidence));
   }
@@ -646,7 +647,10 @@ export interface Pendiente {
 const BLOQUEANTES: ReadonlySet<MotivoNoSePuede> = new Set(["alquilerEscalonado", "indice", "otro"]);
 
 function pendienteSinSoporte(id: ItemId, motivo: MotivoNoSePuede, b: Borrador, decisiones: Decisiones): Pendiente[] {
-  if (BLOQUEANTES.has(motivo)) return [{ id, razon: "noSePuede", bloqueante: true }];
+  if (BLOQUEANTES.has(motivo)) {
+    if (decisiones[id] === "descartar") return [];
+    return [{ id, razon: "noSePuede", bloqueante: true }];
+  }
   const resuelto = motivo === "variosInquilinos" ? datosCompletos("inquilino", b) : decisiones[id] !== undefined;
   return resuelto ? [] : [{ id, razon: "noSePuede", bloqueante: false }];
 }

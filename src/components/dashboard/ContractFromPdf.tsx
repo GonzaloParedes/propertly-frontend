@@ -231,7 +231,7 @@ function PantallaCreadoSinPdf({ contratoId, onOpenContract, onComplete, avisos }
 
 export default function ContractFromPdf({ onBack, onManual, onClose, onComplete, onOpenContract }: Readonly<{
   onBack: () => void;
-  onManual: () => void;
+  onManual: (borrador?: Borrador) => void;
   onClose: () => void;
   onComplete: (resultado?: ResultadoDelAlta) => void;
   /** Para ir al contrato recién creado cuando no se pudo adjuntar el PDF. */
@@ -410,7 +410,7 @@ export default function ContractFromPdf({ onBack, onManual, onClose, onComplete,
   function cargarAMano() {
     intento.current += 1;
     descartar();
-    onManual();
+    onManual(borrador ?? undefined);
   }
 
   /** Salir con una lectura en curso o ya revisada se confirma: se descarta y el archivo no se guarda. */
