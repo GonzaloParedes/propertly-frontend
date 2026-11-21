@@ -96,7 +96,17 @@ export const AlquiaBackendClient = {
   },
 
   feedback: {
-    send: (body: FeedbackRequest): Promise<void> => apiPost("/feedback", body),
+    /**
+     * Sin captura viaja JSON plano, como siempre. Con captura (ALQ-200) viaja
+     * multipart: parte `report` (JSON) + parte `screenshot` (un solo archivo).
+     */
+    send: (body: FeedbackRequest, screenshot?: File): Promise<void> => {
+      if (!screenshot) return apiPost("/feedback", body);
+      const form = new FormData();
+      form.append("report", new Blob([JSON.stringify(body)], { type: "application/json" }));
+      form.append("screenshot", screenshot, screenshot.name);
+      return apiPostForm<void>("/feedback", form);
+    },
   },
 
   users: {
