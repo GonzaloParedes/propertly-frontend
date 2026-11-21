@@ -22,6 +22,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 |---|---|
 | `NEXT_PUBLIC_API_URL` | URL del backend, p. ej. `http://localhost:8080`. |
 | `NEXT_PUBLIC_SITE_URL` | URL pública del sitio, p. ej. `https://alquia.com.ar`. La usan `/sitemap.xml`, `/robots.txt` y las imágenes de Open Graph. Configurarla sólo en producción: sin ella, `robots.txt` bloquea todo y el sitemap sale vacío, así un preview no se indexa. |
+| `NEXT_PUBLIC_META_PIXEL_ID` | ID del píxel de Meta (ALQ-146). Configurarla sólo en el hosting de producción, **antes del build** (Next la inlinea en build). Vacía, o en cualquier build que no sea de producción, el píxel no se carga y no hay requests a `facebook.net`. Eventos: `PageView` por ruta, `CompleteRegistration` y `FirstPropertyCreated`; sin datos personales. |
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

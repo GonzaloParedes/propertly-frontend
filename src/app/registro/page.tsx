@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { trackMeta } from "@/lib/meta-pixel";
 
 const BENEFITS = [
   "Configure sus propiedades en minutos",
@@ -318,6 +319,7 @@ export default function RegistroPage() {
         },
         { retry: false }
       );
+      trackMeta("CompleteRegistration");
       setSubmitted(true);
     } catch (err) {
       const porCampo = erroresDeCampoDeRegistro(err);

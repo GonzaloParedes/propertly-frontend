@@ -19,6 +19,9 @@ COPY . .
 # the backend URL reachable from the host (passed by docker-compose).
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Píxel de Meta (ALQ-146): vacío = apagado.
+ARG NEXT_PUBLIC_META_PIXEL_ID
+ENV NEXT_PUBLIC_META_PIXEL_ID=$NEXT_PUBLIC_META_PIXEL_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
