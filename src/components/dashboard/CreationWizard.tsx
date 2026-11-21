@@ -21,6 +21,7 @@ import { faltaResponder, mesesElegibles, mesesTranscurridos, paidThroughDe, peri
 import PagosTranscurridos from "@/components/dashboard/PagosTranscurridos";
 import { formatearDireccion } from "@/lib/tenant-rows";
 import ContractFromPdf from "@/components/dashboard/ContractFromPdf";
+import type { Borrador as BorradorDePdf } from "@/lib/importacion-pdf";
 import OtrasCondiciones from "@/components/dashboard/OtrasCondiciones";
 import Dialog from "@/components/ui/Dialog";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
@@ -1622,7 +1623,34 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     return contractStep;
   })();
   if (modo === "pdf") {
-    const alternar = { onBack: () => setModo("elegir"), onManual: () => { setModoElegido("manual"); setModo("manual"); }, onClose, onComplete };
+    const aplicarBorradorDePdf = (b: BorradorDePdf) => {
+      setNombre(b.nombre);
+      setApellido(b.apellido);
+      setCuit(b.cuit);
+      setCorreo(b.correo);
+      setTelefono(b.telefono);
+      setAlquiler(b.alquiler);
+      if (b.inicio) setInicio(b.inicio);
+      const plazo = Number(b.plazo);
+      if (plazo > 0) setTerm(plazo);
+      const dia = Number(b.dia);
+      if (dia >= 1 && dia <= 28) setDiaVencimiento(dia);
+      const m = b.metodo;
+      if (m === "FIXED_PERCENTAGE" || m === "ICL" || m === "IPC" || m === "NONE") {
+        setMethod(m);
+        if (m === "FIXED_PERCENTAGE") setPorcentaje(b.valorDeActualizacion);
+      }
+      const freq = Number(b.frecuencia);
+      if (freq >= 1) setFrecuencia(freq);
+      if (b.propiedadId !== null) { setPropiedadId(b.propiedadId); setPropiedadNueva(false); }
+      if (b.inquilinoId !== null) { setInquilinoId(b.inquilinoId); setInquilinoNuevo(false); }
+    };
+    const alternar = {
+      onBack: () => setModo("elegir"),
+      onManual: (b?: BorradorDePdf) => { if (b) aplicarBorradorDePdf(b); setModoElegido("manual"); setModo("manual"); },
+      onClose,
+      onComplete,
+    };
     return <ContractFromPdf {...alternar} onOpenContract={onOpenContract} />;
   }
 
