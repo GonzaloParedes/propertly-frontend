@@ -78,10 +78,24 @@ describe("ítems del menú", () => {
       "href",
       "/dashboard/cobranzas"
     );
-    expect(within(drawer).getByRole("link", { name: "Herramientas" })).toHaveAttribute(
+    expect(within(drawer).getByRole("link", { name: /Herramientas/ })).toHaveAttribute(
       "href",
       "/dashboard/herramientas"
     );
+  });
+});
+
+describe("cartel de sección nueva", () => {
+  it("Herramientas muestra «Nuevo» en la barra y en el menú del celular", async () => {
+    render(<DashboardNav />);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    for (const nav of [
+      screen.getByRole("complementary", { name: "Navegación principal" }),
+      screen.getByRole("complementary", { name: "Menú principal" }),
+    ]) {
+      expect(within(nav).getByRole("link", { name: /Herramientas/ })).toHaveTextContent("Nuevo");
+      expect(within(nav).getByRole("link", { name: /Contratos/ })).not.toHaveTextContent("Nuevo");
+    }
   });
 });
 
