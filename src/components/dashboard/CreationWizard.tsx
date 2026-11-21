@@ -32,6 +32,7 @@ import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import { usePdfDelBorrador } from "@/hooks/usePdfDelBorrador";
 import { crearContratoDesdeBorrador, type ResultadoDelAlta } from "@/lib/crear-contrato";
 import { crearPropiedadDesdeBorrador } from "@/lib/crear-propiedad";
+import { teniaPropiedadesAntes, trackFirstProperty } from "@/lib/meta-pixel";
 import { armarContenidoDeBorradorDePropiedad, deserializarBorradorDePropiedad, type EstadoDelBorradorDePropiedad } from "@/lib/borradores-de-propiedad";
 import { CartelAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import { armarOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
@@ -1394,7 +1395,11 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     setGuardando(true);
     try {
       await auto.congelar();
+      // ALQ-146: «primera propiedad» = la cuenta no tenía ninguna antes de este alta. Se consulta
+      // antes de crear (y sólo con el píxel activo, para no sumar un GET en local/dev).
+      const teniaPropiedades = await teniaPropiedadesAntes(() => AlquiaBackendClient.properties.list());
       await crearPropiedadDesdeBorrador(armarPropiedad(direccion, categoria), auto.id);
+      trackFirstProperty(teniaPropiedades);
       auto.detener();
       terminarPropiedad(direccion, categoria);
     } catch (err) {

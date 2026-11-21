@@ -3,6 +3,7 @@ import { Quicksand, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/ui/Toast";
+import { MetaPixel } from "@/components/MetaPixel";
 import { siteUrl } from "@/lib/site-url";
 
 const quicksand = Quicksand({
@@ -42,6 +43,7 @@ export default function RootLayout({
       className={`${quicksand.variable} ${nunitoSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <MetaPixel />
         <ToastProvider>
           <AuthProvider>{children}</AuthProvider>
         </ToastProvider>
