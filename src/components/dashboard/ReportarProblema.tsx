@@ -140,7 +140,7 @@ export default function ReportarProblema() {
         }} />
         {captura ? <div className="owner-reporte__preview">
           {/* eslint-disable-next-line @next/next/no-img-element -- blob: local, no hay nada que optimizar */}
-          <img src={captura.url} alt="Vista previa de la captura adjunta" />
+          <img key={captura.url} src={captura.url} alt="Vista previa de la captura adjunta" onError={(event) => { event.currentTarget.hidden = true; }} />
           <span className="owner-reporte__archivo">{captura.file.name}</span>
           <button type="button" className="owner-button owner-button--quiet" onClick={quitarCaptura} disabled={enviando}><Icon name="x" size={17} />Quitar</button>
         </div> : <button type="button" className="owner-button owner-button--quiet owner-reporte__adjuntar" onClick={() => inputRef.current?.click()} disabled={enviando}><Icon name="image" size={19} />Adjuntar captura</button>}
