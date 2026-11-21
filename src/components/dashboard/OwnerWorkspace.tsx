@@ -34,6 +34,7 @@ import type {
   TenantFormValues,
   UserUpdateRequest,
 } from "@/lib/backend-types";
+import { armarLiquidacion, puedeEmitirLiquidacionDeFila } from "@/lib/liquidacion";
 import { buildTenantRows, resumenInquilinos, type TenantRow } from "@/lib/tenant-rows";
 import {
   buildFilasCobranza,
@@ -953,6 +954,7 @@ type CollectionActionProps = Readonly<{
   onAdjust: (item: FilaCobranza) => void;
   onLateFee: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void | Promise<unknown>;
+  onSettlement: (item: FilaCobranza) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
 }>;
 
@@ -965,6 +967,7 @@ function CollectionAction({
   onAdjust,
   onLateFee,
   onViewReceipt,
+  onSettlement,
   onRegisterPayment,
 }: CollectionActionProps) {
   const recargo = item.recargoEditable && <Button tone="quiet" small disabled={isBusy} onClick={() => onLateFee(item)}>Recargo</Button>;
@@ -979,9 +982,12 @@ function CollectionAction({
   if (item.accion === "comprobante") {
     // Un pago del alta no tiene archivo: en vez de un botón que no abre nada, dice de dónde sale.
     if (esPagoDelAlta(item.pagoConfirmado)) return <span className="owner-pago-alta"><Icon name="check" size={16} />{ETIQUETA_PAGO_DEL_ALTA}</span>;
-    return <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
-      return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
-    }}><Icon name="download" size={16} />Comprobante</Button>;
+    return <>
+      <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
+        return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
+      }}><Icon name="download" size={16} />Comprobante</Button>
+      {puedeEmitirLiquidacionDeFila(item) && <Button tone="secondary" small onClick={() => onSettlement(item)}><Icon name="file" size={16} />Liquidación</Button>}
+    </>;
   }
   return <>{recargo}<Button tone="secondary" small onClick={() => onRegisterPayment(item)}>Registrar pago</Button></>;
 }
@@ -998,6 +1004,7 @@ type CollectionsViewProps = Readonly<{
   onAdjust: (item: FilaCobranza) => void;
   onLateFee: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void | Promise<unknown>;
+  onSettlement: (item: FilaCobranza) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
   onCreateContract: () => void;
 }>;
@@ -1014,6 +1021,7 @@ function CollectionsView({
   onAdjust,
   onLateFee,
   onViewReceipt,
+  onSettlement,
   onRegisterPayment,
   onCreateContract,
 }: CollectionsViewProps) {
@@ -1040,7 +1048,7 @@ function CollectionsView({
       </div>
       {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
         otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
-        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money"><span className="owner-monto">{item.monto}</span>{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
+        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money"><span className="owner-monto">{item.monto}</span>{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onSettlement={onSettlement} onRegisterPayment={onRegisterPayment} /></td></tr>)}
       </tbody></table></div>}
     </>}
   </>;
@@ -2585,6 +2593,24 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     }
   }
 
+  // La liquidación se arma en el navegador: se piden la cuota y el contrato frescos, y el
+  // renderer del PDF —que pesa— se baja recién ahora, no con el panel. Devuelve la promesa
+  // para que el botón se ocupe solo mientras genera.
+  async function descargarLiquidacionDeCuota(fila: FilaCobranza) {
+    if (demo || !user) return;
+    try {
+      const [invoice, contract] = await Promise.all([
+        AlquiaBackendClient.invoices.get(fila.invoiceId),
+        AlquiaBackendClient.contracts.get(fila.contractId),
+      ]);
+      const modelo = armarLiquidacion({ invoice, contract, owner: user });
+      const { descargarLiquidacion } = await import("@/components/dashboard/liquidacion/LiquidacionPdf");
+      await descargarLiquidacion(modelo);
+    } catch {
+      toast.error("No se pudo generar la liquidación. Vuelva a intentarlo.");
+    }
+  }
+
   function revisarPago(fila: FilaCobranza) {
     setErrorAccion(null);
     setEnRevision(fila);
@@ -3005,7 +3031,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const viewContent: Record<OwnerView, React.ReactNode> = {
     propiedades: <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => void nuevaPropiedad()} onOpenProperty={(propertyId) => openDetail("property", propertyId)} borradores={borradoresDePropiedad} onResumeDraft={retomarBorradorDePropiedad} onDiscardDraft={setDescartandoBorradorDePropiedad} />,
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
-    cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
+    cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onSettlement={descargarLiquidacionDeCuota} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
     herramientas: <Herramientas demo={demo} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,

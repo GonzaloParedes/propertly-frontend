@@ -523,6 +523,42 @@ Vocabulario (manual de marca, §8): *pago* no «transacción», *aviso* no
 *vencimiento* no «fecha límite». Tratamiento de **usted**, sin exclamaciones ni
 emojis.
 
+### Liquidación de un pago (ALQ-140)
+
+Cada cuota cobrada puede tener su **liquidación**: un PDF de una página, con la
+marca de Alquia, que el propietario le entrega al inquilino o guarda para sí.
+Spec: `openspec/changes/payment-settlement-pdf` en el repo de orquestación.
+
+- **Dónde está.** En Cobranzas, como botón secundario «Liquidación» (ícono de
+  documento) al lado de «Comprobante», en la fila de una cuota pagada.
+- **Cuándo aparece.** Sólo si la cuota está `PAID` y tiene un pago `CONFIRMED`
+  cargado por el inquilino o por el propietario. Un pago del alta
+  (`ONBOARDING`) no tiene fecha de pago real, así que esa fila conserva su
+  etiqueta «Registrado al dar de alta · sin comprobante» y no ofrece el botón.
+- **Qué dice.** Quién emite (nombre y CUIT del propietario), número de
+  documento (`N°` más el id del pago, a ocho dígitos), fecha de emisión, inquilino
+  (el CUIT se omite si no lo tiene), inmueble, vigencia del contrato, período y
+  número de cuota («Cuota 18 de 36»), el monto pagado en cifras y en letras, la
+  fecha de pago y el archivo del comprobante. El pie aclara que no vale como factura.
+- **Qué suma.** El monto pagado es `amountDue` tal cual lo manda el backend
+  (regla 7: el front no recalcula el recargo). La tabla de conceptos sólo
+  aparece si hay algo más que la cuota base —ajustes o un recargo saldado—, y
+  entonces lista la cuota, cada ajuste con signo y el recargo, cada extra con
+  la etiqueta «EXTRA»; los importes suman el monto pagado.
+- **Cómo se genera.** En el navegador, con `@react-pdf/renderer`, al hacer
+  click: se piden la cuota y el contrato frescos y se baja el renderer con
+  `import()` dinámico, así el panel no lo carga. El botón queda ocupado mientras
+  genera; si falla, el aviso dice «No se pudo generar la liquidación. Vuelva a
+  intentarlo.» y se puede reintentar. Las tipografías (Quicksand y Nunito Sans)
+  salen de Fontsource y las copia `scripts/copy-pdf-fonts.mjs` a
+  `public/vendor/fonts/` en `predev`/`prebuild`. El logo se dibuja con las
+  primitivas SVG del PDF, con la geometría de `public/logos/lockup.svg`.
+  Archivo: `liquidacion-<aaaa-mm>-<id del pago>.pdf`. No se guarda copia en el
+  servidor: regenerarla da lo mismo salvo la fecha de emisión.
+- **En demo** el botón no hace nada, igual que «Comprobante».
+- Código: `lib/liquidacion.ts` (elegibilidad y modelo), `lib/numero-en-letras.ts`,
+  `components/dashboard/liquidacion/LiquidacionPdf.tsx`.
+
 ---
 
 ## Rechazado — no volver a proponer
