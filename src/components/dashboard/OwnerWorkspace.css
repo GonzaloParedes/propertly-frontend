@@ -1047,6 +1047,15 @@
 .owner-reporte__descripcion textarea::placeholder{color:var(--placeholder)}
 .owner-dialog__body>.owner-reporte__adjunto{display:flex;align-items:flex-start;gap:var(--esp-8);margin:var(--esp-14) 0 0;color:var(--gris);font-size:15px;overflow-wrap:anywhere}
 .owner-reporte__adjunto svg{flex:none;margin-top:2px}
+.owner-reporte__captura{margin-top:var(--esp-14)}
+.owner-reporte__captura .owner-dialog__hint{margin:var(--esp-8) 0 0}
+.owner-reporte__captura .owner-wizard-alert{margin-top:var(--esp-12)}
+.owner-reporte__adjuntar{min-height:48px;padding:0 var(--esp-16);background:var(--superficie);color:var(--tinta)}
+.owner-reporte__preview{display:flex;align-items:center;gap:var(--esp-12);min-width:0;padding:var(--esp-8);border-radius:12px;background:var(--superficie)}
+.owner-reporte__preview img{flex:none;width:72px;height:72px;border-radius:8px;object-fit:cover;background:var(--elev)}
+.owner-reporte__archivo{flex:1;min-width:0;overflow:hidden;color:var(--gris);font-size:14.5px;text-overflow:ellipsis;white-space:nowrap}
+.owner-reporte__preview .owner-button{flex:none;min-height:48px}
+@media (max-width:620px){.owner-reporte__adjuntar{width:100%}}
 .owner-wizard-alert__texto{flex:1;min-width:0}
 .owner-alert-reporte{flex:none;min-height:40px;padding:0 var(--esp-8);border:0;border-radius:10px;background:transparent;color:var(--tinta);cursor:pointer;font:600 15px var(--font-nunito-sans),sans-serif;text-decoration:underline;text-underline-offset:3px}
 .owner-alert-reporte:hover{background:color-mix(in srgb,currentColor 8%,transparent)}

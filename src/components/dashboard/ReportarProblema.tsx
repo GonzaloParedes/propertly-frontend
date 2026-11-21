@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Dialog from "@/components/ui/Dialog";
 import { Icon } from "@/components/ui/Icon";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { FeedbackType } from "@/lib/backend-types";
-import { copyDeError } from "@/lib/error-codes";
-import { abrirReporte, armarReporte, MAXIMO_DESCRIPCION, REPORTE_ABRIR, TIPOS_DE_REPORTE, type ContextoDeReporte } from "@/lib/reportes";
+import { copyDeError, ERROR } from "@/lib/error-codes";
+import { ApiError } from "@/lib/api";
+import { abrirReporte, armarReporte, MAXIMO_DESCRIPCION, REPORTE_ABRIR, TIPOS_DE_CAPTURA, TIPOS_DE_REPORTE, validarCaptura, type ContextoDeReporte } from "@/lib/reportes";
+
+const TIPO_POR_STATUS: Record<number, string> = {
+  413: ERROR.FEEDBACK_SCREENSHOT_TOO_LARGE,
+  415: ERROR.FEEDBACK_SCREENSHOT_UNSUPPORTED_TYPE,
+};
 
 const PREGUNTA: Record<FeedbackType, string> = {
   BUG: "¿Qué pasó?",
@@ -28,6 +34,46 @@ export default function ReportarProblema() {
   const [descripcion, setDescripcion] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captura, setCaptura] = useState<{ file: File; url: string } | null>(null);
+  const [errorDeCaptura, setErrorDeCaptura] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const abierto = contexto !== null;
+  const urlDeCaptura = captura?.url;
+
+  // La miniatura es un object URL: se libera al cambiar o quitar la captura y al desmontar.
+  useEffect(() => (urlDeCaptura ? () => URL.revokeObjectURL(urlDeCaptura) : undefined), [urlDeCaptura]);
+
+  function elegirCaptura(file: File) {
+    const rechazo = validarCaptura(file);
+    if (rechazo) {
+      setErrorDeCaptura(rechazo);
+      return;
+    }
+    setErrorDeCaptura(null);
+    setCaptura({ file, url: URL.createObjectURL(file) });
+  }
+
+  function quitarCaptura() {
+    setCaptura(null);
+    setErrorDeCaptura(null);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  // Pegar desde el portapapeles (Ctrl/Cmd+V) con el diálogo abierto. Sólo se
+  // interviene si el portapapeles trae una imagen; el texto pega normal en el textarea.
+  useEffect(() => {
+    if (!abierto) return;
+    const pegar = (event: ClipboardEvent) => {
+      const imagen = Array.from(event.clipboardData?.items ?? [])
+        .find((item) => item.kind === "file" && item.type.startsWith("image/"))
+        ?.getAsFile();
+      if (!imagen) return;
+      event.preventDefault();
+      elegirCaptura(imagen);
+    };
+    document.addEventListener("paste", pegar);
+    return () => document.removeEventListener("paste", pegar);
+  }, [abierto]);
 
   useEffect(() => {
     const abrir = (event: Event) => {
@@ -35,13 +81,17 @@ export default function ReportarProblema() {
       setTipo("BUG");
       setDescripcion("");
       setError(null);
+      quitarCaptura();
     };
     window.addEventListener(REPORTE_ABRIR, abrir);
     return () => window.removeEventListener(REPORTE_ABRIR, abrir);
   }, []);
 
   if (!contexto) return null;
-  const cerrar = () => setContexto(null);
+  const cerrar = () => {
+    setContexto(null);
+    quitarCaptura();
+  };
   const puedeEnviar = descripcion.trim().length > 0 && !enviando;
 
   async function enviar() {
@@ -49,11 +99,17 @@ export default function ReportarProblema() {
     setEnviando(true);
     setError(null);
     try {
-      await AlquiaBackendClient.feedback.send(armarReporte(tipo, descripcion, contexto));
-      setContexto(null);
+      const reporte = armarReporte(tipo, descripcion, contexto);
+      // Sin captura la llamada es la de siempre (JSON plano); sólo con captura viaja multipart.
+      if (captura) await AlquiaBackendClient.feedback.send(reporte, captura.file);
+      else await AlquiaBackendClient.feedback.send(reporte);
+      cerrar();
       toast.exito("¡Gracias! Recibimos su reporte. Si hace falta, le respondemos por correo.");
     } catch (err) {
-      setError(copyDeError(err, { fallback: "No pudimos enviar el reporte. Inténtelo de nuevo en un rato." }));
+      // Un 413/415 puede llegar sin cuerpo (tope de un proxy): con captura adjunta se lo trata como el del backend.
+      const tipoPorStatus = err instanceof ApiError && !err.type && captura ? TIPO_POR_STATUS[err.status] : undefined;
+      const rechazo = tipoPorStatus && err instanceof ApiError ? new ApiError(err.status, err.message, tipoPorStatus) : err;
+      setError(copyDeError(rechazo, { fallback: "No pudimos enviar el reporte. Inténtelo de nuevo en un rato." }));
     } finally {
       setEnviando(false);
     }
@@ -76,6 +132,21 @@ export default function ReportarProblema() {
           onChange={(event) => setDescripcion(event.target.value)}
         />
       </label>
+      <div className="owner-reporte__captura">
+        <input ref={inputRef} type="file" hidden accept={TIPOS_DE_CAPTURA.join(",")} aria-label="Archivo de captura" onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) elegirCaptura(file);
+          event.target.value = "";
+        }} />
+        {captura ? <div className="owner-reporte__preview">
+          {/* eslint-disable-next-line @next/next/no-img-element -- blob: local, no hay nada que optimizar */}
+          <img src={captura.url} alt="Vista previa de la captura adjunta" />
+          <span className="owner-reporte__archivo">{captura.file.name}</span>
+          <button type="button" className="owner-button owner-button--quiet" onClick={quitarCaptura} disabled={enviando}><Icon name="x" size={17} />Quitar</button>
+        </div> : <button type="button" className="owner-button owner-button--quiet owner-reporte__adjuntar" onClick={() => inputRef.current?.click()} disabled={enviando}><Icon name="image" size={19} />Adjuntar captura</button>}
+        {!captura && <p className="owner-dialog__hint">También puede pegarla con Ctrl+V. PNG, JPG o WebP, hasta 5 MB.</p>}
+        {errorDeCaptura && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} /><span className="owner-wizard-alert__texto">{errorDeCaptura}</span></p>}
+      </div>
       {contexto.mensajeDeError && <p className="owner-reporte__adjunto"><Icon name="paperclip" size={17} /><span>Adjuntamos el error que vio: «{contexto.mensajeDeError}»</span></p>}
       <p className="owner-dialog__hint">Junto con su mensaje enviamos la página en la que está y su navegador, para poder reproducir el problema. Le respondemos a su correo.</p>
       {error && <p className="owner-wizard-alert" role="alert"><Icon name="alert" size={19} />{error}</p>}
