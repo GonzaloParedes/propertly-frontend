@@ -13,7 +13,7 @@ export type MetaEvent = MetaStandardEvent | MetaCustomEvent;
 /** Sólo valores simples sin datos del usuario (ej. `{ status: true }`). */
 export type MetaParams = Record<string, string | number | boolean>;
 
-const CUSTOM_EVENTS: readonly MetaEvent[] = ["FirstPropertyCreated"];
+const CUSTOM_EVENTS: ReadonlySet<MetaEvent> = new Set<MetaEvent>(["FirstPropertyCreated"]);
 
 type Fbq = {
   (...args: unknown[]): void;
@@ -76,7 +76,7 @@ export function loadMetaPixel(): boolean {
 /** Dispara un evento. No-op si el píxel está apagado o todavía no se cargó. */
 export function trackMeta(event: MetaEvent, params?: MetaParams): void {
   if (!metaPixelId() || typeof window === "undefined" || typeof window.fbq !== "function") return;
-  const method = CUSTOM_EVENTS.includes(event) ? "trackCustom" : "track";
+  const method = CUSTOM_EVENTS.has(event) ? "trackCustom" : "track";
   if (params) window.fbq(method, event, params);
   else window.fbq(method, event);
 }
@@ -93,6 +93,15 @@ export function rutaSinPixel(pathname: string): boolean {
 
 /** Marca local de «ya avisamos la primera propiedad» (sin ID ni dato del usuario). */
 const FIRST_PROPERTY_KEY = "alquia:meta:first-property";
+
+/**
+ * ¿La cuenta ya tenía propiedades? Se consulta antes del alta, y sólo con el píxel activo (no suma
+ * un GET en local/dev). `null` = no aplica o no se pudo consultar.
+ */
+export function teniaPropiedadesAntes(listar: () => Promise<readonly unknown[]>): Promise<boolean | null> {
+  if (!metaPixelId()) return Promise.resolve(null);
+  return listar().then((l) => l.length > 0, () => null);
+}
 
 /**
  * Dispara `FirstPropertyCreated` sólo si la cuenta no tenía propiedades antes de crear esta

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { StrictMode } from "react";
-import { loadMetaPixel, metaPixelId, trackFirstProperty, trackMeta } from "@/lib/meta-pixel";
+import { loadMetaPixel, metaPixelId, teniaPropiedadesAntes, trackFirstProperty, trackMeta } from "@/lib/meta-pixel";
 import { MetaPixel } from "@/components/MetaPixel";
 
 const ruta = vi.hoisted(() => ({ actual: "/" }));
@@ -112,5 +112,20 @@ describe("<MetaPixel /> activo", () => {
     ruta.actual = "/restablecer-contrasena";
     rerender(<StrictMode><MetaPixel /></StrictMode>);
     expect(pv()).toHaveLength(2);
+  });
+});
+
+describe("teniaPropiedadesAntes", () => {
+  it("apagado: no consulta", async () => {
+    const listar = vi.fn();
+    expect(await teniaPropiedadesAntes(listar)).toBeNull();
+    expect(listar).not.toHaveBeenCalled();
+  });
+
+  it("activo: true/false según la lista, null si la consulta falla", async () => {
+    activar();
+    expect(await teniaPropiedadesAntes(async () => [{}])).toBe(true);
+    expect(await teniaPropiedadesAntes(async () => [])).toBe(false);
+    expect(await teniaPropiedadesAntes(() => Promise.reject(new Error("x")))).toBeNull();
   });
 });
