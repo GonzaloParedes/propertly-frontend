@@ -1298,7 +1298,7 @@ function AblSectionDemo() {
         </div>
         <div className="owner-abl__period-tabs" role="tablist">
           {demoPeriods.map((p, i) => (
-            <button key={p.label} type="button" className={`owner-abl-chip${i === selIdx ? " owner-abl-chip--selected" : ""}`} aria-selected={i === selIdx} onClick={() => setSelIdx(i)}>
+            <button key={p.label} type="button" role="tab" className={`owner-abl-chip${i === selIdx ? " owner-abl-chip--selected" : ""}`} aria-selected={i === selIdx} onClick={() => setSelIdx(i)}>
               <span className="owner-abl-chip__dot" style={{ background: p.dot }} aria-hidden="true" />
               {p.label}
             </button>

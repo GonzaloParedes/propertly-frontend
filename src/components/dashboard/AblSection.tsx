@@ -62,6 +62,7 @@ function PeriodChip({
   return (
     <button
       type="button"
+      role="tab"
       className={`owner-abl-chip${selected ? " owner-abl-chip--selected" : ""}`}
       aria-selected={selected}
       onClick={onClick}
