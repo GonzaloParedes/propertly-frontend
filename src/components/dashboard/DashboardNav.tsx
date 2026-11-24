@@ -173,7 +173,8 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
       <aside className="owner-nav" aria-label="Navegación principal">
         <Link href="/dashboard" aria-label="Alquia, inicio" className="owner-nav__brand">
           <span className="owner-nav__brand-lockup"><Image src={logoSrc} alt="Alquia" width={124} height={29} priority /></span>
-          <span className="owner-nav__brand-isotipo"><Image src={isotipoSrc} alt="Alquia" width={32} height={32} priority /></span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <span className="owner-nav__brand-isotipo"><img src={isotipoSrc} alt="Alquia" aria-hidden="true" /></span>
         </Link>
         <button
           type="button"
