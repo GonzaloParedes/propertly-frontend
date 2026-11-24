@@ -172,8 +172,8 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
       </header>
       <aside className="owner-nav" aria-label="Navegación principal">
         <Link href="/dashboard" aria-label="Alquia, inicio" className="owner-nav__brand">
-          <Image className="owner-nav__brand-lockup" src={logoSrc} alt="Alquia" width={124} height={29} priority />
-          <Image className="owner-nav__brand-isotipo" src={isotipoSrc} alt="Alquia" width={32} height={32} priority />
+          <span className="owner-nav__brand-lockup"><Image src={logoSrc} alt="Alquia" width={124} height={29} priority /></span>
+          <span className="owner-nav__brand-isotipo"><Image src={isotipoSrc} alt="Alquia" width={32} height={32} priority /></span>
         </Link>
         <button
           type="button"
