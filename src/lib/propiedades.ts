@@ -30,6 +30,8 @@ export interface FilaPropiedad {
   amoblada: boolean;
   /** Lo que la búsqueda por texto mira, ya normalizado. */
   busqueda: string;
+  /** Hay al menos un período ABL impago registrado. */
+  unpaidAbl: boolean;
 }
 
 /**
@@ -100,6 +102,7 @@ export function buildFilasPropiedad(
           .filter(Boolean)
           .join(" ")
       ),
+      unpaidAbl: property.unpaidAbl === true,
     };
   });
 }

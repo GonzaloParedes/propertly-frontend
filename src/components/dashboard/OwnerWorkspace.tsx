@@ -11,6 +11,7 @@ import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
+import { AblSection } from "@/components/dashboard/AblSection";
 import Herramientas from "@/components/dashboard/Herramientas";
 import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
@@ -19,6 +20,7 @@ import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
 import Dialog from "@/components/ui/Dialog";
+import Badge from "@/components/ui/Badge";
 import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import { validarImporteDeRecargo } from "@/lib/recargo";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -215,6 +217,7 @@ const propiedadesDemo: FilaPropiedad[] = properties.map((p, indice) => ({
   amoblada: p.furnished,
   busqueda: `${p.address} ${p.city} ${p.tenant ?? ""}`
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
+  unpaidAbl: false,
 }));
 
 /**
@@ -1252,6 +1255,94 @@ function PropertyBreadcrumb({ name, onBack }: Readonly<{ name: string; onBack: (
   return <nav className="owner-crumb"><button type="button" onClick={onBack}>Propiedades</button><span>/</span><span>{name}</span></nav>;
 }
 
+function ablDemoFileName(label: string) {
+  return `comprobante-abl-${label.replace("/", "-")}.pdf`;
+}
+
+function AblReceiptUploaded({ label }: Readonly<{ label: string }>) {
+  return (
+    <div className="owner-abl-receipt-zone">
+      <Icon name="receipt" size={15} />
+      <span className="owner-abl-receipt-zone__name">{ablDemoFileName(label)}</span>
+      <button type="button" className="owner-icon-button" aria-label="Reemplazar comprobante"><Icon name="edit" size={14} /></button>
+      <button type="button" className="owner-icon-button" aria-label="Quitar comprobante"><Icon name="x" size={14} /></button>
+    </div>
+  );
+}
+
+function AblSectionDemo() {
+  const [selIdx, setSelIdx] = useState(0);
+  const demoPeriods = [
+    { label: "11/2026", status: "Impago", payer: "Inquilino", dot: "var(--error)", hasReceipt: true },
+    { label: "10/2026", status: "Pago",   payer: "Inquilino", dot: "#16a34a",      hasReceipt: true },
+    { label: "09/2026", status: "Pago",   payer: "Propietario", dot: "#16a34a",    hasReceipt: false },
+  ];
+  const sel = demoPeriods[selIdx];
+
+  return (
+    <div className="owner-card owner-abl">
+      <h2>ABL</h2>
+      <div className="owner-abl__partida">
+        <div className="owner-abl__partida-view">
+          <dl className="owner-definition">
+            <div><dt>Jurisdicción</dt><dd>CABA / AGIP</dd></div>
+            <div><dt>Partida</dt><dd>1234567-5</dd></div>
+          </dl>
+          <div className="owner-abl__partida-actions">
+            <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="edit" size={16} />Editar partida</button>
+            <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="link" size={16} />Consultar en AGIP</button>
+          </div>
+        </div>
+      </div>
+      <div className="owner-abl__periods">
+        <div className="owner-abl__periods-head">
+          <h3>Períodos</h3>
+          <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="plus" size={16} />Agregar período</button>
+        </div>
+        <div className="owner-abl__period-tabs" role="tablist">
+          {demoPeriods.map((p, i) => (
+            <button key={p.label} type="button" role="tab" className={`owner-abl-chip${i === selIdx ? " owner-abl-chip--selected" : ""}`} aria-selected={i === selIdx} onClick={() => setSelIdx(i)}>
+              <span className="owner-abl-chip__dot" style={{ background: p.dot }} aria-hidden="true" />
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="owner-abl-period">
+          <div className="owner-abl-period__head">
+            <b>{sel.label}</b>
+            <button type="button" className="owner-icon-button" aria-label={`Eliminar ${sel.label}`}><Icon name="trash" size={16} /></button>
+          </div>
+          <div className="owner-abl-period__body">
+            <div>
+              <span className="owner-abl-label">Estado</span>
+              <div className="owner-abl-toggle" role="radiogroup" aria-label="Estado">
+                {["Pago", "Impago", "Sin dato"].map((opt) => (
+                  <button key={opt} type="button" role="radio" aria-checked={sel.status === opt}>{opt}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="owner-abl-label">Pagador</span>
+              <div className="owner-abl-toggle" role="radiogroup" aria-label="Pagador">
+                {["Inquilino", "Propietario"].map((opt) => (
+                  <button key={opt} type="button" role="radio" aria-checked={sel.payer === opt}>{opt}</button>
+                ))}
+              </div>
+            </div>
+            <div className="owner-abl-period__receipt">
+              <span className="owner-abl-label">Comprobante</span>
+              {sel.hasReceipt
+                ? <AblReceiptUploaded label={sel.label} />
+                : <label className="owner-abl-upload-zone"><Icon name="paperclip" size={16} /><span>Arrastrá o hacé click para adjuntar</span><input type="file" className="sr-only" /></label>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemoContract }: Readonly<{
   demoProperty: (typeof properties)[number];
   onBack: () => void;
@@ -1263,7 +1354,7 @@ function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemo
   const contractCard = demoProperty.tenant
     ? <button type="button" className="owner-contract-callout" onClick={() => onOpenDemoContract(demoProperty.id)}><span><Icon name="file" /></span><div><b>Contrato con {demoProperty.tenant}</b><small>Ver condiciones, documento y próximas cuotas</small></div><Icon name="arrow" /></button>
     : <div className="owner-empty-callout"><Icon name="building" /><div><b>Esta propiedad está disponible</b><small>Cuando tenga un inquilino, cree un contrato para empezar a cobrarla.</small></div><Button small onClick={onCreateContract}>Crear contrato</Button></div>;
-  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section></>;
+  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section><AblSectionDemo /></>;
 }
 
 function PropertyStatusCard({ property, contractStatusIsUnknown, contractTitle, onCreateContract }: Readonly<{ property: FilaPropiedad; contractStatusIsUnknown: boolean; contractTitle: string; onCreateContract: () => void }>) {
@@ -1326,12 +1417,13 @@ function PropertyDetail({
 
   return <>
     <PropertyBreadcrumb name={property.direccion} onBack={onBack} />
-    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header>
+    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p>{property.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}</div><div className="owner-page-head__action">{headerActions}</div></header>
     <section className="owner-detail-grid">
       <PropertyStatusCard property={property} contractStatusIsUnknown={contractStatusIsUnknown} contractTitle={contractTitle} onCreateContract={onCreateContract} />
       <PropertyCharacteristicsCard address={address} category={category} details={details} preferences={preferences} />
       <RentEstimateCard propertyId={rawProperty.id} />
     </section>
+    <AblSection propertyId={rawProperty.id} />
   </>;
 }
 
@@ -1546,6 +1638,7 @@ function PropertiesView({
                 {/* Sin el contrato en la respuesta no se puede decir el estado, y
                     decir «Sin alquilar» sería inventarlo. */}
                 {!sinDatoDeContrato && <Status>{fila.estado}</Status>}
+                {fila.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}
                 <span className="owner-row__arrow"><Icon name="arrow" /></span>
               </button>
             ))}

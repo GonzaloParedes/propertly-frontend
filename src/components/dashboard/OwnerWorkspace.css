@@ -1002,12 +1002,11 @@
 .owner-tutorial__recorrido li{display:inline-flex;align-items:center;gap:var(--esp-6);min-height:32px;padding:0 var(--esp-12);border-radius:999px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);font-size:14px;font-weight:700}
 .owner-tutorial__recorrido li>span{font:700 13px var(--font-quicksand),sans-serif}
 .owner-tutorial__recorrido li[data-actual]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
-.owner-tutorial__acciones{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--esp-10);margin-top:var(--esp-20)}
-.owner-tutorial__acciones .owner-button--quiet{margin-right:auto}
-.owner-tutorial__acciones .owner-button{min-height:48px}
 /* Si la tarjeta se achica para no tapar el control, el texto se desplaza y las
    acciones quedan siempre a la vista. */
-.owner-tutorial__acciones{position:sticky;bottom:calc(-1 * var(--esp-26));margin-top:var(--esp-12);margin-bottom:calc(-1 * var(--esp-26));padding:var(--esp-8) 0 var(--esp-26);background:var(--elev)}
+.owner-tutorial__acciones{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--esp-10);position:sticky;bottom:calc(-1 * var(--esp-26));margin-top:var(--esp-12);margin-bottom:calc(-1 * var(--esp-26));padding:var(--esp-8) 0 var(--esp-26);background:var(--elev)}
+.owner-tutorial__acciones .owner-button--quiet{margin-right:auto}
+.owner-tutorial__acciones .owner-button{min-height:48px}
 /* El header de celular es sticky: sin margen, el control subido quedaría debajo. */
 @media (max-width:900px){.owner-tutorial-ancla,[data-tutorial]{scroll-margin-top:80px}}
 @media (max-width:620px),(max-height:500px){
@@ -1101,3 +1100,74 @@
 .owner-tool__counters{margin-top:var(--esp-8)}
 .owner-calc>.owner-wizard-label:first-child{margin-top:0}
 .owner-calc~.rent-estimate{max-width:720px}
+
+/* ── ABL semiautomático (ALQ-207) ──────────────────────────────────── */
+.owner-abl { margin-top: var(--esp-18) }
+.owner-abl h2 { margin-bottom: var(--esp-18) }
+.owner-abl h3 { margin: 0; font: 700 17px var(--font-quicksand), sans-serif }
+
+.owner-abl__partida { padding-bottom: var(--esp-20); box-shadow: inset 0 -1px 0 var(--divisor) }
+.owner-abl__partida-view .owner-definition { margin-top: 0 }
+.owner-abl__partida-actions { display: flex; flex-wrap: wrap; gap: var(--esp-10); margin-top: var(--esp-18) }
+
+.owner-abl__clipboard-fallback { margin-top: var(--esp-16) }
+.owner-abl__clipboard-copy input { width: 100%; min-height: 44px; padding: 0 var(--esp-14); border: 0; border-radius: 10px; background: var(--superficie); box-shadow: inset 0 0 0 1.5px var(--borde-control); color: var(--tinta); font: 600 17px var(--font-nunito-sans), sans-serif; cursor: text }
+
+.owner-abl__partida-form { display: grid; gap: var(--esp-16) }
+.owner-abl__form-group { display: grid; gap: var(--esp-10) }
+.owner-abl__form-group .owner-wizard-field { padding: 14px var(--esp-18) }
+.owner-abl__form-actions { display: flex; flex-wrap: wrap; gap: var(--esp-10); align-items: center }
+.owner-abl-label { color: var(--gris); font: 700 12px var(--font-nunito-sans), sans-serif; letter-spacing: .05em }
+
+.owner-abl-toggle { display: flex; flex-wrap: wrap; gap: 8px }
+.owner-abl-toggle button { min-height: 36px; padding: 0 var(--esp-12); border: 0; border-radius: 8px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer; font: 600 14px var(--font-nunito-sans), sans-serif; transition: background .12s, box-shadow .12s }
+.owner-abl-toggle button[aria-checked="true"] { background: var(--indigo-suave); box-shadow: inset 0 0 0 2px var(--indigo); color: var(--indigo-osc) }
+.owner-abl-toggle button:disabled { cursor: default; opacity: .55 }
+
+.owner-abl__periods { margin-top: var(--esp-26) }
+.owner-abl__periods-head { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-12); margin-bottom: var(--esp-16) }
+.owner-abl__add-period { display: grid; gap: var(--esp-14); padding: var(--esp-20); margin-bottom: var(--esp-18); border-radius: 14px; background: var(--superficie); box-shadow: inset 0 0 0 1.5px var(--borde) }
+.owner-abl__add-period .owner-wizard-field { padding: 11px var(--esp-16); font-size: 17px }
+.owner-abl__empty { padding: var(--esp-20) 0 }
+.owner-abl__empty p { margin: 0; color: var(--gris) }
+
+.owner-abl__period-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: var(--esp-14); scrollbar-width: none }
+.owner-abl__period-tabs::-webkit-scrollbar { display: none }
+.owner-abl-chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 var(--esp-14); border: 0; border-radius: 20px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer; font: 600 13px var(--font-nunito-sans), sans-serif; white-space: nowrap; transition: background .12s, box-shadow .12s }
+.owner-abl-chip--selected { background: var(--indigo-suave); box-shadow: inset 0 0 0 2px var(--indigo); color: var(--indigo-osc) }
+.owner-abl-chip__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0 }
+.owner-abl-period { padding: 14px var(--esp-16); border-radius: 12px; background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde) }
+.owner-abl-period__head { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-10); margin-bottom: 10px }
+.owner-abl-period__head b { font: 700 15px var(--font-quicksand), sans-serif }
+.owner-abl-period__body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px }
+.owner-abl-period__receipt { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--esp-8) }
+.owner-abl-field-error { margin: 0; color: var(--error); font-size: 14px }
+
+.owner-abl-receipt-row { display: flex; align-items: center; gap: var(--esp-10); flex-wrap: wrap }
+.owner-abl-receipt-link { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 var(--esp-12); border: 0; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--indigo); cursor: pointer; font: 600 15px var(--font-nunito-sans), sans-serif; overflow: hidden; max-width: 220px; text-overflow: ellipsis; white-space: nowrap }
+.owner-abl-receipt-link:disabled { cursor: default; opacity: .6 }
+.owner-abl-receipt-replace { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer }
+.owner-abl-receipt-replace:hover { background: var(--indigo-suave); color: var(--indigo) }
+
+.owner-abl-upload-label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 var(--esp-14); border: 0; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer; font: 600 15px var(--font-nunito-sans), sans-serif }
+.owner-abl-upload-label:hover { background: var(--indigo-suave); box-shadow: inset 0 0 0 2px var(--indigo); color: var(--indigo-osc) }
+.owner-abl-upload-zone { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border: 2px dashed var(--borde); border-radius: 10px; color: var(--gris); cursor: pointer; font: 600 14px var(--font-nunito-sans), sans-serif; transition: border-color .12s, color .12s }
+.owner-abl-upload-zone:hover { border-color: var(--indigo); color: var(--indigo) }
+.owner-abl-upload-text { display: inline-flex; align-items: center; gap: 6px; min-height: 0; padding: 0; border: 0; background: none; color: var(--indigo); cursor: pointer; font: 600 14px var(--font-nunito-sans), sans-serif; text-decoration: underline; text-underline-offset: 3px }
+.owner-abl-upload-text:hover { color: var(--indigo-osc) }
+.owner-abl-receipt-zone { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--indigo); font: 600 14px var(--font-nunito-sans), sans-serif }
+.owner-abl-receipt-zone__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.owner-abl-receipt-done { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); font: 600 14px var(--font-nunito-sans), sans-serif }
+.owner-abl-receipt-done span { flex: 1 }
+.owner-abl-receipt-done__actions { display: flex; gap: 4px; margin-left: auto }
+
+/* Mobile */
+@media (max-width: 620px) {
+  .owner-abl__partida-actions { flex-direction: column }
+  .owner-abl__partida-actions .owner-button { width: 100% }
+  .owner-abl__form-actions { flex-direction: column-reverse }
+  .owner-abl__form-actions .owner-button { width: 100% }
+  .owner-abl-period__body { grid-template-columns: 1fr; gap: var(--esp-12) }
+  .owner-abl-period__receipt { grid-column: 1 / -1 }
+  .owner-abl-receipt-row { gap: var(--esp-8) }
+}

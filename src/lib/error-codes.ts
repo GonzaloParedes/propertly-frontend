@@ -62,6 +62,9 @@ export const ERROR = {
   RENT_INCREASE_NOT_DUE: "urn:alquia:error:rent-increase-not-due",
   INDEX_DATA_NOT_PUBLISHED: "urn:alquia:error:index-data-not-published",
   INDEX_PROVIDER_UNAVAILABLE: "urn:alquia:error:index-provider-unavailable",
+  ABL_RECEIPT_EMPTY: "urn:alquia:error:abl-receipt-empty",
+  ABL_RECEIPT_TOO_LARGE: "urn:alquia:error:abl-receipt-too-large",
+  ABL_RECEIPT_UNSUPPORTED_TYPE: "urn:alquia:error:abl-receipt-unsupported-type",
 } as const;
 
 export type ErrorType = (typeof ERROR)[keyof typeof ERROR];
@@ -142,6 +145,9 @@ const COPY: Record<string, string> = {
     "Todavía no están publicados los valores del índice para esos meses. Pruebe con un período anterior.",
   [ERROR.INDEX_PROVIDER_UNAVAILABLE]:
     "No pudimos consultar los índices en este momento. Inténtelo de nuevo en unos minutos.",
+  [ERROR.ABL_RECEIPT_EMPTY]: "El comprobante está vacío. Adjunte un PDF, imagen PNG, JPG o WebP.",
+  [ERROR.ABL_RECEIPT_TOO_LARGE]: "El comprobante pesa más de 10 MB. Adjunte un archivo más liviano.",
+  [ERROR.ABL_RECEIPT_UNSUPPORTED_TYPE]: "El tipo de archivo no es compatible. Use PDF, PNG, JPG o WebP.",
 };
 
 export const FALLBACK = "No se pudo completar la acción. Inténtelo de nuevo más tarde.";

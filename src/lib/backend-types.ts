@@ -243,6 +243,34 @@ export interface PropertyResponse {
   activeContract?: ActiveContractSummary | null;
   /** Instante ISO-8601. `null` si no está archivada. */
   archivedAt?: string | null;
+  /** `true` cuando hay al menos un período ABL en estado IMPAGO (ALQ-207). */
+  unpaidAbl?: boolean;
+}
+
+// --- ABL (ALQ-207) ---
+
+export type AblJurisdiction = "CABA_AGIP" | "PBA_ARBA";
+export type AblStatus = "PAGO" | "IMPAGO" | "SIN_DATO";
+export type AblPayer = "INQUILINO" | "PROPIETARIO";
+
+export interface AblResponse {
+  jurisdiction: AblJurisdiction | null;
+  partida: string | null;
+  dv: string | null;
+  unpaidAbl: boolean;
+}
+
+export interface AblPeriodResponse {
+  /** Mes en formato `YYYY-MM`. */
+  period: string;
+  status: AblStatus;
+  payer: AblPayer;
+  hasReceipt: boolean;
+  receiptFileName: string | null;
+  receiptContentType: string | null;
+  receiptSize: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // --- Rent estimate (ALQ-45) ---
