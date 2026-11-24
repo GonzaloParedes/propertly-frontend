@@ -5,14 +5,14 @@ import { AblSection } from "@/components/dashboard/AblSection";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type { AblPeriodResponse, AblResponse } from "@/lib/backend-types";
 
-const ablVacio: AblResponse = { jurisdiction: null, partida: null, dv: null, unpaidAbl: false };
-const ablCaba: AblResponse = { jurisdiction: "CABA_AGIP", partida: "1234567", dv: "5", unpaidAbl: false };
-const ablArba: AblResponse = { jurisdiction: "PBA_ARBA", partida: "123456789", dv: null, unpaidAbl: false };
+const ablVacio: AblResponse = { jurisdiction: null, partida: null, verificationDigit: null, unpaidAbl: false };
+const ablCaba: AblResponse = { jurisdiction: "CABA_AGIP", partida: "1234567", verificationDigit: "5", unpaidAbl: false };
+const ablArba: AblResponse = { jurisdiction: "PBA_ARBA", partida: "123456789", verificationDigit: null, unpaidAbl: false };
 
 const periodoBase: AblPeriodResponse = {
   period: "2026-11",
-  status: "IMPAGO",
-  payer: "INQUILINO",
+  status: "UNPAID",
+  payer: "TENANT",
   hasReceipt: false,
   receiptFileName: null,
   receiptContentType: null,
@@ -92,6 +92,25 @@ describe("validación de partida", () => {
     await userEvent.type(screen.getByPlaceholderText(/Ej: 123-456789/), "12345");
     await userEvent.click(screen.getByRole("button", { name: /Guardar/ }));
     expect(screen.getByRole("alert")).toHaveTextContent(/9 dígitos/i);
+  });
+
+  it("manda el dígito verificador como verificationDigit, el nombre que espera el backend", async () => {
+    mockAbl(ablVacio);
+    render(<AblSection propertyId={7} />);
+    await screen.findByText(/No hay partida cargada/);
+    await userEvent.click(screen.getByRole("button", { name: /Cargar partida/ }));
+    const jGroup = screen.getByRole("radiogroup", { name: "Jurisdicción" });
+    await userEvent.click(within(jGroup).getByRole("radio", { name: "CABA / AGIP" }));
+    await userEvent.type(screen.getByPlaceholderText(/Ej: 1234567/), "0064400");
+    await userEvent.type(screen.getByPlaceholderText(/Ej: 5/), "1");
+    await userEvent.click(screen.getByRole("button", { name: /Guardar/ }));
+    await waitFor(() =>
+      expect(AlquiaBackendClient.abl.save).toHaveBeenCalledWith(7, {
+        jurisdiction: "CABA_AGIP",
+        partida: "0064400",
+        verificationDigit: "1",
+      })
+    );
   });
 
   it("guarda una partida CABA válida y llama al backend", async () => {

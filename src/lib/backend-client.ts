@@ -360,7 +360,7 @@ export const AlquiaBackendClient = {
   abl: {
     get: (propertyId: number): Promise<AblResponse> =>
       apiGet<AblResponse>(`/properties/${propertyId}/abl`),
-    save: (propertyId: number, body: { jurisdiction: AblJurisdiction; partida: string; dv?: string }): Promise<AblResponse> =>
+    save: (propertyId: number, body: { jurisdiction: AblJurisdiction; partida: string; verificationDigit?: string }): Promise<AblResponse> =>
       apiPut<AblResponse>(`/properties/${propertyId}/abl`, body),
     remove: (propertyId: number): Promise<void> =>
       apiDelete(`/properties/${propertyId}/abl`),

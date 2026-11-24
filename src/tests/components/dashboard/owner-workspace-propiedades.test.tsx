@@ -64,7 +64,7 @@ const CUOTA_VENCIDA: InvoiceResponse = {
 beforeEach(() => {
   vi.resetAllMocks();
   mockBorradores.list.mockResolvedValue([]);
-  vi.mocked(AlquiaBackendClient.abl.get).mockResolvedValue({ jurisdiction: null, partida: null, dv: null, unpaidAbl: false });
+  vi.mocked(AlquiaBackendClient.abl.get).mockResolvedValue({ jurisdiction: null, partida: null, verificationDigit: null, unpaidAbl: false });
   vi.mocked(AlquiaBackendClient.abl.listPeriods).mockResolvedValue([]);
 });
 
