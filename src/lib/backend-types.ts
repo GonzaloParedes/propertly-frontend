@@ -490,6 +490,11 @@ export interface ContractResponse {
    * no existe el aviso de aumento al inquilino. Un backend anterior no lo manda: se lee como `false`.
    */
   nextIncrementNotifiesTenant?: boolean;
+  /**
+   * `true` cuando `nextIncrementRent` es una estimación (índice todavía sin publicar), no el importe
+   * definitivo (ALQ-181). Ausente se lee como `false`.
+   */
+  nextIncrementRentEstimated?: boolean;
   documentFileName?: string;
   documentContentType?: string;
   documentSizeBytes?: number;

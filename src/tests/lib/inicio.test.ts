@@ -384,6 +384,14 @@ describe("proximosAumentos", () => {
     expect(r.map((c) => c.id)).toEqual([1]);
   });
 
+  it("deja afuera el aumento demorado cuya fecha ya pasó sin aplicarse", () => {
+    const r = proximosAumentos(
+      [con(1, { incrementMethod: "INDEX", nextIncrementDate: "2026-11-10", nextIncrementRent: undefined }), con(2, { nextIncrementDate: "2026-12-01" })],
+      HOY_AUMENTOS
+    );
+    expect(r.map((c) => c.id)).toEqual([2]);
+  });
+
   it("incluye el aumento de hoy y deja afuera el de ayer", () => {
     const r = proximosAumentos(
       [con(1, { nextIncrementDate: HOY_AUMENTOS }), con(2, { nextIncrementDate: "2026-11-23" })],

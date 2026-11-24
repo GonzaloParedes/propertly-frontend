@@ -1194,7 +1194,9 @@ function UpcomingIncreases({ aumentos, onOpenContract }: Readonly<{ aumentos: Co
   return <section className="owner-section" aria-labelledby="proximos-aumentos">
     <div className="owner-section__head"><h2 id="proximos-aumentos">Próximos aumentos</h2></div>
     <div className="owner-list">{aumentos.map((contract) => {
-      const nuevo = contract.nextIncrementRent == null ? "A definir" : formatearMonto(contract.nextIncrementRent, contract.currency);
+      const monto = contract.nextIncrementRent == null ? null : formatearMonto(contract.nextIncrementRent, contract.currency);
+      let nuevo = "A definir";
+      if (monto !== null) nuevo = contract.nextIncrementRentEstimated === true ? `≈ ${monto} (estimado)` : monto;
       return <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}>
         <span className="owner-row__icon"><Icon name="calendar" /></span>
         <span className="owner-row__body">

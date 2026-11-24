@@ -706,6 +706,58 @@ describe("próximos aumentos", () => {
     expect(fila).toHaveTextContent("$ 500.000 → A definir");
   });
 
+  it("un importe estimado se marca con «≈» y «(estimado)», en la moneda del contrato", async () => {
+    conDatos({
+      contracts: [
+        conAumento(1, "Colón", { incrementMethod: "INDEX", incrementIndexName: "ICL", nextIncrementDate: "2026-12-24", nextIncrementRent: 612300, nextIncrementRentEstimated: true }),
+        conAumento(2, "Lavalle", { currency: "USD", currentRent: 800, nextIncrementDate: "2026-12-26", nextIncrementRent: 850, nextIncrementRentEstimated: true }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const filas = within(await seccionDeAumentos()).getAllByRole("button");
+    expect(filas[0]).toHaveTextContent("$ 500.000 → ≈ $ 612.300 (estimado)");
+    expect(filas[0]).not.toHaveTextContent("A definir");
+    expect(filas[1]).toHaveTextContent("US$ 800 → ≈ US$ 850 (estimado)");
+  });
+
+  it("un importe exacto no lleva «≈» ni «(estimado)»", async () => {
+    conDatos({ contracts: [conAumento(1, "Colón", { nextIncrementDate: "2026-12-14", nextIncrementRentEstimated: false }), conAumento(2, "Lavalle", { nextIncrementDate: "2026-12-15" })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAumentos();
+    expect(seccion).not.toHaveTextContent("≈");
+    expect(seccion).not.toHaveTextContent("(estimado)");
+  });
+
+  it("«A definir» sólo aparece cuando no hay ningún importe", async () => {
+    conDatos({
+      contracts: [
+        conAumento(1, "Colón", { nextIncrementDate: "2026-12-14", nextIncrementRent: 612300, nextIncrementRentEstimated: true }),
+        conAumento(2, "Lavalle", { nextIncrementDate: "2026-12-15", nextIncrementRent: undefined }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const filas = within(await seccionDeAumentos()).getAllByRole("button");
+    expect(filas[0]).not.toHaveTextContent("A definir");
+    expect(filas[1]).toHaveTextContent("$ 500.000 → A definir");
+  });
+
+  it("un aumento demorado, cuya fecha ya pasó sin aplicarse, no se lista", async () => {
+    conDatos({
+      contracts: [
+        conAumento(1, "Colón", { incrementMethod: "INDEX", incrementIndexName: "ICL", nextIncrementDate: "2026-11-20", nextIncrementRent: undefined }),
+        conAumento(2, "Lavalle", { nextIncrementDate: "2026-12-14" }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const filas = within(await seccionDeAumentos()).getAllByRole("button");
+    expect(filas).toHaveLength(1);
+    expect(filas[0]).toHaveTextContent("Lavalle 100");
+  });
+
   it("si al inquilino no se le avisa, la fila lo dice", async () => {
     conDatos({ contracts: [conAumento(1, "Colón", { nextIncrementDate: "2026-12-14", nextIncrementNotifiesTenant: false })] });
     render(<OwnerWorkspace initialView="inicio" />);
