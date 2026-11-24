@@ -77,7 +77,7 @@
 
 [data-nav-collapsed] .owner-nav__badge{min-width:10px;width:10px;height:10px;font-size:0;margin-left:2px}
 
-[data-nav-collapsed] .owner-nav__new{max-width:0;overflow:hidden;opacity:0}
+[data-nav-collapsed] .owner-nav__new{max-width:0;overflow:hidden;opacity:0;margin-left:0}
 
 @media(prefers-reduced-motion:reduce){.owner-nav,.owner-workspace,.owner-nav__link span,.owner-nav__logout span,.owner-nav__group,.owner-nav__profile-text,.owner-nav__brand-lockup,.owner-nav__brand-isotipo{transition:none}}
 /* --------------------------------------------------------------------- */
