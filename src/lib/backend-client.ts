@@ -54,6 +54,11 @@ import type {
   RentIncreaseResponse,
   CreditCheckResponse,
   RentEstimateToolRequest,
+  AblResponse,
+  AblPeriodResponse,
+  AblJurisdiction,
+  AblStatus,
+  AblPayer,
 } from "@/lib/backend-types";
 
 /**
@@ -96,7 +101,17 @@ export const AlquiaBackendClient = {
   },
 
   feedback: {
-    send: (body: FeedbackRequest): Promise<void> => apiPost("/feedback", body),
+    /**
+     * Sin captura viaja JSON plano, como siempre. Con captura (ALQ-200) viaja
+     * multipart: parte `report` (JSON) + parte `screenshot` (un solo archivo).
+     */
+    send: (body: FeedbackRequest, screenshot?: File): Promise<void> => {
+      if (!screenshot) return apiPost("/feedback", body);
+      const form = new FormData();
+      form.append("report", new Blob([JSON.stringify(body)], { type: "application/json" }));
+      form.append("screenshot", screenshot, screenshot.name);
+      return apiPostForm<void>("/feedback", form);
+    },
   },
 
   users: {
@@ -342,6 +357,34 @@ export const AlquiaBackendClient = {
       apiGet<PreInvoiceResponse[]>(`/pre-invoices${buildQuery(params ?? {})}`),
   },
 
+  abl: {
+    get: (propertyId: number): Promise<AblResponse> =>
+      apiGet<AblResponse>(`/properties/${propertyId}/abl`),
+    save: (propertyId: number, body: { jurisdiction: AblJurisdiction; partida: string; dv?: string }): Promise<AblResponse> =>
+      apiPut<AblResponse>(`/properties/${propertyId}/abl`, body),
+    remove: (propertyId: number): Promise<void> =>
+      apiDelete(`/properties/${propertyId}/abl`),
+    listPeriods: (propertyId: number): Promise<AblPeriodResponse[]> =>
+      apiGet<AblPeriodResponse[]>(`/properties/${propertyId}/abl/periods`),
+    savePeriod: (
+      propertyId: number,
+      period: string,
+      body: { status: AblStatus; payer: AblPayer }
+    ): Promise<AblPeriodResponse> =>
+      apiPut<AblPeriodResponse>(`/properties/${propertyId}/abl/periods/${period}`, body),
+    deletePeriod: (propertyId: number, period: string): Promise<void> =>
+      apiDelete(`/properties/${propertyId}/abl/periods/${period}`),
+    uploadReceipt: (propertyId: number, period: string, file: File): Promise<AblPeriodResponse> => {
+      const form = new FormData();
+      form.append("file", file);
+      return apiPutForm<AblPeriodResponse>(`/properties/${propertyId}/abl/periods/${period}/receipt`, form);
+    },
+    downloadReceipt: (propertyId: number, period: string): Promise<Blob> =>
+      apiGetBlob(`/properties/${propertyId}/abl/periods/${period}/receipt`),
+    deleteReceipt: (propertyId: number, period: string): Promise<void> =>
+      apiDelete(`/properties/${propertyId}/abl/periods/${period}/receipt`),
+  },
+
   tenantAuth: {
     session: (body: TenantSessionRequest): Promise<void> =>
       apiPost("/tenant-auth/session", body, { retry: false }),
@@ -369,6 +412,11 @@ export const AlquiaBackendClient = {
 };
 
 export type {
+  AblResponse,
+  AblPeriodResponse,
+  AblJurisdiction,
+  AblStatus,
+  AblPayer,
   ContractImportResponse,
   ContractImportCompletionRequest,
   ContractImportQuotaResponse,

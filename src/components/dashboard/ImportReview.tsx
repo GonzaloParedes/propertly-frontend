@@ -457,13 +457,22 @@ function tarjetaDeGarantias({ lectura, b, sumados, erroresDelBackend, tarjeta, p
 }
 
 function tarjetaDeOtraClausula(ctx: Contexto) {
-  const { lectura, moneda, tarjeta } = ctx;
+  const { lectura, moneda, decisiones, tarjeta, onDecision } = ctx;
   const item = lectura.items.otro;
   if (!item.presente) return null;
-  return tarjeta("otro", "No se puede cargar así", {
-    porQue: explicacion(item, moneda),
+  const descartado = decisiones.otro === "descartar";
+  return tarjeta("otro", descartado ? "No se va a cargar" : "No se puede cargar así", {
+    porQue: descartado ? undefined : explicacion(item, moneda),
     corregible: false,
-    acciones: <BotonChico onClick={ctx.onManual}>Cargarlo a mano</BotonChico>,
+    acciones: <>
+      <BotonDeDecision
+        decidido={descartado}
+        etiqueta="Descartar"
+        onDecidir={() => onDecision("otro", "descartar")}
+        onDeshacer={() => onDecision("otro", null)}
+      />
+      {!descartado && <BotonChico onClick={ctx.onManual}>Cargarlo a mano</BotonChico>}
+    </>,
   });
 }
 

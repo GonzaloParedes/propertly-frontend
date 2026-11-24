@@ -687,3 +687,26 @@ describe("AlquiaBackendClient.contractDrafts", () => {
     expect(mockPost).toHaveBeenCalledWith("/contracts/onboarding", body);
   });
 });
+
+describe("AlquiaBackendClient.feedback", () => {
+  const reporte = { type: "BUG" as const, description: "No carga", pageUrl: "https://x/y" };
+
+  it("send sin captura manda JSON plano a POST /feedback, como siempre", async () => {
+    await AlquiaBackendClient.feedback.send(reporte);
+    expect(mockPost).toHaveBeenCalledWith("/feedback", reporte);
+    expect(mockPostForm).not.toHaveBeenCalled();
+  });
+
+  it("send con captura manda multipart: parte report (JSON) y parte screenshot", async () => {
+    const captura = new File(["x"], "captura.png", { type: "image/png" });
+    await AlquiaBackendClient.feedback.send(reporte, captura);
+
+    expect(mockPost).not.toHaveBeenCalled();
+    const [path, form] = mockPostForm.mock.calls[0];
+    expect(path).toBe("/feedback");
+    const report = (form as FormData).get("report") as Blob;
+    expect(report.type).toBe("application/json");
+    expect(JSON.parse(await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsText(report); }))).toEqual(reporte);
+    expect(((form as FormData).get("screenshot") as File).name).toBe("captura.png");
+  });
+});

@@ -207,7 +207,7 @@ describe("acciones", () => {
     expect(await screen.findByText(/Importe confirmado/)).toBeInTheDocument();
   });
 
-  it("una cuota pagada sólo ofrece el comprobante", async () => {
+  it("una cuota pagada ofrece el comprobante", async () => {
     conCuotas([cuota({ status: "PAID", payments: [pago()] })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 

@@ -11,6 +11,7 @@ import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
+import { AblSection } from "@/components/dashboard/AblSection";
 import Herramientas from "@/components/dashboard/Herramientas";
 import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
@@ -19,6 +20,7 @@ import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
 import Dialog from "@/components/ui/Dialog";
+import Badge from "@/components/ui/Badge";
 import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import { validarImporteDeRecargo } from "@/lib/recargo";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -34,6 +36,7 @@ import type {
   TenantFormValues,
   UserUpdateRequest,
 } from "@/lib/backend-types";
+import { armarLiquidacion, puedeEmitirLiquidacionDeFila } from "@/lib/liquidacion";
 import { buildTenantRows, resumenInquilinos, type TenantRow } from "@/lib/tenant-rows";
 import {
   buildFilasCobranza,
@@ -214,6 +217,7 @@ const propiedadesDemo: FilaPropiedad[] = properties.map((p, indice) => ({
   amoblada: p.furnished,
   busqueda: `${p.address} ${p.city} ${p.tenant ?? ""}`
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
+  unpaidAbl: false,
 }));
 
 /**
@@ -953,6 +957,7 @@ type CollectionActionProps = Readonly<{
   onAdjust: (item: FilaCobranza) => void;
   onLateFee: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void | Promise<unknown>;
+  onSettlement: (item: FilaCobranza) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
 }>;
 
@@ -965,6 +970,7 @@ function CollectionAction({
   onAdjust,
   onLateFee,
   onViewReceipt,
+  onSettlement,
   onRegisterPayment,
 }: CollectionActionProps) {
   const recargo = item.recargoEditable && <Button tone="quiet" small disabled={isBusy} onClick={() => onLateFee(item)}>Recargo</Button>;
@@ -979,9 +985,12 @@ function CollectionAction({
   if (item.accion === "comprobante") {
     // Un pago del alta no tiene archivo: en vez de un botón que no abre nada, dice de dónde sale.
     if (esPagoDelAlta(item.pagoConfirmado)) return <span className="owner-pago-alta"><Icon name="check" size={16} />{ETIQUETA_PAGO_DEL_ALTA}</span>;
-    return <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
-      return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
-    }}><Icon name="download" size={16} />Comprobante</Button>;
+    return <>
+      <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
+        return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
+      }}><Icon name="download" size={16} />Comprobante</Button>
+      {puedeEmitirLiquidacionDeFila(item) && <Button tone="secondary" small onClick={() => onSettlement(item)}><Icon name="file" size={16} />Liquidación</Button>}
+    </>;
   }
   return <>{recargo}<Button tone="secondary" small onClick={() => onRegisterPayment(item)}>Registrar pago</Button></>;
 }
@@ -998,6 +1007,7 @@ type CollectionsViewProps = Readonly<{
   onAdjust: (item: FilaCobranza) => void;
   onLateFee: (item: FilaCobranza) => void;
   onViewReceipt: (paymentId: number) => void | Promise<unknown>;
+  onSettlement: (item: FilaCobranza) => void | Promise<unknown>;
   onRegisterPayment: (item: FilaCobranza) => void;
   onCreateContract: () => void;
 }>;
@@ -1014,6 +1024,7 @@ function CollectionsView({
   onAdjust,
   onLateFee,
   onViewReceipt,
+  onSettlement,
   onRegisterPayment,
   onCreateContract,
 }: CollectionsViewProps) {
@@ -1040,7 +1051,7 @@ function CollectionsView({
       </div>
       {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
         otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
-        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money"><span className="owner-monto">{item.monto}</span>{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onRegisterPayment={onRegisterPayment} /></td></tr>)}
+        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money"><span className="owner-monto">{item.monto}</span>{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onSettlement={onSettlement} onRegisterPayment={onRegisterPayment} /></td></tr>)}
       </tbody></table></div>}
     </>}
   </>;
@@ -1244,6 +1255,94 @@ function PropertyBreadcrumb({ name, onBack }: Readonly<{ name: string; onBack: (
   return <nav className="owner-crumb"><button type="button" onClick={onBack}>Propiedades</button><span>/</span><span>{name}</span></nav>;
 }
 
+function ablDemoFileName(label: string) {
+  return `comprobante-abl-${label.replace("/", "-")}.pdf`;
+}
+
+function AblReceiptUploaded({ label }: Readonly<{ label: string }>) {
+  return (
+    <div className="owner-abl-receipt-zone">
+      <Icon name="receipt" size={15} />
+      <span className="owner-abl-receipt-zone__name">{ablDemoFileName(label)}</span>
+      <button type="button" className="owner-icon-button" aria-label="Reemplazar comprobante"><Icon name="edit" size={14} /></button>
+      <button type="button" className="owner-icon-button" aria-label="Quitar comprobante"><Icon name="x" size={14} /></button>
+    </div>
+  );
+}
+
+function AblSectionDemo() {
+  const [selIdx, setSelIdx] = useState(0);
+  const demoPeriods = [
+    { label: "11/2026", status: "Impago", payer: "Inquilino", dot: "var(--error)", hasReceipt: true },
+    { label: "10/2026", status: "Pago",   payer: "Inquilino", dot: "#16a34a",      hasReceipt: true },
+    { label: "09/2026", status: "Pago",   payer: "Propietario", dot: "#16a34a",    hasReceipt: false },
+  ];
+  const sel = demoPeriods[selIdx];
+
+  return (
+    <div className="owner-card owner-abl">
+      <h2>ABL</h2>
+      <div className="owner-abl__partida">
+        <div className="owner-abl__partida-view">
+          <dl className="owner-definition">
+            <div><dt>Jurisdicción</dt><dd>CABA / AGIP</dd></div>
+            <div><dt>Partida</dt><dd>1234567-5</dd></div>
+          </dl>
+          <div className="owner-abl__partida-actions">
+            <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="edit" size={16} />Editar partida</button>
+            <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="link" size={16} />Consultar en AGIP</button>
+          </div>
+        </div>
+      </div>
+      <div className="owner-abl__periods">
+        <div className="owner-abl__periods-head">
+          <h3>Períodos</h3>
+          <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="plus" size={16} />Agregar período</button>
+        </div>
+        <div className="owner-abl__period-tabs" role="tablist">
+          {demoPeriods.map((p, i) => (
+            <button key={p.label} type="button" role="tab" className={`owner-abl-chip${i === selIdx ? " owner-abl-chip--selected" : ""}`} aria-selected={i === selIdx} onClick={() => setSelIdx(i)}>
+              <span className="owner-abl-chip__dot" style={{ background: p.dot }} aria-hidden="true" />
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="owner-abl-period">
+          <div className="owner-abl-period__head">
+            <b>{sel.label}</b>
+            <button type="button" className="owner-icon-button" aria-label={`Eliminar ${sel.label}`}><Icon name="trash" size={16} /></button>
+          </div>
+          <div className="owner-abl-period__body">
+            <div>
+              <span className="owner-abl-label">Estado</span>
+              <div className="owner-abl-toggle" role="radiogroup" aria-label="Estado">
+                {["Pago", "Impago", "Sin dato"].map((opt) => (
+                  <button key={opt} type="button" role="radio" aria-checked={sel.status === opt}>{opt}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="owner-abl-label">Pagador</span>
+              <div className="owner-abl-toggle" role="radiogroup" aria-label="Pagador">
+                {["Inquilino", "Propietario"].map((opt) => (
+                  <button key={opt} type="button" role="radio" aria-checked={sel.payer === opt}>{opt}</button>
+                ))}
+              </div>
+            </div>
+            <div className="owner-abl-period__receipt">
+              <span className="owner-abl-label">Comprobante</span>
+              {sel.hasReceipt
+                ? <AblReceiptUploaded label={sel.label} />
+                : <label className="owner-abl-upload-zone"><Icon name="paperclip" size={16} /><span>Arrastrá o hacé click para adjuntar</span><input type="file" className="sr-only" /></label>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemoContract }: Readonly<{
   demoProperty: (typeof properties)[number];
   onBack: () => void;
@@ -1255,7 +1354,7 @@ function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemo
   const contractCard = demoProperty.tenant
     ? <button type="button" className="owner-contract-callout" onClick={() => onOpenDemoContract(demoProperty.id)}><span><Icon name="file" /></span><div><b>Contrato con {demoProperty.tenant}</b><small>Ver condiciones, documento y próximas cuotas</small></div><Icon name="arrow" /></button>
     : <div className="owner-empty-callout"><Icon name="building" /><div><b>Esta propiedad está disponible</b><small>Cuando tenga un inquilino, cree un contrato para empezar a cobrarla.</small></div><Button small onClick={onCreateContract}>Crear contrato</Button></div>;
-  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section></>;
+  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section><AblSectionDemo /></>;
 }
 
 function PropertyStatusCard({ property, contractStatusIsUnknown, contractTitle, onCreateContract }: Readonly<{ property: FilaPropiedad; contractStatusIsUnknown: boolean; contractTitle: string; onCreateContract: () => void }>) {
@@ -1318,12 +1417,13 @@ function PropertyDetail({
 
   return <>
     <PropertyBreadcrumb name={property.direccion} onBack={onBack} />
-    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header>
+    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p>{property.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}</div><div className="owner-page-head__action">{headerActions}</div></header>
     <section className="owner-detail-grid">
       <PropertyStatusCard property={property} contractStatusIsUnknown={contractStatusIsUnknown} contractTitle={contractTitle} onCreateContract={onCreateContract} />
       <PropertyCharacteristicsCard address={address} category={category} details={details} preferences={preferences} />
       <RentEstimateCard propertyId={rawProperty.id} />
     </section>
+    <AblSection propertyId={rawProperty.id} />
   </>;
 }
 
@@ -1538,6 +1638,7 @@ function PropertiesView({
                 {/* Sin el contrato en la respuesta no se puede decir el estado, y
                     decir «Sin alquilar» sería inventarlo. */}
                 {!sinDatoDeContrato && <Status>{fila.estado}</Status>}
+                {fila.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}
                 <span className="owner-row__arrow"><Icon name="arrow" /></span>
               </button>
             ))}
@@ -2585,6 +2686,24 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     }
   }
 
+  // La liquidación se arma en el navegador: se piden la cuota y el contrato frescos, y el
+  // renderer del PDF —que pesa— se baja recién ahora, no con el panel. Devuelve la promesa
+  // para que el botón se ocupe solo mientras genera.
+  async function descargarLiquidacionDeCuota(fila: FilaCobranza) {
+    if (demo || !user) return;
+    try {
+      const [invoice, contract] = await Promise.all([
+        AlquiaBackendClient.invoices.get(fila.invoiceId),
+        AlquiaBackendClient.contracts.get(fila.contractId),
+      ]);
+      const modelo = armarLiquidacion({ invoice, contract, owner: user });
+      const { descargarLiquidacion } = await import("@/components/dashboard/liquidacion/LiquidacionPdf");
+      await descargarLiquidacion(modelo);
+    } catch {
+      toast.error("No se pudo generar la liquidación. Vuelva a intentarlo.");
+    }
+  }
+
   function revisarPago(fila: FilaCobranza) {
     setErrorAccion(null);
     setEnRevision(fila);
@@ -3005,7 +3124,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
   const viewContent: Record<OwnerView, React.ReactNode> = {
     propiedades: <PropertiesView propiedades={propiedades} propiedadesError={propiedadesError} sinDatoDeContrato={sinDatoDeContrato} query={query} ciudades={ciudades} dorms={dorms} extras={extras} estado={estado} panelAbierto={panelAbierto} setQuery={setQuery} setCiudades={setCiudades} setDorms={setDorms} setExtras={setExtras} setEstado={setEstado} onPanelOpenChange={setPanelAbierto} onCreateProperty={() => void nuevaPropiedad()} onOpenProperty={(propertyId) => openDetail("property", propertyId)} borradores={borradoresDePropiedad} onResumeDraft={retomarBorradorDePropiedad} onDiscardDraft={setDescartandoBorradorDePropiedad} />,
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
-    cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
+    cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onSettlement={descargarLiquidacionDeCuota} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
     herramientas: <Herramientas demo={demo} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,

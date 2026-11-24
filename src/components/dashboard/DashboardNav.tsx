@@ -8,7 +8,7 @@ import { useAuth } from "@/context/auth-context";
 import { useTheme } from "@/context/theme-context";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import { contarCuotasPendientes } from "@/lib/cobranzas";
-import { Icon } from "@/components/ui/Icon";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
 import { abrirReporte } from "@/lib/reportes";
 
@@ -17,14 +17,15 @@ export const NAV_RESET_EVENT = "alquia:nav-reset";
 
 export type WorkspaceView = "inicio" | "propiedades" | "contratos" | "cobranzas" | "inquilinos" | "herramientas" | "configuracion";
 
-const ITEMS = [
-  { label: "Inicio", href: "/dashboard", view: "inicio" as const, icon: "home" as const },
-  { label: "Propiedades", href: "/dashboard/propiedades", view: "propiedades" as const, icon: "building" as const },
-  { label: "Contratos", href: "/dashboard/contratos", view: "contratos" as const, icon: "file" as const },
-  { label: "Inquilinos", href: "/dashboard/inquilinos", view: "inquilinos" as const, icon: "users" as const },
-  { label: "Cobranzas", href: "/dashboard/cobranzas", view: "cobranzas" as const, icon: "card" as const },
-  { label: "Herramientas", href: "/dashboard/herramientas", view: "herramientas" as const, icon: "tools" as const },
-  { label: "Configuración", href: "/dashboard/configuracion", view: "configuracion" as const, icon: "settings" as const },
+/** `nuevo` marca una sección recién lanzada con el cartel «Nuevo»; sacarla cuando deje de serlo. */
+const ITEMS: ReadonlyArray<{ label: string; href: string; view: WorkspaceView; icon: IconName; nuevo?: boolean }> = [
+  { label: "Inicio", href: "/dashboard", view: "inicio" as const, icon: "home" },
+  { label: "Propiedades", href: "/dashboard/propiedades", view: "propiedades" as const, icon: "building" },
+  { label: "Contratos", href: "/dashboard/contratos", view: "contratos" as const, icon: "file" },
+  { label: "Inquilinos", href: "/dashboard/inquilinos", view: "inquilinos" as const, icon: "users" },
+  { label: "Cobranzas", href: "/dashboard/cobranzas", view: "cobranzas" as const, icon: "card" },
+  { label: "Herramientas", href: "/dashboard/herramientas", view: "herramientas" as const, icon: "tools", nuevo: true },
+  { label: "Configuración", href: "/dashboard/configuracion", view: "configuracion" as const, icon: "settings" },
 ];
 
 interface DashboardNavProps {
@@ -124,11 +125,11 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
           <li key={item.href}>
           {onNavigate ? (
             <button type="button" data-tutorial={anclaDe[item.view]} onClick={() => { onNavigate(item.view); setOpen(false); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
-              <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
+              <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}{item.nuevo && <span className="owner-nav__new">Nuevo</span>}
             </button>
           ) : (
             <Link href={item.href} data-tutorial={anclaDe[item.view]} onClick={() => { setOpen(false); window.dispatchEvent(new Event(NAV_RESET_EVENT)); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
-              <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}
+              <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}{item.nuevo && <span className="owner-nav__new">Nuevo</span>}
             </Link>
           )}
           </li>

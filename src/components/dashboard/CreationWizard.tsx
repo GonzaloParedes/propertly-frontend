@@ -21,6 +21,7 @@ import { faltaResponder, mesesElegibles, mesesTranscurridos, paidThroughDe, peri
 import PagosTranscurridos from "@/components/dashboard/PagosTranscurridos";
 import { formatearDireccion } from "@/lib/tenant-rows";
 import ContractFromPdf from "@/components/dashboard/ContractFromPdf";
+import type { Borrador as BorradorDePdf } from "@/lib/importacion-pdf";
 import OtrasCondiciones from "@/components/dashboard/OtrasCondiciones";
 import Dialog from "@/components/ui/Dialog";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
@@ -31,6 +32,7 @@ import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import { usePdfDelBorrador } from "@/hooks/usePdfDelBorrador";
 import { crearContratoDesdeBorrador, type ResultadoDelAlta } from "@/lib/crear-contrato";
 import { crearPropiedadDesdeBorrador } from "@/lib/crear-propiedad";
+import { teniaPropiedadesAntes, trackFirstProperty } from "@/lib/meta-pixel";
 import { armarContenidoDeBorradorDePropiedad, deserializarBorradorDePropiedad, type EstadoDelBorradorDePropiedad } from "@/lib/borradores-de-propiedad";
 import { CartelAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import { armarOtrasCondiciones, otrasCondicionesValidas, punitoriosCargados, resumenDeOtrasCondiciones, SIN_OTRAS_CONDICIONES, type OtrasCondiciones as Condiciones } from "@/lib/otras-condiciones";
@@ -1393,7 +1395,11 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     setGuardando(true);
     try {
       await auto.congelar();
+      // ALQ-146: «primera propiedad» = la cuenta no tenía ninguna antes de este alta. Se consulta
+      // antes de crear (y sólo con el píxel activo, para no sumar un GET en local/dev).
+      const teniaPropiedades = await teniaPropiedadesAntes(() => AlquiaBackendClient.properties.list());
       await crearPropiedadDesdeBorrador(armarPropiedad(direccion, categoria), auto.id);
+      trackFirstProperty(teniaPropiedades);
       auto.detener();
       terminarPropiedad(direccion, categoria);
     } catch (err) {
@@ -1622,7 +1628,34 @@ function Asistente({ kind: tipo, onClose, onComplete, onOpenContract, demo = fal
     return contractStep;
   })();
   if (modo === "pdf") {
-    const alternar = { onBack: () => setModo("elegir"), onManual: () => { setModoElegido("manual"); setModo("manual"); }, onClose, onComplete };
+    const aplicarBorradorDePdf = (b: BorradorDePdf) => {
+      setNombre(b.nombre);
+      setApellido(b.apellido);
+      setCuit(b.cuit);
+      setCorreo(b.correo);
+      setTelefono(b.telefono);
+      setAlquiler(b.alquiler);
+      if (b.inicio) setInicio(b.inicio);
+      const plazo = Number(b.plazo);
+      if (plazo > 0) setTerm(plazo);
+      const dia = Number(b.dia);
+      if (dia >= 1 && dia <= 28) setDiaVencimiento(dia);
+      const m = b.metodo;
+      if (m === "FIXED_PERCENTAGE" || m === "ICL" || m === "IPC" || m === "NONE") {
+        setMethod(m);
+        if (m === "FIXED_PERCENTAGE") setPorcentaje(b.valorDeActualizacion);
+      }
+      const freq = Number(b.frecuencia);
+      if (freq >= 1) setFrecuencia(freq);
+      if (b.propiedadId !== null) { setPropiedadId(b.propiedadId); setPropiedadNueva(false); }
+      if (b.inquilinoId !== null) { setInquilinoId(b.inquilinoId); setInquilinoNuevo(false); }
+    };
+    const alternar = {
+      onBack: () => setModo("elegir"),
+      onManual: (b?: BorradorDePdf) => { if (b) aplicarBorradorDePdf(b); setModoElegido("manual"); setModo("manual"); },
+      onClose,
+      onComplete,
+    };
     return <ContractFromPdf {...alternar} onOpenContract={onOpenContract} />;
   }
 

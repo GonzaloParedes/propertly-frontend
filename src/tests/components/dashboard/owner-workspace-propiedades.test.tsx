@@ -15,6 +15,7 @@ vi.mock("@/lib/backend-client", () => ({
     properties: { list: vi.fn(), create: vi.fn(), archive: vi.fn(), update: vi.fn() },
     invoices: { list: vi.fn() },
     propertyDrafts: { list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() },
+    abl: { get: vi.fn(), listPeriods: vi.fn() },
   },
 }));
 
@@ -63,6 +64,8 @@ const CUOTA_VENCIDA: InvoiceResponse = {
 beforeEach(() => {
   vi.resetAllMocks();
   mockBorradores.list.mockResolvedValue([]);
+  vi.mocked(AlquiaBackendClient.abl.get).mockResolvedValue({ jurisdiction: null, partida: null, dv: null, unpaidAbl: false });
+  vi.mocked(AlquiaBackendClient.abl.listPeriods).mockResolvedValue([]);
 });
 
 function conDatos(properties = [RIVADAVIA, MITRE], invoices: InvoiceResponse[] = []) {

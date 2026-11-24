@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import { render, screen } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import DashboardNav from "@/components/dashboard/DashboardNav";
@@ -125,5 +126,150 @@ describe("Avisanos de este error", () => {
     await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
 
     expect(send).toHaveBeenCalledWith(expect.objectContaining({ errorMessage: "Falló", sentryEventId: undefined }));
+  });
+});
+
+describe("Captura de pantalla (ALQ-200)", () => {
+  const MB5 = 5242880;
+  const png = (nombre = "captura.png") => new File(["x"], nombre, { type: "image/png" });
+
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => "blob:previsualizacion");
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  const inputDeCaptura = () => screen.getByLabelText("Archivo de captura") as HTMLInputElement;
+
+  async function abrirYEscribir() {
+    render(<><DashboardNav /><ReportarProblema /></>);
+    await abrirDesdeLaNavegacion();
+    await userEvent.type(screen.getByRole("textbox"), "No carga");
+  }
+
+  function pegar(archivo: File | null) {
+    const items = archivo ? [{ kind: "file", type: archivo.type, getAsFile: () => archivo }] : [{ kind: "string", type: "text/plain", getAsFile: () => null }];
+    const evento = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(evento, "clipboardData", { value: { items } });
+    act(() => { document.body.dispatchEvent(evento); });
+    return evento;
+  }
+
+  it("ofrece el selector con los tipos aceptados", async () => {
+    await abrirYEscribir();
+    expect(screen.getByRole("button", { name: "Adjuntar captura" })).toBeInTheDocument();
+    expect(inputDeCaptura()).toHaveAttribute("accept", "image/png,image/jpeg,image/webp");
+  });
+
+  it("adjuntar un archivo válido muestra la miniatura y envía multipart con el archivo", async () => {
+    await abrirYEscribir();
+    const archivo = png();
+    await userEvent.upload(inputDeCaptura(), archivo);
+
+    expect(screen.getByRole("img", { name: /captura adjunta/ })).toHaveAttribute("src", "blob:previsualizacion");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ type: "BUG", description: "No carga" }), archivo);
+    expect(await screen.findByText(/Recibimos su reporte/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("pegar una imagen con el diálogo abierto la adjunta y reemplaza la anterior", async () => {
+    await abrirYEscribir();
+    const evento = pegar(png("a.png"));
+    expect(evento.defaultPrevented).toBe(true);
+    expect(await screen.findByRole("img", { name: /captura adjunta/ })).toBeInTheDocument();
+
+    const otra = new File(["y"], "b.png", { type: "image/png" });
+    pegar(otra);
+    expect(await screen.findByText("b.png")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    expect(send).toHaveBeenCalledWith(expect.anything(), otra);
+  });
+
+  it("pegar texto no se intercepta", async () => {
+    await abrirYEscribir();
+    expect(pegar(null).defaultPrevented).toBe(false);
+    expect(screen.queryByRole("img", { name: /captura adjunta/ })).not.toBeInTheDocument();
+  });
+
+  it("quitar la captura la saca y el envío vuelve a ir sin archivo", async () => {
+    await abrirYEscribir();
+    await userEvent.upload(inputDeCaptura(), png());
+    await userEvent.click(screen.getByRole("button", { name: "Quitar" }));
+
+    expect(screen.queryByRole("img", { name: /captura adjunta/ })).not.toBeInTheDocument();
+    expect(inputDeCaptura().value).toBe("");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    expect(send.mock.calls[0]).toHaveLength(1);
+  });
+
+  it("rechaza una captura de más de 5 MB sin enviarla", async () => {
+    await abrirYEscribir();
+    const grande = new File(["x"], "grande.png", { type: "image/png" });
+    Object.defineProperty(grande, "size", { value: MB5 + 1 });
+    await userEvent.upload(inputDeCaptura(), grande);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("pesa más de 5 MB");
+    expect(screen.queryByRole("img", { name: /captura adjunta/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    expect(send.mock.calls[0]).toHaveLength(1);
+  });
+
+  it("acepta una captura de exactamente 5 MB", async () => {
+    await abrirYEscribir();
+    const justa = new File(["x"], "justa.webp", { type: "image/webp" });
+    Object.defineProperty(justa, "size", { value: MB5 });
+    await userEvent.upload(inputDeCaptura(), justa);
+    expect(screen.getByRole("img", { name: /captura adjunta/ })).toBeInTheDocument();
+  });
+
+  it("rechaza un tipo no soportado, aunque se llame .png", async () => {
+    await abrirYEscribir();
+    pegar(new File(["x"], "anim.gif", { type: "image/gif" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("PNG, JPG o WebP");
+    expect(screen.queryByRole("img", { name: /captura adjunta/ })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [413, ERROR.FEEDBACK_SCREENSHOT_TOO_LARGE, "pesa más de 5 MB"],
+    [415, ERROR.FEEDBACK_SCREENSHOT_UNSUPPORTED_TYPE, "No pudimos leer la captura"],
+    [413, null, "pesa más de 5 MB"],
+    [415, null, "No pudimos leer la captura"],
+  ])("el %s del backend (type %s) muestra la copy de la captura y deja reintentar", async (status, type, texto) => {
+    send.mockRejectedValue(new ApiError(status, "x", type));
+    await abrirYEscribir();
+    await userEvent.upload(inputDeCaptura(), png());
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(texto);
+    expect(screen.getByRole("dialog", { name: "Reportar un problema" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveValue("No carga");
+    expect(screen.getByRole("img", { name: /captura adjunta/ })).toBeInTheDocument();
+  });
+
+  it("sin captura el reporte sale como siempre: mismos campos, sin segundo argumento y con toast", async () => {
+    await abrirYEscribir();
+    await userEvent.click(screen.getByRole("button", { name: "Enviar" }));
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith({
+      type: "BUG",
+      description: "No carga",
+      pageUrl: window.location.href,
+      userAgent: window.navigator.userAgent,
+      errorMessage: undefined,
+      sentryEventId: "evento-anterior",
+    });
+    expect(send.mock.calls[0]).toHaveLength(1);
+    expect(await screen.findByText(/Recibimos su reporte/)).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("al reabrir el diálogo no queda la captura anterior", async () => {
+    await abrirYEscribir();
+    await userEvent.upload(inputDeCaptura(), png());
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await abrirDesdeLaNavegacion();
+    expect(screen.queryByRole("img", { name: /captura adjunta/ })).not.toBeInTheDocument();
   });
 });
