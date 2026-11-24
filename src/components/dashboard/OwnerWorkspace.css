@@ -1118,10 +1118,10 @@
 .owner-abl__form-group { display: grid; gap: var(--esp-10) }
 .owner-abl__form-group .owner-wizard-field { padding: 14px var(--esp-18) }
 .owner-abl__form-actions { display: flex; flex-wrap: wrap; gap: var(--esp-10); align-items: center }
-.owner-abl-label { color: var(--gris); font: 700 14px var(--font-nunito-sans), sans-serif; letter-spacing: .05em }
+.owner-abl-label { color: var(--gris); font: 700 12px var(--font-nunito-sans), sans-serif; letter-spacing: .05em }
 
 .owner-abl-toggle { display: flex; flex-wrap: wrap; gap: 8px }
-.owner-abl-toggle button { min-height: 44px; padding: 0 var(--esp-14); border: 0; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer; font: 600 15px var(--font-nunito-sans), sans-serif; transition: background .12s, box-shadow .12s }
+.owner-abl-toggle button { min-height: 36px; padding: 0 var(--esp-12); border: 0; border-radius: 8px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer; font: 600 14px var(--font-nunito-sans), sans-serif; transition: background .12s, box-shadow .12s }
 .owner-abl-toggle button[aria-checked="true"] { background: var(--indigo-suave); box-shadow: inset 0 0 0 2px var(--indigo); color: var(--indigo-osc) }
 .owner-abl-toggle button:disabled { cursor: default; opacity: .55 }
 
@@ -1132,12 +1132,16 @@
 .owner-abl__empty { padding: var(--esp-20) 0 }
 .owner-abl__empty p { margin: 0; color: var(--gris) }
 
-.owner-abl__period-list { display: grid; gap: 11px }
-.owner-abl-period { padding: var(--esp-18) var(--esp-20); border-radius: 14px; background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde) }
-.owner-abl-period__head { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-10); margin-bottom: var(--esp-14) }
-.owner-abl-period__head b { font: 700 16px var(--font-quicksand), sans-serif }
-.owner-abl-period__body { display: grid; gap: var(--esp-14) }
-.owner-abl-period__receipt { display: grid; gap: var(--esp-8) }
+.owner-abl__period-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: var(--esp-14); scrollbar-width: none }
+.owner-abl__period-tabs::-webkit-scrollbar { display: none }
+.owner-abl-chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 var(--esp-14); border: 0; border-radius: 20px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer; font: 600 13px var(--font-nunito-sans), sans-serif; white-space: nowrap; transition: background .12s, box-shadow .12s }
+.owner-abl-chip--selected { background: var(--indigo-suave); box-shadow: inset 0 0 0 2px var(--indigo); color: var(--indigo-osc) }
+.owner-abl-chip__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0 }
+.owner-abl-period { padding: 14px var(--esp-16); border-radius: 12px; background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde) }
+.owner-abl-period__head { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-10); margin-bottom: 10px }
+.owner-abl-period__head b { font: 700 15px var(--font-quicksand), sans-serif }
+.owner-abl-period__body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px }
+.owner-abl-period__receipt { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--esp-8) }
 .owner-abl-field-error { margin: 0; color: var(--error); font-size: 14px }
 
 .owner-abl-receipt-row { display: flex; align-items: center; gap: var(--esp-10); flex-wrap: wrap }
@@ -1155,6 +1159,7 @@
   .owner-abl__partida-actions .owner-button { width: 100% }
   .owner-abl__form-actions { flex-direction: column-reverse }
   .owner-abl__form-actions .owner-button { width: 100% }
-  .owner-abl-period__body { gap: var(--esp-18) }
+  .owner-abl-period__body { grid-template-columns: 1fr; gap: var(--esp-12) }
+  .owner-abl-period__receipt { grid-column: 1 / -1 }
   .owner-abl-receipt-row { gap: var(--esp-8) }
 }

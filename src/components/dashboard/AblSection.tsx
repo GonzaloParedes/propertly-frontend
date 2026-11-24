@@ -48,6 +48,34 @@ function validatePartida(jurisdiction: AblJurisdiction, partida: string, dv: str
   return null;
 }
 
+const STATUS_DOT: Record<string, string> = {
+  PAGO: "#16a34a",
+  IMPAGO: "var(--error)",
+  SIN_DATO: "var(--gris)",
+};
+
+function PeriodChip({
+  period,
+  selected,
+  onClick,
+}: Readonly<{ period: AblPeriodResponse; selected: boolean; onClick: () => void }>) {
+  return (
+    <button
+      type="button"
+      className={`owner-abl-chip${selected ? " owner-abl-chip--selected" : ""}`}
+      aria-selected={selected}
+      onClick={onClick}
+    >
+      <span
+        className="owner-abl-chip__dot"
+        style={{ background: STATUS_DOT[period.status] ?? "var(--gris)" }}
+        aria-hidden="true"
+      />
+      {formatPeriodo(period.period)}
+    </button>
+  );
+}
+
 type DeleteConfirm = { period: AblPeriodResponse; busy: boolean; error: string | null };
 
 type ReceiptState = { busy: boolean; error: string | null };
@@ -310,12 +338,18 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
   const [addingPeriod, setAddingPeriod] = useState(false);
   const [addPeriodError, setAddPeriodError] = useState<string | null>(null);
 
+  // Selected period (chip carousel)
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState<string | null>(null);
+
   // Delete confirm
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   useEffect(() => {
     void AlquiaBackendClient.abl.get(propertyId).then(setAbl).catch(() => setAbl("error"));
-    void AlquiaBackendClient.abl.listPeriods(propertyId).then(setPeriods).catch(() => setPeriods("error"));
+    void AlquiaBackendClient.abl.listPeriods(propertyId).then((list) => {
+      setPeriods(list);
+      setSelectedPeriodKey((prev) => prev ?? (list.length > 0 ? list[0].period : null));
+    }).catch(() => setPeriods("error"));
   }, [propertyId]);
 
   function startEditing() {
@@ -415,6 +449,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
         }
         return [created, ...prev];
       });
+      setSelectedPeriodKey(created.period);
       setShowAddPeriod(false);
       setNewPeriod(currentMonthStr());
       setNewStatus("SIN_DATO");
@@ -435,9 +470,15 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
     setDeleteConfirm((prev) => prev ? { ...prev, busy: true, error: null } : null);
     try {
       await AlquiaBackendClient.abl.deletePeriod(propertyId, deleteConfirm.period.period);
+      const deletedKey = deleteConfirm.period.period;
       setPeriods((prev) => {
         if (!prev || prev === "error") return prev;
-        return prev.filter((p) => p.period !== deleteConfirm.period.period);
+        const next = prev.filter((p) => p.period !== deletedKey);
+        if (selectedPeriodKey === deletedKey) {
+          const idx = prev.findIndex((p) => p.period === deletedKey);
+          setSelectedPeriodKey(next.length > 0 ? next[Math.min(idx, next.length - 1)].period : null);
+        }
+        return next;
       });
       setDeleteConfirm(null);
     } catch (err) {
@@ -700,21 +741,32 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
             <p>No hay períodos registrados. Usá «Agregar período» para registrar el estado mensual del ABL.</p>
           </div>
         )}
-        {periods !== null && periods !== "error" && periods.length > 0 && (
-          <div className="owner-abl__period-list">
-            {periods.map((p) => (
+        {periods !== null && periods !== "error" && periods.length > 0 && (() => {
+          const selectedPeriod = periods.find((p) => p.period === selectedPeriodKey) ?? periods[0];
+          return (
+            <>
+              <div className="owner-abl__period-tabs" role="tablist" aria-label="Períodos ABL">
+                {periods.map((p) => (
+                  <PeriodChip
+                    key={p.period}
+                    period={p}
+                    selected={selectedPeriod.period === p.period}
+                    onClick={() => setSelectedPeriodKey(p.period)}
+                  />
+                ))}
+              </div>
               <PeriodRow
-                key={p.period}
+                key={selectedPeriod.period}
                 propertyId={propertyId}
-                period={p}
+                period={selectedPeriod}
                 onStatusChange={updatePeriod}
                 onPayerChange={updatePeriod}
                 onReceiptChanged={updatePeriod}
                 onDeleted={requestDelete}
               />
-            ))}
-          </div>
-        )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Confirm delete dialog */}

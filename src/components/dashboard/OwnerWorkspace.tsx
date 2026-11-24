@@ -1255,6 +1255,78 @@ function PropertyBreadcrumb({ name, onBack }: Readonly<{ name: string; onBack: (
   return <nav className="owner-crumb"><button type="button" onClick={onBack}>Propiedades</button><span>/</span><span>{name}</span></nav>;
 }
 
+function AblSectionDemo() {
+  return (
+    <div className="owner-card owner-abl">
+      <h2>ABL</h2>
+      <div className="owner-abl__partida">
+        <div className="owner-abl__partida-view">
+          <dl className="owner-definition">
+            <div><dt>Jurisdicción</dt><dd>CABA / AGIP</dd></div>
+            <div><dt>Partida</dt><dd>1234567-5</dd></div>
+          </dl>
+          <div className="owner-abl__partida-actions">
+            <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="edit" size={16} />Editar partida</button>
+            <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="link" size={16} />Consultar en AGIP</button>
+          </div>
+        </div>
+      </div>
+      {(() => {
+        const demoPeriods = [
+          { period: "11/2026", label: "11/2026", status: "Impago", payer: "Inquilino", hasReceipt: true, dot: "var(--error)" },
+          { period: "10/2026", label: "10/2026", status: "Pago", payer: "Inquilino", hasReceipt: true, dot: "#16a34a" },
+          { period: "09/2026", label: "09/2026", status: "Pago", payer: "Propietario", hasReceipt: false, dot: "#16a34a" },
+        ];
+        const sel = demoPeriods[0];
+        return (
+          <div className="owner-abl__periods">
+            <div className="owner-abl__periods-head">
+              <h3>Períodos</h3>
+              <button type="button" className="owner-button owner-button--secondary owner-button--small"><Icon name="plus" size={16} />Agregar período</button>
+            </div>
+            <div className="owner-abl__period-tabs" role="tablist">
+              {demoPeriods.map((p, i) => (
+                <button key={p.period} type="button" className={`owner-abl-chip${i === 0 ? " owner-abl-chip--selected" : ""}`} aria-selected={i === 0}>
+                  <span className="owner-abl-chip__dot" style={{ background: p.dot }} aria-hidden="true" />
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="owner-abl-period">
+              <div className="owner-abl-period__head">
+                <b>{sel.label}</b>
+                <button type="button" className="owner-icon-button" aria-label={`Eliminar ${sel.label}`}><Icon name="trash" size={16} /></button>
+              </div>
+              <div className="owner-abl-period__body">
+                <div>
+                  <span className="owner-abl-label">Estado</span>
+                  <div className="owner-abl-toggle" role="radiogroup" aria-label="Estado">
+                    {["Pago", "Impago", "Sin dato"].map((opt) => (
+                      <button key={opt} type="button" role="radio" aria-checked={sel.status === opt}>{opt}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span className="owner-abl-label">Pagador</span>
+                  <div className="owner-abl-toggle" role="radiogroup" aria-label="Pagador">
+                    {["Inquilino", "Propietario"].map((opt) => (
+                      <button key={opt} type="button" role="radio" aria-checked={sel.payer === opt}>{opt}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="owner-abl-period__receipt">
+                  <span className="owner-abl-label">Comprobante</span>
+                  <div className="owner-abl-receipt-row"><button type="button" className="owner-abl-receipt-link"><Icon name="receipt" size={15} />comprobante-abl-11-2026.pdf</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemoContract }: Readonly<{
   demoProperty: (typeof properties)[number];
   onBack: () => void;
@@ -1266,7 +1338,7 @@ function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemo
   const contractCard = demoProperty.tenant
     ? <button type="button" className="owner-contract-callout" onClick={() => onOpenDemoContract(demoProperty.id)}><span><Icon name="file" /></span><div><b>Contrato con {demoProperty.tenant}</b><small>Ver condiciones, documento y próximas cuotas</small></div><Icon name="arrow" /></button>
     : <div className="owner-empty-callout"><Icon name="building" /><div><b>Esta propiedad está disponible</b><small>Cuando tenga un inquilino, cree un contrato para empezar a cobrarla.</small></div><Button small onClick={onCreateContract}>Crear contrato</Button></div>;
-  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section></>;
+  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section><AblSectionDemo /></>;
 }
 
 function PropertyStatusCard({ property, contractStatusIsUnknown, contractTitle, onCreateContract }: Readonly<{ property: FilaPropiedad; contractStatusIsUnknown: boolean; contractTitle: string; onCreateContract: () => void }>) {
