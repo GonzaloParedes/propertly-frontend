@@ -287,9 +287,9 @@ function PeriodRow({
               </button>
             </div>
           ) : (
-            <label className="owner-abl-upload-label">
-              <Icon name="paperclip" size={15} />
-              {receipt.busy ? "Subiendo…" : "Adjuntar archivo"}
+            <label className="owner-abl-upload-zone">
+              <Icon name="paperclip" size={16} />
+              <span>{receipt.busy ? "Subiendo…" : "Arrastrá o hacé click para adjuntar"}</span>
               <input
                 ref={fileRef}
                 type="file"

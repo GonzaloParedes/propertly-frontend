@@ -1152,6 +1152,10 @@
 
 .owner-abl-upload-label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 var(--esp-14); border: 0; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); cursor: pointer; font: 600 15px var(--font-nunito-sans), sans-serif }
 .owner-abl-upload-label:hover { background: var(--indigo-suave); box-shadow: inset 0 0 0 2px var(--indigo); color: var(--indigo-osc) }
+.owner-abl-upload-zone { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border: 2px dashed var(--borde); border-radius: 10px; color: var(--gris); cursor: pointer; font: 600 14px var(--font-nunito-sans), sans-serif; transition: border-color .12s, color .12s }
+.owner-abl-upload-zone:hover { border-color: var(--indigo); color: var(--indigo) }
+.owner-abl-upload-text { display: inline-flex; align-items: center; gap: 6px; min-height: 0; padding: 0; border: 0; background: none; color: var(--indigo); cursor: pointer; font: 600 14px var(--font-nunito-sans), sans-serif; text-decoration: underline; text-underline-offset: 3px }
+.owner-abl-upload-text:hover { color: var(--indigo-osc) }
 
 /* Mobile */
 @media (max-width: 620px) {
