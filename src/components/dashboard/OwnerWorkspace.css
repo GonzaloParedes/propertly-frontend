@@ -71,9 +71,11 @@
 
 .owner-nav__profile-text{overflow:hidden;white-space:nowrap;transition:max-width .2s ease,opacity .15s ease}
 [data-nav-collapsed] .owner-nav__profile-text{max-width:0;opacity:0}
-[data-nav-collapsed] .owner-nav__profile{justify-content:center}
+[data-nav-collapsed] .owner-nav__profile{justify-content:center;gap:0}
 
-[data-nav-collapsed] .owner-nav__link,[data-nav-collapsed] .owner-nav__logout{justify-content:center;gap:0;padding-left:var(--esp-10);padding-right:var(--esp-10)}
+[data-nav-collapsed] .owner-nav__link,[data-nav-collapsed] .owner-nav__logout{justify-content:center;gap:0;padding-left:0;padding-right:0}
+[data-nav-collapsed] .owner-nav__footer{justify-content:center;gap:var(--esp-8)}
+[data-nav-collapsed] .owner-nav__footer .owner-nav__logout{flex:none;width:auto;min-width:0}
 
 [data-nav-collapsed] .owner-nav__badge{min-width:10px;width:10px;height:10px;font-size:0;margin-left:2px}
 
