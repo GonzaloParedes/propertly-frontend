@@ -1257,12 +1257,25 @@ function PropertyBreadcrumb({ name, onBack }: Readonly<{ name: string; onBack: (
 
 function AblSectionDemo() {
   const [selIdx, setSelIdx] = useState(0);
+  const fname = (label: string) => `comprobante-abl-${label.replace("/", "-")}.pdf`;
   const demoPeriods = [
     { label: "11/2026", status: "Impago", payer: "Inquilino", dot: "var(--error)", hasReceipt: true },
     { label: "10/2026", status: "Pago",   payer: "Inquilino", dot: "#16a34a",      hasReceipt: true },
     { label: "09/2026", status: "Pago",   payer: "Propietario", dot: "#16a34a",    hasReceipt: false },
   ];
   const sel = demoPeriods[selIdx];
+
+  function ReceiptUploaded({ label }: { label: string }) {
+    return (
+      <div className="owner-abl-receipt-zone">
+        <Icon name="receipt" size={15} />
+        <span className="owner-abl-receipt-zone__name">{fname(label)}</span>
+        <button type="button" className="owner-icon-button" aria-label="Reemplazar comprobante"><Icon name="edit" size={14} /></button>
+        <button type="button" className="owner-icon-button" aria-label="Quitar comprobante"><Icon name="x" size={14} /></button>
+      </div>
+    );
+  }
+
   return (
     <div className="owner-card owner-abl">
       <h2>ABL</h2>
@@ -1316,7 +1329,7 @@ function AblSectionDemo() {
             <div className="owner-abl-period__receipt">
               <span className="owner-abl-label">Comprobante</span>
               {sel.hasReceipt
-                ? <div className="owner-abl-receipt-row"><button type="button" className="owner-abl-receipt-link"><Icon name="receipt" size={15} />comprobante-abl-{sel.label.replace("/", "-")}.pdf</button></div>
+                ? <ReceiptUploaded label={sel.label} />
                 : <label className="owner-abl-upload-zone"><Icon name="paperclip" size={16} /><span>Arrastrá o hacé click para adjuntar</span><input type="file" className="sr-only" /></label>
               }
             </div>

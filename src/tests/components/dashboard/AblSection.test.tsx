@@ -158,7 +158,7 @@ describe("períodos", () => {
   it("muestra un período existente con su formato MM/AAAA", async () => {
     mockAbl(ablVacio, [periodoBase]);
     render(<AblSection propertyId={12} />);
-    await screen.findByText("11/2026");
+    await waitFor(() => expect(screen.getAllByText("11/2026").length).toBeGreaterThan(0));
   });
 
   it("agrega un período y lo muestra en la lista", async () => {
@@ -168,25 +168,25 @@ describe("períodos", () => {
     await userEvent.click(screen.getByRole("button", { name: /Agregar período/ }));
     await userEvent.click(screen.getByRole("button", { name: /Guardar período/ }));
     await waitFor(() => expect(AlquiaBackendClient.abl.savePeriod).toHaveBeenCalled());
-    await screen.findByText("11/2026");
+    await waitFor(() => expect(screen.getAllByText("11/2026").length).toBeGreaterThan(0));
   });
 
   it("solicita confirmación antes de borrar y no borra si se cancela", async () => {
     mockAbl(ablVacio, [periodoBase]);
     render(<AblSection propertyId={14} />);
-    await screen.findByText("11/2026");
+    await waitFor(() => expect(screen.getAllByText("11/2026").length).toBeGreaterThan(0));
     await userEvent.click(screen.getByRole("button", { name: /Eliminar período 11\/2026/ }));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(AlquiaBackendClient.abl.deletePeriod).not.toHaveBeenCalled();
-    expect(screen.getByText("11/2026")).toBeInTheDocument();
+    expect(screen.getAllByText("11/2026").length).toBeGreaterThan(0);
   });
 
   it("borra el período al confirmar", async () => {
     mockAbl(ablVacio, [periodoBase]);
     render(<AblSection propertyId={15} />);
-    await screen.findByText("11/2026");
+    await waitFor(() => expect(screen.getAllByText("11/2026").length).toBeGreaterThan(0));
     await userEvent.click(screen.getByRole("button", { name: /Eliminar período 11\/2026/ }));
     await userEvent.click(screen.getByRole("button", { name: "Borrar período" }));
     await waitFor(() => expect(AlquiaBackendClient.abl.deletePeriod).toHaveBeenCalledWith(15, "2026-11"));
@@ -200,7 +200,7 @@ describe("comprobante", () => {
   it("rechaza archivos con tipo no permitido antes de enviar al backend", async () => {
     mockAbl(ablVacio, [periodoBase]);
     render(<AblSection propertyId={16} />);
-    await screen.findByText("11/2026");
+    await waitFor(() => expect(screen.getAllByText("11/2026").length).toBeGreaterThan(0));
     const file = new File(["data"], "archivo.exe", { type: "application/octet-stream" });
     const inputs = document.querySelectorAll<HTMLInputElement>("input[type=file]");
     expect(inputs.length).toBeGreaterThan(0);
@@ -214,7 +214,7 @@ describe("comprobante", () => {
   it("rechaza archivos de más de 10 MB antes de enviar al backend", async () => {
     mockAbl(ablVacio, [periodoBase]);
     render(<AblSection propertyId={17} />);
-    await screen.findByText("11/2026");
+    await waitFor(() => expect(screen.getAllByText("11/2026").length).toBeGreaterThan(0));
     const bigFile = new File(["x".repeat(11 * 1024 * 1024)], "grande.pdf", { type: "application/pdf" });
     const uploadInput = document.querySelector<HTMLInputElement>("input[type=file]");
     expect(uploadInput).not.toBeNull();

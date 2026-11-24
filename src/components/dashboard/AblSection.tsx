@@ -255,17 +255,18 @@ function PeriodRow({
         <div className="owner-abl-period__receipt">
           <span className="owner-abl-label">Comprobante</span>
           {period.hasReceipt ? (
-            <div className="owner-abl-receipt-row">
+            <div className="owner-abl-receipt-zone">
+              <Icon name="receipt" size={15} />
               <button
                 type="button"
-                className="owner-abl-receipt-link"
+                className="owner-abl-receipt-zone__name"
                 onClick={() => void downloadReceipt()}
                 disabled={receipt.busy}
+                style={{ background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer" }}
               >
-                <Icon name="receipt" size={15} />
                 {period.receiptFileName ?? "Comprobante"}
               </button>
-              <label className="owner-abl-receipt-replace" aria-label="Reemplazar comprobante">
+              <label className="owner-icon-button" aria-label="Reemplazar comprobante" style={{ cursor: "pointer" }}>
                 <Icon name="edit" size={14} />
                 <input
                   ref={fileRef}

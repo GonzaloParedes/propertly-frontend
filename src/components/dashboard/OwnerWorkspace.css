@@ -1156,6 +1156,11 @@
 .owner-abl-upload-zone:hover { border-color: var(--indigo); color: var(--indigo) }
 .owner-abl-upload-text { display: inline-flex; align-items: center; gap: 6px; min-height: 0; padding: 0; border: 0; background: none; color: var(--indigo); cursor: pointer; font: 600 14px var(--font-nunito-sans), sans-serif; text-decoration: underline; text-underline-offset: 3px }
 .owner-abl-upload-text:hover { color: var(--indigo-osc) }
+.owner-abl-receipt-zone { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--indigo); font: 600 14px var(--font-nunito-sans), sans-serif }
+.owner-abl-receipt-zone__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.owner-abl-receipt-done { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border-radius: 10px; background: var(--elev); box-shadow: inset 0 0 0 1.5px var(--borde); color: var(--gris); font: 600 14px var(--font-nunito-sans), sans-serif }
+.owner-abl-receipt-done span { flex: 1 }
+.owner-abl-receipt-done__actions { display: flex; gap: 4px; margin-left: auto }
 
 /* Mobile */
 @media (max-width: 620px) {
