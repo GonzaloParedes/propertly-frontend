@@ -11,6 +11,7 @@ import { ControlAvisosInquilino } from "@/components/dashboard/AvisosInquilino";
 import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
+import { AblSection } from "@/components/dashboard/AblSection";
 import Herramientas from "@/components/dashboard/Herramientas";
 import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
@@ -19,6 +20,7 @@ import { filaDeBorrador, type FilaDeBorrador } from "@/lib/borradores";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
 import Dialog from "@/components/ui/Dialog";
+import Badge from "@/components/ui/Badge";
 import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
 import { validarImporteDeRecargo } from "@/lib/recargo";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -215,6 +217,7 @@ const propiedadesDemo: FilaPropiedad[] = properties.map((p, indice) => ({
   amoblada: p.furnished,
   busqueda: `${p.address} ${p.city} ${p.tenant ?? ""}`
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
+  unpaidAbl: false,
 }));
 
 /**
@@ -1326,12 +1329,13 @@ function PropertyDetail({
 
   return <>
     <PropertyBreadcrumb name={property.direccion} onBack={onBack} />
-    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header>
+    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p>{property.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}</div><div className="owner-page-head__action">{headerActions}</div></header>
     <section className="owner-detail-grid">
       <PropertyStatusCard property={property} contractStatusIsUnknown={contractStatusIsUnknown} contractTitle={contractTitle} onCreateContract={onCreateContract} />
       <PropertyCharacteristicsCard address={address} category={category} details={details} preferences={preferences} />
       <RentEstimateCard propertyId={rawProperty.id} />
     </section>
+    <AblSection propertyId={rawProperty.id} />
   </>;
 }
 
@@ -1546,6 +1550,7 @@ function PropertiesView({
                 {/* Sin el contrato en la respuesta no se puede decir el estado, y
                     decir «Sin alquilar» sería inventarlo. */}
                 {!sinDatoDeContrato && <Status>{fila.estado}</Status>}
+                {fila.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}
                 <span className="owner-row__arrow"><Icon name="arrow" /></span>
               </button>
             ))}
