@@ -57,7 +57,7 @@ describe("carga la partida al montar", () => {
   it("muestra «no hay partida cargada» cuando el ABL no tiene partida", async () => {
     mockAbl(ablVacio);
     render(<AblSection propertyId={3} />);
-    await screen.findByText(/No hay partida cargada/);
+    expect(await screen.findByText(/No hay partida cargada/)).toBeInTheDocument();
   });
 });
 
@@ -152,7 +152,7 @@ describe("períodos", () => {
   it("muestra empty state cuando no hay períodos", async () => {
     mockAbl(ablVacio, []);
     render(<AblSection propertyId={11} />);
-    await screen.findByText(/No hay períodos registrados/);
+    expect(await screen.findByText(/No hay períodos registrados/)).toBeInTheDocument();
   });
 
   it("muestra un período existente con su formato MM/AAAA", async () => {

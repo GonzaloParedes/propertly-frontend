@@ -1002,12 +1002,11 @@
 .owner-tutorial__recorrido li{display:inline-flex;align-items:center;gap:var(--esp-6);min-height:32px;padding:0 var(--esp-12);border-radius:999px;background:var(--superficie);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);font-size:14px;font-weight:700}
 .owner-tutorial__recorrido li>span{font:700 13px var(--font-quicksand),sans-serif}
 .owner-tutorial__recorrido li[data-actual]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
-.owner-tutorial__acciones{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--esp-10);margin-top:var(--esp-20)}
-.owner-tutorial__acciones .owner-button--quiet{margin-right:auto}
-.owner-tutorial__acciones .owner-button{min-height:48px}
 /* Si la tarjeta se achica para no tapar el control, el texto se desplaza y las
    acciones quedan siempre a la vista. */
-.owner-tutorial__acciones{position:sticky;bottom:calc(-1 * var(--esp-26));margin-top:var(--esp-12);margin-bottom:calc(-1 * var(--esp-26));padding:var(--esp-8) 0 var(--esp-26);background:var(--elev)}
+.owner-tutorial__acciones{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--esp-10);position:sticky;bottom:calc(-1 * var(--esp-26));margin-top:var(--esp-12);margin-bottom:calc(-1 * var(--esp-26));padding:var(--esp-8) 0 var(--esp-26);background:var(--elev)}
+.owner-tutorial__acciones .owner-button--quiet{margin-right:auto}
+.owner-tutorial__acciones .owner-button{min-height:48px}
 /* El header de celular es sticky: sin margen, el control subido quedaría debajo. */
 @media (max-width:900px){.owner-tutorial-ancla,[data-tutorial]{scroll-margin-top:80px}}
 @media (max-width:620px),(max-height:500px){

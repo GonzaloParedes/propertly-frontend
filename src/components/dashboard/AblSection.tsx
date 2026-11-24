@@ -14,7 +14,7 @@ const ABL_LOOKUP_URLS: Record<AblJurisdiction, string> = {
 
 const ABL_MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 const ABL_RECEIPT_ACCEPT = "application/pdf,image/png,image/jpeg,image/webp";
-const ABL_RECEIPT_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+const ABL_RECEIPT_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
 
 function formatPeriodo(period: string): string {
   const [year, month] = period.split("-");
@@ -142,7 +142,7 @@ function PeriodRow({
     e.target.value = "";
     if (!file) return;
 
-    if (!ABL_RECEIPT_TYPES.includes(file.type)) {
+    if (!ABL_RECEIPT_TYPES.has(file.type)) {
       setReceipt({ busy: false, error: "Tipo de archivo no compatible. Use PDF, PNG, JPG o WebP." });
       return;
     }
@@ -311,6 +311,28 @@ function PeriodRow({
   );
 }
 
+function upsertPeriod(
+  prev: AblPeriodResponse[] | null | "error",
+  created: AblPeriodResponse,
+): AblPeriodResponse[] {
+  if (!prev || prev === "error") return [created];
+  const idx = prev.findIndex((p) => p.period === created.period);
+  if (idx >= 0) {
+    const next = [...prev];
+    next[idx] = created;
+    return next;
+  }
+  return [created, ...prev];
+}
+
+function removePeriodFromList(
+  prev: AblPeriodResponse[] | null | "error",
+  key: string,
+): AblPeriodResponse[] | null | "error" {
+  if (!prev || prev === "error") return prev;
+  return prev.filter((p) => p.period !== key);
+}
+
 // --- AblSection ---
 
 export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
@@ -440,17 +462,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
         status: newStatus,
         payer: newPayer,
       });
-      setPeriods((prev) => {
-        if (!prev || prev === "error") return [created];
-        // Replace if already exists, else prepend
-        const idx = prev.findIndex((p) => p.period === created.period);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = created;
-          return next;
-        }
-        return [created, ...prev];
-      });
+      setPeriods((prev) => upsertPeriod(prev, created));
       setSelectedPeriodKey(created.period);
       setShowAddPeriod(false);
       setNewPeriod(currentMonthStr());
@@ -473,15 +485,12 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
     try {
       await AlquiaBackendClient.abl.deletePeriod(propertyId, deleteConfirm.period.period);
       const deletedKey = deleteConfirm.period.period;
-      setPeriods((prev) => {
-        if (!prev || prev === "error") return prev;
-        const next = prev.filter((p) => p.period !== deletedKey);
-        if (selectedPeriodKey === deletedKey) {
-          const idx = prev.findIndex((p) => p.period === deletedKey);
-          setSelectedPeriodKey(next.length > 0 ? next[Math.min(idx, next.length - 1)].period : null);
-        }
-        return next;
-      });
+      if (selectedPeriodKey === deletedKey && Array.isArray(periods)) {
+        const nextList = periods.filter((p) => p.period !== deletedKey);
+        const idx = periods.findIndex((p) => p.period === deletedKey);
+        setSelectedPeriodKey(nextList.length > 0 ? nextList[Math.min(idx, nextList.length - 1)].period : null);
+      }
+      setPeriods((prev) => removePeriodFromList(prev, deletedKey));
       setDeleteConfirm(null);
     } catch (err) {
       setDeleteConfirm((prev) => prev ? { ...prev, busy: false, error: copyDeError(err) } : null);
@@ -774,7 +783,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
       {/* Confirm delete dialog */}
       {deleteConfirm && (
         <dialog className="owner-dialog" open aria-modal="true">
-          <div className="owner-dialog__backdrop" onClick={() => !deleteConfirm.busy && setDeleteConfirm(null)} />
+          <button type="button" className="owner-dialog__backdrop" aria-label="Cerrar" tabIndex={-1} onClick={() => !deleteConfirm.busy && setDeleteConfirm(null)} />
           <div className="owner-dialog__panel" role="alertdialog" aria-labelledby="abl-delete-title">
             <div className="owner-dialog__head">
               <h2 id="abl-delete-title">Borrar período</h2>
