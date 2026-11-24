@@ -11,6 +11,7 @@ import { contarCuotasPendientes } from "@/lib/cobranzas";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
 import { abrirReporte } from "@/lib/reportes";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /** Tocar el ítem de la pantalla actual no remonta la página: el workspace escucha esto para volver al listado. */
 export const NAV_RESET_EVENT = "alquia:nav-reset";
@@ -62,6 +63,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
   // El lockup claro no contrasta sobre la barra oscura: en modo oscuro va la
   // variante preparada para fondos oscuros.
   const logoSrc = theme === "dark" ? "/logos/lockup-oscuro.svg" : "/logos/lockup.svg";
+  const isotipoSrc = theme === "dark" ? "/logos/isotipo-blanco.svg" : "/logos/isotipo.svg";
   // Sin sesión —el prototipo de /prototipo, o el instante previo a que
   // resuelva /users/me— la cuenta se nombra en genérico en vez de inventar
   // un titular.
@@ -70,6 +72,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [pendientes, setPendientes] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
 
   // Sólo con sesión real y dentro de /dashboard: el prototipo no tiene backend.
   // Se recuenta al cambiar de pantalla, que es cuando el propietario pudo
@@ -85,6 +88,20 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
   }, [hayUsuario, onNavigate, pathname]);
 
   const badgeDe = (view: WorkspaceView) => (view === "cobranzas" && pendientes > 0 ? String(pendientes) : undefined);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("owner-nav-collapsed") === "true");
+  }, []);
+
+  useEffect(() => {
+    if (collapsed) {
+      document.body.dataset.navCollapsed = "";
+    } else {
+      delete document.body.dataset.navCollapsed;
+    }
+    localStorage.setItem("owner-nav-collapsed", String(collapsed));
+    return () => { delete document.body.dataset.navCollapsed; };
+  }, [collapsed]);
 
   useEffect(() => {
     if (!open) return;
@@ -118,17 +135,17 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
     contratos: "contrato",
   };
 
-  const navigation = () => (
-    <ul className="owner-nav__links">
+  const navigation = (listId?: string) => (
+    <ul className="owner-nav__links" id={listId}>
       {ITEMS.flatMap((item) => {
         const link = (
           <li key={item.href}>
           {onNavigate ? (
-            <button type="button" data-tutorial={anclaDe[item.view]} onClick={() => { onNavigate(item.view); setOpen(false); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
+            <button type="button" title={item.label} data-tutorial={anclaDe[item.view]} onClick={() => { onNavigate(item.view); setOpen(false); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
               <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}{item.nuevo && <span className="owner-nav__new">Nuevo</span>}
             </button>
           ) : (
-            <Link href={item.href} data-tutorial={anclaDe[item.view]} onClick={() => { setOpen(false); window.dispatchEvent(new Event(NAV_RESET_EVENT)); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
+            <Link href={item.href} title={item.label} data-tutorial={anclaDe[item.view]} onClick={() => { setOpen(false); window.dispatchEvent(new Event(NAV_RESET_EVENT)); }} aria-current={isCurrent(item.href, item.view) ? "page" : undefined} className="owner-nav__link">
               <Icon name={item.icon} /><span>{item.label}</span>{badgeDe(item.view) && <span className="owner-nav__badge">{badgeDe(item.view)}</span>}{item.nuevo && <span className="owner-nav__new">Nuevo</span>}
             </Link>
           )}
@@ -139,7 +156,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
           : [link];
       })}
       <li>
-        <button type="button" className="owner-nav__link" aria-haspopup="dialog" onClick={verTutorial}>
+        <button type="button" title="Ver tutorial" className="owner-nav__link" aria-haspopup="dialog" onClick={verTutorial}>
           <Icon name="help" /><span>Ver tutorial</span>
         </button>
       </li>
@@ -154,9 +171,24 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
         <div className="owner-mobile-header__end"><ThemeToggle /><span className="owner-avatar" aria-label={nombre}>{iniciales}</span></div>
       </header>
       <aside className="owner-nav" aria-label="Navegación principal">
-        <Link href="/dashboard" aria-label="Alquia, inicio" className="owner-nav__brand"><Image src={logoSrc} alt="Alquia" width={124} height={40} priority /></Link>
+        <Link href="/dashboard" aria-label="Alquia, inicio" className="owner-nav__brand">
+          <Image className="owner-nav__brand-lockup" src={logoSrc} alt="Alquia" width={124} height={29} priority />
+          <Image className="owner-nav__brand-isotipo" src={isotipoSrc} alt="Alquia" width={32} height={32} priority />
+        </Link>
+        <button
+          type="button"
+          className="owner-nav__toggle"
+          aria-expanded={!collapsed}
+          aria-controls="owner-nav-links"
+          aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
+          onClick={() => setCollapsed(v => !v)}
+        >
+          {collapsed
+            ? <ChevronRight size={16} aria-hidden="true" />
+            : <ChevronLeft size={16} aria-hidden="true" />}
+        </button>
         <p className="owner-nav__group">CARTERA</p>
-        {navigation()}
+        {navigation("owner-nav-links")}
         <div className="owner-nav__profile">
           <span className="owner-avatar" aria-hidden="true">{iniciales}</span>
           <span className="owner-nav__profile-text"><strong>{nombre}</strong>{user && <small>{user.email}</small>}</span>
