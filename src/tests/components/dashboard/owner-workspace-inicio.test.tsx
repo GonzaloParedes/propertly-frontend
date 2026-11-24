@@ -21,7 +21,7 @@ vi.mock("@/context/auth-context", () => ({
 vi.mock("@/lib/backend-client", () => ({
   AlquiaBackendClient: {
     tenants: { list: vi.fn() },
-    contracts: { list: vi.fn() },
+    contracts: { list: vi.fn(), get: vi.fn(), rentIncrements: vi.fn(), getTenantAccess: vi.fn() },
     properties: { list: vi.fn() },
     invoices: { list: vi.fn() },
     preInvoices: { list: vi.fn() },
@@ -35,6 +35,8 @@ import { AlquiaBackendClient } from "@/lib/backend-client";
 const mockInvoices = vi.mocked(AlquiaBackendClient.invoices.list);
 const mockProperties = vi.mocked(AlquiaBackendClient.properties.list);
 const mockContracts = vi.mocked(AlquiaBackendClient.contracts.list);
+const mockContractGet = vi.mocked(AlquiaBackendClient.contracts.get);
+const mockRentIncrements = vi.mocked(AlquiaBackendClient.contracts.rentIncrements);
 const mockPreInvoices = vi.mocked(AlquiaBackendClient.preInvoices.list);
 const mockBorradores = vi.mocked(AlquiaBackendClient.contractDrafts);
 const mockBorradoresDePropiedad = vi.mocked(AlquiaBackendClient.propertyDrafts);
@@ -633,5 +635,132 @@ describe("borradores de propiedad en «Requieren su acción»", () => {
 
     await screen.findByText("Requieren su acción");
     expect(mockBorradoresDePropiedad.list).not.toHaveBeenCalled();
+  });
+});
+
+// --- Próximos aumentos (ALQ-181) ---
+
+describe("próximos aumentos", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-24T15:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function conAumento(id: number, calle: string, over: Partial<ContractResponse> = {}): ContractResponse {
+    return {
+      ...CONTRATO,
+      id,
+      property: { ...PROPIEDAD, id: id + 1000, street: calle, number: "100", floorUnit: undefined },
+      tenant: { ...CONTRATO.tenant, id, firstName: `Inquilino${id}`, lastName: "Pérez" },
+      currentRent: 500000,
+      nextIncrementRent: 540000,
+      ...over,
+    };
+  }
+
+  const seccionDeAumentos = async () =>
+    (await screen.findByRole("heading", { name: "Próximos aumentos" })).closest("section")!;
+
+  it("lista los aumentos de los próximos 90 días, el más cercano primero, con todos sus datos", async () => {
+    conDatos({
+      contracts: [
+        conAumento(2, "Lavalle", { nextIncrementDate: "2027-01-23", nextIncrementRent: 560000 }),
+        conAumento(1, "Colón", { nextIncrementDate: "2026-12-14" }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const seccion = await seccionDeAumentos();
+    const filas = within(seccion).getAllByRole("button");
+    expect(filas).toHaveLength(2);
+    expect(filas[0]).toHaveTextContent("Colón 100");
+    expect(filas[0]).toHaveTextContent("Inquilino1 Pérez");
+    expect(filas[0]).toHaveTextContent("14/12/2026");
+    expect(filas[0]).toHaveTextContent("$ 500.000 → $ 540.000");
+    expect(filas[1]).toHaveTextContent("Lavalle 100");
+    expect(filas[1]).toHaveTextContent("23/01/2027");
+    expect(filas[1]).toHaveTextContent("$ 500.000 → $ 560.000");
+  });
+
+  it("va entre «Requieren su acción» y «Contratos activos»", async () => {
+    conDatos({ contracts: [conAumento(1, "Colón", { nextIncrementDate: "2026-12-14" })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await seccionDeAumentos();
+    const titulos = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    const orden = ["Requieren su acción", "Próximos aumentos", "Contratos activos"].map((t) => titulos.indexOf(t));
+    expect(orden).toEqual([...orden].sort((a, b) => a - b));
+    expect(orden.every((i) => i >= 0)).toBe(true);
+  });
+
+  it("un importe que todavía no se conoce dice «A definir»", async () => {
+    conDatos({
+      contracts: [conAumento(1, "Colón", { incrementMethod: "INDEX", incrementIndexName: "ICL", nextIncrementDate: "2026-12-24", nextIncrementRent: undefined })],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const fila = within(await seccionDeAumentos()).getByRole("button");
+    expect(fila).toHaveTextContent("$ 500.000 → A definir");
+  });
+
+  it("si al inquilino no se le avisa, la fila lo dice", async () => {
+    conDatos({ contracts: [conAumento(1, "Colón", { nextIncrementDate: "2026-12-14", nextIncrementNotifiesTenant: false })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const fila = within(await seccionDeAumentos()).getByRole("button");
+    expect(fila).toHaveTextContent("Al inquilino no le avisamos");
+    expect(fila).not.toHaveTextContent("Le avisamos al inquilino");
+  });
+
+  it("un backend anterior, que no manda el dato, se lee como «no le avisamos»", async () => {
+    conDatos({ contracts: [conAumento(1, "Colón", { nextIncrementDate: "2026-12-14" })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(within(await seccionDeAumentos()).getByRole("button")).toHaveTextContent("Al inquilino no le avisamos");
+  });
+
+  it("si al inquilino se le avisa, la fila lo dice", async () => {
+    conDatos({ contracts: [conAumento(1, "Colón", { nextIncrementDate: "2026-12-14", nextIncrementNotifiesTenant: true })] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    expect(within(await seccionDeAumentos()).getByRole("button")).toHaveTextContent("Le avisamos al inquilino");
+  });
+
+  it("sin aumentos en los próximos 90 días no muestra la sección", async () => {
+    conDatos({ contracts: [conAumento(1, "Colón", { nextIncrementDate: "2027-03-01" }), CONTRATO] });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await screen.findByText("Contratos activos");
+    expect(screen.queryByText("Próximos aumentos")).not.toBeInTheDocument();
+  });
+
+  it("muestra cada importe en la moneda de su contrato", async () => {
+    conDatos({
+      contracts: [
+        conAumento(1, "Colón", { nextIncrementDate: "2026-12-14" }),
+        conAumento(2, "Lavalle", { nextIncrementDate: "2026-12-20", currency: "USD", currentRent: 800, nextIncrementRent: 850 }),
+      ],
+    });
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    const filas = within(await seccionDeAumentos()).getAllByRole("button");
+    expect(filas[0]).toHaveTextContent("$ 500.000 → $ 540.000");
+    expect(filas[1]).toHaveTextContent("US$ 800 → US$ 850");
+  });
+
+  it("al elegir una fila abre el detalle del contrato", async () => {
+    const contrato = conAumento(100, "Av. Rivadavia", { nextIncrementDate: "2026-12-14" });
+    conDatos({ contracts: [contrato] });
+    mockContractGet.mockResolvedValue(contrato);
+    mockRentIncrements.mockResolvedValue([]);
+    render(<OwnerWorkspace initialView="inicio" />);
+
+    await userEvent.click(within(await seccionDeAumentos()).getByRole("button"));
+
+    expect(await screen.findByText(/Contrato con Inquilino100 Pérez/)).toBeInTheDocument();
+    expect(mockContractGet).toHaveBeenCalledWith(100);
   });
 });

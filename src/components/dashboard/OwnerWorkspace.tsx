@@ -78,6 +78,7 @@ import {
   periodoCorriente,
   periodoSiguiente,
   proporciones,
+  proximosAumentos,
   proyeccionDelMes,
   resumenDeCartera,
   resumenDeCobranza,
@@ -316,6 +317,7 @@ const inicioDemo = {
   // real: si no, el panel diría que no hay contratos y las otras vistas los
   // mostrarían igual.
   tieneContratos: true,
+  aumentos: [] as ContractResponse[],
   contratos: contracts.map((c, indice) => ({
     id: indice + 1,
     property: {
@@ -1070,6 +1072,8 @@ type OverviewData = Readonly<{
   cartera: ResumenCartera;
   avisos: Aviso[];
   contratos: ContractResponse[];
+  /** Contratos vigentes cuyo próximo aumento cae dentro de los próximos 90 días, el más cercano primero. */
+  aumentos: ContractResponse[];
   /** Hay al menos un contrato, vigente o no: sin ninguno, Inicio ofrece «Cargar mi primer contrato». */
   tieneContratos: boolean;
 }>;
@@ -1181,6 +1185,31 @@ function ActionsSection({ avisos, borradores, borradoresDePropiedad, hayContrato
   </section>;
 }
 
+/**
+ * Los aumentos de alquiler de los próximos 90 días (ALQ-181). Sin ninguno, la sección no se dibuja: no hay
+ * nada que avisar y un «sin aumentos» sería ruido. Cada importe va en la moneda de su contrato.
+ */
+function UpcomingIncreases({ aumentos, onOpenContract }: Readonly<{ aumentos: ContractResponse[]; onOpenContract: (id: number) => void }>) {
+  if (aumentos.length === 0) return null;
+  return <section className="owner-section" aria-labelledby="proximos-aumentos">
+    <div className="owner-section__head"><h2 id="proximos-aumentos">Próximos aumentos</h2></div>
+    <div className="owner-list">{aumentos.map((contract) => {
+      const nuevo = contract.nextIncrementRent == null ? "A definir" : formatearMonto(contract.nextIncrementRent, contract.currency);
+      return <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}>
+        <span className="owner-row__icon"><Icon name="calendar" /></span>
+        <span className="owner-row__body">
+          <b>{formatearDireccion(contract.property)}</b>
+          <small>{nombreDeInquilino(contract.tenant)}</small>
+          <small>{`${formatearMonto(contract.currentRent, contract.currency)} → ${nuevo}`}</small>
+          <small>{contract.nextIncrementNotifiesTenant === true ? "Le avisamos al inquilino" : "Al inquilino no le avisamos"}</small>
+        </span>
+        <span className="owner-row__amount"><b>{formatearFecha(contract.nextIncrementDate ?? "")}</b><small>aumenta</small></span>
+        <span className="owner-row__arrow"><Icon name="arrow" /></span>
+      </button>;
+    })}</div>
+  </section>;
+}
+
 function Overview({
   greeting,
   subtitle,
@@ -1211,7 +1240,7 @@ function Overview({
   if (hasError) return <>{header}<LoadError title="No pudimos cargar su panel" /></>;
   if (data === null) return <>{header}<div className="owner-card"><Cargando>Cargando su panel…</Cargando></div></>;
 
-  const { cobranza, cartera, avisos, contratos, tieneContratos } = data;
+  const { cobranza, cartera, avisos, contratos, aumentos, tieneContratos } = data;
   const percent = proporciones(cobranza);
   const hayEmitido = Object.values(cobranza.emitido).some((monto) => (monto ?? 0) > 0);
   const cuotasCobradasLabel = cobranza.cuotas === 1 ? "cuota cobrada" : "cuotas cobradas";
@@ -1233,6 +1262,7 @@ function Overview({
       </div>
     </section>
     <ActionsSection avisos={avisos} borradores={borradores} borradoresDePropiedad={borradoresDePropiedad} hayContratos={contratos.length > 0} onOpenCollections={onOpenCollections} onResumeDraft={onResumeDraft} onDiscardDraft={onDiscardDraft} onRetryDrafts={onRetryDrafts} onResumePropertyDraft={onResumePropertyDraft} onDiscardPropertyDraft={onDiscardPropertyDraft} onRetryPropertyDrafts={onRetryPropertyDrafts} />
+    <UpcomingIncreases aumentos={aumentos} onOpenContract={onOpenContract} />
     <section className="owner-section"><div className="owner-section__head"><h2>Contratos activos</h2>{contratos.length > 0 && <Button tone="secondary" small onClick={onCreateContract}><Icon name="plus" size={17} />Nuevo contrato</Button>}</div>{contratos.length === 0 ? <NoActiveContracts hasContracts={tieneContratos} onCreateContract={onCreateContract} /> : <div className="owner-list">{contratos.map((contract) => <button type="button" className="owner-row owner-row--button" key={contract.id} onClick={() => onOpenContract(contract.id)}><span className="owner-row__icon"><Icon name="building" /></span><span className="owner-row__body"><b>{formatearDireccion(contract.property)}</b><small>{nombreDeInquilino(contract.tenant)} · termina el {formatearFecha(contract.endDate)}</small></span><span className="owner-row__amount"><b>{formatearMonto(contract.currentRent, contract.currency)}</b><small>por mes</small></span><Status>Vigente</Status><span className="owner-row__arrow"><Icon name="arrow" /></span></button>)}</div>}</section>
   </>;
 }
@@ -1901,7 +1931,7 @@ function useOverviewLoad({ enabled, setOverview, setProjection }: Readonly<{
     const contracts = AlquiaBackendClient.contracts.list();
     Promise.all([AlquiaBackendClient.invoices.list({ period: periodoCorriente(today) }), AlquiaBackendClient.properties.list(), contracts]).then(([invoices, properties, loadedContracts]) => {
       if (cancelled) return;
-      setOverview({ cobranza: resumenDeCobranza(invoices, loadedContracts), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts), tieneContratos: loadedContracts.length > 0 });
+      setOverview({ cobranza: resumenDeCobranza(invoices, loadedContracts), cartera: resumenDeCartera(properties), avisos: avisosPendientes(invoices, loadedContracts, today), contratos: contratosVigentes(loadedContracts), aumentos: proximosAumentos(loadedContracts, today), tieneContratos: loadedContracts.length > 0 });
     }).catch(() => {
       if (!cancelled) setOverview({ error: true });
     });
@@ -2486,6 +2516,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
         cartera: ResumenCartera;
         avisos: Aviso[];
         contratos: ContractResponse[];
+        aumentos: ContractResponse[];
         tieneContratos: boolean;
       }
     | { error: true }
