@@ -51,12 +51,12 @@
 [data-nav-collapsed] .owner-nav{width:64px}
 [data-nav-collapsed] .owner-workspace{padding-left:64px}
 
-.owner-nav__brand{display:flex;align-items:center;margin:0 var(--esp-10) 30px}
-.owner-nav__brand-lockup{flex:none;transition:opacity .2s ease}
+.owner-nav__brand{display:flex;align-items:center;overflow:hidden;margin:0 var(--esp-10) 30px}
+.owner-nav__brand-lockup{flex:none;overflow:hidden;max-width:160px;opacity:1;transition:max-width .25s ease,opacity .2s ease}
 .owner-nav__brand-isotipo{flex:none;display:flex;align-items:center;overflow:hidden;max-width:0;opacity:0;transition:max-width .25s ease,opacity .2s ease}
 .owner-nav__brand-isotipo img{width:36px;height:36px;display:block}
 [data-nav-collapsed] .owner-nav__brand{justify-content:center;margin:0 0 var(--esp-20)}
-[data-nav-collapsed] .owner-nav__brand-lockup{opacity:0;pointer-events:none}
+[data-nav-collapsed] .owner-nav__brand-lockup{max-width:0;opacity:0;pointer-events:none}
 [data-nav-collapsed] .owner-nav__brand-isotipo{max-width:36px;opacity:1}
 
 .owner-nav__toggle{position:absolute;right:-14px;top:36px;display:flex;width:28px;height:28px;align-items:center;justify-content:center;border:0;border-radius:999px;background:var(--elev);box-shadow:inset 0 0 0 1px var(--divisor);color:var(--gris);cursor:pointer;z-index:1}
