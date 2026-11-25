@@ -68,6 +68,20 @@ export function condicionesIniciales(contract: ContractResponse, meses: MesElegi
   };
 }
 
+/**
+ * Para editar un cambio ya programado (ALQ-221): parte de lo programado —su mes
+ * y su alquiler base—, no de lo que rige hoy. Si el mes programado ya no es
+ * elegible (pasó, por ejemplo), cae en el primero que sí lo es.
+ */
+export function condicionesDelProgramado(programado: ContractResponse, meses: MesElegible[]): CondicionesNuevas {
+  const mesProgramado = programado.startDate.slice(0, 7) + "-01";
+  return {
+    ...condicionesIniciales(programado, meses),
+    mes: meses.some((m) => m.valor === mesProgramado) ? mesProgramado : meses[0]?.valor ?? "",
+    alquiler: String(Math.round(programado.initialRentAmount)),
+  };
+}
+
 export type ErroresCondiciones = Partial<Record<"mes" | "alquiler" | "diaVencimiento" | "porcentaje" | "frecuencia", string>>;
 
 export function validarCondiciones(c: CondicionesNuevas, meses: MesElegible[]): ErroresCondiciones {

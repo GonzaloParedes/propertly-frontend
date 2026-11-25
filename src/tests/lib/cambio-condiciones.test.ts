@@ -1,5 +1,6 @@
 import {
   armarPedido,
+  condicionesDelProgramado,
   condicionesIniciales,
   mesesElegibles,
   resumenDeCondiciones,
@@ -49,6 +50,36 @@ describe("mesesElegibles", () => {
   it("un contrato que termina el día 1 no factura ese mes", () => {
     const meses = mesesElegibles(contrato({ endDate: "2026-11-01" }), "2026-09-28");
     expect(meses.map((m) => m.valor)).toEqual(["2026-10-01"]);
+  });
+});
+
+describe("condicionesDelProgramado", () => {
+  const meses = mesesElegibles(contrato(), "2026-09-28");
+  const programado = contrato({
+    startDate: "2026-12-01",
+    initialRentAmount: 650000,
+    currentRent: 650000,
+    dueDay: 12,
+    incrementMethod: "INDEX",
+    incrementIndexName: "IPC",
+    incrementValue: undefined,
+    incrementFrequencyMonths: 4,
+  });
+
+  it("parte del mes y el alquiler programados, no de lo que rige hoy", () => {
+    expect(condicionesDelProgramado(programado, meses)).toEqual({
+      mes: "2026-12-01",
+      alquiler: "650000",
+      diaVencimiento: 12,
+      metodo: "IPC",
+      porcentaje: "",
+      frecuencia: 4,
+    });
+  });
+
+  it("si el mes programado ya no es elegible, cae en el primero que sí", () => {
+    const pasado = { ...programado, startDate: "2026-09-01" };
+    expect(condicionesDelProgramado(pasado, meses).mes).toBe("2026-10-01");
   });
 });
 
