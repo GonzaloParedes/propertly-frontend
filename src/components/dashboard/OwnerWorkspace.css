@@ -1147,9 +1147,14 @@
 .owner-abl__clipboard-fallback { margin-top: var(--esp-16) }
 .owner-abl__clipboard-copy input { width: 100%; min-height: 44px; padding: 0 var(--esp-14); border: 0; border-radius: 10px; background: var(--superficie); box-shadow: inset 0 0 0 1.5px var(--borde-control); color: var(--tinta); font: 600 17px var(--font-nunito-sans), sans-serif; cursor: text }
 
-.owner-abl__partida-form { display: grid; gap: var(--esp-16) }
-.owner-abl__form-group { display: grid; gap: var(--esp-10) }
-.owner-abl__form-group .owner-wizard-field { padding: 14px var(--esp-18) }
+/* minmax(0, 1fr): sin esto la pista crece hasta el ancho intrínseco de la etiqueta (nowrap) más el input y se sale de la tarjeta en el teléfono. */
+.owner-abl__partida-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--esp-16) }
+.owner-abl__form-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--esp-10) }
+.owner-abl__form-group .owner-wizard-field { min-width: 0; padding: 14px var(--esp-18) }
+@media (max-width: 560px) {
+  .owner-abl .owner-abl__form-group .owner-wizard-field { flex-direction: column; align-items: stretch; gap: 2px }
+  .owner-abl .owner-abl__form-group .owner-wizard-field > span { font-size: 14px; font-weight: 700; line-height: 1.2; white-space: normal }
+}
 .owner-abl__form-actions { display: flex; flex-wrap: wrap; gap: var(--esp-10); align-items: center }
 .owner-abl-label { color: var(--gris); font: 700 12px var(--font-nunito-sans), sans-serif; letter-spacing: .05em }
 

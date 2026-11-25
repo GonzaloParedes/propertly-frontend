@@ -256,7 +256,7 @@ export type AblPayer = "TENANT" | "LANDLORD";
 export interface AblResponse {
   jurisdiction: AblJurisdiction | null;
   partida: string | null;
-  dv: string | null;
+  verificationDigit: string | null;
   unpaidAbl: boolean;
 }
 

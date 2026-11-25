@@ -380,7 +380,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
     if (!abl || abl === "error") return;
     setJurisdiction(abl.jurisdiction ?? "");
     setPartida(abl.partida ?? "");
-    setDv(abl.dv ?? "");
+    setDv(abl.verificationDigit ?? "");
     setPartidaError(null);
     setEditing(true);
   }
@@ -409,7 +409,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
       const updated = await AlquiaBackendClient.abl.save(propertyId, {
         jurisdiction,
         partida: normalizedPartida,
-        ...(jurisdiction === "CABA_AGIP" && dv ? { dv } : {}),
+        ...(jurisdiction === "CABA_AGIP" && dv ? { verificationDigit: dv } : {}),
       });
       setAbl(updated);
       setEditing(false);
@@ -425,7 +425,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
     setRemovingPartida(true);
     try {
       await AlquiaBackendClient.abl.remove(propertyId);
-      setAbl({ jurisdiction: null, partida: null, dv: null, unpaidAbl: abl !== "error" && abl !== null ? abl.unpaidAbl : false });
+      setAbl({ jurisdiction: null, partida: null, verificationDigit: null, unpaidAbl: abl !== "error" && abl !== null ? abl.unpaidAbl : false });
       setEditing(false);
       toast.exito("Partida eliminada.");
     } catch (err) {
@@ -547,7 +547,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
                     <dt>Partida</dt>
                     <dd>
                       {formatPartidaDisplay(abl!.jurisdiction, abl!.partida)}
-                      {abl!.dv ? `-${abl!.dv}` : ""}
+                      {abl!.verificationDigit ? `-${abl!.verificationDigit}` : ""}
                     </dd>
                   </div>
                 </dl>

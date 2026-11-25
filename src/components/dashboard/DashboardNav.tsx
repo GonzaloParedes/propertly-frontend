@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useTheme } from "@/context/theme-context";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -12,6 +12,8 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
 import { abrirReporte } from "@/lib/reportes";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+const NAV_COLLAPSED_KEY = "owner-nav-collapsed";
 
 /** Tocar el ítem de la pantalla actual no remonta la página: el workspace escucha esto para volver al listado. */
 export const NAV_RESET_EVENT = "alquia:nav-reset";
@@ -72,7 +74,16 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
   const [open, setOpen] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [pendientes, setPendientes] = useState(0);
-  const [collapsed, setCollapsed] = useState(false);
+  // Lo que eligió el usuario en esta sesión; mientras no toque el botón, manda lo guardado.
+  // Leerlo con useSyncExternalStore evita el setState dentro de un efecto y el desajuste
+  // de hidratación: en el servidor siempre arranca expandido.
+  const [collapsedElegido, setCollapsedElegido] = useState<boolean | null>(null);
+  const collapsedGuardado = useSyncExternalStore(
+    () => () => {},
+    () => localStorage.getItem(NAV_COLLAPSED_KEY) === "true",
+    () => false
+  );
+  const collapsed = collapsedElegido ?? collapsedGuardado;
 
   // Sólo con sesión real y dentro de /dashboard: el prototipo no tiene backend.
   // Se recuenta al cambiar de pantalla, que es cuando el propietario pudo
@@ -92,19 +103,14 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
   // localStorage sólo existe en el cliente: leerlo en el render inicial haría que el
   // HTML del servidor no coincida al hidratar. Se lee una vez, después de montar.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza con localStorage tras hidratar
-    setCollapsed(localStorage.getItem("owner-nav-collapsed") === "true");
-  }, []);
-
-  useEffect(() => {
     if (collapsed) {
       document.body.dataset.navCollapsed = "";
     } else {
       delete document.body.dataset.navCollapsed;
     }
-    localStorage.setItem("owner-nav-collapsed", String(collapsed));
+    if (collapsedElegido !== null) localStorage.setItem(NAV_COLLAPSED_KEY, String(collapsedElegido));
     return () => { delete document.body.dataset.navCollapsed; };
-  }, [collapsed]);
+  }, [collapsed, collapsedElegido]);
 
   useEffect(() => {
     if (!open) return;
@@ -185,7 +191,7 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
           aria-expanded={!collapsed}
           aria-controls="owner-nav-links"
           aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
-          onClick={() => setCollapsed(v => !v)}
+          onClick={() => setCollapsedElegido(!collapsed)}
         >
           {collapsed
             ? <ChevronRight size={16} aria-hidden="true" />
