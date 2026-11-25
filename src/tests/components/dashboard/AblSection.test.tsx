@@ -11,8 +11,8 @@ const ablArba: AblResponse = { jurisdiction: "PBA_ARBA", partida: "123456789", d
 
 const periodoBase: AblPeriodResponse = {
   period: "2026-11",
-  status: "IMPAGO",
-  payer: "INQUILINO",
+  status: "UNPAID",
+  payer: "TENANT",
   hasReceipt: false,
   receiptFileName: null,
   receiptContentType: null,
