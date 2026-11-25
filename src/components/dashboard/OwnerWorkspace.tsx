@@ -12,6 +12,7 @@ import DescartarBorrador from "@/components/dashboard/DescartarBorrador";
 import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import { AblSection } from "@/components/dashboard/AblSection";
+import { ABL_HABILITADO } from "@/lib/abl";
 import Herramientas from "@/components/dashboard/Herramientas";
 import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
@@ -1354,7 +1355,7 @@ function DemoPropertyDetail({ demoProperty, onBack, onCreateContract, onOpenDemo
   const contractCard = demoProperty.tenant
     ? <button type="button" className="owner-contract-callout" onClick={() => onOpenDemoContract(demoProperty.id)}><span><Icon name="file" /></span><div><b>Contrato con {demoProperty.tenant}</b><small>Ver condiciones, documento y próximas cuotas</small></div><Icon name="arrow" /></button>
     : <div className="owner-empty-callout"><Icon name="building" /><div><b>Esta propiedad está disponible</b><small>Cuando tenga un inquilino, cree un contrato para empezar a cobrarla.</small></div><Button small onClick={onCreateContract}>Crear contrato</Button></div>;
-  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section><AblSectionDemo /></>;
+  return <><PropertyBreadcrumb name={demoProperty.address} onBack={onBack} /><header className="owner-page-head"><div><h1>{demoProperty.address}</h1><p>{demoProperty.type} · {demoProperty.city}</p></div><div className="owner-page-head__action">{headerActions}</div></header><section className="owner-detail-grid"><div className="owner-card"><div className="owner-card__top"><div><p className="owner-eyebrow">ESTADO ACTUAL</p><Status>{demoProperty.state}</Status></div>{rent}</div>{contractCard}</div><div className="owner-card"><h2>Características</h2><dl className="owner-definition"><div><dt>Dirección</dt><dd>{demoProperty.address}, {demoProperty.city}</dd></div><div><dt>Tipo</dt><dd>{demoProperty.type}</dd></div><div><dt>Detalles</dt><dd>{demoProperty.detail}</dd></div></dl></div></section>{ABL_HABILITADO && <AblSectionDemo />}</>;
 }
 
 function PropertyStatusCard({ property, contractStatusIsUnknown, contractTitle, onCreateContract }: Readonly<{ property: FilaPropiedad; contractStatusIsUnknown: boolean; contractTitle: string; onCreateContract: () => void }>) {
@@ -1417,13 +1418,13 @@ function PropertyDetail({
 
   return <>
     <PropertyBreadcrumb name={property.direccion} onBack={onBack} />
-    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p>{property.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}</div><div className="owner-page-head__action">{headerActions}</div></header>
+    <header className="owner-page-head"><div><h1>{property.direccion}</h1><p>{category} · {rawProperty.city}</p>{ABL_HABILITADO && property.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}</div><div className="owner-page-head__action">{headerActions}</div></header>
     <section className="owner-detail-grid">
       <PropertyStatusCard property={property} contractStatusIsUnknown={contractStatusIsUnknown} contractTitle={contractTitle} onCreateContract={onCreateContract} />
       <PropertyCharacteristicsCard address={address} category={category} details={details} preferences={preferences} />
       <RentEstimateCard propertyId={rawProperty.id} />
     </section>
-    <AblSection propertyId={rawProperty.id} />
+    {ABL_HABILITADO && <AblSection propertyId={rawProperty.id} />}
   </>;
 }
 
@@ -1638,7 +1639,7 @@ function PropertiesView({
                 {/* Sin el contrato en la respuesta no se puede decir el estado, y
                     decir «Sin alquilar» sería inventarlo. */}
                 {!sinDatoDeContrato && <Status>{fila.estado}</Status>}
-                {fila.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}
+                {ABL_HABILITADO && fila.unpaidAbl && <Badge tone="danger">ABL impago</Badge>}
                 <span className="owner-row__arrow"><Icon name="arrow" /></span>
               </button>
             ))}

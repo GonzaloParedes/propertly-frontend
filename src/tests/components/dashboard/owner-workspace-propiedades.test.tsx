@@ -352,6 +352,15 @@ describe("detalle", () => {
     expect(await screen.findAllByText(/Cochera/)).toHaveLength(2);
   });
 
+  it("oculta ABL mientras está apagado (ALQ-227), aunque haya un período impago", async () => {
+    await abrirDetalle([{ ...RIVADAVIA, unpaidAbl: true }]);
+
+    expect(await screen.findByText("Características")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "ABL" })).not.toBeInTheDocument();
+    expect(screen.queryByText("ABL impago")).not.toBeInTheDocument();
+    expect(AlquiaBackendClient.abl.get).not.toHaveBeenCalled();
+  });
+
   it("no muestra características que la propiedad no tiene", async () => {
     await abrirDetalle([MITRE]);
 
