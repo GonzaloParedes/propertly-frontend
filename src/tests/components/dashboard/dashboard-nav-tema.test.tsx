@@ -1,83 +1,52 @@
-import { render, screen, within } from "@/tests/render";
+import { render, screen } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import DashboardNav from "@/components/dashboard/DashboardNav";
-import type { UserResponse } from "@/lib/backend-types";
-
-const USUARIO: UserResponse = {
-  id: 1,
-  email: "ricardo@ejemplo.com",
-  firstName: "Ricardo",
-  lastName: "Rosas",
-  taxId: "20224567899",
-  phoneNumber: "+5491144552210",
-};
+import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 
 vi.mock("@/context/auth-context", () => ({
-  useAuth: () => ({ user: USUARIO, logout: vi.fn() }),
+  useAuth: () => ({ logout: vi.fn() }),
 }));
-
-vi.mock("@/lib/backend-client", () => ({
-  AlquiaBackendClient: {
-    invoices: { list: vi.fn() },
-  },
-}));
-
-import { AlquiaBackendClient } from "@/lib/backend-client";
 
 beforeEach(() => {
-  vi.resetAllMocks();
-  // El conteo de cuotas pendientes no interesa acá, pero el efecto lo pide.
-  vi.mocked(AlquiaBackendClient.invoices.list).mockResolvedValue([]);
-  try {
-    window.localStorage.clear();
-  } catch {
-    // jsdom siempre lo tiene.
-  }
-  delete document.documentElement.dataset.theme;
+  window.localStorage.clear();
 });
 
-/** El toggle del sidebar (hay una copia también en la barra y el cajón móviles). */
-function toggleEnSidebar() {
-  const sidebar = screen.getByRole("complementary", { name: "Navegación principal" });
-  return within(sidebar).getByRole("button", { name: /Activar modo (oscuro|claro)/ });
+function abrirConfiguracion() {
+  return render(<OwnerWorkspace initialView="configuracion" demo />);
 }
 
-it("ofrece el cambio de tema en el navbar, en claro por defecto", () => {
-  render(<DashboardNav />);
+it("ofrece el ajuste en Apariencia, con el tema claro por defecto", () => {
+  abrirConfiguracion();
 
-  const toggle = toggleEnSidebar();
-  expect(toggle).toHaveAttribute("aria-pressed", "false");
-  expect(toggle).toHaveAccessibleName("Activar modo oscuro");
+  expect(screen.getByRole("heading", { name: "Apariencia" })).toBeInTheDocument();
+  expect(screen.getByRole("switch", { name: "Modo oscuro" })).not.toBeChecked();
   expect(document.documentElement.dataset.theme).toBe("light");
 });
 
-it("al activarlo, pinta el panel en oscuro y recuerda la preferencia", async () => {
-  render(<DashboardNav />);
+it("aplica el tema oscuro y lo recuerda al volver a abrir el panel", async () => {
+  const { unmount } = abrirConfiguracion();
 
-  await userEvent.click(toggleEnSidebar());
+  await userEvent.click(screen.getByRole("switch", { name: "Modo oscuro" }));
 
-  expect(toggleEnSidebar()).toHaveAttribute("aria-pressed", "true");
-  expect(toggleEnSidebar()).toHaveAccessibleName("Activar modo claro");
   expect(document.documentElement.dataset.theme).toBe("dark");
   expect(window.localStorage.getItem("alquia:theme")).toBe("dark");
+  unmount();
+  abrirConfiguracion();
+  expect(screen.getByRole("switch", { name: "Modo oscuro" })).toBeChecked();
 });
 
-it("arranca en oscuro si ya estaba guardado", () => {
+it("vuelve al modo claro y recuerda el cambio", async () => {
   window.localStorage.setItem("alquia:theme", "dark");
+  abrirConfiguracion();
 
-  render(<DashboardNav />);
+  await userEvent.click(screen.getByRole("switch", { name: "Modo oscuro" }));
 
-  expect(toggleEnSidebar()).toHaveAttribute("aria-pressed", "true");
-  expect(document.documentElement.dataset.theme).toBe("dark");
-});
-
-it("al apagarlo, vuelve a claro y lo recuerda", async () => {
-  window.localStorage.setItem("alquia:theme", "dark");
-  render(<DashboardNav />);
-
-  await userEvent.click(toggleEnSidebar());
-
-  expect(toggleEnSidebar()).toHaveAttribute("aria-pressed", "false");
+  expect(screen.getByRole("switch", { name: "Modo oscuro" })).not.toBeChecked();
   expect(document.documentElement.dataset.theme).toBe("light");
   expect(window.localStorage.getItem("alquia:theme")).toBe("light");
+});
+
+it("retira el control de tema de la navegación", () => {
+  render(<DashboardNav />);
+  expect(screen.queryByRole("button", { name: /modo (claro|oscuro)/i })).not.toBeInTheDocument();
 });

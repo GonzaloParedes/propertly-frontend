@@ -82,7 +82,8 @@ describe("volver a abrirlo", () => {
     render(<><DashboardNav /><Tutorial /></>);
 
     await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
-    const menu = screen.getByRole("complementary", { name: "Menú principal" });
+    const menu = screen.getByRole("dialog", { name: "Menú" });
+    await userEvent.click(within(menu).getByRole("button", { name: "Cuenta y ayuda" }));
     await userEvent.click(within(menu).getByRole("button", { name: "Ver tutorial" }));
 
     expect(await screen.findByRole("dialog", { name: "Primero, la propiedad" })).toBeInTheDocument();
