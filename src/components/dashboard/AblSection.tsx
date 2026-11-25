@@ -49,9 +49,9 @@ function validatePartida(jurisdiction: AblJurisdiction, partida: string, dv: str
 }
 
 const STATUS_DOT: Record<string, string> = {
-  PAGO: "#16a34a",
-  IMPAGO: "var(--error)",
-  SIN_DATO: "var(--gris)",
+  PAID: "#16a34a",
+  UNPAID: "var(--error)",
+  UNKNOWN: "var(--gris)",
 };
 
 function PeriodChip({
@@ -192,14 +192,14 @@ function PeriodRow({
   }
 
   const statusOptions: { value: AblStatus; label: string }[] = [
-    { value: "PAGO", label: "Pago" },
-    { value: "IMPAGO", label: "Impago" },
-    { value: "SIN_DATO", label: "Sin dato" },
+    { value: "PAID", label: "Pago" },
+    { value: "UNPAID", label: "Impago" },
+    { value: "UNKNOWN", label: "Sin dato" },
   ];
 
   const payerOptions: { value: AblPayer; label: string }[] = [
-    { value: "INQUILINO", label: "Inquilino" },
-    { value: "PROPIETARIO", label: "Propietario" },
+    { value: "TENANT", label: "Inquilino" },
+    { value: "LANDLORD", label: "Propietario" },
   ];
 
   return (
@@ -357,8 +357,8 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
   // Add period
   const [showAddPeriod, setShowAddPeriod] = useState(false);
   const [newPeriod, setNewPeriod] = useState(currentMonthStr());
-  const [newStatus, setNewStatus] = useState<AblStatus>("SIN_DATO");
-  const [newPayer, setNewPayer] = useState<AblPayer>("INQUILINO");
+  const [newStatus, setNewStatus] = useState<AblStatus>("UNKNOWN");
+  const [newPayer, setNewPayer] = useState<AblPayer>("TENANT");
   const [addingPeriod, setAddingPeriod] = useState(false);
   const [addPeriodError, setAddPeriodError] = useState<string | null>(null);
 
@@ -380,7 +380,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
     if (!abl || abl === "error") return;
     setJurisdiction(abl.jurisdiction ?? "");
     setPartida(abl.partida ?? "");
-    setDv(abl.dv ?? "");
+    setDv(abl.verificationDigit ?? "");
     setPartidaError(null);
     setEditing(true);
   }
@@ -409,7 +409,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
       const updated = await AlquiaBackendClient.abl.save(propertyId, {
         jurisdiction,
         partida: normalizedPartida,
-        ...(jurisdiction === "CABA_AGIP" && dv ? { dv } : {}),
+        ...(jurisdiction === "CABA_AGIP" && dv ? { verificationDigit: dv } : {}),
       });
       setAbl(updated);
       setEditing(false);
@@ -425,7 +425,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
     setRemovingPartida(true);
     try {
       await AlquiaBackendClient.abl.remove(propertyId);
-      setAbl({ jurisdiction: null, partida: null, dv: null, unpaidAbl: abl !== "error" && abl !== null ? abl.unpaidAbl : false });
+      setAbl({ jurisdiction: null, partida: null, verificationDigit: null, unpaidAbl: abl !== "error" && abl !== null ? abl.unpaidAbl : false });
       setEditing(false);
       toast.exito("Partida eliminada.");
     } catch (err) {
@@ -466,8 +466,8 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
       setSelectedPeriodKey(created.period);
       setShowAddPeriod(false);
       setNewPeriod(currentMonthStr());
-      setNewStatus("SIN_DATO");
-      setNewPayer("INQUILINO");
+      setNewStatus("UNKNOWN");
+      setNewPayer("TENANT");
     } catch (err) {
       setAddPeriodError(copyDeError(err));
     } finally {
@@ -518,14 +518,14 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
   const jurisdiccionLabel = abl?.jurisdiction === "PBA_ARBA" ? "PBA / ARBA" : "CABA / AGIP";
 
   const statusAddOptions: { value: AblStatus; label: string }[] = [
-    { value: "PAGO", label: "Pago" },
-    { value: "IMPAGO", label: "Impago" },
-    { value: "SIN_DATO", label: "Sin dato" },
+    { value: "PAID", label: "Pago" },
+    { value: "UNPAID", label: "Impago" },
+    { value: "UNKNOWN", label: "Sin dato" },
   ];
 
   const payerAddOptions: { value: AblPayer; label: string }[] = [
-    { value: "INQUILINO", label: "Inquilino" },
-    { value: "PROPIETARIO", label: "Propietario" },
+    { value: "TENANT", label: "Inquilino" },
+    { value: "LANDLORD", label: "Propietario" },
   ];
 
   return (
@@ -547,7 +547,7 @@ export function AblSection({ propertyId }: Readonly<{ propertyId: number }>) {
                     <dt>Partida</dt>
                     <dd>
                       {formatPartidaDisplay(abl!.jurisdiction, abl!.partida)}
-                      {abl!.dv ? `-${abl!.dv}` : ""}
+                      {abl!.verificationDigit ? `-${abl!.verificationDigit}` : ""}
                     </dd>
                   </div>
                 </dl>

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useTheme } from "@/context/theme-context";
 import { AlquiaBackendClient } from "@/lib/backend-client";
@@ -13,6 +13,8 @@ import { abrirTutorial } from "@/lib/tutorial";
 import { abrirReporte } from "@/lib/reportes";
 import { PanelLeft } from "lucide-react";
 import { HERRAMIENTAS, RUTA_HERRAMIENTAS, type Herramienta } from "./herramientas-catalogo";
+
+const NAV_COLLAPSED_KEY = "owner-nav-collapsed";
 
 /** Tocar el ítem de la pantalla actual no remonta la página: el workspace escucha esto para volver al listado. */
 export const NAV_RESET_EVENT = "alquia:nav-reset";
@@ -61,7 +63,23 @@ export default function DashboardNav({ activeView, tool, onNavigate }: Readonly<
   const [mobileDisclosure, setMobileDisclosure] = useState<"tools" | "account" | null>(null);
   const accountOpen = mobileDisclosure === "account";
   const [pendientes, setPendientes] = useState(0);
-  const [collapsed, setCollapsed] = useState(false);
+  // Lo que eligió el usuario en esta sesión; mientras no toque el botón, manda lo guardado.
+  // Leerlo con useSyncExternalStore evita el setState dentro de un efecto y el desajuste
+  // de hidratación: en el servidor siempre arranca expandido.
+  const [collapsedElegido, setCollapsedElegido] = useState<boolean | null>(null);
+  const collapsedGuardado = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        return localStorage.getItem(NAV_COLLAPSED_KEY) === "true";
+      } catch {
+        // La barra sigue disponible aunque el navegador bloquee la preferencia.
+        return false;
+      }
+    },
+    () => false
+  );
+  const collapsed = collapsedElegido ?? collapsedGuardado;
 
   // Sólo con sesión real y dentro de /dashboard: el prototipo no tiene backend.
   // Se recuenta al cambiar de pantalla, que es cuando el propietario pudo
@@ -77,17 +95,6 @@ export default function DashboardNav({ activeView, tool, onNavigate }: Readonly<
   }, [hayUsuario, onNavigate, pathname]);
 
   const badgeDe = (view: WorkspaceView) => (view === "cobranzas" && pendientes > 0 ? String(pendientes) : undefined);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      try {
-        setCollapsed(localStorage.getItem("owner-nav-collapsed") === "true");
-      } catch {
-        // La barra sigue disponible aunque el navegador bloquee la preferencia.
-      }
-    });
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   useEffect(() => {
     if (collapsed) {
@@ -111,9 +118,9 @@ export default function DashboardNav({ activeView, tool, onNavigate }: Readonly<
   const toolsActive = isCurrent(RUTA_HERRAMIENTAS, "herramientas");
 
   function changeSidebarCollapse(next: boolean) {
-    setCollapsed(next);
+    setCollapsedElegido(next);
     try {
-      localStorage.setItem("owner-nav-collapsed", String(next));
+      localStorage.setItem(NAV_COLLAPSED_KEY, String(next));
     } catch {
       // El cambio se conserva durante esta sesión.
     }

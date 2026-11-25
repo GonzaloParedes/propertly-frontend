@@ -9,6 +9,7 @@ import { ERROR } from "@/lib/error-codes";
 import type { ContractResponse } from "@/lib/backend-types";
 import {
   armarPedido,
+  condicionesDelProgramado,
   condicionesIniciales,
   mesesElegibles,
   resumenDeCondiciones,
@@ -34,6 +35,9 @@ function mensajeDeError(err: unknown): string {
     if (err.type === ERROR.CONTRACT_ALREADY_HAS_SUCCESSOR) {
       return "Este contrato ya tiene un cambio programado.";
     }
+    if (err.type === ERROR.SCHEDULED_SCHEMA_CHANGE_NOT_FOUND) {
+      return "Este contrato ya no tiene un cambio programado. Cierre y vuelva a abrirlo.";
+    }
     if (
       err.type === ERROR.EFFECTIVE_FROM_NOT_FIRST_OF_MONTH ||
       err.type === ERROR.EFFECTIVE_FROM_NOT_FUTURE ||
@@ -53,19 +57,27 @@ const METODOS: [MetodoActualizacion, string][] = [
   ["NONE", "Sin ajuste"],
 ];
 
+/**
+ * Con `programado` (el sucesor en SCHEDULED) el formulario edita ese cambio en
+ * vez de programar uno nuevo (ALQ-221): parte de sus condiciones y las reemplaza
+ * con PUT, sin crear otro sucesor.
+ */
 export default function CambioCondicionesForm({
   contrato,
+  programado = null,
   hoyISO,
   onCancelar,
   onProgramado,
 }: Readonly<{
   contrato: ContractResponse;
+  programado?: ContractResponse | null;
   hoyISO: string;
   onCancelar: () => void;
   onProgramado: (mes: string) => void;
 }>) {
   const meses = mesesElegibles(contrato, hoyISO);
-  const [c, setC] = useState<CondicionesNuevas>(() => condicionesIniciales(contrato, meses));
+  const [c, setC] = useState<CondicionesNuevas>(() =>
+    programado ? condicionesDelProgramado(programado, meses) : condicionesIniciales(contrato, meses));
   const [revisando, setRevisando] = useState(false);
   const [intento, setIntento] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -95,7 +107,11 @@ export default function CambioCondicionesForm({
     setError(null);
     setGuardando(true);
     try {
-      await AlquiaBackendClient.contracts.scheduleSchemaChange(contrato.id, armarPedido(c));
+      if (programado) {
+        await AlquiaBackendClient.contracts.rescheduleSchemaChange(contrato.id, armarPedido(c));
+      } else {
+        await AlquiaBackendClient.contracts.scheduleSchemaChange(contrato.id, armarPedido(c));
+      }
       onProgramado(c.mes);
     } catch (err) {
       setError(mensajeDeError(err));
@@ -119,7 +135,7 @@ export default function CambioCondicionesForm({
         <button type="button" className="owner-button owner-button--quiet" disabled={guardando}
           onClick={() => setRevisando(false)}>Volver</button>
         <button type="button" className="owner-button owner-button--primary" disabled={guardando}
-          aria-busy={guardando || undefined} onClick={() => void confirmar()}>{guardando ? <><Spinner />Programando…</> : "Programar cambio"}</button>
+          aria-busy={guardando || undefined} onClick={() => void confirmar()}>{guardando ? <><Spinner />{programado ? "Guardando…" : "Programando…"}</> : programado ? "Guardar cambio" : "Programar cambio"}</button>
       </div>
     </>;
   }

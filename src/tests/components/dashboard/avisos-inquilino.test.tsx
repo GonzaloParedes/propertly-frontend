@@ -25,3 +25,15 @@ it("bloquea activar sin correo pero permite apagar avisos que estaban activos", 
   await userEvent.click(screen.getByRole("switch", { name: "Avisar al inquilino" }));
   expect(onChange).toHaveBeenCalledWith(false);
 });
+
+it("en el detalle del contrato describe sólo los avisos de vencimiento, sin aumentos ni actualizaciones", () => {
+  render(<ControlAvisosInquilino enabled={false} onChange={vi.fn()} />);
+  expect(screen.getByText("Avisos de vencimiento de cada cuota. Apagado, no le enviamos ninguno.")).toBeInTheDocument();
+  expect(screen.queryByText(/actualizaci|aumento/i)).not.toBeInTheDocument();
+});
+
+it("al crear el contrato promete sólo avisos de vencimiento, sin actualizaciones ni aumentos", () => {
+  render(<CartelAvisosInquilino activo={false} onChange={vi.fn()} />);
+  expect(screen.getByText(/Por ahora no le enviamos avisos de vencimiento\./)).toBeInTheDocument();
+  expect(screen.queryByText(/actualizaci|aumento/i)).not.toBeInTheDocument();
+});
