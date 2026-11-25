@@ -419,6 +419,19 @@ describe("AlquiaBackendClient.contracts.scheduleSchemaChange", () => {
   });
 });
 
+describe("AlquiaBackendClient.contracts.rescheduleSchemaChange", () => {
+  it("pega a PUT /contracts/{id}/schema-change", async () => {
+    const body = {
+      effectiveFrom: "2026-11-01",
+      rentBaseline: 800000,
+      dueDay: 5,
+      incrementMethod: "NONE" as const,
+    };
+    await AlquiaBackendClient.contracts.rescheduleSchemaChange(4, body);
+    expect(mockPut).toHaveBeenCalledWith("/contracts/4/schema-change", body);
+  });
+});
+
 describe("AlquiaBackendClient.tenantAuth", () => {
   it("session pega a POST /tenant-auth/session sin reintento", async () => {
     await AlquiaBackendClient.tenantAuth.session({ token: "abc" });

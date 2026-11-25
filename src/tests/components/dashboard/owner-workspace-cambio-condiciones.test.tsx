@@ -20,6 +20,7 @@ vi.mock("@/lib/backend-client", () => ({
       rentIncrements: vi.fn(),
       getTenantAccess: vi.fn(),
       scheduleSchemaChange: vi.fn(),
+      rescheduleSchemaChange: vi.fn(),
     },
   },
 }));
@@ -29,6 +30,7 @@ const mockList = vi.mocked(AlquiaBackendClient.contracts.list);
 const mockGet = vi.mocked(AlquiaBackendClient.contracts.get);
 const mockIncrements = vi.mocked(AlquiaBackendClient.contracts.rentIncrements);
 const mockSchedule = vi.mocked(AlquiaBackendClient.contracts.scheduleSchemaChange);
+const mockReschedule = vi.mocked(AlquiaBackendClient.contracts.rescheduleSchemaChange);
 
 function contrato(over: Partial<ContractResponse> = {}): ContractResponse {
   return {
@@ -191,6 +193,50 @@ describe("cambio programado en el detalle", () => {
     await abrir(contrato({ successorContractId: 200 }), sucesor());
     await screen.findByText(/Cambio programado desde/);
     expect(screen.queryByRole("button", { name: "Cambiar condiciones" })).not.toBeInTheDocument();
+  });
+
+  // ALQ-221: con un cambio programado había que poder corregirlo, no quedar trabado.
+  it("ofrece editar el cambio programado, partiendo de lo programado", async () => {
+    await abrir(contrato({ successorContractId: 200 }), sucesor());
+    await userEvent.click(await screen.findByRole("button", { name: "Editar cambio programado" }));
+
+    const dialogo = await screen.findByRole("dialog", { name: "Editar cambio programado" });
+    expect(within(dialogo).getByLabelText("Rige desde")).toHaveValue("2099-10-01");
+    expect(within(dialogo).getByLabelText("Nuevo alquiler mensual")).toHaveValue("700.000");
+    expect(within(dialogo).getByLabelText("Porcentaje de aumento")).toHaveValue("10");
+  });
+
+  it("guarda la edición con PUT sobre el mismo contrato, sin programar otro", async () => {
+    mockReschedule.mockResolvedValue(sucesor());
+    await abrir(contrato({ successorContractId: 200 }), sucesor());
+    await userEvent.click(await screen.findByRole("button", { name: "Editar cambio programado" }));
+    await userEvent.selectOptions(await screen.findByLabelText("Rige desde"), "2099-11-01");
+    await userEvent.click(screen.getByRole("button", { name: "Sin ajuste" }));
+    await userEvent.click(screen.getByRole("button", { name: "Revisar cambio" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambio" }));
+
+    await waitFor(() => expect(mockReschedule).toHaveBeenCalledTimes(1));
+    expect(mockReschedule).toHaveBeenCalledWith(100, {
+      effectiveFrom: "2099-11-01",
+      rentBaseline: 700000,
+      dueDay: 5,
+      incrementMethod: "NONE",
+    });
+    expect(mockSchedule).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("si el cambio ya no está programado, lo dice", async () => {
+    mockReschedule.mockRejectedValue(
+      new ApiError(404, "Contract has no scheduled schema change", ERROR.SCHEDULED_SCHEMA_CHANGE_NOT_FOUND)
+    );
+    await abrir(contrato({ successorContractId: 200 }), sucesor());
+    await userEvent.click(await screen.findByRole("button", { name: "Editar cambio programado" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Revisar cambio" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambio" }));
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(await within(dialogo).findByText(/ya no tiene un cambio programado/)).toBeInTheDocument();
   });
 });
 

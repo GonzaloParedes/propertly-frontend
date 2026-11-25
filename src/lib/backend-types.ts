@@ -243,20 +243,20 @@ export interface PropertyResponse {
   activeContract?: ActiveContractSummary | null;
   /** Instante ISO-8601. `null` si no está archivada. */
   archivedAt?: string | null;
-  /** `true` cuando hay al menos un período ABL en estado IMPAGO (ALQ-207). */
+  /** `true` cuando hay al menos un período ABL en estado UNPAID (ALQ-207). */
   unpaidAbl?: boolean;
 }
 
 // --- ABL (ALQ-207) ---
 
 export type AblJurisdiction = "CABA_AGIP" | "PBA_ARBA";
-export type AblStatus = "PAGO" | "IMPAGO" | "SIN_DATO";
-export type AblPayer = "INQUILINO" | "PROPIETARIO";
+export type AblStatus = "PAID" | "UNPAID" | "UNKNOWN";
+export type AblPayer = "TENANT" | "LANDLORD";
 
 export interface AblResponse {
   jurisdiction: AblJurisdiction | null;
   partida: string | null;
-  dv: string | null;
+  verificationDigit: string | null;
   unpaidAbl: boolean;
 }
 
@@ -485,6 +485,16 @@ export interface ContractResponse {
   nextIncrementDate?: string;
   /** Sólo cuando es calculable: en un contrato por índice sin valor publicado no viene. */
   nextIncrementRent?: number;
+  /**
+   * Si el inquilino recibe aviso de ese aumento (ALQ-181). Hoy el backend siempre manda `false`: todavía
+   * no existe el aviso de aumento al inquilino. Un backend anterior no lo manda: se lee como `false`.
+   */
+  nextIncrementNotifiesTenant?: boolean;
+  /**
+   * `true` cuando `nextIncrementRent` es una estimación (índice todavía sin publicar), no el importe
+   * definitivo (ALQ-181). Ausente se lee como `false`.
+   */
+  nextIncrementRentEstimated?: boolean;
   documentFileName?: string;
   documentContentType?: string;
   documentSizeBytes?: number;
