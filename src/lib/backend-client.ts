@@ -194,6 +194,13 @@ export const AlquiaBackendClient = {
       body: ScheduledSchemaChangeRequest
     ): Promise<ContractResponse> =>
       apiPost<ContractResponse>(`/contracts/${id}/schema-change`, body, { retry: false }),
+    // Reemplaza el mes y las condiciones del cambio todavía programado (ALQ-221):
+    // devuelve el mismo sucesor, con el mismo id, aún en SCHEDULED.
+    rescheduleSchemaChange: (
+      id: number,
+      body: ScheduledSchemaChangeRequest
+    ): Promise<ContractResponse> =>
+      apiPut<ContractResponse>(`/contracts/${id}/schema-change`, body),
     attachDocument: (id: number, file: File): Promise<ContractResponse> => {
       const form = new FormData();
       form.append("file", file);

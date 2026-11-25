@@ -1726,7 +1726,10 @@ function DemoContractDetail({ demoContract, onBack, onCopyDemoLink }: Readonly<{
 
 function ContractHeaderActions({ isActive, scheduledContract, successorId, onOpenConditions, onBeginTermination }: Readonly<{ isActive: boolean; scheduledContract: ContractResponse | null; successorId: number | null; onOpenConditions: () => void; onBeginTermination: () => void }>) {
   if (!isActive) return null;
-  const conditionsAction = !scheduledContract && successorId === null ? <Button tone="secondary" onClick={onOpenConditions}>Cambiar condiciones</Button> : null;
+  // Con un cambio ya programado se edita ese mismo cambio (ALQ-221); mientras el sucesor carga no se ofrece nada.
+  let conditionsAction: React.ReactNode = null;
+  if (scheduledContract) conditionsAction = <Button tone="secondary" onClick={onOpenConditions}>Editar cambio programado</Button>;
+  else if (successorId === null) conditionsAction = <Button tone="secondary" onClick={onOpenConditions}>Cambiar condiciones</Button>;
   return <div className="owner-page-head__action">{conditionsAction}<Button tone="danger" onClick={onBeginTermination}>Finalizar contrato</Button></div>;
 }
 
@@ -2309,6 +2312,7 @@ type WorkspaceDialogState = {
   confirmingInvoice: FilaCobranza | null;
   paymentFile: File | null;
   conditionsOpen: boolean;
+  scheduledContract: ContractResponse | null;
   adjustmentError: string | null;
   settingsError: string | null;
   contractError: string | null;
@@ -2364,15 +2368,16 @@ type WorkspaceDialogActions = {
   conditionsProgrammed: (month: string) => void;
 };
 
-function ContractConditionsDialog({ isOpen, contract, onClose, onProgrammed }: Readonly<{
+function ContractConditionsDialog({ isOpen, contract, scheduledContract, onClose, onProgrammed }: Readonly<{
   isOpen: boolean;
   contract: ContractResponse | null;
+  scheduledContract: ContractResponse | null;
   onClose: () => void;
   onProgrammed: (month: string) => void;
 }>) {
   if (!isOpen || !contract) return null;
-  return <Dialog title="Cambiar condiciones" onClose={onClose}>
-    <CambioCondicionesForm contrato={contract} hoyISO={new Date().toISOString().slice(0, 10)} onCancelar={onClose} onProgramado={onProgrammed} />
+  return <Dialog title={scheduledContract ? "Editar cambio programado" : "Cambiar condiciones"} onClose={onClose}>
+    <CambioCondicionesForm contrato={contract} programado={scheduledContract} hoyISO={new Date().toISOString().slice(0, 10)} onCancelar={onClose} onProgramado={onProgrammed} />
   </Dialog>;
 }
 
@@ -2394,7 +2399,7 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
     {state.confirmingInvoice && <InvoiceConfirmationDialog row={state.confirmingInvoice} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closeInvoiceConfirmation} onConfirm={actions.confirmInvoice} />}
     {state.lateFeeRow && <LateFeeDialog row={state.lateFeeRow} onClose={actions.closeLateFee} onChanged={actions.lateFeeChanged} />}
     {state.registeringPayment && !state.lateFeeRow && <PaymentRegistrationDialog row={state.registeringPayment} onChangeLateFee={actions.openLateFee} file={state.paymentFile} error={state.adjustmentError} isBusy={state.actionBusy} onClose={actions.closePaymentRegistration} onFileChange={actions.setPaymentFile} onRegister={(file) => actions.registerPayment(state.registeringPayment!.invoiceId, file)} />}
-    <ContractConditionsDialog isOpen={state.conditionsOpen} contract={state.contract} onClose={actions.closeConditions} onProgrammed={actions.conditionsProgrammed} />
+    <ContractConditionsDialog isOpen={state.conditionsOpen} contract={state.contract} scheduledContract={state.scheduledContract} onClose={actions.closeConditions} onProgrammed={actions.conditionsProgrammed} />
   </>;
 }
 
@@ -3173,6 +3178,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     confirmingInvoice: confirmando,
     paymentFile: archivo,
     conditionsOpen,
+    scheduledContract: programado,
     adjustmentError: errorAccion,
     settingsError: errorAjustes,
     contractError: errorContrato,

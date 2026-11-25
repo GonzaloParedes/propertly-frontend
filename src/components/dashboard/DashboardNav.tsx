@@ -100,6 +100,8 @@ export default function DashboardNav({ activeView, onNavigate }: Readonly<Dashbo
 
   const badgeDe = (view: WorkspaceView) => (view === "cobranzas" && pendientes > 0 ? String(pendientes) : undefined);
 
+  // localStorage sólo existe en el cliente: leerlo en el render inicial haría que el
+  // HTML del servidor no coincida al hidratar. Se lee una vez, después de montar.
   useEffect(() => {
     if (collapsed) {
       document.body.dataset.navCollapsed = "";
