@@ -2443,6 +2443,11 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
   </>;
 }
 
+// Desde una herramienta abierta por su ruta, «volver» regresa al listado.
+function volverALasHerramientas(tool: Herramienta | undefined, onNavigate: ((view: OwnerView) => void) | undefined) {
+  return tool && onNavigate ? () => onNavigate("herramientas") : undefined;
+}
+
 export default function OwnerWorkspace({ initialView, activeView, onNavigate, tool, demo = false }: Readonly<{ initialView: OwnerView; activeView?: OwnerView; onNavigate?: (view: OwnerView) => void; tool?: Herramienta; demo?: boolean }>) {
   const { user, actualizarUsuario } = useAuth();
   const toast = useToast();
@@ -3173,7 +3178,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, to
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
     cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onSettlement={descargarLiquidacionDeCuota} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
-    herramientas: <Herramientas key={tool} demo={demo} tool={tool} onBack={tool && onNavigate ? () => onNavigate("herramientas") : undefined} />,
+    herramientas: <Herramientas key={tool} demo={demo} tool={tool} onBack={volverALasHerramientas(tool, onNavigate)} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} borradoresDePropiedad={borradoresDePropiedadDeInicio} onResumePropertyDraft={retomarBorradorDePropiedad} onDiscardPropertyDraft={setDescartandoBorradorDePropiedad} onRetryPropertyDrafts={() => setRecargaBorradoresDePropiedad((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };

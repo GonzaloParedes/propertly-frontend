@@ -60,7 +60,13 @@ const PUNTO_DE_PRUEBA = { lat: -34.6037, lng: -58.3816 };
 
 vi.mock("react-leaflet", () => ({
   MapContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="map" onClick={() => mapaMock.onClick?.({ latlng: PUNTO_DE_PRUEBA })}>
+    <div>
+      <button
+        type="button"
+        data-testid="map"
+        aria-label="Mapa"
+        onClick={() => mapaMock.onClick?.({ latlng: PUNTO_DE_PRUEBA })}
+      />
       {children}
     </div>
   ),
