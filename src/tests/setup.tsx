@@ -23,6 +23,22 @@ if (typeof Element.prototype.scrollIntoView !== "function") {
   Element.prototype.scrollIntoView = () => {};
 }
 
+// jsdom no abre diálogos modales ni evalúa media queries.
+if (typeof HTMLDialogElement.prototype.showModal !== "function") {
+  HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+    this.dispatchEvent(new Event("close"));
+  };
+}
+if (typeof window.matchMedia !== "function") {
+  window.matchMedia = (media) => ({
+    media, matches: true, onchange: null,
+    addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {},
+    dispatchEvent: () => true,
+  });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -44,7 +60,13 @@ const PUNTO_DE_PRUEBA = { lat: -34.6037, lng: -58.3816 };
 
 vi.mock("react-leaflet", () => ({
   MapContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="map" onClick={() => mapaMock.onClick?.({ latlng: PUNTO_DE_PRUEBA })}>
+    <div>
+      <button
+        type="button"
+        data-testid="map"
+        aria-label="Mapa"
+        onClick={() => mapaMock.onClick?.({ latlng: PUNTO_DE_PRUEBA })}
+      />
       {children}
     </div>
   ),

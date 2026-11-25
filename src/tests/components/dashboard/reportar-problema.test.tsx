@@ -1,5 +1,5 @@
 import { act } from "@testing-library/react";
-import { render, screen } from "@/tests/render";
+import { render, screen, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import DashboardNav from "@/components/dashboard/DashboardNav";
 import ReportarProblema, { AlertaDeError } from "@/components/dashboard/ReportarProblema";
@@ -42,9 +42,13 @@ async function abrirDesdeLaNavegacion() {
 }
 
 describe("Reportar un problema desde la navegación", () => {
-  it("la barra y el menú mobile ofrecen la entrada", () => {
+  it("la barra y el menú mobile ofrecen la entrada", async () => {
     renderConNavegacion();
-    expect(screen.getAllByRole("button", { name: "Reportar un problema" })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Reportar un problema" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    const menu = within(screen.getByRole("dialog", { name: "Menú" }));
+    await userEvent.click(menu.getByRole("button", { name: "Cuenta y ayuda" }));
+    expect(menu.getByRole("button", { name: "Reportar un problema" })).toBeInTheDocument();
   });
 
   it("no permite enviar sin descripción", async () => {
