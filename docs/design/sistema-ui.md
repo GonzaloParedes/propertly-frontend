@@ -1045,7 +1045,10 @@ Dos reglas que salieron de conectarlas, y que valen para las que faltan:
       el vigente lo apunta con `successorContractId`, así que **ese campo ya no
       significa «fue reemplazado»** salvo en un contrato `SUPERSEDED`. El detalle
       muestra el cambio programado y deja de ofrecer otro (el backend admite uno
-      solo). Sin cancelar ni editar: el backend todavía no lo permite. El
+      solo). En su lugar ofrece **«Editar cambio programado»** (ALQ-221): el mismo
+      diálogo, precargado con el mes y las condiciones programadas, que guarda con
+      `PUT /contracts/{contractId}/schema-change` y reemplaza ese sucesor en el
+      lugar (mismo id, sigue `SCHEDULED`). Cancelarlo todavía no se puede. El
       `/invoices/{id}/schema-change` viejo no se usa. **Verificado en vivo el
       28/09/2026**: programar un cambio deja el contrato vigente `ACTIVE` con
       `successorContractId` apuntando al `SCHEDULED`, y un segundo intento sobre
