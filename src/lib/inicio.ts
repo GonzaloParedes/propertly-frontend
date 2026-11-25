@@ -289,3 +289,30 @@ export function resumenDeCartera(properties: PropertyResponse[]): ResumenCartera
 export function contratosVigentes(contracts: ContractResponse[]): ContractResponse[] {
   return contracts.filter((c) => c.status === "ACTIVE");
 }
+
+// --- Próximos aumentos ---
+
+/** Hasta cuántos días adelante Inicio muestra los aumentos (inclusive). */
+export const DIAS_DE_PROXIMOS_AUMENTOS = 90;
+
+function sumarDias(fechaISO: string, dias: number): string {
+  const [anio, mes, dia] = fechaISO.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(anio, mes - 1, dia + dias)).toISOString().slice(0, 10);
+}
+
+/**
+ * El próximo aumento de cada contrato vigente que cae dentro de los próximos 90 días
+ * (hoy y el día 90 incluidos), el más cercano primero. La fecha y el monto los calcula
+ * el backend: un contrato sin ajuste no trae fecha y no aparece. Los montos quedan en
+ * la moneda de cada contrato: la lista no suma ni convierte nada.
+ */
+export function proximosAumentos(contracts: ContractResponse[], hoyISO: string): ContractResponse[] {
+  const hasta = sumarDias(hoyISO, DIAS_DE_PROXIMOS_AUMENTOS);
+  return contratosVigentes(contracts)
+    .filter((c) => {
+      if (c.incrementMethod === "NONE" || !c.nextIncrementDate) return false;
+      const fecha = c.nextIncrementDate.slice(0, 10);
+      return fecha >= hoyISO.slice(0, 10) && fecha <= hasta;
+    })
+    .sort((a, b) => (a.nextIncrementDate ?? "").localeCompare(b.nextIncrementDate ?? ""));
+}

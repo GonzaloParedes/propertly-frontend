@@ -19,7 +19,7 @@ export function CartelAvisosInquilino({ activo, onChange, disabled = false, tien
       <Icon name="bell" />
       <div>
         <p><b>¿Querés notificar al inquilino?</b></p>
-        <p>Por ahora no le enviamos avisos de vencimiento ni de actualización. Podés activarlos ahora; si no, los activás después desde el detalle del contrato.</p>
+        <p>Por ahora no le enviamos avisos de vencimiento. Podés activarlos ahora; si no, los activás después desde el detalle del contrato.</p>
         {!tieneCorreo && <p>Agregue un correo electrónico al inquilino para activar los avisos. Puede crear el contrato sin avisos.</p>}
         <Interruptor label="Avisar al inquilino" checked={activo} disabled={disabled || !tieneCorreo} onChange={onChange} />
 
@@ -57,7 +57,7 @@ export function ControlAvisosInquilino({ enabled, onChange, tieneCorreo = true }
   return (
     <div className="owner-avisos-contrato">
       <p><b>Avisos al inquilino</b></p>
-      <p>Vencimientos y actualizaciones. Apagado, no le enviamos ninguno.</p>
+      <p>Avisos de vencimiento de cada cuota. Apagado, no le enviamos ninguno.</p>
       {!tieneCorreo && <p>Agregue un correo electrónico desde los datos del inquilino para activar los avisos.</p>}
       <Interruptor label="Avisar al inquilino" checked={enabled} disabled={pending || (!enabled && !tieneCorreo)} onChange={(value) => void cambiar(value)} />
       {error && <AlertaDeError mensaje={error} />}

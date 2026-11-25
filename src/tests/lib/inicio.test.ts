@@ -4,6 +4,7 @@ import {
   periodoCorriente,
   periodoSiguiente,
   proporciones,
+  proximosAumentos,
   proyeccionDelMes,
   resumenDeCartera,
   resumenDeCobranza,
@@ -355,5 +356,86 @@ describe("contratosVigentes", () => {
       { ...CONTRATO, id: 4, status: "SUPERSEDED" },
     ]);
     expect(r.map((c) => c.id)).toEqual([100]);
+  });
+});
+
+describe("proximosAumentos", () => {
+  const HOY_AUMENTOS = "2026-11-24";
+  const con = (id: number, extra: Partial<ContractResponse>): ContractResponse => ({ ...CONTRATO, id, ...extra });
+
+  it("deja los vigentes con aumento dentro de los 90 días, el más cercano primero", () => {
+    const r = proximosAumentos(
+      [
+        con(1, { nextIncrementDate: "2027-01-10" }),
+        con(2, { nextIncrementDate: "2026-12-14" }),
+        con(3, { nextIncrementDate: "2026-12-30" }),
+      ],
+      HOY_AUMENTOS
+    );
+    expect(r.map((c) => c.id)).toEqual([2, 3, 1]);
+  });
+
+  it("incluye el día 90 y deja afuera el 91", () => {
+    // 24/11/2026 + 90 días = 22/02/2027
+    const r = proximosAumentos(
+      [con(1, { nextIncrementDate: "2027-02-22" }), con(2, { nextIncrementDate: "2027-02-23" })],
+      HOY_AUMENTOS
+    );
+    expect(r.map((c) => c.id)).toEqual([1]);
+  });
+
+  it("deja afuera el aumento demorado cuya fecha ya pasó sin aplicarse", () => {
+    const r = proximosAumentos(
+      [con(1, { incrementMethod: "INDEX", nextIncrementDate: "2026-11-10", nextIncrementRent: undefined }), con(2, { nextIncrementDate: "2026-12-01" })],
+      HOY_AUMENTOS
+    );
+    expect(r.map((c) => c.id)).toEqual([2]);
+  });
+
+  it("incluye el aumento de hoy y deja afuera el de ayer", () => {
+    const r = proximosAumentos(
+      [con(1, { nextIncrementDate: HOY_AUMENTOS }), con(2, { nextIncrementDate: "2026-11-23" })],
+      HOY_AUMENTOS
+    );
+    expect(r.map((c) => c.id)).toEqual([1]);
+  });
+
+  it("cuenta los 90 días a través del cambio de año", () => {
+    // 15/11/2026 + 90 días = 13/02/2027
+    expect(proximosAumentos([con(1, { nextIncrementDate: "2027-02-13" })], "2026-11-15")).toHaveLength(1);
+    expect(proximosAumentos([con(1, { nextIncrementDate: "2027-02-14" })], "2026-11-15")).toHaveLength(0);
+  });
+
+  it("ignora los contratos que no están vigentes, sin fecha o sin ajuste", () => {
+    const r = proximosAumentos(
+      [
+        con(1, { status: "TERMINATED", nextIncrementDate: "2026-12-14" }),
+        con(2, { status: "SUPERSEDED", nextIncrementDate: "2026-12-14" }),
+        con(3, { nextIncrementDate: undefined }),
+        con(4, { incrementMethod: "NONE", nextIncrementDate: "2026-12-14" }),
+      ],
+      HOY_AUMENTOS
+    );
+    expect(r).toEqual([]);
+  });
+
+  it("con monedas mezcladas conserva cada contrato con su moneda, sin sumar ni convertir", () => {
+    const r = proximosAumentos(
+      [
+        con(1, { currency: "USD", currentRent: 800, nextIncrementRent: 850, nextIncrementDate: "2026-12-20" }),
+        con(2, { currency: "ARS", currentRent: 500000, nextIncrementRent: 540000, nextIncrementDate: "2026-12-14" }),
+      ],
+      HOY_AUMENTOS
+    );
+    expect(r.map((c) => [c.id, c.currency, c.currentRent, c.nextIncrementRent])).toEqual([
+      [2, "ARS", 500000, 540000],
+      [1, "USD", 800, 850],
+    ]);
+  });
+
+  it("no modifica la lista recibida", () => {
+    const entrada = [con(1, { nextIncrementDate: "2027-01-10" }), con(2, { nextIncrementDate: "2026-12-14" })];
+    proximosAumentos(entrada, HOY_AUMENTOS);
+    expect(entrada.map((c) => c.id)).toEqual([1, 2]);
   });
 });
