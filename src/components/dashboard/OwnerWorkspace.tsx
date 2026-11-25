@@ -13,6 +13,7 @@ import ElegirBorrador from "@/components/dashboard/ElegirBorrador";
 import RentEstimateCard from "@/components/dashboard/RentEstimateCard";
 import { AblSection } from "@/components/dashboard/AblSection";
 import Herramientas from "@/components/dashboard/Herramientas";
+import type { Herramienta } from "./herramientas-catalogo";
 import ResultadoBcra from "@/components/dashboard/ResultadoBcra";
 import PropertyLocationMap from "@/components/dashboard/PropertyLocationMap";
 import PaymentReceiptUpload from "@/components/dashboard/PaymentReceiptUpload";
@@ -116,6 +117,7 @@ import { useCambioDeDia } from "@/hooks/useCambioDeDia";
 import { ERROR, copyDeError } from "@/lib/error-codes";
 import CambioCondicionesForm from "@/components/dashboard/CambioCondicionesForm";
 import { useAuth } from "@/context/auth-context";
+import { useTheme } from "@/context/theme-context";
 import { AlertaDeError } from "@/components/dashboard/ReportarProblema";
 import { abrirReporte } from "@/lib/reportes";
 
@@ -1452,6 +1454,7 @@ function SettingsView({
   onEditReminders,
   onEditAccount,
 }: SettingsViewProps) {
+  const { theme, setTheme } = useTheme();
   let reminders: React.ReactNode;
   if (hasReminderError) {
     reminders = <LoadError title="No pudimos cargar los recordatorios" card={false} />;
@@ -1467,10 +1470,15 @@ function SettingsView({
   }
 
   return <>
-    <header className="owner-page-head"><div><h1>Configuración</h1><p>Preferencias de su cuenta y recordatorios.</p></div></header>
-    <section className="owner-detail-grid">
+    <header className="owner-page-head"><div><h1>Configuración</h1><p>Cuenta, recordatorios y apariencia del panel.</p></div></header>
+    <section className="owner-detail-grid owner-detail-grid--settings">
       <div className="owner-card"><h2>Recordatorios de pago</h2>{reminders}</div>
       <div className="owner-card"><h2>Cuenta</h2><dl className="owner-definition"><div><dt>Nombre</dt><dd>{account ? `${account.firstName} ${account.lastName}` : "—"}</dd></div><div><dt>Correo</dt><dd>{account?.email ?? "—"}</dd></div>{account?.taxId && <div><dt>CUIT</dt><dd>{formatearCuit(account.taxId)}</dd></div>}{account?.phoneNumber && <div><dt>Teléfono</dt><dd>{account.phoneNumber}</dd></div>}</dl><Button tone="secondary" small disabled={!canEditAccount} onClick={onEditAccount}>Editar datos</Button></div>
+      <div className="owner-card">
+        <h2>Apariencia</h2>
+        <p className="owner-card__copy">Este ajuste se guarda en este dispositivo.</p>
+        <SwitchRow label="Modo oscuro" checked={theme === "dark"} onChange={(checked) => setTheme(checked ? "dark" : "light")} />
+      </div>
       <div className="owner-card"><h2>Ayuda</h2><p className="owner-card__copy">El recorrido de primer ingreso: primero la propiedad, después el inquilino y al final el contrato, todo desde «Nuevo contrato».</p><Button tone="secondary" small onClick={abrirTutorial}>Ver tutorial</Button></div>
     </section>
   </>;
@@ -2397,7 +2405,7 @@ function WorkspaceDialogs({ state, actions }: Readonly<{ state: WorkspaceDialogS
   </>;
 }
 
-export default function OwnerWorkspace({ initialView, activeView, onNavigate, demo = false }: Readonly<{ initialView: OwnerView; activeView?: OwnerView; onNavigate?: (view: OwnerView) => void; demo?: boolean }>) {
+export default function OwnerWorkspace({ initialView, activeView, onNavigate, tool, demo = false }: Readonly<{ initialView: OwnerView; activeView?: OwnerView; onNavigate?: (view: OwnerView) => void; tool?: Herramienta; demo?: boolean }>) {
   const { user, actualizarUsuario } = useAuth();
   const toast = useToast();
   // La demo conserva su titular de ejemplo: sin sesión, Inicio y Configuración
@@ -3126,7 +3134,7 @@ export default function OwnerWorkspace({ initialView, activeView, onNavigate, de
     contratos: <ContractsView contracts={listaContratos} hasError={contratosError} filter={filtroContrato} onFilterChange={setFiltroContrato} onCreateContract={() => void nuevoContrato()} borradores={borradoresDeContratos} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onOpenContract={(contract) => { const id = demo ? CLAVES_CONTRATO_DEMO[contract.id - 1] : String(contract.id); openDetail("contract", id); }} />,
     cobranzas: <CollectionsView collections={cobranzas} hasError={cobranzasError} filter={filtroCobranza} onFilterChange={setFiltroCobranza} isBusy={accionEnCurso} canAdjust={!demo} onReview={revisarPago} onConfirm={pedirConfirmacion} onAdjust={prepararAjuste} onViewReceipt={(paymentId) => void verComprobante(paymentId)} onSettlement={descargarLiquidacionDeCuota} onLateFee={abrirRecargo} onRegisterPayment={registrarPago} onCreateContract={() => void nuevoContrato()} />,
     inquilinos: <TenantsView tenants={inquilinos} hasError={inquilinosError} onCreateTenant={() => beginCreation("tenant")} onCreateContract={() => void nuevoContrato()} onOpenTenant={(tenantId) => openDetail("tenant", String(tenantId))} />,
-    herramientas: <Herramientas demo={demo} />,
+    herramientas: <Herramientas key={tool} demo={demo} tool={tool} onBack={tool && onNavigate ? () => onNavigate("herramientas") : undefined} />,
     configuracion: <SettingsView reminderSettings={recordatorios} hasReminderError={recordatoriosConError} account={cuenta} canEditAccount={Boolean(user)} onEditReminders={editarRecordatorios} onEditAccount={editarCuenta} />,
     inicio: <Overview greeting={saludoDeInicio} subtitle={`Así está su cartera hoy, ${calendarioDeInicio.hoy}.`} currentMonth={calendarioDeInicio.mesActual} nextMonth={calendarioDeInicio.mesSiguiente} data={datosDeInicio} hasError={inicioConError} projection={proyeccionDeInicio} borradores={borradoresDeInicio} onResumeDraft={retomarBorrador} onDiscardDraft={setDescartandoBorrador} onRetryDrafts={() => setRecargaBorradores((n) => n + 1)} borradoresDePropiedad={borradoresDePropiedadDeInicio} onResumePropertyDraft={retomarBorradorDePropiedad} onDiscardPropertyDraft={setDescartandoBorradorDePropiedad} onRetryPropertyDrafts={() => setRecargaBorradoresDePropiedad((n) => n + 1)} onCreateProperty={() => beginCreation("property")} onCreateContract={() => void nuevoContrato()} onOpenCollections={() => go("cobranzas")} onOpenContract={(id) => openDetail("contract", demo ? CLAVES_CONTRATO_DEMO[id - 1] : String(id))} />,
   };

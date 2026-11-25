@@ -5,46 +5,14 @@ import CalculadoraDeAumentos from "@/components/dashboard/CalculadoraDeAumentos"
 import ConsultaBcra from "@/components/dashboard/ConsultaBcra";
 import { NAV_RESET_EVENT } from "@/components/dashboard/DashboardNav";
 import PredictorDeAlquiler from "@/components/dashboard/PredictorDeAlquiler";
-import { Icon, type IconName } from "@/components/ui/Icon";
-
-type Herramienta = "calculadora" | "bcra" | "predictor";
-
-const HERRAMIENTAS: ReadonlyArray<{
-  id: Herramienta;
-  titulo: string;
-  descripcion: string;
-  subtitulo: string;
-  icono: IconName;
-}> = [
-  {
-    id: "calculadora",
-    titulo: "Calculadora de aumentos",
-    descripcion: "Calcule el nuevo alquiler por ICL o IPC a partir del último aumento.",
-    subtitulo: "El nuevo alquiler por ICL o IPC, con la misma cuenta que usan sus contratos.",
-    icono: "calculator",
-  },
-  {
-    id: "bcra",
-    titulo: "Consulta de deudores",
-    descripcion: "Vea si una persona tiene deudas informadas en la Central de Deudores del BCRA.",
-    subtitulo: "La situación crediticia de cualquier CUIT o CUIL, o de un inquilino suyo.",
-    icono: "search",
-  },
-  {
-    id: "predictor",
-    titulo: "Predictor de alquiler",
-    descripcion: "Estime a cuánto alquilar una propiedad según el mercado de la zona.",
-    subtitulo: "Para una propiedad suya o para otra, con una carga rápida.",
-    icono: "trend",
-  },
-];
+import Link from "next/link";
+import { HERRAMIENTAS, RUTA_HERRAMIENTAS, type Herramienta } from "./herramientas-catalogo";
+import { Icon } from "@/components/ui/Icon";
 
 /**
- * La sección Herramientas del panel (ALQ-145): utilidades que no dependen de la
- * cartera. Abre cada herramienta en el lugar, como el detalle de un listado; tocar
- * «Herramientas» en la barra vuelve al listado.
+ * Renderiza una herramienta abierta desde el menú o desde el listado anterior.
  */
-export default function Herramientas({ demo = false }: Readonly<{ demo?: boolean }>) {
+export default function Herramientas({ demo = false, tool, onBack }: Readonly<{ demo?: boolean; tool?: Herramienta; onBack?: () => void }>) {
   const [abierta, setAbierta] = useState<Herramienta | null>(null);
 
   useEffect(() => {
@@ -53,10 +21,12 @@ export default function Herramientas({ demo = false }: Readonly<{ demo?: boolean
     return () => window.removeEventListener(NAV_RESET_EVENT, volverAlListado);
   }, []);
 
-  const herramienta = HERRAMIENTAS.find((h) => h.id === abierta);
+  const herramienta = HERRAMIENTAS.find((h) => h.id === (tool ?? abierta));
   if (herramienta) {
     return <>
-      <nav className="owner-crumb"><button type="button" onClick={() => setAbierta(null)}>Herramientas</button><span>/</span><span>{herramienta.titulo}</span></nav>
+      <nav className="owner-crumb">{tool && !onBack
+        ? <Link href={RUTA_HERRAMIENTAS}>Herramientas</Link>
+        : <button type="button" onClick={onBack ?? (() => setAbierta(null))}>Herramientas</button>}<span>/</span><span>{herramienta.titulo}</span></nav>
       <header className="owner-page-head"><div><h1>{herramienta.titulo}</h1><p>{herramienta.subtitulo}</p></div></header>
       {herramienta.id === "calculadora" && <CalculadoraDeAumentos />}
       {herramienta.id === "bcra" && <ConsultaBcra demo={demo} />}

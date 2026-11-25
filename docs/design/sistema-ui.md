@@ -428,8 +428,8 @@ por la forma, que sobrevive al daltonismo y a la impresión en blanco y negro.
 - Landing, login y auth son claras por diseño. Todos los colores se pintan
   explícitamente para que la página no herede el fondo del host.
 - Modo oscuro: **opcional y sólo en el panel** (ALQ-38). El propietario lo activa
-  con el botón sol/luna del navbar (`DashboardNav`) y la preferencia se recuerda
-  en el dispositivo (localStorage, sin backend). Lo aplica el `ThemeProvider`
+  en Configuración → Apariencia, y la preferencia se recuerda en el dispositivo
+  (localStorage, sin backend). Lo aplica el `ThemeProvider`
   (`src/context/theme-context.tsx`) seteando `data-theme="dark"` en `<html>`
   mientras está en el dashboard/prototipo; al salir vuelve a claro, así landing y
   login nunca se oscurecen. Esto **reemplaza** la decisión previa de «un solo
