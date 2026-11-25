@@ -157,9 +157,10 @@ export default function DashboardNav({ activeView, tool, onNavigate }: Readonly<
   }
 
   function navigationItem(item: NavigationItem, herramienta?: Herramienta) {
-    const current = herramienta
-      ? (activeView ? toolsActive && herramienta === tool : pathname === item.href)
-      : isCurrent(item.href, item.view);
+    let current = isCurrent(item.href, item.view);
+    if (herramienta) {
+      current = activeView ? toolsActive && herramienta === tool : pathname === item.href;
+    }
     const badge = badgeDe(item.view);
     const content = <>
       <Icon name={item.icon} />
@@ -279,8 +280,9 @@ export default function DashboardNav({ activeView, tool, onNavigate }: Readonly<
         aria-labelledby="owner-drawer-title"
         onCancel={(event) => { event.preventDefault(); closeDrawer(); }}
         onClose={(event) => { if (!event.currentTarget.open) setOpen(false); }}
-        onClick={(event) => { if (event.target === event.currentTarget) closeDrawer(); }}
       >
+        {/* Cierra al tocar fuera del panel. Fuera del tab order: con teclado se cierra con Escape o con el botón «Cerrar menú». */}
+        <button type="button" tabIndex={-1} aria-label="Cerrar menú al tocar fuera" className="owner-drawer__backdrop" onClick={closeDrawer} />
         <div className="owner-drawer__panel">
           <header className="owner-drawer__top">
             <h2 id="owner-drawer-title">Menú</h2>

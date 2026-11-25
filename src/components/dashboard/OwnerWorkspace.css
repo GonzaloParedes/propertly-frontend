@@ -141,7 +141,8 @@
   }
   .owner-drawer::backdrop{background:rgba(30,27,46,.4)}
   body:has(.owner-drawer[open]){overflow:hidden}
-  .owner-drawer__panel{display:flex;flex-direction:column;block-size:100%}
+  .owner-drawer__backdrop{position:fixed;inset:0;padding:0;border:0;background:transparent;cursor:default}
+  .owner-drawer__panel{position:relative;display:flex;flex-direction:column;block-size:100%}
   .owner-drawer__top{
     display:flex;
     flex:none;

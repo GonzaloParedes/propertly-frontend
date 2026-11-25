@@ -42,6 +42,22 @@ describe("abrir y cerrar el menú", () => {
     );
   });
 
+  it("al tocar fuera del panel (botón de fondo) se cierra el menú", async () => {
+    render(<DashboardNav />);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar menú al tocar fuera" }));
+    expect(screen.getByRole("button", { name: "Abrir menú" })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+  });
+
+  it("el botón de fondo no entra en el orden de tabulación", async () => {
+    render(<DashboardNav />);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
+    expect(screen.getByRole("button", { name: "Cerrar menú al tocar fuera" })).toHaveAttribute("tabindex", "-1");
+  });
+
   it("con Escape se cierra el menú", async () => {
     render(<DashboardNav />);
     await userEvent.click(screen.getByRole("button", { name: "Abrir menú" }));
