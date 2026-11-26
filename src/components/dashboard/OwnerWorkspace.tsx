@@ -23,8 +23,9 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { abrirTutorial } from "@/lib/tutorial";
 import Dialog from "@/components/ui/Dialog";
 import Badge from "@/components/ui/Badge";
-import { RecargoPorAtraso } from "@/components/ui/RecargoPorAtraso";
-import { validarImporteDeRecargo } from "@/lib/recargo";
+import { MenuDeAcciones, type AccionDelMenu } from "@/components/dashboard/MenuDeAcciones";
+import { AvisoDeCuotasPorConfirmar, FiltroDeEstado } from "@/components/dashboard/CobranzasControles";
+import { validarImporteDeRecargo, type RecargoVista } from "@/lib/recargo";
 import { AlquiaBackendClient } from "@/lib/backend-client";
 import type {
   AdjustmentResponse,
@@ -41,13 +42,17 @@ import type {
 import { armarLiquidacion, puedeEmitirLiquidacionDeFila } from "@/lib/liquidacion";
 import { buildTenantRows, resumenInquilinos, type TenantRow } from "@/lib/tenant-rows";
 import {
+  avisoDeCuotasSinConfirmar,
   buildFilasCobranza,
+  cobradoDelMes,
   contarPorFiltro,
   buscarCobranzas,
   esPagoDelAlta,
   ETIQUETA_PAGO_DEL_ALTA,
   filtrar,
+  plazoDeCuota,
   resumenCobranzas,
+  resumenDeRecargo,
   type FilaCobranza,
   type FiltroCobranza,
 } from "@/lib/cobranzas";
@@ -177,30 +182,46 @@ const inquilinosDemo: TenantRow[] = [
     contratoId: null, avisosAlInquilino: false, direccion: null, alquiler: null, estado: "Sin contrato" },
 ];
 
+/** La demo está clavada en agosto de 2026: es el mes de sus cuotas y de sus vencimientos. */
+const HOY_DEMO = "2026-08-25";
+
+type FilaDeDemo = Omit<FilaCobranza, "plazo" | "importeAdeudado" | "delMes"> & { importeAdeudado: number };
+
+function filaDeDemo(fila: FilaDeDemo): FilaCobranza {
+  return { ...fila, plazo: plazoDeCuota(fila, HOY_DEMO), delMes: true };
+}
+
+const vistaDeRecargoDeDemo = (monto: string): RecargoVista => ({
+  etiqueta: "Recargo por atraso", monto, detalle: null, desdeManana: null, modificado: null, desde: null,
+});
+
 /**
  * Las cuatro cuotas del prototipo, con la forma que tiene el dato real. Cubren
  * las cuatro acciones posibles: revisar, confirmar, registrar y descargar.
  */
-const cobranzasDemo: FilaCobranza[] = [
-  { invoiceId: 1, contractId: 1, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 478691, totalVigente: 478691, ajustes: [], direccion: "Av. Rivadavia 2340, 5.º A", inquilino: "Jorge Paletta", periodo: "agosto 2026",
-    monto: "$ 478.691", vencimiento: "10/08/2026", vencimientoISO: "2026-08-10", estado: "Vencida",
+const filasDeDemo: FilaDeDemo[] = [
+  { invoiceId: 1, contractId: 1, recargo: vistaDeRecargoDeDemo("$ 9.800"), recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 478691, totalVigente: 478691, importeAdeudado: 488491, ajustes: [], direccion: "Av. Rivadavia 2340, 5.º A", inquilino: "Jorge Paletta", periodo: "agosto 2026",
+    monto: "$ 488.491", vencimiento: "10/08/2026", vencimientoISO: "2026-08-10", estado: "Vencida",
     confirmada: true, accion: "registrar", pagoPendiente: null, pagoConfirmado: null },
-  { invoiceId: 2, contractId: 2, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 520000, totalVigente: 520000, ajustes: [], direccion: "Lavalle 950, 3.º B", inquilino: "Marta Suárez", periodo: "agosto 2026",
+  { invoiceId: 2, contractId: 2, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 520000, totalVigente: 520000, importeAdeudado: 520000, ajustes: [], direccion: "Lavalle 950, 3.º B", inquilino: "Marta Suárez", periodo: "agosto 2026",
     monto: "$ 520.000", vencimiento: "10/08/2026", vencimientoISO: "2026-08-10", estado: "Pago a confirmar",
     confirmada: true, accion: "revisar",
     pagoPendiente: { id: 90, invoiceId: 2, status: "AWAITING_CONFIRMATION", submittedByTenant: true,
-      receiptFileName: "comprobante-transferencia.jpg", receiptContentType: "image/jpeg", receiptSizeBytes: 1887436 },
+      receiptFileName: "comprobante-transferencia.jpg", receiptContentType: "image/jpeg", receiptSizeBytes: 1887436, submittedAt: "2026-08-09T15:00:00Z" },
     pagoConfirmado: null },
-  { invoiceId: 3, contractId: 3, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 505000, totalVigente: 505000, ajustes: [], direccion: "Colón 2255, 4.º D", inquilino: "Diego Ferrari", periodo: "agosto 2026",
-    monto: "$ 505.000", vencimiento: "25/08/2026", vencimientoISO: "2026-08-25", estado: "A vencer",
+  { invoiceId: 3, contractId: 3, recargo: vistaDeRecargoDeDemo("$ 12.600"), recargoEditable: null,
+    sinConfirmar: { urgente: true, correRecargo: true, texto: "El inquilino todavía no puede pagarla en el portal. El recargo por atraso corre igual, según el contrato: hoy suma $ 12.600." },
+    dependeDelDia: false, importeBase: 505000, totalVigente: 505000, importeAdeudado: 517600, ajustes: [], direccion: "Colón 2255, 4.º D", inquilino: "Diego Ferrari", periodo: "agosto 2026",
+    monto: "$ 517.600", vencimiento: "10/08/2026", vencimientoISO: "2026-08-10", estado: "Vencida",
     confirmada: false, accion: "confirmar", pagoPendiente: null, pagoConfirmado: null },
-  { invoiceId: 4, contractId: 4, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 430000, totalVigente: 430000, ajustes: [], direccion: "Belgrano 445, PB", inquilino: "Ana Ferreyra", periodo: "agosto 2026",
+  { invoiceId: 4, contractId: 4, recargo: null, recargoEditable: null, sinConfirmar: null, dependeDelDia: false, importeBase: 430000, totalVigente: 430000, importeAdeudado: 430000, ajustes: [], direccion: "Belgrano 445, PB", inquilino: "Ana Ferreyra", periodo: "agosto 2026",
     monto: "$ 430.000", vencimiento: "05/08/2026", vencimientoISO: "2026-08-05", estado: "Pagada",
     confirmada: true, accion: "comprobante",
     pagoPendiente: null,
     pagoConfirmado: { id: 91, invoiceId: 4, status: "CONFIRMED", submittedByTenant: false,
-      receiptFileName: "recibo-agosto.pdf", receiptContentType: "application/pdf", receiptSizeBytes: 240000 } },
+      receiptFileName: "recibo-agosto.pdf", receiptContentType: "application/pdf", receiptSizeBytes: 240000, submittedAt: "2026-08-04T15:00:00Z" } },
 ];
+const cobranzasDemo = filasDeDemo.map(filaDeDemo);
 
 /**
  * Las cinco propiedades del prototipo, ya con la forma que tiene la fila real.
@@ -953,10 +974,7 @@ function ContractsView({
   </>;
 }
 
-type CollectionActionProps = Readonly<{
-  item: FilaCobranza;
-  isBusy: boolean;
-  canAdjust: boolean;
+type CollectionHandlers = Readonly<{
   onReview: (item: FilaCobranza) => void;
   onConfirm: (item: FilaCobranza) => void;
   onAdjust: (item: FilaCobranza) => void;
@@ -966,98 +984,129 @@ type CollectionActionProps = Readonly<{
   onRegisterPayment: (item: FilaCobranza) => void;
 }>;
 
-function CollectionAction({
-  item,
-  isBusy,
-  canAdjust,
-  onReview,
-  onConfirm,
-  onAdjust,
-  onLateFee,
-  onViewReceipt,
-  onSettlement,
-  onRegisterPayment,
-}: CollectionActionProps) {
-  const recargo = item.recargoEditable && <Button tone="quiet" small disabled={isBusy} onClick={() => onLateFee(item)}>Recargo</Button>;
-  if (item.accion === "revisar") return <>{recargo}<Button tone="secondary" small onClick={() => onReview(item)}>Revisar pago</Button></>;
+type CollectionActionProps = CollectionHandlers & Readonly<{
+  item: FilaCobranza;
+  isBusy: boolean;
+  canAdjust: boolean;
+}>;
+
+/**
+ * La acción que le toca a la cuota, una sola y a la vista. El resto de lo que
+ * se puede hacer vive en el menú «⋯». El sufijo (` pago`, ` importe`) sobra
+ * cuando la tabla se angosta: ahí el botón dice sólo el verbo.
+ */
+function PrimaryCollectionAction({ item, isBusy, onReview, onConfirm, onViewReceipt, onRegisterPayment }: CollectionActionProps) {
   if (item.accion === "confirmar") {
-    return <>
-      {recargo}
-      <Button tone="quiet" small disabled={isBusy || !canAdjust} onClick={() => onAdjust(item)}>Ajustar importe</Button>
-      <Button tone="secondary" small disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar importe</Button>
-    </>;
+    return <Button small disabled={isBusy} onClick={() => onConfirm(item)}><span>Confirmar<span className="owner-largo"> importe</span></span></Button>;
+  }
+  if (item.accion === "revisar") {
+    return <Button tone="secondary" small onClick={() => onReview(item)}><span>Revisar<span className="owner-largo"> pago</span></span></Button>;
   }
   if (item.accion === "comprobante") {
     // Un pago del alta no tiene archivo: en vez de un botón que no abre nada, dice de dónde sale.
     if (esPagoDelAlta(item.pagoConfirmado)) return <span className="owner-pago-alta"><Icon name="check" size={16} />{ETIQUETA_PAGO_DEL_ALTA}</span>;
-    return <>
-      <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
-        return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
-      }}><Icon name="download" size={16} />Comprobante</Button>
-      {puedeEmitirLiquidacionDeFila(item) && <Button tone="secondary" small onClick={() => onSettlement(item)}><Icon name="file" size={16} />Liquidación</Button>}
-    </>;
+    return <Button tone="secondary" small disabled={!item.pagoConfirmado} onClick={() => {
+      return item.pagoConfirmado ? onViewReceipt(item.pagoConfirmado.id) : undefined;
+    }}><Icon name="download" size={16} />Comprobante</Button>;
   }
-  return <>{recargo}<Button tone="secondary" small onClick={() => onRegisterPayment(item)}>Registrar pago</Button></>;
+  return <Button tone="secondary" small onClick={() => onRegisterPayment(item)}><span>Registrar<span className="owner-largo"> pago</span></span></Button>;
 }
 
-type CollectionsViewProps = Readonly<{
+/** Lo que va al menú «⋯»: lo que no es la acción principal de la cuota. */
+function menuActionsOf({ item, isBusy, canAdjust, onAdjust, onLateFee, onSettlement }: CollectionActionProps): AccionDelMenu[] {
+  const actions: AccionDelMenu[] = [];
+  if (item.accion === "confirmar") {
+    actions.push({ clave: "ajustar", texto: "Ajustar importe", deshabilitada: isBusy || !canAdjust, alElegir: () => onAdjust(item) });
+  }
+  if (item.recargoEditable) {
+    actions.push({ clave: "recargo", texto: "Cambiar recargo", deshabilitada: isBusy, alElegir: () => onLateFee(item) });
+  }
+  if (puedeEmitirLiquidacionDeFila(item)) {
+    actions.push({ clave: "liquidacion", texto: "Liquidación", alElegir: () => onSettlement(item) });
+  }
+  return actions;
+}
+
+function CollectionAction(props: CollectionActionProps) {
+  return <div className="owner-accion" data-accion={props.item.accion}>
+    <PrimaryCollectionAction {...props} />
+    <MenuDeAcciones etiqueta={`Más acciones de ${props.item.direccion}`} acciones={menuActionsOf(props)} />
+  </div>;
+}
+
+function CollectionRow(props: CollectionActionProps) {
+  const { item } = props;
+  const { plazo } = item;
+  const recargo = resumenDeRecargo(item.recargo);
+  const vencida = plazo.vencida ? " owner-plazo--vencida" : "";
+  return <tr>
+    <td data-cell="propiedad">
+      <b className="owner-cuota__dir">{item.direccion}</b>
+      <small className="owner-cuota__quien">{item.inquilino}<span className="owner-cuota__periodo"> · {item.periodo}</span><span className="owner-cuota__corto"> · {plazo.corto}</span></small>
+      <small className={`owner-cuota__plazo${vencida}`}>{plazo.largo}</small>
+    </td>
+    <td data-cell="vencimiento"><span className="owner-vence__fecha">{item.vencimiento}</span><small className={`owner-vence__rel${vencida}`}>{plazo.relativo}</small></td>
+    <td data-cell="estado">
+      <Status>{item.estado}</Status>
+      {!item.confirmada && <small className={`owner-nota${item.sinConfirmar?.urgente ? " owner-nota--urgente" : ""}`}><Icon name="alert" size={14} /><span><span className="owner-nota__prefijo">Importe </span><span className="owner-nota__resto">sin confirmar</span></span></small>}
+    </td>
+    <td data-cell="monto" className="owner-number">
+      <b className="owner-monto">{item.monto}</b>
+      {recargo && <small className={`owner-recargo owner-recargo--${recargo.tono}`}>{recargo.texto}</small>}
+    </td>
+    <td data-cell="accion"><CollectionAction {...props} /></td>
+  </tr>;
+}
+
+function CollectionsTable({ items, ...rest }: CollectionHandlers & Readonly<{ items: FilaCobranza[]; isBusy: boolean; canAdjust: boolean }>) {
+  return <div className="owner-table-wrap"><table className="owner-table" aria-label="Cuotas">
+    <thead><tr><th data-cell="propiedad">Cuota</th><th data-cell="vencimiento">Vence</th><th data-cell="estado">Estado</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="accion"><span className="sr-only">Acciones</span></th></tr></thead>
+    <tbody>{items.map((item) => <CollectionRow key={item.invoiceId} item={item} {...rest} />)}</tbody>
+  </table></div>;
+}
+
+/** Los cuatro estados que se filtran, en el orden en que se muestran. */
+const COLLECTION_FILTERS: readonly (readonly [FiltroCobranza, string])[] = [["todas", "Todas"], ["vencidas", "Vencidas"], ["aVencer", "A vencer"], ["pagadas", "Pagadas"]];
+
+function CollectionsHeader({ collections }: Readonly<{ collections: FilaCobranza[] | null }>) {
+  const month = collections ? cobradoDelMes(collections) : null;
+  return <header className="owner-page-head">
+    <div><h1>Cobranzas</h1><p>{collections ? resumenCobranzas(collections) : "Cuotas, pagos y vencimientos."}</p></div>
+    {month && <p className="owner-cobrado"><span>Cobrado del mes</span><b>{month.cobrado} <small>de {month.total}</small></b></p>}
+  </header>;
+}
+
+type CollectionsViewProps = CollectionHandlers & Readonly<{
   collections: FilaCobranza[] | null;
   hasError: boolean;
   filter: FiltroCobranza;
   onFilterChange: (filter: FiltroCobranza) => void;
   isBusy: boolean;
   canAdjust: boolean;
-  onReview: (item: FilaCobranza) => void;
-  onConfirm: (item: FilaCobranza) => void;
-  onAdjust: (item: FilaCobranza) => void;
-  onLateFee: (item: FilaCobranza) => void;
-  onViewReceipt: (paymentId: number) => void | Promise<unknown>;
-  onSettlement: (item: FilaCobranza) => void | Promise<unknown>;
-  onRegisterPayment: (item: FilaCobranza) => void;
   onCreateContract: () => void;
 }>;
 
-function CollectionsView({
-  collections,
-  hasError,
-  filter,
-  onFilterChange,
-  isBusy,
-  canAdjust,
-  onReview,
-  onConfirm,
-  onAdjust,
-  onLateFee,
-  onViewReceipt,
-  onSettlement,
-  onRegisterPayment,
-  onCreateContract,
-}: CollectionsViewProps) {
-  const [panelOpen, setPanelOpen] = useState(false);
+function CollectionsView({ collections, hasError, filter, onFilterChange, isBusy, canAdjust, onCreateContract, ...handlers }: CollectionsViewProps) {
   const [query, setQuery] = useState("");
   const found = collections ? buscarCobranzas(collections, query) : [];
   const visibleCollections = filtrar(found, filter);
-  const counts = contarPorFiltro(found);
-  const filters: [FiltroCobranza, string][] = [["todas", "Todas"], ["vencidas", "Vencidas"], ["aVencer", "A vencer"], ["pagadas", "Pagadas"]];
+  const notice = collections ? avisoDeCuotasSinConfirmar(collections) : null;
 
   return <>
-    <header className="owner-page-head"><div><h1>Cobranzas</h1><p>{collections ? resumenCobranzas(collections) : "Cuotas, pagos y vencimientos."}</p></div></header>
+    <CollectionsHeader collections={collections} />
     {hasError && <LoadError title="No pudimos cargar sus cobranzas" />}
     {!hasError && collections === null && <div className="owner-card"><Cargando>Cargando sus cobranzas…</Cargando></div>}
     {collections?.length === 0 && <EmptyState art="cobranzas" title="Todavía no hay cuotas" action={<AnclaDeTutorial nombre="nuevo-contrato"><Button onClick={onCreateContract}><Icon name="plus" size={18} />Nuevo contrato</Button></AnclaDeTutorial>}>Las cuotas se emiten solas a partir de sus contratos activos. Acá va a ver qué se pagó y qué está por vencer.</EmptyState>}
     {collections && collections.length > 0 && <>
-      <div className="owner-search-bar">
+      <div className="owner-search-bar owner-search-bar--cobranzas">
         <SearchField value={query} onChange={setQuery} placeholder="Buscar por dirección o inquilino" label="Buscar cuotas" />
-        <FilterMenu active={filter === "todas" ? 0 : 1} open={panelOpen} onOpenChange={setPanelOpen}
-          onClear={() => onFilterChange("todas")}
-          resultsLabel={`Ver ${visibleCollections.length} ${visibleCollections.length === 1 ? "cuota" : "cuotas"}`}>
-          <FilterChoices id="f-cuota" label="Estado" options={filters.map(([key, label]) => [key, label, counts[key]] as const)} isOn={(key) => filter === key} onToggle={(key) => onFilterChange(key as FiltroCobranza)} />
-        </FilterMenu>
+        <FiltroDeEstado opciones={COLLECTION_FILTERS} activo={filter} cuentas={contarPorFiltro(found)} onChange={onFilterChange} />
       </div>
-      {visibleCollections.length === 0 ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(filters.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
-        otherState={{ label: "todas", apply: () => onFilterChange("todas") }} /> : <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th data-cell="propiedad">Propiedad</th><th data-cell="monto" className="owner-number">Monto</th><th data-cell="vencimiento">Vencimiento</th><th data-cell="estado">Estado</th><th data-cell="accion">Acción</th></tr></thead><tbody>
-        {visibleCollections.map((item) => <tr key={item.invoiceId}><td data-cell="propiedad"><b>{item.direccion}</b><small>{item.inquilino} · {item.periodo}</small>{item.sinConfirmar && <p className={`owner-aviso${item.sinConfirmar.urgente ? " owner-aviso--urgente" : ""}`}>{item.sinConfirmar.texto} <button type="button" className="owner-aviso__link" disabled={isBusy} onClick={() => onConfirm(item)}>Confirmar</button></p>}</td><td data-cell="monto" className="owner-number owner-money"><span className="owner-monto">{item.monto}</span>{item.recargo && <RecargoPorAtraso vista={item.recargo} />}</td><td data-cell="vencimiento">{item.vencimiento}</td><td data-cell="estado"><Status>{item.estado}</Status>{!item.confirmada && <small className={`owner-substatus${item.sinConfirmar?.urgente ? " owner-substatus--urgente" : ""}`}><Icon name="alert" size={15} /><span className="sr-only">Importe </span>Sin confirmar</small>}</td><td data-cell="accion"><CollectionAction item={item} isBusy={isBusy} canAdjust={canAdjust} onReview={onReview} onConfirm={onConfirm} onAdjust={onAdjust} onLateFee={onLateFee} onViewReceipt={onViewReceipt} onSettlement={onSettlement} onRegisterPayment={onRegisterPayment} /></td></tr>)}
-      </tbody></table></div>}
+      {notice && <AvisoDeCuotasPorConfirmar aviso={notice} ocupado={isBusy} onConfirm={handlers.onConfirm} />}
+      {visibleCollections.length === 0
+        ? <EmptyResults noun="cuotas" query={query} found={found.length} stateLabel={(COLLECTION_FILTERS.find(([key]) => key === filter)?.[1] ?? "").toLowerCase()} onClearSearch={() => setQuery("")}
+          otherState={{ label: "todas", apply: () => onFilterChange("todas") }} />
+        : <CollectionsTable items={visibleCollections} isBusy={isBusy} canAdjust={canAdjust} {...handlers} />}
     </>}
   </>;
 }

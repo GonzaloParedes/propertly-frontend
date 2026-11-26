@@ -26,7 +26,7 @@ describe("vistaDeRecargo", () => {
   it("corriendo: el recargo de hoy y lo que se adeuda desde mañana", () => {
     expect(vistaDeRecargo(cuota(recargo()), "inquilino")).toEqual({
       etiqueta: "Recargo por atraso", monto: "$ 6.750", detalle: null,
-      desdeManana: "$ 459.000", modificado: null,
+      desdeManana: "$ 459.000", modificado: null, desde: null,
     });
   });
 
@@ -41,7 +41,7 @@ describe("vistaDeRecargo", () => {
       "inquilino"
     );
     expect(vista).toMatchObject({
-      monto: null, desdeManana: null,
+      monto: null, desdeManana: null, desde: "16/10",
       detalle: "Desde el 16/10 se suma un recargo de $ 2.250 por día",
     });
   });

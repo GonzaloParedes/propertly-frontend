@@ -72,6 +72,15 @@ export function formatearPeriodo(fechaISO: string): string {
   return p ? `${MESES[p[1] - 1]} ${p[0]}` : fechaISO;
 }
 
+/** Días de calendario de `desdeISO` a `hastaISO`: positivo si `hastaISO` es posterior. Ignora la hora si la hay. */
+export function diferenciaEnDias(desdeISO: string, hastaISO: string): number {
+  const dia = (iso: string) => {
+    const [anio, mes, d] = iso.slice(0, 10).split("-").map(Number);
+    return Date.UTC(anio, mes - 1, d);
+  };
+  return Math.round((dia(hastaISO) - dia(desdeISO)) / 86_400_000);
+}
+
 /** «16/10»: para fechas cercanas, donde el año sobra. */
 export function formatearDiaMes(fechaISO: string): string {
   const p = partes(fechaISO);

@@ -10,6 +10,7 @@ import {
   Copy,
   CreditCard,
   Download,
+  Ellipsis,
   ImagePlus,
   CircleHelp,
   FileText,
@@ -84,6 +85,7 @@ const MAP = {
   report: MessageSquareWarning,
   tools: Wrench,
   calculator: Calculator,
+  more: Ellipsis,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof MAP;
