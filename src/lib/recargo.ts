@@ -18,6 +18,8 @@ export interface RecargoVista {
   desdeManana: string | null;
   /** Sólo para el propietario: que el recargo no es el que calcula el contrato. */
   modificado: "Recargo modificado" | "Recargo perdonado" | null;
+  /** Sólo antes de empezar: el día («16/10») desde el que se empieza a sumar. */
+  desde: string | null;
 }
 
 type Quien = "propietario" | "inquilino";
@@ -70,6 +72,7 @@ export function vistaDeRecargo(invoice: InvoiceResponse, quien: Quien): RecargoV
     detalle: detalleDeRecargo(lateFee, invoice.currency),
     desdeManana: importeDesdeManana(invoice, lateFee),
     modificado,
+    desde: arrancaPronto ? formatearDiaMes(lateFee.accruesFrom) : null,
   };
 }
 

@@ -59,6 +59,10 @@
   --adv: #B26A00;
   --error: #CE3F53;
   --error-bg: #FBE9EC;
+  /* Color de TEXTO de los semánticos sobre blanco o su propio tinte (≥ 4,5:1);
+     --adv y --error alcanzan para íconos y no para texto chico. */
+  --adv-texto: #8A5300;
+  --error-texto: #B4283E;
 
   /* Contorno y placeholder de los campos de texto. Van aparte de --borde-campo
      porque ése es también el anillo de hover de tarjetas y filas, y oscurecerlo
@@ -130,6 +134,8 @@ html[data-theme="dark"] {
   --adv: #FFD166;
   --error: #F2889A;
   --error-bg: rgba(242,136,154,.16);
+  --adv-texto: #FFD166;
+  --error-texto: #F2889A;
   --borde-control: #7A7590;
   --placeholder: #9D98AE;
 }
