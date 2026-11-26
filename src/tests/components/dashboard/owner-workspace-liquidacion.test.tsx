@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@/tests/render";
+import { render, screen, waitFor, within } from "@/tests/render";
 import userEvent from "@testing-library/user-event";
 import OwnerWorkspace from "@/components/dashboard/OwnerWorkspace";
 import type { ContractResponse, InvoiceResponse, PaymentResponse } from "@/lib/backend-types";
@@ -64,27 +64,35 @@ beforeEach(() => {
   vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
 });
 
+/** La liquidación vive en el menú «⋯» de la cuota, no como botón suelto. */
+async function abrirMenu() {
+  await userEvent.click(await screen.findByRole("button", { name: /Más acciones de Av\. Rivadavia/ }));
+  return screen.getByRole("menu");
+}
+
 describe("liquidación de un pago", () => {
-  it("se ofrece junto al comprobante en una cuota cobrada por el inquilino", async () => {
+  it("se ofrece en el menú, y el comprobante queda como acción principal, en una cuota cobrada por el inquilino", async () => {
     conCuotas([cuota()]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
     expect(screen.getByRole("button", { name: /Comprobante/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Liquidación/ })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /Liquidación/ })).not.toBeInTheDocument();
+    expect(within(await abrirMenu()).getByRole("menuitem", { name: /Liquidación/ })).toBeEnabled();
   });
 
   it("se ofrece en una cuota cobrada por el propietario", async () => {
     conCuotas([cuota({ payments: [pago({ origin: "LANDLORD", submittedByTenant: false })] })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.getByRole("button", { name: /Liquidación/ })).toBeInTheDocument();
+    expect(within(await abrirMenu()).getByRole("menuitem", { name: /Liquidación/ })).toBeInTheDocument();
   });
 
   it("no se ofrece en un pago del alta, que conserva su etiqueta", async () => {
     conCuotas([cuota({ payments: [pago({ origin: "ONBOARDING", hasReceipt: false })] })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.queryByRole("button", { name: /Liquidación/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Liquidación/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
     expect(screen.getByText("Registrado al dar de alta · sin comprobante")).toBeInTheDocument();
   });
 
@@ -92,7 +100,8 @@ describe("liquidación de un pago", () => {
     conCuotas([cuota({ status: "DUE", payments: [] })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.queryByRole("button", { name: /Liquidación/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Liquidación/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
   });
 
   it("baja el PDF armado con la cuota y el contrato recién pedidos", async () => {
@@ -102,7 +111,7 @@ describe("liquidación de un pago", () => {
     mockDescargar.mockResolvedValue(undefined);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    await userEvent.click(screen.getByRole("button", { name: /Liquidación/ }));
+    await userEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: /Liquidación/ }));
 
     await waitFor(() => expect(mockDescargar).toHaveBeenCalledTimes(1));
     expect(mockInvoice).toHaveBeenCalledWith(1000);
@@ -122,10 +131,13 @@ describe("liquidación de un pago", () => {
     mockDescargar.mockRejectedValueOnce(new Error("boom"));
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    await userEvent.click(screen.getByRole("button", { name: /Liquidación/ }));
+    await userEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: /Liquidación/ }));
 
     expect(await screen.findByText("No se pudo generar la liquidación. Vuelva a intentarlo.")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: /Liquidación/ })).toBeEnabled());
+    // Mientras genera, el botón «⋯» queda ocupado; al fallar vuelve a estar disponible para reintentar.
+    const boton = screen.getByRole("button", { name: /Más acciones de Av\. Rivadavia/ });
+    await waitFor(() => expect(boton).not.toHaveAttribute("aria-busy"));
+    expect(within(await abrirMenu()).getByRole("menuitem", { name: /Liquidación/ })).toBeEnabled();
   });
 
   it("muestra el error si no se puede pedir la cuota", async () => {
@@ -134,7 +146,7 @@ describe("liquidación de un pago", () => {
     mockContract.mockResolvedValue(CONTRATO);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    await userEvent.click(screen.getByRole("button", { name: /Liquidación/ }));
+    await userEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: /Liquidación/ }));
 
     expect(await screen.findByText("No se pudo generar la liquidación. Vuelva a intentarlo.")).toBeInTheDocument();
     expect(mockDescargar).not.toHaveBeenCalled();

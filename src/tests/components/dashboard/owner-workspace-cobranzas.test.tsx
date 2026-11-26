@@ -62,6 +62,12 @@ function conCuotas(invoices: InvoiceResponse[]) {
 
 const fila = (texto: string | RegExp) => screen.getByRole("row", { name: texto });
 
+/** Abre el menú «⋯» de la cuota y lo devuelve: ahí viven las acciones que no son la principal. */
+async function abrirMenu(direccion = "Av. Rivadavia 2340, 5.º A") {
+  await userEvent.click(screen.getByRole("button", { name: `Más acciones de ${direccion}` }));
+  return screen.getByRole("menu");
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(AlquiaBackendClient.contractImports.quota).mockResolvedValue({ used: 0, limit: 5, available: true });
@@ -104,7 +110,7 @@ describe("carga", () => {
     const propiedad = await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
     expect(propiedad).toBeInTheDocument();
-    expect(screen.getByText("Jorge Paletta · agosto 2026")).toBeInTheDocument();
+    expect(fila(/Av\. Rivadavia/)).toHaveTextContent("Jorge Paletta · agosto 2026");
     expect(screen.getByText("$ 478.691")).toBeInTheDocument();
     expect(screen.getByText("10/08/2026")).toBeInTheDocument();
   });
@@ -120,24 +126,45 @@ describe("filtros", () => {
     cuota({ id: 4, status: "DUE", payments: [pago({ status: "AWAITING_CONFIRMATION" })] }),
   ];
 
-  it("cuenta cada estado", async () => {
-    conCuotas(cuatro);
-    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
-    const grupo = screen.getByRole("region", { name: "Estado" });
+  const botonDeEstado = (nombre: RegExp) =>
+    within(screen.getByRole("group", { name: "Filtrar por estado" })).getByRole("button", { name: nombre });
 
-    expect(within(grupo).getByRole("button", { name: /Todas/ })).toHaveTextContent("4");
-    expect(within(grupo).getByRole("button", { name: /Vencidas/ })).toHaveTextContent("1");
-    expect(within(grupo).getByRole("button", { name: /A vencer/ })).toHaveTextContent("2");
-    expect(within(grupo).getByRole("button", { name: /Pagadas/ })).toHaveTextContent("1");
+  it("cuenta cada estado, a la vista y sin abrir ningún panel", async () => {
+    conCuotas(cuatro);
+    await screen.findByRole("group", { name: "Filtrar por estado" });
+
+    expect(botonDeEstado(/Todas/)).toHaveTextContent("4");
+    expect(botonDeEstado(/Vencidas/)).toHaveTextContent("1");
+    expect(botonDeEstado(/A vencer/)).toHaveTextContent("2");
+    expect(botonDeEstado(/Pagadas/)).toHaveTextContent("1");
+    expect(screen.queryByRole("button", { name: "Filtros" })).not.toBeInTheDocument();
+  });
+
+  it("arranca en «Todas» y marca el estado activo con aria-pressed", async () => {
+    conCuotas(cuatro);
+    await screen.findByRole("group", { name: "Filtrar por estado" });
+    expect(botonDeEstado(/Todas/)).toHaveAttribute("aria-pressed", "true");
+    expect(botonDeEstado(/Pagadas/)).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(botonDeEstado(/Pagadas/));
+
+    expect(botonDeEstado(/Pagadas/)).toHaveAttribute("aria-pressed", "true");
+    expect(botonDeEstado(/Todas/)).toHaveAttribute("aria-pressed", "false");
   });
 
   it("al filtrar deja sólo las que corresponden", async () => {
     conCuotas(cuatro);
-    await userEvent.click(await screen.findByRole("button", { name: "Filtros" }));
-    await userEvent.click(screen.getByRole("button", { name: /Pagadas/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Pagadas/ }));
 
     // 1 encabezado + 1 fila
     expect(screen.getAllByRole("row")).toHaveLength(2);
+  });
+
+  it("los conteos siguen a la búsqueda", async () => {
+    conCuotas(cuatro);
+    await userEvent.type(await screen.findByLabelText("Buscar cuotas"), "zzzz");
+
+    expect(botonDeEstado(/Todas/)).toHaveTextContent("0");
   });
 });
 
@@ -160,9 +187,7 @@ describe("búsqueda", () => {
   it("si el estado esconde lo que se buscó, ofrece ver todas", async () => {
     conCuotas([cuota({ status: "DUE" })]);
     await userEvent.type(await screen.findByLabelText("Buscar cuotas"), "rivadavia");
-    await userEvent.click(screen.getByRole("button", { name: "Filtros" }));
     await userEvent.click(screen.getByRole("button", { name: /Pagadas/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
 
     expect(screen.getByText("No hay cuotas pagadas")).toBeInTheDocument();
     expect(screen.getByText("Para «rivadavia» hay 1 en otros estados.")).toBeInTheDocument();
@@ -180,7 +205,7 @@ describe("acciones", () => {
 
     expect(screen.getByRole("button", { name: "Confirmar importe" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Registrar pago" })).not.toBeInTheDocument();
-    expect(screen.getByText("Sin confirmar")).toBeInTheDocument();
+    expect(fila(/Av\. Rivadavia/)).toHaveTextContent("Importe sin confirmar");
   });
 
   it("confirmar el importe pide una confirmación antes de tocar el backend", async () => {
@@ -367,7 +392,7 @@ describe("ajustar importe", () => {
   async function abrirAjuste(invoice = sinConfirmar()) {
     conCuotas([invoice]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
-    await userEvent.click(screen.getByRole("button", { name: "Ajustar importe" }));
+    await userEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Ajustar importe" }));
     return screen.getByRole("dialog");
   }
 
@@ -378,12 +403,13 @@ describe("ajustar importe", () => {
     await userEvent.type(monto$, monto);
   }
 
-  it("se ofrece junto a confirmar, no en vez de", async () => {
+  it("se ofrece en el menú de la fila, junto a confirmar y no en vez de", async () => {
     conCuotas([sinConfirmar()]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
     expect(screen.getByRole("button", { name: "Confirmar importe" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ajustar importe" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ajustar importe" })).not.toBeInTheDocument();
+    expect(within(await abrirMenu()).getByRole("menuitem", { name: "Ajustar importe" })).toBeEnabled();
   });
 
   // Confirmar cierra el importe: el backend rechaza ajustes después.
@@ -391,7 +417,8 @@ describe("ajustar importe", () => {
     conCuotas([cuota({ confirmed: true })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.queryByRole("button", { name: "Ajustar importe" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Ajustar importe" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
   });
 
   it("muestra el importe base y el total", async () => {
@@ -583,6 +610,172 @@ describe("pagos en vivo", () => {
 });
 
 
+// --- la acción principal y el menú «⋯» ---
+
+describe("acción principal de cada fila", () => {
+  const accionesVisibles = (texto: RegExp) =>
+    within(screen.getByRole("row", { name: texto })).getAllByRole("button").map((b) => b.textContent);
+
+  it("sin confirmar: «Confirmar importe»", async () => {
+    conCuotas([cuota({ confirmed: false })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(accionesVisibles(/Rivadavia/)).toEqual(["Confirmar importe", ""]);
+    expect(within(fila(/Rivadavia/)).getByRole("button", { name: "Confirmar importe" })).toHaveClass("owner-button--primary");
+  });
+
+  it("con un comprobante esperando: «Revisar pago»", async () => {
+    conCuotas([cuota({ payments: [pago({ status: "AWAITING_CONFIRMATION", submittedByTenant: true })] })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(within(fila(/Rivadavia/)).getByRole("button", { name: "Revisar pago" })).toBeInTheDocument();
+    expect(within(fila(/Rivadavia/)).queryByRole("button", { name: "Registrar pago" })).not.toBeInTheDocument();
+  });
+
+  it.each([["vencida", "DUE"], ["a vencer", "PENDING"]] as const)("%s y confirmada: «Registrar pago»", async (_, status) => {
+    conCuotas([cuota({ status })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(within(fila(/Rivadavia/)).getByRole("button", { name: "Registrar pago" })).toBeInTheDocument();
+  });
+
+  it("pagada: «Comprobante»", async () => {
+    conCuotas([cuota({ status: "PAID", payments: [pago()] })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(within(fila(/Rivadavia/)).getByRole("button", { name: /Comprobante/ })).toBeInTheDocument();
+  });
+
+  it("con un solo botón a la vista: ni «Recargo» ni «Ajustar importe» sueltos al lado", async () => {
+    const lateFee: LateFeeResponse = { method: "PERCENT_PER_DAY", value: 1.5, accruesFrom: "2026-08-11", asOf: "2026-08-14",
+      daysLate: 3, amount: 6750, nextDayAmount: 9000, state: "ACCRUING", overridden: false };
+    conCuotas([cuota({ confirmed: false, amountDue: 485441, lateFee })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(within(fila(/Rivadavia/)).queryByRole("button", { name: /Recargo|Ajustar/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("menú «⋯» de la fila", () => {
+  const lateFee: LateFeeResponse = { method: "PERCENT_PER_DAY", value: 1.5, accruesFrom: "2026-08-11", asOf: "2026-08-14",
+    daysLate: 3, amount: 6750, nextDayAmount: 9000, state: "ACCRUING", overridden: false };
+  const opciones = (menu: HTMLElement) => within(menu).getAllByRole("menuitem").map((o) => o.textContent);
+
+  it("sin confirmar y con recargo: Ajustar importe y Cambiar recargo", async () => {
+    conCuotas([cuota({ confirmed: false, amountDue: 485441, lateFee })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(opciones(await abrirMenu())).toEqual(["Ajustar importe", "Cambiar recargo"]);
+  });
+
+  it("vencida con recargo: sólo Cambiar recargo", async () => {
+    conCuotas([cuota({ amountDue: 485441, lateFee })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(opciones(await abrirMenu())).toEqual(["Cambiar recargo"]);
+  });
+
+  it("pagada con un pago confirmado: Liquidación", async () => {
+    conCuotas([cuota({ status: "PAID", payments: [pago({ origin: "LANDLORD", hasReceipt: true })] })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(opciones(await abrirMenu())).toEqual(["Liquidación"]);
+  });
+
+  it("sin nada para ofrecer no hay botón «⋯», pero la fila no pierde el lugar", async () => {
+    conCuotas([cuota()]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
+    expect(fila(/Rivadavia/).querySelector(".owner-more--hueco")).toBeInTheDocument();
+  });
+
+  it("el botón dice de qué cuota es y anuncia que abre un menú", async () => {
+    conCuotas([cuota({ confirmed: false })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+    const boton = screen.getByRole("button", { name: "Más acciones de Av. Rivadavia 2340, 5.º A" });
+
+    expect(boton).toHaveAttribute("aria-haspopup", "menu");
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    await userEvent.click(boton);
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
+  it("al abrir, el foco entra a la primera opción; las flechas lo mueven y dan la vuelta", async () => {
+    conCuotas([cuota({ confirmed: false, amountDue: 485441, lateFee })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+    await abrirMenu();
+    const [ajustar, recargo] = screen.getAllByRole("menuitem");
+
+    expect(ajustar).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(recargo).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(ajustar).toHaveFocus();
+    await userEvent.keyboard("{ArrowUp}");
+    expect(recargo).toHaveFocus();
+    await userEvent.keyboard("{Home}");
+    expect(ajustar).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(recargo).toHaveFocus();
+  });
+
+  it("Escape cierra el menú y devuelve el foco al botón", async () => {
+    conCuotas([cuota({ confirmed: false })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+    const boton = screen.getByRole("button", { name: /Más acciones/ });
+    await abrirMenu();
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(boton).toHaveFocus();
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("se abre con el teclado: flecha abajo sobre el botón", async () => {
+    conCuotas([cuota({ confirmed: false })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+    screen.getByRole("button", { name: /Más acciones/ }).focus();
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Ajustar importe" })).toHaveFocus();
+  });
+
+  it("un clic afuera lo cierra", async () => {
+    conCuotas([cuota({ confirmed: false })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+    await abrirMenu();
+
+    await userEvent.click(screen.getByRole("heading", { name: "Cobranzas" }));
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("elegir una opción cierra el menú y hace lo que dice", async () => {
+    conCuotas([cuota({ amountDue: 485441, lateFee })]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    await userEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cambiar recargo" }));
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("en la demo, Ajustar importe aparece pero deshabilitado: ahí no hay backend", async () => {
+    render(<OwnerWorkspace initialView="cobranzas" demo />);
+
+    const menu = await abrirMenu("Colón 2255, 4.º D");
+
+    expect(within(menu).getByRole("menuitem", { name: "Ajustar importe" })).toBeDisabled();
+  });
+});
+
 // --- recargo por atraso y cuotas sin confirmar ---
 
 describe("recargo por atraso", () => {
@@ -595,17 +788,18 @@ describe("recargo por atraso", () => {
     conCuotas([cuota({ total: 450000, amountDue: 456750, lateFee: recargo() })]);
     const filaCuota = within(await screen.findByRole("row", { name: /Av\. Rivadavia/ }));
 
+    // Una sola línea: el detalle (días, «desde mañana») vive en el diálogo de recargo.
     expect(filaCuota.getByText("$ 456.750")).toBeInTheDocument();
-    expect(filaCuota.getByText(/Recargo por atraso/)).toHaveTextContent("$ 6.750");
-    expect(filaCuota.getByText(/Desde mañana/)).toHaveTextContent("$ 459.000");
+    expect(filaCuota.getByText("incluye $ 6.750 de recargo")).toBeInTheDocument();
+    expect(filaCuota.queryByText(/Desde mañana/)).not.toBeInTheDocument();
   });
 
   it("antes de que empiece, dice desde cuándo y no suma nada al importe", async () => {
     conCuotas([cuota({ amountDue: 478691, lateFee: recargo({ state: "NOT_STARTED", amount: 0, nextDayAmount: 2250, accruesFrom: "2026-08-16" }) })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.getByText("Desde el 16/08 se suma un recargo de $ 2.250 por día")).toBeInTheDocument();
-    expect(screen.queryByText(/Recargo por atraso/)).not.toBeInTheDocument();
+    expect(screen.getByText("Recargo desde el 16/08")).toBeInTheDocument();
+    expect(screen.queryByText(/incluye/)).not.toBeInTheDocument();
   });
 
   it("un recargo perdonado se le dice al propietario", async () => {
@@ -624,12 +818,12 @@ describe("recargo por atraso", () => {
         .mockResolvedValueOnce([cuota({ amountDue: 486691, lateFee: recargo({ amount: 8000, nextDayAmount: 9250 }) })]);
       mockContracts.mockResolvedValue([CONTRATO]);
       render(<OwnerWorkspace initialView="cobranzas" />);
-      expect(await screen.findByText(/Recargo por atraso/)).toHaveTextContent("$ 6.750");
+      expect(await screen.findByText(/de recargo/)).toHaveTextContent("incluye $ 6.750 de recargo");
 
       await act(async () => { vi.advanceTimersByTime(15 * 60_000); });
 
       await waitFor(() => expect(mockInvoices).toHaveBeenCalledTimes(2));
-      await waitFor(() => expect(screen.getByText(/Recargo por atraso/)).toHaveTextContent("$ 8.000"));
+      await waitFor(() => expect(screen.getByText(/de recargo/)).toHaveTextContent("incluye $ 8.000 de recargo"));
     } finally {
       vi.useRealTimers();
     }
@@ -644,35 +838,70 @@ describe("recargo por atraso", () => {
 });
 
 describe("cuotas sin confirmar", () => {
-  it("vencida y con punitorios: aviso urgente con el recargo de hoy y el enlace a confirmar", async () => {
-    conCuotas([cuota({
-      confirmed: false, amountDue: 485441,
-      lateFee: { method: "FIXED_PER_DAY", value: 1250, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
-        amount: 6750, nextDayAmount: 8000, state: "ACCRUING", overridden: false },
-    })]);
+  const conPunitorios = (over: Partial<InvoiceResponse> = {}) => cuota({
+    confirmed: false, amountDue: 485441,
+    lateFee: { method: "FIXED_PER_DAY", value: 1250, accruesFrom: "2026-08-11", asOf: "2026-08-14", daysLate: 3,
+      amount: 6750, nextDayAmount: 8000, state: "ACCRUING", overridden: false },
+    ...over,
+  });
+
+  it("una sola: el aviso de arriba nombra la propiedad, explica el efecto y ofrece confirmar", async () => {
+    conCuotas([conPunitorios()]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.getByText(/no puede pagarla en el portal/)).toHaveTextContent(
-      "El recargo por atraso corre igual, según el contrato: hoy suma $ 6.750."
-    );
-    expect(screen.getByText("Sin confirmar").closest("small")).toHaveClass("owner-substatus--urgente");
+    const aviso = screen.getByText(/tiene el importe sin confirmar/).closest("div") as HTMLElement;
+    expect(aviso).toHaveTextContent("Av. Rivadavia 2340, 5.º A tiene el importe sin confirmar.");
+    expect(aviso).toHaveTextContent("El inquilino no puede pagarla en el portal hasta que lo confirme. El recargo por atraso corre igual.");
 
-    await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+    await userEvent.click(within(aviso).getByRole("button", { name: /Confirmar importe/ }));
     expect(within(screen.getByRole("dialog")).getByText(/ya no se puede ajustar/)).toBeInTheDocument();
+  });
+
+  it("el aviso ya no se repite adentro de la fila", async () => {
+    conCuotas([conPunitorios()]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(within(fila(/Av\. Rivadavia/)).queryByText(/no puede pagarla en el portal/)).not.toBeInTheDocument();
+  });
+
+  it("varias: cuenta cuántas son y no ofrece un botón, porque cada fila ya tiene el suyo", async () => {
+    conCuotas([conPunitorios({ id: 1 }), conPunitorios({ id: 2 }), cuota({ id: 3, confirmed: true })]);
+    await screen.findAllByText("Av. Rivadavia 2340, 5.º A");
+
+    const aviso = screen.getByText(/cuotas tienen el importe sin confirmar/).closest("div") as HTMLElement;
+    expect(aviso).toHaveTextContent("2 cuotas tienen el importe sin confirmar.");
+    expect(within(aviso).queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Confirmar importe" })).toHaveLength(2);
+  });
+
+  it("sin cuotas sin confirmar no hay aviso", async () => {
+    conCuotas([cuota()]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.queryByText(/sin confirmar/)).not.toBeInTheDocument();
   });
 
   it("sin punitorios el aviso no habla de recargo", async () => {
     conCuotas([cuota({ confirmed: false })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.getByText(/no puede pagarla en el portal/)).not.toHaveTextContent(/recargo/);
+    expect(screen.getByText(/tiene el importe sin confirmar/).closest("div")).not.toHaveTextContent(/recargo/);
   });
 
-  it("todavía no vencida: el aviso no es urgente", async () => {
+  it("vencida: el aviso y la nota de la fila pasan a urgentes", async () => {
+    conCuotas([conPunitorios()]);
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+
+    expect(screen.getByText(/tiene el importe sin confirmar/).closest("div")).toHaveClass("owner-atencion--urgente");
+    expect(within(fila(/Av\. Rivadavia/)).getByText("sin confirmar").closest("small")).toHaveClass("owner-nota--urgente");
+  });
+
+  it("todavía no vencida: no es urgente", async () => {
     conCuotas([cuota({ confirmed: false, status: "PENDING", dueDate: "2099-01-10" })]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
 
-    expect(screen.getByText("Sin confirmar").closest("small")).not.toHaveClass("owner-substatus--urgente");
+    expect(screen.getByText(/tiene el importe sin confirmar/).closest("div")).not.toHaveClass("owner-atencion--urgente");
+    expect(within(fila(/Av\. Rivadavia/)).getByText("sin confirmar").closest("small")).not.toHaveClass("owner-nota--urgente");
   });
 });
 
@@ -691,14 +920,15 @@ describe("perdonar, cambiar y volver a calcular el recargo", () => {
     mockInvoices.mockResolvedValueOnce([fila]).mockResolvedValue([despues]);
     mockContracts.mockResolvedValue([CONTRATO]);
     render(<OwnerWorkspace initialView="cobranzas" />);
-    await userEvent.click(await screen.findByRole("button", { name: "Recargo" }));
+    await screen.findByText("Av. Rivadavia 2340, 5.º A");
+    await userEvent.click(within(await abrirMenu()).getByRole("menuitem", { name: "Cambiar recargo" }));
     return screen.getByRole("dialog");
   }
 
   it("la fila ofrece el recargo sólo si hay uno que cambiar", async () => {
     conCuotas([cuota()]);
     await screen.findByText("Av. Rivadavia 2340, 5.º A");
-    expect(screen.queryByRole("button", { name: "Recargo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
   });
 
   it("perdonar manda amount 0, relee las cuotas y avisa", async () => {

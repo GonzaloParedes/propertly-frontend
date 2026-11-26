@@ -1,6 +1,17 @@
 import { nombreDeInquilino } from "@/lib/inquilino";
 import { coincideTexto } from "@/lib/busqueda";
-import { formatearDireccion, formatearFecha, formatearMonto, formatearPeriodo, hoyEnArgentina } from "@/lib/formato";
+import {
+  diferenciaEnDias,
+  formatearDiaMes,
+  formatearDireccion,
+  formatearFecha,
+  formatearMonto,
+  formatearPeriodo,
+  formatearTotales,
+  hoyEnArgentina,
+  sumarEnMoneda,
+  type TotalesPorMoneda,
+} from "@/lib/formato";
 import { recargoEditable, recargoEnCurso, vistaDeRecargo, type RecargoEditable, type RecargoVista } from "@/lib/recargo";
 import type {
   AdjustmentResponse,
@@ -37,6 +48,26 @@ export interface AvisoSinConfirmar {
   /** La fecha de vencimiento ya pasó. */
   urgente: boolean;
   texto: string;
+  /** El contrato tiene punitorios: el recargo corre aunque el inquilino no pueda pagar. */
+  correRecargo: boolean;
+}
+
+/**
+ * Lo que dice la columna «Vence» y su equivalente en los anchos donde esa
+ * columna desaparece. Cuatro textos porque la tabla tiene cuatro formas y cada
+ * una cuenta lo mismo con el espacio que tiene.
+ */
+export interface PlazoDeCuota {
+  /** «10/08/2026». */
+  fecha: string;
+  /** Debajo de la fecha: «hace 15 días», «en 3 días», «pagada el 04/08». */
+  relativo: string;
+  /** Sólo la cuota vencida se pinta de rojo: lo demás es información, no un reclamo. */
+  vencida: boolean;
+  /** Tercera línea bajo la dirección cuando no hay columna: «Venció el 10/08, hace 15 días». */
+  largo: string;
+  /** Una frase corta para el celular: «venció 10/08». */
+  corto: string;
 }
 
 export interface FilaCobranza {
@@ -53,7 +84,7 @@ export interface FilaCobranza {
   /** Null si no hay recargo que cambiar: contrato sin punitorios, cuota paga o recargo en cero. */
   recargoEditable: RecargoEditable | null;
   sinConfirmar: AvisoSinConfirmar | null;
-  /** Algo de la fila cambia a la medianoche: el recargo corre o el aviso pasa a urgente. */
+  /** Algo de la fila cambia a la medianoche: el recargo corre, el aviso pasa a urgente o «hace N días» suma uno. */
   dependeDelDia: boolean;
   /**
    * Los tres en crudo, además del monto ya formateado: el diálogo de ajuste
@@ -64,6 +95,12 @@ export interface FilaCobranza {
   ajustes: AdjustmentResponse[];
   vencimiento: string;
   vencimientoISO: string;
+  /** Calculado contra el día en que se armó la fila: por eso `dependeDelDia` la cuenta. */
+  plazo: PlazoDeCuota;
+  /** Lo que se adeuda hoy, en crudo (`amountDue`): el monto de arriba, sin formatear. */
+  importeAdeudado: number;
+  /** El vencimiento cae en el mes corriente (al armar la fila). Para «Cobrado del mes». */
+  delMes: boolean;
   estado: EstadoCuota;
   confirmada: boolean;
   accion: AccionCuota;
@@ -107,7 +144,82 @@ export function avisoSinConfirmar(invoice: InvoiceResponse, hoyISO: string): Avi
   return {
     urgente: invoice.dueDate < hoyISO,
     texto: `El inquilino todavía no puede pagarla en el portal.${correRecargo}`,
+    correRecargo: invoice.lateFee !== null,
   };
+}
+
+/** El día de un vencimiento o de un pago, sin año si es el corriente: «10/08». */
+function diaCorto(fechaISO: string, hoyISO: string): string {
+  return fechaISO.slice(0, 4) === hoyISO.slice(0, 4) ? formatearDiaMes(fechaISO) : formatearFecha(fechaISO);
+}
+
+/** «hace 15 días», «ayer», «hoy», «mañana», «en 3 días». `dias` es lo que falta (negativo si ya pasó). */
+function distanciaEnPalabras(dias: number): string {
+  if (dias === 0) return "hoy";
+  if (dias === 1) return "mañana";
+  if (dias === -1) return "ayer";
+  return dias > 0 ? `en ${dias} días` : `hace ${-dias} días`;
+}
+
+/** El día en que el inquilino mandó el comprobante, en hora argentina (el mismo criterio que la liquidación). */
+function diaDelPago(pago: PaymentResponse | null): string | null {
+  return pago?.submittedAt ? hoyEnArgentina(new Date(pago.submittedAt)) : null;
+}
+
+function plazoDeLoPagado(fecha: string, dia: string | null, verbo: string, hoyISO: string): PlazoDeCuota {
+  const cuando = dia ? ` el ${diaCorto(dia, hoyISO)}` : "";
+  const texto = `${verbo}${cuando}`;
+  return { fecha, relativo: texto, vencida: false, largo: capitalizar(texto), corto: texto };
+}
+
+function capitalizar(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/**
+ * Cuándo vence una cuota o, si ya hay un pago, cuándo se pagó. Con el vencimiento
+ * y el estado alcanza; el pago sólo aporta el día (puede faltar: un pago del
+ * alta no tiene comprobante, y entonces sólo se dice que está pagada).
+ */
+export function plazoDeCuota(
+  cuota: Pick<FilaCobranza, "estado" | "vencimientoISO" | "pagoPendiente" | "pagoConfirmado">,
+  hoyISO: string,
+): PlazoDeCuota {
+  const fecha = formatearFecha(cuota.vencimientoISO);
+  if (cuota.estado === "Pagada") {
+    return plazoDeLoPagado(fecha, diaDelPago(cuota.pagoConfirmado), "pagada", hoyISO);
+  }
+  if (cuota.estado === "Pago a confirmar") {
+    return plazoDeLoPagado(fecha, diaDelPago(cuota.pagoPendiente), "pagó", hoyISO);
+  }
+  const dias = diferenciaEnDias(hoyISO, cuota.vencimientoISO);
+  const dia = diaCorto(cuota.vencimientoISO, hoyISO);
+  const relativo = distanciaEnPalabras(dias);
+  const vencio = dias < 0;
+  const verbo = vencio ? "Venció" : "Vence";
+  return {
+    fecha,
+    relativo,
+    vencida: cuota.estado === "Vencida",
+    largo: dias === 0 ? "Vence hoy" : `${verbo} el ${dia}, ${relativo}`,
+    corto: `${verbo.toLowerCase()} ${dia}`,
+  };
+}
+
+export type TonoDeRecargo = "adv" | "neutro";
+
+/**
+ * La línea que lleva la tabla: un renglón, no el detalle. El monto de la fila ya
+ * es lo que se adeuda hoy (`amountDue`, con el recargo adentro), así que dice
+ * «incluye» y no «+»: un «+» pide sumarlo, y el total quedaría contado dos veces.
+ * El resto (días, tasa, «desde mañana») queda para el diálogo de recargo.
+ */
+export function resumenDeRecargo(vista: RecargoVista | null): { texto: string; tono: TonoDeRecargo } | null {
+  if (!vista) return null;
+  if (vista.monto) return { texto: `incluye ${vista.monto} de recargo`, tono: "adv" };
+  if (vista.modificado === "Recargo perdonado") return { texto: "Recargo perdonado", tono: "neutro" };
+  if (vista.desde) return { texto: `Recargo desde el ${vista.desde}`, tono: "neutro" };
+  return null;
 }
 
 /**
@@ -132,6 +244,8 @@ export function buildFilasCobranza(
       // Backends anteriores a ALQ-187 no mandan la moneda en la cuota: sale del contrato.
       const invoice = { ...cuota, currency: cuota.currency ?? contrato?.currency };
       const estado = estadoDeCuota(invoice);
+      const pagoPendiente = invoice.payments.find((p) => p.status === "AWAITING_CONFIRMATION") ?? null;
+      const pagoConfirmado = invoice.payments.find((p) => p.status === "CONFIRMED") ?? null;
       return {
         invoiceId: invoice.id,
         contractId: invoice.contractId,
@@ -144,17 +258,20 @@ export function buildFilasCobranza(
         recargo: vistaDeRecargo(invoice, "propietario"),
         recargoEditable: recargoEditable(invoice),
         sinConfirmar: avisoSinConfirmar(invoice, hoyISO),
-        dependeDelDia: recargoEnCurso(invoice) || (!invoice.confirmed && invoice.dueDate >= hoyISO),
+        dependeDelDia: recargoEnCurso(invoice) || (!invoice.confirmed && invoice.dueDate >= hoyISO) || estado === "Vencida" || estado === "A vencer",
         importeBase: invoice.baseAmount,
         totalVigente: invoice.total,
         ajustes: invoice.adjustments,
         vencimiento: formatearFecha(invoice.dueDate),
         vencimientoISO: invoice.dueDate,
+        plazo: plazoDeCuota({ estado, vencimientoISO: invoice.dueDate, pagoPendiente, pagoConfirmado }, hoyISO),
+        importeAdeudado: invoice.amountDue ?? invoice.total,
+        delMes: invoice.dueDate.slice(0, 7) === hoyISO.slice(0, 7),
         estado,
         confirmada: invoice.confirmed,
         accion: accionDeCuota(invoice, estado),
-        pagoPendiente: invoice.payments.find((p) => p.status === "AWAITING_CONFIRMATION") ?? null,
-        pagoConfirmado: invoice.payments.find((p) => p.status === "CONFIRMED") ?? null,
+        pagoPendiente,
+        pagoConfirmado,
       };
     })
     .sort((a, b) => b.vencimientoISO.localeCompare(a.vencimientoISO));
@@ -198,6 +315,59 @@ export function contarPorFiltro(filas: FilaCobranza[]): Record<FiltroCobranza, n
     aVencer: filtrar(filas, "aVencer").length,
     pagadas: filtrar(filas, "pagadas").length,
   };
+}
+
+/**
+ * El aviso de arriba de la tabla: una cuota sin confirmar frena el cobro (el
+ * inquilino no puede pagarla) y cada fila ya tiene su «Confirmar importe», así
+ * que con varias el aviso sólo cuenta cuántas son. Con una también ofrece el
+ * botón, porque es lo único que hay que hacer.
+ */
+export interface AvisoDeCuotasSinConfirmar {
+  urgente: boolean;
+  titulo: string;
+  detalle: string;
+  /** La cuota a confirmar desde el aviso; null si son varias. */
+  cuota: FilaCobranza | null;
+}
+
+export function avisoDeCuotasSinConfirmar(filas: FilaCobranza[]): AvisoDeCuotasSinConfirmar | null {
+  const pendientes = filas.filter((f) => f.sinConfirmar);
+  if (pendientes.length === 0) return null;
+  const urgente = pendientes.some((f) => f.sinConfirmar?.urgente);
+  const correRecargo = pendientes.some((f) => f.sinConfirmar?.correRecargo);
+  const recargo = correRecargo ? " El recargo por atraso corre igual." : "";
+  if (pendientes.length === 1) {
+    return {
+      urgente,
+      titulo: `${pendientes[0].direccion} tiene el importe sin confirmar.`,
+      detalle: `El inquilino no puede pagarla en el portal hasta que lo confirme.${recargo}`,
+      cuota: pendientes[0],
+    };
+  }
+  return {
+    urgente,
+    titulo: `${pendientes.length} cuotas tienen el importe sin confirmar.`,
+    detalle: `Los inquilinos no pueden pagarlas en el portal hasta que se confirmen.${recargo}`,
+    cuota: null,
+  };
+}
+
+/**
+ * «Cobrado del mes $ X de $ Y»: las cuotas que vencen en el mes corriente, lo
+ * pagado contra lo que se adeuda. Un pago esperando revisión todavía no es plata
+ * cobrada. Por moneda, sin sumar pesos con dólares. Null si el mes no tiene cuotas.
+ */
+export function cobradoDelMes(filas: FilaCobranza[]): { cobrado: string; total: string } | null {
+  const delMes = filas.filter((f) => f.delMes);
+  if (delMes.length === 0) return null;
+  const cobrado: TotalesPorMoneda = {};
+  const total: TotalesPorMoneda = {};
+  for (const fila of delMes) {
+    sumarEnMoneda(total, fila.importeAdeudado, fila.moneda);
+    if (fila.estado === "Pagada") sumarEnMoneda(cobrado, fila.importeAdeudado, fila.moneda);
+  }
+  return { cobrado: formatearTotales(cobrado), total: formatearTotales(total) };
 }
 
 /** La bajada del encabezado, que dice lo que hay en vez de afirmar un mes fijo. */

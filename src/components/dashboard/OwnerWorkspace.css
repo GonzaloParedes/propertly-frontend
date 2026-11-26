@@ -37,7 +37,6 @@
 .owner-status { display:inline-flex; flex:none; align-items:center; gap:7px; padding:var(--esp-6) var(--esp-12); border-radius:999px; color:var(--tinta); font-size:14px; font-weight:700; white-space:nowrap; }.owner-status--ok{background:var(--exito-bg)}.owner-status--ok svg{color:var(--exito)}.owner-status--warn{background:var(--warn-bg)}.owner-status--warn svg{color:var(--adv)}.owner-status--bad{background:var(--error-bg)}.owner-status--bad svg{color:var(--error)}.owner-status--info{background:var(--indigo-suave)}.owner-status--info svg{color:var(--indigo)}.owner-status--none{background:var(--superficie);color:var(--gris)}
 
 .owner-filter { display:flex; flex-wrap:wrap; gap:9px; margin:0 0 22px; }.owner-filter button{min-height:40px;padding:0 15px;border:0;border-radius:999px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);cursor:pointer;font:700 15px var(--font-nunito-sans),sans-serif}.owner-filter button[aria-pressed="true"]{background:var(--indigo-suave);box-shadow:inset 0 0 0 2px var(--indigo);color:var(--indigo-osc)}
-.owner-table-wrap{overflow-x:auto}.owner-table{width:100%;min-width:790px;border-collapse:collapse}.owner-table th,.owner-table td{padding:var(--esp-16) 24px;text-align:left;vertical-align:middle}.owner-table th{padding-top:var(--esp-20);padding-bottom:var(--esp-12);box-shadow:inset 0 -1px 0 var(--divisor);color:var(--gris);font-size:14px;font-weight:600}.owner-table tbody td{box-shadow:inset 0 1px 0 var(--divisor)}.owner-table tbody tr:first-child td{box-shadow:none}.owner-table tbody tr:hover{background:var(--superficie)}.owner-table td b,.owner-table td small{display:block}.owner-table td small{margin-top:var(--esp-2);overflow:hidden;color:var(--gris);font-size:14.5px;text-overflow:ellipsis;white-space:nowrap}.owner-table .owner-number{text-align:right}.owner-money{font:700 17px var(--font-quicksand),sans-serif}
 
 .owner-crumb{display:flex;align-items:center;gap:7px;margin:0 0 11px;color:var(--gris);font-size:15px}.owner-crumb :is(button,a){padding:0;border:0;background:none;color:var(--indigo);cursor:pointer;text-decoration:none;font:600 15px var(--font-nunito-sans),sans-serif}.owner-crumb :is(button,a):hover{text-decoration:underline;text-underline-offset:3px}.owner-detail-grid{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(310px,.82fr);gap:var(--esp-18);align-items:start}.owner-card{padding:var(--esp-26) 28px;border-radius:20px;background:var(--elev);box-shadow:0 1px 2px rgba(30,27,46,.04),0 4px 12px -4px rgba(30,27,46,.07)}.owner-card+.owner-card{margin-top:var(--esp-18)}.owner-detail-grid>.owner-card:nth-child(3){grid-column:1/-1}.owner-card__top{display:flex;justify-content:space-between;gap:var(--esp-16)}.owner-current-rent{text-align:right}.owner-current-rent b,.owner-detail-money{display:block;margin-top:var(--esp-6);font:700 28px/1.1 var(--font-quicksand),sans-serif}.owner-current-rent small,.owner-card__top small{display:block;margin-top:5px;color:var(--gris)}
 .owner-contract-callout,.owner-empty-callout,.owner-document{display:flex;align-items:center;gap:var(--esp-14);margin-top:22px;padding:17px;border:0;border-radius:14px;background:var(--superficie);color:var(--tinta);text-align:left}.owner-contract-callout{width:100%;cursor:pointer}.owner-contract-callout:hover{background:var(--indigo-suave)}.owner-contract-callout>span,.owner-empty-callout>svg{display:grid;width:38px;height:38px;place-items:center;flex:none;border-radius:10px;background:var(--elev);color:var(--indigo)}.owner-contract-callout div,.owner-empty-callout div,.owner-document>div{flex:1}.owner-contract-callout b,.owner-contract-callout small,.owner-empty-callout b,.owner-empty-callout small,.owner-document b,.owner-document small{display:block}.owner-contract-callout small,.owner-empty-callout small,.owner-document small,.owner-card__copy{margin-top:3px;color:var(--gris);font-size:14.5px}.owner-empty-callout{align-items:flex-start}.owner-empty-callout .owner-button{align-self:center}.owner-definition{display:grid;margin:var(--esp-18) 0 0;grid-template-columns:minmax(0,auto) minmax(0,1fr)}.owner-definition>div{display:grid;grid-column:1/-1;grid-template-columns:subgrid;gap:var(--esp-18);align-items:baseline;padding:13px 0;box-shadow:inset 0 -1px 0 var(--divisor)}.owner-definition>div:last-child{box-shadow:none}.owner-definition dt{color:var(--gris)}.owner-definition dd{margin:0;font-weight:600}
@@ -436,8 +435,9 @@
 /* ── Regla de peso de los botones ──────────────────────────────────────
    El peso lo decide la ZONA, no la urgencia del momento:
    · Encabezado de página → 1 primario (crear). Un segundo va en secondary.
-   · Fila de tabla y aviso → SIEMPRE secondary. La urgencia ya la dicen la
-     píldora de estado y la franja del aviso; el botón no la repite.
+   · Fila de tabla y aviso → secondary. La urgencia ya la dicen la píldora de
+     estado y la franja del aviso; el botón no la repite. Única excepción:
+     «Confirmar importe» en Cobranzas, que es lo que frena el cobro.
    · Destructivo → danger CON cuerpo (fondo blanco + anillo rojo), nunca
      texto suelto al lado de un botón con cuerpo.
    · quiet → sólo en pie de formulario junto a un primario (Cancelar, Atrás).
@@ -468,63 +468,6 @@
    móviles va junto al avatar/cierre. */
 /* El texto del perfil cede el ancho (min-width:0): si no, el email no se
    achica y Safari desborda el sidebar. Nombre y email se cortan con «…». */
-
-.owner-table td small{
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-/* La celda de estado no se parte: la píldora y su sub-estado son una unidad.
-   Sin esto, al angostarse la columna el sub-estado cae a una segunda línea y
-   vuelve a desparejar la fila. */
-.owner-table td:has(> .owner-status){ white-space:nowrap; }
-
-/* ── Cobranzas en celular: la tabla se apila ───────────────────────────
-   La regla 4 del sistema («tablas solo para lo tabular») vale mientras la
-   pantalla dé el ancho para comparar columna contra columna. En un celular
-   ese ancho no existe: la tabla pide 790px mínimos y quedaba con scroll
-   horizontal, así que no se comparaba nada y encima la acción de cada
-   cuota caía fuera de la pantalla.
-   Por debajo de 620px cada cuota pasa a ser una fila apilada con el mismo
-   lenguaje que .owner-list/.owner-row —un solo contenedor blanco con
-   divisores, no tarjetas sueltas— para que cobranzas no se vea distinto de
-   propiedades o contratos en el mismo teléfono.
-   El thead se oculta con display:none y no con visibilidad: en modo
-   apilado no describe nada, y un lector de pantalla que lo anunciara por
-   celda sería ruido.
-   ------------------------------------------------------------------ */
-@media (max-width:620px){
-  .owner-table-wrap{overflow:hidden}
-  .owner-table{display:block;min-width:0}
-  .owner-table thead{display:none}
-  .owner-table tbody{display:block}
-
-  .owner-table tbody tr{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    padding:var(--esp-16) var(--esp-20);
-    box-shadow:inset 0 1px 0 var(--divisor);
-  }
-  .owner-table tbody tr:first-child{box-shadow:none}
-  .owner-table tbody tr:hover{background:transparent}
-  .owner-table tbody td{display:block;padding:0;box-shadow:none!important}
-
-  .owner-table td[data-cell="propiedad"]{grid-area:1/1/2/3}
-  .owner-table td[data-cell="propiedad"] small{overflow:visible;white-space:normal;text-overflow:clip;overflow-wrap:anywhere}
-
-  /* Monto y estado comparten renglón: es la comparación que sí sobrevive
-     al ancho de un teléfono (cuánto y en qué situación está). */
-  .owner-table td[data-cell="estado"]{grid-area:2/2/3/3;align-self:center;margin-top:var(--esp-8);text-align:right;white-space:normal}
-
-  /* Sin encabezado, «10/08/2026» solo no dice qué fecha es. */
-  .owner-table td[data-cell="vencimiento"]{grid-area:3/1/4/3;margin-top:var(--esp-6);color:var(--gris);font-size:14.5px}
-  .owner-table td[data-cell="vencimiento"]::before{content:"Vence "}
-
-  /* La acción es a lo que se entra a esta pantalla: ancho completo y con
-     la altura táctil que ya usan los botones de encabezado en móvil. */
-  .owner-table td[data-cell="accion"] .owner-button{width:100%;min-height:46px;justify-content:center}
-}
 
 /* ── Documento firmado en celular ──────────────────────────────────────
    `.owner-document` es el único de la familia de callouts que se quedó sin
@@ -608,32 +551,6 @@
 .owner-dialog .owner-wizard-label{margin:var(--esp-26) 0 var(--esp-10);color:var(--gris);font:700 14px/1.2 var(--font-nunito-sans),sans-serif;letter-spacing:0;text-transform:none}
 .owner-dialog-counters .owner-wizard-label{margin:0 0 var(--esp-10)}
 .owner-dialog-percent{margin-top:var(--esp-14)}
-
-/* ── Cobranzas en escritorio ───────────────────────────────────────────
-   Filtro por propiedad junto a los chips de estado; filas de igual altura
-   (las dos acciones van lado a lado, no apiladas); monto sin cortes;
-   «Sin confirmar» como píldora neutra junto a la de estado.
-   Todo bajo 621px+: en celular la tabla apilada queda como estaba.
-   ------------------------------------------------------------------ */
-@media (min-width:621px){
-  .owner-table{min-width:980px}
-  .owner-table th,.owner-table td{padding-inline:var(--esp-20)}
-  .owner-table td[data-cell="monto"]{white-space:nowrap}
-  /* El recargo en la columna Monto: cada etiqueta con su importe en un solo
-     renglón (sin esto «Recargo por atraso» se partía en tres y el importe en
-     dos). Sólo la frase de detalle puede ocupar más de un renglón. */
-  .owner-table td[data-cell="monto"] .recargo b{display:inline}
-  .owner-table td[data-cell="monto"] :is(.recargo__linea--etiqueta,.recargo__linea--importe,.recargo__linea--modificado){white-space:nowrap}
-  .owner-table td[data-cell="propiedad"]{min-width:230px}
-  .owner-table td[data-cell="accion"]{white-space:nowrap}
-  .owner-table td[data-cell="accion"] .owner-button{vertical-align:middle}
-  .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:var(--esp-8)}
-  .owner-table tbody tr{height:84px}
-  .owner-table td .owner-status + .owner-substatus{
-    padding:var(--esp-6) var(--esp-12);border-radius:999px;background:var(--superficie);
-    box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--gris);font-size:14px;font-weight:600;line-height:1.3;
-  }
-}
 
 /* Documento sin cargar: ya está dentro de una tarjeta blanca, así que va sin caja propia (ni gris ni contorno). */
 .owner-empty-callout--outline{padding:0;background:transparent}
@@ -765,55 +682,6 @@
   background:var(--error-bg);color:var(--error)}
 .owner-load-error b{color:var(--tinta);font:700 18px var(--font-nunito-sans),sans-serif}
 .owner-load-error__hint{color:var(--gris);font:400 16px var(--font-nunito-sans),sans-serif}
-
-/* «Importe sin confirmar» es lo que el propietario tiene que resolver en esa
-   cuota, así que no puede leerse como una nota al pie: va como aviso de
-   advertencia (fondo --warn-bg, ícono en --adv) y el texto en tinta, por la
-   regla de contraste de los semánticos. */
-.owner-table td .owner-status + .owner-substatus{
-  display:flex;align-items:center;gap:7px;width:fit-content;margin:var(--esp-8) 0 0;
-  padding:var(--esp-6) var(--esp-12);
-  border-radius:999px;background:var(--warn-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--adv) 35%,transparent);
-  color:var(--tinta);font-size:14px;font-weight:700;white-space:nowrap;
-}
-.owner-substatus svg{flex:none;color:var(--adv)}
-
-@media (max-width:620px){
-  /* Dos botones apilados no pueden tocarse: la acción principal queda
-     separada de la secundaria por el mismo aire que el resto de la tarjeta. */
-  .owner-table td[data-cell="accion"]{display:flex;grid-area:5/1/6/3;flex-direction:column;gap:var(--esp-10);margin-top:var(--esp-16)}
-  .owner-table td[data-cell="accion"] .owner-button + .owner-button{margin-left:0}
-  /* Tarjeta de cuota en celular, de arriba abajo:
-       1 · propiedad (con inquilino y período)  |  estado
-       2 · monto                                |  vencimiento
-       3 · recargo por atraso a todo el ancho (sólo si corresponde)
-       4 · franja «Sin confirmar» a todo el ancho (sólo si corresponde)
-       5 · acciones
-     Las celdas de estado y de monto dejan de ser caja para que la píldora, el
-     importe, el recargo y la franja se ubiquen cada uno en su renglón: el
-     recargo no entra en la mitad del renglón que comparte con el vencimiento. */
-  .owner-table td[data-cell="propiedad"]{grid-area:1/1/2/2}
-  .owner-table td[data-cell="estado"]{display:contents}
-  .owner-table td[data-cell="estado"] .owner-status{grid-area:1/2/2/3;align-self:start;justify-self:end;margin:0}
-  .owner-table td[data-cell="monto"]{display:contents}
-  .owner-table td[data-cell="monto"] .owner-monto{grid-area:2/1/3/2;align-self:end;margin-top:var(--esp-14);font-size:22px;text-align:left}
-  .owner-table td[data-cell="vencimiento"]{grid-area:2/2/3/3;align-self:end;margin-top:var(--esp-14);text-align:right;font-size:15px}
-  /* Cada línea del recargo: lo que es a la izquierda, el importe a la derecha. */
-  .owner-table td[data-cell="monto"] .recargo{grid-area:3/1/4/3;align-items:stretch;gap:var(--esp-6);margin-top:var(--esp-12);padding:var(--esp-10) var(--esp-14);
-    border-radius:12px;background:var(--superficie);font:400 14.5px/1.4 var(--font-nunito-sans),sans-serif;text-align:left}
-  .owner-table td[data-cell="monto"] .recargo__linea{display:flex;align-items:baseline;gap:var(--esp-6)}
-  .owner-table td[data-cell="monto"] .recargo__linea--etiqueta{align-items:center}
-  .owner-table td[data-cell="monto"] .recargo b{display:inline;margin-left:auto;font-weight:700;white-space:nowrap}
-  .owner-table td[data-cell="estado"] .owner-status+.owner-substatus{display:flex;grid-area:4/1/5/3;justify-self:stretch;width:auto;
-    margin:var(--esp-14) 0 0;padding:var(--esp-10) var(--esp-14);border-radius:12px;font-size:14.5px}
-}
-
-/* Las dos píldoras de la celda de estado (estado y «Sin confirmar») apiladas
-   en escritorio tienen que medir lo mismo: una toma la altura del interlineado
-   heredado y la otra no. Altura fija en las dos, con el texto centrado. */
-@media (min-width:621px){
-  .owner-table td .owner-status,.owner-table td .owner-status + .owner-substatus{box-sizing:border-box;height:34px;padding-top:0;padding-bottom:0;line-height:1}
-}
 
 /* Estimador de alquiler (ALQ-45): botón + animación de espera + resultado.
    La card es el tercer hijo de .owner-detail-grid, así que ocupa todo el ancho
@@ -995,16 +863,176 @@
   .owner-pdf .owner-wizard__footer .owner-wizard-next{flex:1;justify-content:center}
 }
 
+/* ── Cobranzas ─────────────────────────────────────────────────────────
+   Una acción a la vista por cuota y el resto en el menú «⋯»; el aviso de lo
+   que frena el cobro arriba y no repetido en cada fila.
+
+   La tabla responde al ancho de SU contenedor (`container-type` en el wrap) y
+   no al de la ventana: el menú lateral (238 px, 80 colapsado) se come un ancho
+   distinto según cómo esté, y con la ventana sola la misma pantalla pedía tres
+   tablas según el estado del menú. Cuatro formas, de más ancho a menos:
+     ≥ 1020  5 columnas (Cuota, Vence, Estado, Monto, Acción)
+     ≥ 900   las mismas, más compactas y con los botones diciendo sólo el verbo
+     ≥ 700   4 columnas: Vence pasa a una tercera línea bajo la dirección. No se
+             apila. Por debajo de 780 se achican y se quitan los íconos.
+     < 700   lista compacta: dirección y monto, inquilino y estado, nota, y el
+             botón a todo el ancho con el «⋯» al lado.
+   ------------------------------------------------------------------ */
+.owner-table-wrap{container:cobranzas/inline-size}
+.owner-table{--w-vence:136px;--w-estado:188px;--w-monto:212px;--w-accion:248px;--cp:12px;--cl:24px;width:100%;table-layout:fixed;border-collapse:collapse}
+.owner-table th,.owner-table td{box-sizing:border-box;min-width:0;padding:var(--esp-14) var(--cp);text-align:left;vertical-align:middle}
+.owner-table th:first-child,.owner-table td:first-child{padding-left:24px}
+.owner-table th:last-child,.owner-table td:last-child{padding-right:var(--cl)}
+.owner-table th{height:48px;padding-top:0;padding-bottom:0;box-shadow:inset 0 -1px 0 var(--divisor);color:var(--gris);font-size:13.5px;font-weight:700}
+.owner-table th[data-cell="vencimiento"]{width:var(--w-vence)}
+.owner-table th[data-cell="estado"]{width:var(--w-estado)}
+.owner-table th[data-cell="monto"]{width:var(--w-monto)}
+.owner-table th[data-cell="accion"]{width:var(--w-accion)}
+.owner-table tbody tr{height:76px}
+.owner-table tbody td{box-shadow:inset 0 1px 0 var(--divisor)}
+.owner-table tbody tr:first-child td{box-shadow:none}
+.owner-table tbody tr:hover{background:var(--superficie)}
+.owner-table .owner-number{text-align:right;font-variant-numeric:tabular-nums}
+
+.owner-cuota__dir{display:block;overflow:hidden;font-size:16px;text-overflow:ellipsis;white-space:nowrap}
+.owner-cuota__quien{display:block;margin-top:3px;overflow:hidden;color:var(--gris);font-size:14.5px;text-overflow:ellipsis;white-space:nowrap}
+.owner-cuota__plazo,.owner-cuota__corto{display:none}
+.owner-vence__fecha{display:block;font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.owner-vence__rel,.owner-cuota__plazo{margin-top:3px;overflow:hidden;color:var(--gris);font-size:13.5px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.owner-vence__rel{display:block}
+.owner-table .owner-plazo--vencida{color:var(--error-texto)}
+
+.owner-nota{display:flex;align-items:center;gap:5px;margin-top:6px;color:var(--adv-texto);font-size:13.5px;font-weight:700;line-height:1.3}
+.owner-nota svg{flex:none}
+.owner-nota--urgente{color:var(--error-texto)}
+.owner-monto{display:block;font:800 17px var(--font-nunito-sans),sans-serif}
+.owner-recargo{display:block;margin-top:3px;font-size:13.5px;font-weight:700;line-height:1.3;text-wrap:balance}
+.owner-recargo--adv{color:var(--adv-texto)}
+.owner-recargo--neutro{color:var(--gris);font-weight:600}
+
+.owner-accion{display:flex;align-items:center;justify-content:flex-end;gap:var(--esp-8)}
+.owner-more{display:grid;place-items:center;flex:none;width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:var(--gris);cursor:pointer}
+.owner-more:hover{background:var(--superficie);color:var(--tinta)}
+.owner-more[aria-expanded="true"]{background:var(--indigo-suave);color:var(--indigo-osc)}
+.owner-more--hueco{pointer-events:none}
+.owner-more:focus-visible,.owner-menu__item:focus-visible,.owner-atencion__accion:focus-visible{outline:3px solid var(--lila);outline-offset:3px}
+
+/* El menú «⋯» va a document.body (lo recorta el wrap de la tabla si no), por eso su estilo no cuelga de .owner-table. */
+.owner-menu{position:fixed;z-index:60;box-sizing:border-box;width:236px;max-width:calc(100vw - 16px);padding:6px;border-radius:12px;background:var(--elev);
+  box-shadow:0 0 0 1px var(--divisor),0 18px 40px -12px rgba(30,27,46,.28)}
+.owner-menu__item{display:flex;width:100%;min-height:44px;align-items:center;padding:0 12px;border:0;border-radius:10px;background:transparent;color:var(--tinta);cursor:pointer;
+  font:600 15px var(--font-nunito-sans),sans-serif;text-align:left}
+.owner-menu__item:hover,.owner-menu__item:focus-visible{background:var(--superficie)}
+.owner-menu__item:focus-visible{outline-offset:-3px}
+.owner-menu__item:disabled{opacity:.55;cursor:default}
+.owner-menu__item:disabled:hover{background:transparent}
+
+/* Aviso arriba de la tabla. Advertencia por defecto; error si alguna ya venció. */
+.owner-atencion{display:flex;align-items:flex-start;gap:var(--esp-12);margin:0 0 var(--esp-16);padding:14px var(--esp-18);border-radius:14px;background:var(--warn-bg);color:var(--tinta);font-size:15.5px;line-height:1.45}
+.owner-atencion>svg{flex:none;margin-top:1px;color:var(--adv)}
+.owner-atencion p{flex:1;margin:0}
+.owner-atencion--urgente{background:var(--error-bg)}
+.owner-atencion--urgente>svg{color:var(--error)}
+.owner-atencion__accion{flex:none;min-height:44px;margin:-11px -8px -11px 0;padding:0 8px;border:0;border-radius:8px;background:none;color:var(--indigo-osc);cursor:pointer;
+  font:700 15.5px var(--font-nunito-sans),sans-serif;text-decoration:underline;text-underline-offset:2px}
+.owner-atencion__accion:disabled{opacity:.5;cursor:default}
+
+/* Buscador y estados en una fila; los estados bajan si no entran. */
+.owner-search-bar--cobranzas{flex-wrap:wrap}
+.owner-search-bar--cobranzas .owner-search{flex:1 1 320px}
+.owner-segment{display:flex;gap:6px}
+.owner-segment button{min-height:48px;padding:0 var(--esp-16);border:0;border-radius:12px;background:var(--elev);box-shadow:inset 0 0 0 1.5px var(--borde);color:var(--tinta);cursor:pointer;
+  font:600 15px var(--font-nunito-sans),sans-serif;white-space:nowrap}
+.owner-segment button:hover{background:var(--superficie)}
+.owner-segment button[aria-pressed="true"]{background:var(--tinta);box-shadow:none;color:var(--elev);font-weight:700}
+.owner-segment b{margin-left:3px;font-variant-numeric:tabular-nums}
+
+.owner-page-head .owner-cobrado{margin:0;text-align:right}
+.owner-cobrado span{display:block;color:var(--gris);font-size:14px;font-weight:600}
+.owner-cobrado b{color:var(--tinta);font:800 22px var(--font-nunito-sans),sans-serif;font-variant-numeric:tabular-nums}
+.owner-cobrado small{color:var(--gris);font-size:16px;font-weight:600}
+
+@container cobranzas (min-width:900px){
+  /* Lo cobrado ya no pide nada: «Comprobante» va como enlace, sin caja. */
+  .owner-accion[data-accion="comprobante"] .owner-button--secondary{background:transparent;box-shadow:none}
+  .owner-accion[data-accion="comprobante"] .owner-button--secondary:hover{background:var(--indigo-suave)}
+}
+
+@container cobranzas (max-width:1019px){
+  .owner-table{--w-vence:120px;--w-estado:176px;--w-monto:188px;--w-accion:216px;--cp:8px}
+  .owner-largo{display:none}
+  .owner-accion .owner-button{padding:0 var(--esp-12)}
+}
+
+@container cobranzas (max-width:899px){
+  .owner-table{--w-estado:176px;--w-monto:150px;--w-accion:208px;--cp:10px;--cl:16px}
+  .owner-table [data-cell="vencimiento"]{display:none}
+  .owner-table th{height:46px}
+  .owner-table tbody tr{height:88px}
+  .owner-cuota__plazo{display:block}
+  .owner-nota__prefijo{display:none}
+  .owner-nota__resto{display:inline-block}
+  .owner-nota__resto::first-letter{text-transform:uppercase}
+  .owner-accion .owner-button{min-height:44px;font-size:14.5px}
+  .owner-more{width:36px;height:44px}
+}
+
+/* Con 700-779 px la dirección y la fecha casi no tienen lugar: la píldora y el botón pierden su ícono (la palabra queda) y las columnas se achican. */
+@container cobranzas (max-width:779px){
+  .owner-table{--w-estado:156px;--w-monto:140px;--w-accion:188px}
+  .owner-table .owner-status svg,.owner-accion .owner-button svg{display:none}
+}
+
+@container cobranzas (max-width:699px){
+  .owner-table,.owner-table tbody{display:block}
+  .owner-table thead{display:none}
+  .owner-table tbody tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;height:auto;padding:14px var(--esp-16);box-shadow:inset 0 1px 0 var(--divisor)}
+  .owner-table tbody tr:first-child{box-shadow:none}
+  .owner-table tbody tr:hover{background:transparent}
+  /* Las celdas dejan de ser caja: cada dato se ubica solo en la grilla de la fila. */
+  .owner-table td{display:contents}
+  .owner-cuota__dir{grid-area:1/1/2/3}
+  .owner-monto{grid-area:1/3/2/4;font-size:16.5px}
+  .owner-cuota__quien{grid-area:2/1/3/3;margin-top:5px;font-size:14px}
+  .owner-table .owner-status{grid-area:2/3/3/4;align-self:center;justify-self:end;gap:5px;margin-top:5px;padding:3px 9px;font-size:13px}
+  /* La píldora de «Pago a confirmar» es larga y le quitaba lugar al inquilino: sin ícono, con el punto de color que dibuja el diseño. */
+  .owner-table .owner-status svg{display:none}
+  .owner-accion .owner-button svg{display:inline}
+  .owner-table .owner-status::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:currentColor}
+  .owner-table .owner-status--ok::before{background:var(--exito)}
+  .owner-table .owner-status--bad::before{background:var(--error)}
+  .owner-table .owner-status--warn::before{background:var(--adv)}
+  .owner-table .owner-status--info::before{background:var(--indigo)}
+  /* En la lista hay lugar para las palabras enteras. */
+  .owner-largo,.owner-nota__prefijo{display:inline}
+  .owner-nota__resto::first-letter{text-transform:none}
+  .owner-cuota__periodo,.owner-cuota__plazo,.owner-vence__fecha,.owner-vence__rel{display:none}
+  .owner-cuota__corto{display:inline}
+  .owner-nota{grid-area:3/1/4/2;margin-top:6px}
+  .owner-recargo{grid-area:4/1/5/4;margin-top:6px;text-wrap:wrap}
+  .owner-table tbody tr:not(:has(.owner-nota)) .owner-recargo{grid-row:3}
+  .owner-table td[data-cell="accion"]{display:block;grid-area:5/1/6/4;margin-top:12px;padding:0;box-shadow:none}
+  .owner-accion .owner-button,.owner-accion .owner-pago-alta{flex:1;min-height:44px;justify-content:center}
+  .owner-more{width:44px;height:44px;background:var(--superficie)}
+  /* Sin columnas que alinear, un «⋯» vacío sólo le quita ancho al botón. */
+  .owner-more--hueco{display:none}
+}
+
+@media (max-width:620px){
+  .owner-cobrado{display:none}
+  .owner-segment{display:grid;flex:1 1 100%;grid-auto-flow:column;grid-auto-columns:minmax(max-content,1fr);gap:4px;overflow-x:auto;padding:4px;margin:-4px}
+  .owner-segment button{min-height:44px;padding:0 var(--esp-8);font-size:14.5px}
+  .owner-atencion{flex-wrap:wrap}
+  .owner-atencion p{flex:1 1 calc(100% - 32px)}
+  .owner-atencion__accion{margin:-6px 0 -11px 32px}
+}
+
 /* ── Recargo por atraso y cuotas sin confirmar ───────────────────── */
-.owner-number .recargo{align-items:flex-end;font-weight:400;text-align:right}
 /* La explicación de «Sin confirmar» es una frase, no una etiqueta: ocupa varios renglones. */
-.owner-table td p.owner-aviso,.owner-unconfirmed p.owner-aviso{margin:var(--esp-8) 0 0;max-width:34ch;color:var(--gris);font-size:14px;font-weight:400;line-height:1.4;white-space:normal}
-.owner-table td p.owner-aviso--urgente,.owner-unconfirmed p.owner-aviso--urgente{color:var(--tinta);font-weight:600}
+.owner-unconfirmed p.owner-aviso{margin:var(--esp-8) 0 0;max-width:34ch;color:var(--gris);font-size:14px;font-weight:400;line-height:1.4;white-space:normal}
+.owner-unconfirmed p.owner-aviso--urgente{color:var(--tinta);font-weight:600}
 .owner-aviso__link{padding:0;border:0;background:none;color:var(--indigo);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .owner-aviso__link:disabled{opacity:.5;cursor:default}
-/* Vencida sin confirmar: la píldora pasa de advertencia a error, con el mismo icono y la misma palabra. */
-.owner-table td .owner-status + .owner-substatus--urgente{background:var(--error-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--error) 35%,transparent)}
-.owner-substatus--urgente svg{color:var(--error)}
 .owner-unconfirmed p.owner-aviso{max-width:none}
 .owner-unconfirmed{display:flex;flex-direction:column;gap:var(--esp-16);margin:var(--esp-12) 0 0;padding:0;list-style:none}
 .owner-flag{display:inline-flex;align-items:center;gap:7px;margin-right:var(--esp-8);padding:var(--esp-6) var(--esp-12);border-radius:999px;background:var(--warn-bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--adv) 35%,transparent);color:var(--tinta);font-size:14px;font-weight:700}
