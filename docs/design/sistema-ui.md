@@ -73,8 +73,9 @@ móvil es el peor de todos. Una tarjeta se ve, se toca y muestra el detalle
 a tabla es lo que daba el aire de panel administrativo. Una cuota **sí** es
 tabular: hay que comparar montos y fechas alineados fila contra fila.
 
-*Salvo en celular:* el argumento de arriba depende de que haya ancho para
-comparar. Por debajo de 620 px no lo hay y la tabla se apila — ver «El caso de la
+*Salvo cuando no hay ancho:* el argumento de arriba depende de que haya espacio
+para comparar. Cuando la tabla se queda sin él cambia de forma (pierde la
+columna «Vence» y, más angosta, pasa a lista compacta) — ver «El caso de la
 tabla» en Comportamiento responsive.
 
 ### 5 · Las acciones de fila están siempre visibles
@@ -84,6 +85,26 @@ Deliberadamente **en contra** del patrón de moda de revelarlas al pasar el mous
 *Por qué:* para alguien de 60 años una acción que aparece con el hover
 directamente no existe; y en pantalla táctil no hay hover. Quedan visibles pero
 calladas (`.owner-button--secondary`), y ganan énfasis al pasar por encima.
+
+*Una acción a la vista, el resto en «⋯».* Cuando una fila acumulaba tres
+botones del mismo peso («Recargo», «Ajustar importe», «Confirmar importe») ya no
+se sabía cuál era el paso siguiente. En Cobranzas cada cuota muestra **una sola**
+acción —la que le toca según su estado— y las demás van en un menú «⋯»
+(`MenuDeAcciones`). El botón «⋯» está siempre visible (no se revela al pasar el
+mouse), es de 40 px (44 en tablet y celular), lleva `aria-label="Más acciones de
+<dirección>"` y, si no hay nada que ofrecer, no se dibuja pero **deja su lugar**
+para que las columnas no salten de una fila a otra. El menú es `role="menu"`;
+se cierra con Escape (devolviendo el foco al botón), con Tab o con un toque
+afuera; las flechas, Inicio y Fin mueven el foco. Se monta en `document.body`
+con `position: fixed`: el wrap de la tabla recorta lo que se pasa de su borde.
+
+| Estado de la cuota | Acción a la vista | En el menú «⋯» |
+|---|---|---|
+| Sin confirmar | **Confirmar importe** (primario) | Ajustar importe · Cambiar recargo (si hay uno) |
+| Pago esperando revisión | Revisar pago | Cambiar recargo (si hay uno) |
+| Vencida o a vencer | Registrar pago | Cambiar recargo (si hay uno) |
+| Pagada | Comprobante | Liquidación |
+| Pagada al dar de alta | La etiqueta «Registrado al dar de alta · sin comprobante» | — |
 
 ### 6 · Un solo mecanismo de contorno
 
@@ -105,13 +126,15 @@ Esta regla vive también como guardarraíl en CSS (`.owner-table .owner-button--
 | Lugar | Tono |
 |---|---|
 | Encabezado de página | 1 primario (crear). Un segundo va `secondary`. |
-| Fila de tabla y aviso | **siempre** `secondary` |
+| Fila de tabla y aviso | `secondary`. Única excepción: «Confirmar importe» en Cobranzas, `primary`, porque es lo que frena el cobro (el inquilino no puede pagar hasta que se confirma) y es la única acción de la fila que lo es |
 | Destructivo | `danger` **con cuerpo** (fondo blanco + anillo rojo), nunca texto suelto al lado de un botón con cuerpo |
 | `quiet` | sólo en pie de formulario junto a un primario (Cancelar, Atrás). **Nunca solo en una fila.** |
 
 *Por qué:* la tentación es subirle el tono al botón de una cuota vencida. Pero la
 urgencia ya la dicen la píldora de estado y la franja del aviso; repetirla en el
-botón deja la pantalla sin jerarquía — si todo grita, nada resalta.
+botón deja la pantalla sin jerarquía — si todo grita, nada resalta. «Confirmar
+importe» es la excepción porque en la pantalla **hay un solo** botón primario por
+cuota, y el resto se sacó de la fila (ver 5): con una sola voz, no compite.
 
 ### 8 · Un solo estado «elegido»
 
@@ -196,9 +219,9 @@ vive en `OwnerWorkspace.css`; no hay CSS responsive en los `.tsx`.
 |---|---|
 | **1200 px** | `--col-monto` y `--col-estado` se achican (140/156 → 124/140). Solo números. |
 | **1080 px** | El contenido pierde padding; `.owner-detail-grid` pasa a una columna. |
-| **900 px** | **El corte grande.** `.owner-nav` desaparece y aparecen `.owner-mobile-header` + `.owner-drawer`. `.owner-row` se apila (ícono a la izquierda ocupando dos filas, y monto y estado bajan debajo del texto). Los filtros viven detrás del botón «Filtros» (panel; en celular, hoja desde abajo): ya no hay chips de estado sueltos. El asistente pierde la barra de progreso. |
+| **900 px** | **El corte grande.** `.owner-nav` desaparece y aparecen `.owner-mobile-header` + `.owner-drawer`. `.owner-row` se apila (ícono a la izquierda ocupando dos filas, y monto y estado bajan debajo del texto). Los filtros viven detrás del botón «Filtros» (panel; en celular, hoja desde abajo): ya no hay chips de estado sueltos. Cobranzas es la excepción: sus cuatro estados son botones a la vista, en una fila propia con scroll horizontal si no entran. El asistente pierde la barra de progreso. |
 | **720 px** | `.owner-contract-summary` a una columna. |
-| **620 px** | **El corte de celular.** Se achican los padding de tarjeta; los avisos, el `.owner-document` y los botones de encabezado se apilan; el diálogo pone sus acciones en columna; la tabla de cobranzas se apila. |
+| **620 px** | **El corte de celular.** Se achican los padding de tarjeta; los avisos, el `.owner-document` y los botones de encabezado se apilan; el diálogo pone sus acciones en columna; la lista de cobranzas pasa a su forma de celular (ver «El caso de la tabla»: esa tabla no se rige por este corte sino por el ancho de su contenedor). |
 
 **No agregues cortes nuevos.** Cinco ya es mucho para una app de cinco pantallas;
 un sexto valor garantiza que algo quede a mitad de camino entre dos. Si un
@@ -226,22 +249,54 @@ app en el mismo teléfono.
 
 ### El caso de la tabla
 
-Por debajo de 620 px la tabla de cobranzas **deja de ser tabla**. La regla 4
-(«tablas solo para lo tabular») depende de que haya ancho para comparar columna
-contra columna, y a 390 px no lo hay: la tabla pedía 790 px mínimos y quedaba con
-scroll horizontal dentro de `.owner-table-wrap` — o sea que igual no se comparaba
-nada, y encima la acción de cada cuota caía fuera de la pantalla.
+La tabla de cobranzas es la única que **no se rige por los cortes de la
+ventana** sino por el ancho de su propio contenedor (`container-type:inline-size`
+en `.owner-table-wrap`, nombre `cobranzas`). El menú lateral mide 238 px
+expandido y 80 colapsado: con la ventana sola, la misma pantalla de 1280 px
+pedía una tabla u otra según el estado del menú. Es una excepción a «no agregues
+cortes nuevos» porque no son cortes de ventana, y se justifica por esa razón.
 
-Apilada conserva la única comparación que sobrevive a ese ancho —**monto y estado
-en un mismo renglón**— y el resto pasa a lectura vertical. El `thead` se oculta
-con `display:none` y no visualmente: en modo apilado no describe nada, y un
-lector de pantalla que lo anunciara por celda sería ruido.
+| Ancho del contenedor | Forma |
+|---|---|
+| ≥ 1020 px | 5 columnas: Cuota · Vence · Estado · Monto · Acción. Botones con la frase completa («Registrar pago») |
+| 900 – 1019 px | Las mismas 5, más compactas y con los botones diciendo sólo el verbo |
+| 700 – 899 px | **4 columnas**: desaparece «Vence» y su dato pasa a una tercera línea bajo la dirección («Venció el 10/08, hace 15 días»). «Importe sin confirmar» se acorta a «Sin confirmar». Objetivos táctiles de 44 px. **No se apila** |
+| < 700 px | **Lista compacta**: dirección y monto; inquilino · «venció 10/08» y píldora; nota («Importe sin confirmar», «incluye $ X de recargo»); y abajo el botón principal a todo el ancho con el «⋯» de 44 px al lado |
 
-La ubicación de cada celda sale de `data-cell` (`propiedad`, `monto`,
-`vencimiento`, `estado`, `accion`) en el `.tsx`, **no de `nth-child`**: si mañana
-se agrega o se mueve una columna, con `nth-child` el layout de celular se
-desarma en silencio y nadie se entera hasta abrirlo en un teléfono. Al agregar
-una columna hay que darle su `data-cell` y su `grid-area` en el bloque de 620.
+En las tres primeras sigue siendo una tabla (comparar montos y fechas fila contra
+fila); sólo en la lista compacta deja de serlo, con el `thead` en `display:none`
+y no visualmente oculto: ahí no describe nada y un lector de pantalla que lo
+anunciara por celda sería ruido.
+
+Qué dice cada fila:
+
+- **Cuota:** dirección en negrita e «inquilino · período» debajo.
+- **Vence:** la fecha y una línea relativa («hace 15 días» en rojo si está
+  vencida, «en 3 días», «hoy», «pagada el 04/08»). Sale de `plazoDeCuota`.
+- **Estado:** una sola píldora. Si el importe no está confirmado, una nota corta
+  debajo, en tono de advertencia (en error si la cuota ya venció).
+- **Monto:** lo que se adeuda hoy (`amountDue`, con el recargo adentro) en negrita
+  y, si hay recargo, **una** línea: «incluye $ 12.600 de recargo». Dice
+  «incluye» y no «+» porque el monto de arriba ya lo suma; con un «+» el total
+  se leería contado dos veces. El detalle (días, tasa, «desde mañana», «modificado»)
+  vive en el diálogo de recargo.
+- **Acción:** una sola, más el «⋯» (ver decisión 5).
+
+Lo que frena el cobro va **arriba de la tabla**, no repetido en cada fila: una
+barra de atención (`.owner-atencion`) nombra la cuota («Colón 2255 tiene el
+importe sin confirmar…») y ofrece «Confirmar importe»; con varias sólo las cuenta,
+porque cada fila ya tiene su botón. Es de advertencia, y pasa a error si alguna
+ya venció.
+
+El encabezado suma «Cobrado del mes $ X de $ Y» (cuotas que vencen en el mes
+corriente; un comprobante sin revisar todavía no cuenta como cobrado). Se oculta
+en celular.
+
+La ubicación de cada celda en la lista compacta sale de `data-cell`
+(`propiedad`, `vencimiento`, `estado`, `monto`, `accion`), **no de `nth-child`**:
+si mañana se agrega o se mueve una columna, con `nth-child` el layout de celular
+se desarma en silencio. Al agregar una columna hay que darle su `data-cell`, su
+ancho en cada forma y su lugar en el bloque `max-width:699px` del contenedor.
 
 ### Antes de dar por buena una pantalla en celular
 
@@ -404,6 +459,23 @@ llegan a AA**:
 La tabla WCAG del manual v1.1 validó esos colores **sobre blanco**, no sobre sus
 propios tintes. **Pendiente:** llevar este hallazgo al manual.
 
+*Excepción medida: `--adv-texto` y `--error-texto`.* Cuando una nota corta
+necesita decir su tono con la palabra misma (en Cobranzas: «Importe sin
+confirmar», «incluye $ X de recargo»), usa estos dos tonos de texto, más oscuros
+que `--adv` y `--error` en el tema claro:
+
+| Combinación | Contraste | AA (4.5:1) |
+|---|---|---|
+| `--adv-texto` `#8A5300` sobre blanco | 6.33:1 | ✓ |
+| `--adv-texto` sobre `--superficie` (fila en hover) | 5.84:1 | ✓ |
+| `--error-texto` `#B4283E` sobre blanco | 6.34:1 | ✓ |
+| `--error-texto` sobre `--error-bg` | 5.42:1 | ✓ |
+
+En el tema oscuro valen lo mismo que `--adv` y `--error` (ya son claros). No son
+colores de marca: salen de aplicar la misma regla a un tono más oscuro. Se usan
+**sólo** para texto chico que además lleva ícono; la píldora de estado sigue con
+ícono y palabra en tinta.
+
 ### El estado nunca se comunica solo con color
 
 Toda píldora lleva **ícono + palabra**.
@@ -529,8 +601,9 @@ Cada cuota cobrada puede tener su **liquidación**: un PDF de una página, con l
 marca de Alquia, que el propietario le entrega al inquilino o guarda para sí.
 Spec: `openspec/changes/payment-settlement-pdf` en el repo de orquestación.
 
-- **Dónde está.** En Cobranzas, como botón secundario «Liquidación» (ícono de
-  documento) al lado de «Comprobante», en la fila de una cuota pagada.
+- **Dónde está.** En Cobranzas, como opción «Liquidación» del menú «⋯» de la fila
+  de una cuota pagada, junto a «Comprobante» (que es la acción a la vista). Mientras
+  se genera el PDF, el botón «⋯» queda ocupado (`aria-busy`, con anillo de espera).
 - **Cuándo aparece.** Sólo si la cuota está `PAID` y tiene un pago `CONFIRMED`
   cargado por el inquilino o por el propietario. Un pago del alta
   (`ONBOARDING`) no tiene fecha de pago real, así que esa fila conserva su
@@ -1065,8 +1138,9 @@ Dos reglas que salieron de conectarlas, y que valen para las que faltan:
       se haga la revisión visual (ver Espaciado). Los grandes de `.owner-content`
       no van a `--esp-*`: piden `--ancho-menu` y `--gutter-*` propios.
 - [ ] Revisión visual del prototipo en navegador — nunca se hizo; toda la
-      verificación hasta ahora fue estática y de lógica. El apilado de cobranzas
-      y de `.owner-document` en 620 px entra acá: se escribió sin poder abrirlo.
+      verificación hasta ahora fue estática y de lógica. La tabla de cobranzas ya
+      se revisó en navegador (390 a 1728 px, menú expandido y colapsado); el
+      apilado de `.owner-document` en 620 px entra acá: se escribió sin poder abrirlo.
 - [ ] **Partir `OwnerWorkspace.tsx` en un componente por pantalla.** SonarCloud
       marca Complejidad Cognitiva 110 sobre 15 permitido en el componente
       completo (2206 líneas), más un sub-componente inline con 16 sobre 15.
