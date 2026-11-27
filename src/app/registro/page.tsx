@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Check, Eye, EyeOff, Mail, ShieldCheck } from "lucide-react";
 import { apiPost, ApiError } from "@/lib/api";
-import { ERROR, copyDeError } from "@/lib/error-codes";
+import { copyDeError } from "@/lib/error-codes";
 import { Spinner } from "@/components/ui/Spinner";
 import { cuitValido, formatearCuit, soloDigitos } from "@/lib/cuit";
 import { errorDeTelefono, soloDigitosTelefono, telefonoValido } from "@/lib/telefono";
@@ -24,16 +24,8 @@ function errorDeCuit(cuit: string): string {
   return "El número no es válido. Revise que no haya un dígito cambiado.";
 }
 
-// Copy propio del registro para los duplicados (override del copy por defecto del
-// catálogo): acá un CUIT/teléfono duplicado significa «ya hay una cuenta».
-const COPY_REGISTRO: Record<string, string> = {
-  [ERROR.DUPLICATE_TAX_ID]: "Ese CUIT ya tiene una cuenta. Inicie sesión o use otro.",
-  [ERROR.DUPLICATE_PHONE_NUMBER]: "Ese teléfono ya tiene una cuenta. Inicie sesión o use otro.",
-};
-
 function mensajeDeErrorDeRegistro(err: unknown): string {
   return copyDeError(err, {
-    overrides: COPY_REGISTRO,
     fallback:
       err instanceof ApiError && err.status === 400
         ? "Verifique los datos ingresados e inténtelo de nuevo."
@@ -41,13 +33,9 @@ function mensajeDeErrorDeRegistro(err: unknown): string {
   });
 }
 
-// El backend asocia los duplicados a un campo (extensión `errors` de RFC 9457):
-// se muestran junto al campo, con el copy en español del `type` —nunca el texto en
-// inglés que viene en el mapa—. Devuelve {} si el error no es por-campo conocido,
-// y entonces se muestra el banner general.
 function erroresDeCampoDeRegistro(err: unknown): Record<string, string> {
   if (!(err instanceof ApiError) || !err.fieldErrors) return {};
-  const copy = copyDeError(err, { overrides: COPY_REGISTRO, fallback: "" });
+  const copy = copyDeError(err, { fallback: "" });
   if (!copy) return {};
   return Object.fromEntries(Object.keys(err.fieldErrors).map((campo) => [campo, copy]));
 }
