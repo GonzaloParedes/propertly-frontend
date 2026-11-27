@@ -103,7 +103,7 @@ export default function DashboardNav({ activeView, tool, onNavigate }: Readonly<
       delete document.body.dataset.navCollapsed;
     }
     return () => { delete document.body.dataset.navCollapsed; };
-  }, [collapsed]);
+  }, [collapsed, collapsedElegido]);
 
   useEffect(() => {
     if (!open) return;
